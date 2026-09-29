@@ -1,19 +1,19 @@
-# KitchenFlow
+# Cocinaris 
 
-KitchenFlow is an AI-assisted responsive web application that helps people with limited time or cooking experience plan, shop, and cook better at home, with less effort, waste, and dependence on delivery.
+Cocinaris  is an AI-assisted responsive web application that helps people with limited time or cooking experience plan, shop, and cook better at home, with less effort, waste, and dependence on delivery.
 
-> Repository name: `WTK.KitchenFlow`  
-> Product name: **KitchenFlow**
+> Repository name: `WTK.Cocinaris`  
+> Product name: **Cocinaris**
 
 ## Central product question
 
 > Considering what food exists, how much exists, how long it remains usable, and what the user is willing to do, what is the best way to transform that food into useful meals?
 
-KitchenFlow is not primarily a recipe catalog. Inventory, shopping, optional menu planning, equipment, profile, recipe generation, guided cooking, troubleshooting, and history provide context or actions around this decision.
+Cocinaris is not primarily a recipe catalog. Inventory, shopping, optional menu planning, equipment, profile, recipe generation, guided cooking, troubleshooting, and history provide context or actions around this decision.
 
 ## Project status
 
-KitchenFlow has completed its initial product and architecture discovery and now has production-shaped authenticated foundations on `main`:
+Cocinaris has completed its initial product and architecture discovery and now has production-shaped authenticated foundations on `main`:
 
 - backend-managed OIDC browser session and internal user ownership;
 - owner-isolated PostgreSQL inventory with concurrency, idempotency, history, migrations, OpenAPI, and operational tests;
@@ -102,4 +102,4 @@ All source code, technical documentation, branches, commits, issues, pull reques
 
 ## License
 
-KitchenFlow is source-available under the **PolyForm Noncommercial License 1.0.0**. See [`LICENSE`](LICENSE).
+Cocinaris is source-available under the **PolyForm Noncommercial License 1.0.0**. See [`LICENSE`](LICENSE).
