@@ -22,6 +22,74 @@ namespace KitchenFlow.Infrastructure.Persistence.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("KitchenFlow.Infrastructure.Persistence.AiUsageLedgerRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("ClosedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CorrelationId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Model")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("Operation")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<Guid>("OwnerUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Provider")
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.Property<int>("ReservedUnits")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("SettledUnits")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("CompletionTokens")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("PromptTokens")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("OwnerUserId", "CreatedAt");
+
+                    b.HasIndex("OwnerUserId", "Status");
+
+                    b.ToTable("usage_ledger", "ai", t =>
+                        {
+                            t.HasCheckConstraint("ck_usage_ledger_reserved_units", "\"ReservedUnits\" > 0");
+
+                            t.HasCheckConstraint("ck_usage_ledger_settlement", "(\"Status\" = 'Reserved' AND \"SettledUnits\" IS NULL AND \"Provider\" IS NULL AND \"Model\" IS NULL AND \"ClosedAt\" IS NULL) OR (\"Status\" = 'Settled' AND \"SettledUnits\" IS NOT NULL AND \"SettledUnits\" > 0 AND \"Provider\" IS NOT NULL AND \"Model\" IS NOT NULL AND \"ClosedAt\" IS NOT NULL) OR (\"Status\" = 'Released' AND \"SettledUnits\" IS NULL AND \"ClosedAt\" IS NOT NULL)");
+
+                            t.HasCheckConstraint("ck_usage_ledger_status", "\"Status\" IN ('Reserved', 'Settled', 'Released')");
+                        });
+                });
+
             modelBuilder.Entity("KitchenFlow.Infrastructure.Persistence.AuditEventRecord", b =>
                 {
                     b.Property<Guid>("Id")
@@ -315,12 +383,12 @@ namespace KitchenFlow.Infrastructure.Persistence.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
 
-                    b.Property<decimal?>("DeclaredYieldMeasuredValue")
-                        .HasColumnType("numeric(18,3)");
-
                     b.Property<string>("DeclaredYieldMeasuredUnit")
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
+
+                    b.Property<decimal?>("DeclaredYieldMeasuredValue")
+                        .HasColumnType("numeric(18,3)");
 
                     b.Property<Guid>("OutputProductId")
                         .HasColumnType("uuid");
@@ -561,6 +629,174 @@ namespace KitchenFlow.Infrastructure.Persistence.Migrations
                     b.HasIndex("OwnerUserId", "ListName", "SortOrder");
 
                     b.ToTable("ordered_code_entries", "profiles");
+                });
+
+            modelBuilder.Entity("KitchenFlow.Infrastructure.Persistence.RecipeGenerationSessionRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("CandidatesSnapshotJson")
+                        .HasColumnType("jsonb");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ExecutionMode")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<DateTimeOffset>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("FailureReason")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<Guid>("IdempotencyKey")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("OwnerUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("SelectIdempotencyKey")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("SelectedCandidateId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<Guid?>("SelectedRecipeId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasAlternateKey("Id", "OwnerUserId");
+
+                    b.HasIndex("OwnerUserId", "CreatedAt");
+
+                    b.HasIndex("OwnerUserId", "IdempotencyKey")
+                        .IsUnique();
+
+                    b.HasIndex("OwnerUserId", "SelectIdempotencyKey")
+                        .IsUnique()
+                        .HasFilter("\"SelectIdempotencyKey\" IS NOT NULL");
+
+                    b.HasIndex("SelectedRecipeId", "OwnerUserId");
+
+                    b.HasIndex("OwnerUserId", "UpdatedAt", "Id");
+
+                    b.ToTable("generation_sessions", "recipes", t =>
+                        {
+                            t.HasCheckConstraint("ck_generation_sessions_execution_mode", "\"ExecutionMode\" IN ('cook_now')");
+
+                            t.HasCheckConstraint("ck_generation_sessions_status", "\"Status\" IN ('AwaitingCandidates', 'CandidatesReady', 'Expanding', 'Selected', 'Failed')");
+                        });
+                });
+
+            modelBuilder.Entity("KitchenFlow.Infrastructure.Persistence.RecipeRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("CurrentRevisionNumber")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("OwnerUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OwnerUserId", "CreatedAt", "Id");
+
+                    b.ToTable("recipes", "recipes", t =>
+                        {
+                            t.HasCheckConstraint("ck_recipes_current_revision_number", "\"CurrentRevisionNumber\" >= 1");
+                        });
+                });
+
+            modelBuilder.Entity("KitchenFlow.Infrastructure.Persistence.RecipeRevisionRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("MealTypesJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<string>("NormalizedRecipeJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<Guid>("OwnerUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("RecipeId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("RevisionNumber")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Servings")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("SourceCandidateId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<Guid>("SourceGenerationSessionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ThumbnailVisualJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RecipeId", "OwnerUserId");
+
+                    b.HasIndex("RecipeId", "RevisionNumber")
+                        .IsUnique();
+
+                    b.HasIndex("OwnerUserId", "RecipeId", "RevisionNumber");
+
+                    b.ToTable("recipe_revisions", "recipes", t =>
+                        {
+                            t.HasCheckConstraint("ck_recipe_revisions_name", "length(btrim(\"Name\")) > 0");
+
+                            t.HasCheckConstraint("ck_recipe_revisions_revision_number", "\"RevisionNumber\" >= 1");
+
+                            t.HasCheckConstraint("ck_recipe_revisions_servings", "\"Servings\" BETWEEN 1 AND 24");
+
+                            t.HasCheckConstraint("ck_recipe_revisions_source_candidate_id", "length(btrim(\"SourceCandidateId\")) > 0");
+                        });
                 });
 
             modelBuilder.Entity("KitchenFlow.Infrastructure.Persistence.TransactionRecord", b =>
@@ -877,6 +1113,15 @@ namespace KitchenFlow.Infrastructure.Persistence.Migrations
                     b.ToTable("users", "identity");
                 });
 
+            modelBuilder.Entity("KitchenFlow.Infrastructure.Persistence.AiUsageLedgerRecord", b =>
+                {
+                    b.HasOne("KitchenFlow.Modules.Identity.InternalUser", null)
+                        .WithMany()
+                        .HasForeignKey("OwnerUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("KitchenFlow.Infrastructure.Persistence.AuditEventRecord", b =>
                 {
                     b.HasOne("KitchenFlow.Modules.Identity.InternalUser", null)
@@ -1020,6 +1265,46 @@ namespace KitchenFlow.Infrastructure.Persistence.Migrations
                         .WithMany()
                         .HasForeignKey("OwnerUserId")
                         .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("KitchenFlow.Infrastructure.Persistence.RecipeGenerationSessionRecord", b =>
+                {
+                    b.HasOne("KitchenFlow.Modules.Identity.InternalUser", null)
+                        .WithMany()
+                        .HasForeignKey("OwnerUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("KitchenFlow.Infrastructure.Persistence.RecipeRecord", null)
+                        .WithMany()
+                        .HasForeignKey("SelectedRecipeId", "OwnerUserId")
+                        .HasPrincipalKey("Id", "OwnerUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+                });
+
+            modelBuilder.Entity("KitchenFlow.Infrastructure.Persistence.RecipeRecord", b =>
+                {
+                    b.HasOne("KitchenFlow.Modules.Identity.InternalUser", null)
+                        .WithMany()
+                        .HasForeignKey("OwnerUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("KitchenFlow.Infrastructure.Persistence.RecipeRevisionRecord", b =>
+                {
+                    b.HasOne("KitchenFlow.Modules.Identity.InternalUser", null)
+                        .WithMany()
+                        .HasForeignKey("OwnerUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("KitchenFlow.Infrastructure.Persistence.RecipeRecord", null)
+                        .WithMany()
+                        .HasForeignKey("RecipeId", "OwnerUserId")
+                        .HasPrincipalKey("Id", "OwnerUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
 

@@ -3,6 +3,7 @@ import type { PreparationRouteRepository } from "@/contracts/preparation";
 import type { ContextualHomeAdapter } from "@/contracts/contextualHome";
 import type { InventoryRepository } from "@/adapters/live/inventoryTypes";
 import type { ProfileRepository } from "@/contracts/profile";
+import type { RecipeRepository } from "@/contracts/recipes";
 import type { AdultDeclarationPolicy } from "@/features/profile/adultDeclarationPolicy";
 import type { SessionAdapter } from "@/app/session/types";
 import type { FrontendMode } from "./mode";
@@ -17,6 +18,11 @@ export interface FrontendRuntime {
   sessionAdapter: SessionAdapter;
   /** Live inventory repository for production; prototype may inject a stub. */
   inventoryRepository: InventoryRepository;
+  /**
+   * Live recipe cook-now repository for production.
+   * Prototype must use an unavailable stub — never mock recipe fixtures on production routes.
+   */
+  recipeRepository: RecipeRepository;
   preparationRouteRepository: PreparationRouteRepository;
   /**
    * Contextual home sources. Production uses unavailable until PLAN-0021.

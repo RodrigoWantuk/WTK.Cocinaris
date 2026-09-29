@@ -27,6 +27,9 @@ function renderEntry() {
     inventoryRepository: {
       listLots: async () => ({ items: [], nextCursor: null }),
     } as unknown as FrontendRuntime["inventoryRepository"],
+    recipeRepository: {
+      listRecipes: async () => [],
+    } as unknown as FrontendRuntime["recipeRepository"],
     preparationRouteRepository: new UnavailablePreparationRouteRepository(),
     contextualHomeAdapter: createUnavailableContextualHomeAdapter(),
     profileRepository: {

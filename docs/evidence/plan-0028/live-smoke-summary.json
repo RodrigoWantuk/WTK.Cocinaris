@@ -1,0 +1,26 @@
+{
+  "plan": "PLAN-0028",
+  "smoke": "recipe-gateway-live-smoke",
+  "provider": "deepseek",
+  "model": "deepseek-chat",
+  "providerCalls": 3,
+  "suggest": {
+    "result": "Passed",
+    "repairRequired": true
+  },
+  "expand": {
+    "result": "Passed",
+    "repairRequired": false
+  },
+  "promptTokens": 10083,
+  "completionTokens": 3624,
+  "estimatedCostUsd": 0.00242634,
+  "costCeilingUsd": 0.05,
+  "status": "passed",
+  "notes": [
+    "Synthetic fixtures only; production RecipeAiRequestEnvelopes + DeepSeekAiProvider + RecipeProtocolValidator.",
+    "Full responseSchema embedded in both envelopes (suggest 4923 chars, expand 6238 chars).",
+    "Actual repair payload used for suggest (assumption-as-additionalIngredients).",
+    "No credentials, reasoning traces, or private data recorded."
+  ]
+}

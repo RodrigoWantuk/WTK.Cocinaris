@@ -133,6 +133,15 @@ internal static class InventoryOpenApiTransformer
                     operation.Parameters.Add(Header("Idempotency-Key", "Required UUID key for semantic create or adjustment replay."));
                 }
 
+                if ((path.Equals("/api/v1/recipes/generation-sessions", StringComparison.Ordinal) && method == HttpMethod.Post)
+                    || (path.Equals("/api/v1/recipes/generation-sessions/{sessionId}/selection", StringComparison.Ordinal) && method == HttpMethod.Post))
+                {
+                    operation.Parameters ??= [];
+                    operation.Parameters.Add(Header("Idempotency-Key", "Required UUID key for cook-now generation or selection replay."));
+                    EnsureProblemResponse(document, operation, "429", "The mutation rate limit was exceeded.");
+                    EnsureProblemResponse(document, operation, "503", "The AI Gateway is temporarily unavailable.");
+                }
+
                 AddExamples(path, method, operation);
                 AddStandardProblemExamples(operation);
 

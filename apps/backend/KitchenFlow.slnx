@@ -2,9 +2,11 @@
   <Folder Name="/src/">
     <Project Path="src/KitchenFlow.Api/KitchenFlow.Api.csproj" />
     <Project Path="src/KitchenFlow.Infrastructure/KitchenFlow.Infrastructure.csproj" />
+    <Project Path="src/KitchenFlow.Modules.Ai/KitchenFlow.Modules.Ai.csproj" />
     <Project Path="src/KitchenFlow.Modules.Identity/KitchenFlow.Modules.Identity.csproj" />
     <Project Path="src/KitchenFlow.Modules.Inventory/KitchenFlow.Modules.Inventory.csproj" />
     <Project Path="src/KitchenFlow.Modules.Profiles/KitchenFlow.Modules.Profiles.csproj" />
+    <Project Path="src/KitchenFlow.Modules.Recipes/KitchenFlow.Modules.Recipes.csproj" />
     <Project Path="src/KitchenFlow.SharedKernel/KitchenFlow.SharedKernel.csproj" />
   </Folder>
   <Folder Name="/tests/">

@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <AssemblyName>KitchenFlow.Modules.Ai</AssemblyName>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <WarningsAsErrors>$(WarningsAsErrors);CS1591</WarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../KitchenFlow.SharedKernel/KitchenFlow.SharedKernel.csproj" />
+  </ItemGroup>
+
+</Project>

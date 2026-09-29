@@ -86,9 +86,26 @@ describe("production isolation", () => {
     expect(sessionSource).toMatch(/createBffSessionAdapter/);
     expect(sessionSource).not.toMatch(/createUnavailableSessionAdapter/);
     expect(sessionSource).toMatch(/createLiveInventoryRepository/);
+    expect(sessionSource).toMatch(/createLiveRecipeRepository/);
     expect(sessionSource).toMatch(/createUnavailableContextualHomeAdapter/);
     expect(sessionSource).not.toMatch(/createMockSessionAdapter/);
     expect(sessionSource).not.toMatch(/createMockContextualHomeAdapter/);
+  });
+
+  it("production composition root wires live recipes and does not use mock recipe fixtures", () => {
+    const runtime = createProductionRuntime();
+    expect(runtime.recipeRepository).toBeDefined();
+    const recipePages = [
+      "features/recipes/RecipesListPage.tsx",
+      "features/recipes/RecipeGeneratePage.tsx",
+      "features/recipes/RecipeDetailPage.tsx",
+    ];
+    for (const page of recipePages) {
+      const source = readSrc(page);
+      expect(source).not.toMatch(/adapters\/mock/);
+      expect(source).not.toMatch(/from ["']@\/lib\/mockData["']/);
+      expect(source).not.toMatch(/from ["']@\/lib\/store["']/);
+    }
   });
 
   it("prototype composition root explicitly wires mock tooling", () => {
@@ -98,6 +115,9 @@ describe("production isolation", () => {
       sharedMockPreparationRouteRepository,
     );
     expect(runtime.contextualHomeAdapter).toBeDefined();
+    expect(runtime.recipeRepository).toBeDefined();
+    const prototypeSource = readSrc("app/runtime/createPrototypeRuntime.ts");
+    expect(prototypeSource).toMatch(/createUnavailableRecipeRepository/);
   });
 
   it("production runtime module does not import adapters/mock", () => {

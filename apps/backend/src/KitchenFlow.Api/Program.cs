@@ -1,7 +1,9 @@
 using KitchenFlow.Api.Inventory;
 using KitchenFlow.Api.Profiles;
+using KitchenFlow.Api.Recipes;
 using KitchenFlow.Api.Observability;
 using KitchenFlow.Api.Services;
+using KitchenFlow.Api;
 using KitchenFlow.Infrastructure.Persistence;
 using KitchenFlow.Modules.Inventory.Application;
 using KitchenFlow.Modules.Profiles.Application;
@@ -88,6 +90,7 @@ builder.Services.AddScoped<IPutEquipmentUseCase, PutEquipmentHandler>();
 builder.Services.AddScoped<IGetProfileCompletenessUseCase, GetProfileCompletenessHandler>();
 builder.Services.AddScoped<IGetProfileSessionProjectionUseCase, GetProfileSessionProjectionHandler>();
 builder.Services.AddScoped<ProfileApplicationService>();
+builder.Services.AddKitchenFlowRecipeAi(builder.Configuration, builder.Environment);
 builder.Services.AddAntiforgery(options => { options.HeaderName = "X-CSRF-TOKEN"; options.Cookie.Name = "__Host-kitchenflow-antiforgery"; options.Cookie.Path = "/"; options.Cookie.SecurePolicy = CookieSecurePolicy.Always; });
 var dataProtection = builder.Services.AddDataProtection().SetApplicationName("KitchenFlow");
 if (!string.IsNullOrWhiteSpace(dataProtectionOptions.KeyRingPath))
@@ -219,6 +222,7 @@ api.MapGet("/session", async (HttpContext context, IAntiforgery antiforgery, ICu
 }).RequireAuthorization().Produces<SessionResponse>().ProducesProblem(401);
 api.MapGroup("/inventory").RequireAuthorization().MapInventoryEndpoints();
 api.MapGroup("/profile").RequireAuthorization().MapProfileEndpoints();
+api.MapGroup("/recipes").RequireAuthorization().MapRecipeEndpoints();
 app.Run();
 
 /// <summary>Exposes the application entry point to the integration-test host.</summary>

@@ -8,7 +8,7 @@
 - **Completed:** 2026-08-05
 - **Last updated:** 2026-08-05
 - **Branch:** `agent/plan-0022-recipe-ai-evaluation`
-- **Pull request:** Draft [PR #43](https://github.com/RodrigoWantuk/WTK.Cocinaris/pull/43)
+- **Pull request:** Merged [PR #43](https://github.com/RodrigoWantuk/WTK.Cocinaris/pull/43) at `cfec79546fcd5e476f7198cdc788a6ce251d35c5`
 - **Predecessor:** PLAN-0017 documentation delivery
 - **Related operations plan:** PLAN-0008
 - **Related ADR:** ADR-0005
@@ -83,10 +83,10 @@ PLAN-0017 is completed as documentation history. PLAN-0008 consumes this plan's 
 
 ## Execution state
 
-- **Current checkpoint:** PLAN-0022 Completed. Protocol `0.3` Revised; lean live campaign executed (4 scenarios / 8 provider calls, ~US$ 0.012867); historical header timings preserved; total latency and TTFT unavailable for that run; deterministic validators passed; Draft PR #43.
+- **Current checkpoint:** PLAN-0022 Completed and merged through PR #43 at `cfec79546fcd5e476f7198cdc788a6ce251d35c5`. Protocol `0.3` Revised; lean live campaign evidence retained with corrected accounting.
 - **Run target:** Delivered.
 - **Blockers:** None.
-- **Exact next action:** Owner reviews Draft PR #43. Next implementation work: AI Gateway plan consuming finalized recipe AI contracts; PLAN-0021 may proceed once remaining menu/planning source contracts are accepted.
+- **Exact next action:** None. Successor implementation is PLAN-0028 (AI Gateway and cook-now generation).
 
 ## Progress log
 
@@ -111,10 +111,7 @@ PLAN-0017 is completed as documentation history. PLAN-0008 consumes this plan's 
 - Pushed final PLAN-0022 completion head to Draft PR #43 for owner review and one final CI run.
 - No approval, auto-merge, or merge performed.
 
-### 2026-08-05 — Live evaluation accounting correction
+### 2026-08-05 — Merged
 
-- Corrected evidence accounting without rerunning provider calls: **4 scenarios evaluated**, **8 actual provider calls**, max one repair per scenario, cost US$ 0.012867 preserved.
-- Relabeled historical `460–518 ms` values as response-header timing; total latency and TTFT marked unavailable; statistical latency remains deferred.
-- Updated `scripts/ai/recipe-live-eval.mjs` for future runs (`scenariosEvaluated`, `providerCallsAttempted`, header vs total latency, `ttftMs: null`).
-- Replaced absolute local validator path with `packages/contracts/ai/recipe`.
-- Focused validation: `scripts/contracts/validate-recipe-ai.sh` and live-eval script parse check.
+- Merged through PR #43 at `cfec79546fcd5e476f7198cdc788a6ce251d35c5`.
+- Successor: PLAN-0028 implements the production AI Gateway and cook-now vertical slice.

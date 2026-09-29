@@ -245,18 +245,17 @@ Before production enablement, validate:
 - [x] Privacy, safety, rights, storage, provenance, and deletion boundaries are defined.
 - [x] Evaluation and cost evidence requirements are defined.
 - [x] No production implementation or unsupported benchmark claim is included.
-- [ ] Owner accepts and merges PR #29.
+- [x] Documentation accepted and merged through PR #29.
 - [ ] PLAN-0008 Phase 1 refreshes provider, price, storage, privacy, and threshold evidence.
-- [ ] Separate implementation plans are created and independently reviewed.
+- [x] Implementation plan placeholder created (PLAN-0030 Draft); coding remains pending.
 
 ## Execution state
 
-- **Current checkpoint:** Documentation is reconciled with current `main`, merged PLAN-0017, and the closed duplicate PR #28. The original PLAN-0008 file remains intact; this amendment and the dedicated AI policy contain the thumbnail-specific scope.
-- **Last completed step:** Rebuilt the PR #29 branch from current `main`, replaced the broad PLAN-0008 rewrite with focused amendment documentation, and connected image generation to the existing `thumbnailVisual` contract.
-- **Exact next action:** Owner reviews and merges PR #29. After merge, assign PLAN-0008 Phase 1 to refresh current Gemini pricing/terms, provider-data policy, object-storage economics, and measurable release thresholds.
-- **Blockers:** No blocker to documentation merge. Production work remains blocked on explicit implementation plans, current provider evidence, AI Gateway controls, storage lifecycle, budgets, and independent validation.
-- **Validation performed:** Documentation consistency review against PLAN-0008, PLAN-0017, ADR-0005, the supplied Nano Banana configuration/prompt, and the current repository registry. No live provider or storage action was performed.
-- **Working tree state:** PR #29 branch is rebuilt from current `main`; pre-reconciliation history is archived at `archive/pr29-pre-plan0017-reconcile`.
+- **Current checkpoint:** Documentation accepted and merged through PR #29. Implementation is pending under PLAN-0030. Initial provider candidate remains Nano Banana / Gemini image policy, subject to a current provider and pricing refresh before implementation.
+- **Last completed step:** Thumbnail policy documentation merged; PLAN-0030 draft placeholder created during PLAN-0028 roadmap reconciliation.
+- **Exact next action:** After PLAN-0028 lands, claim PLAN-0030 and refresh Gemini/Nano Banana availability and pricing before coding.
+- **Blockers:** Production work remains blocked on PLAN-0028 AI Gateway, saved recipe revisions, persistent job/object-storage foundations, and current provider evidence.
+- **Validation performed:** Documentation consistency review against PLAN-0008, PLAN-0017, ADR-0005, and the current repository registry. No live provider or storage action was performed.
 
 ## Progress log
 
