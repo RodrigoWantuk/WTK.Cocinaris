@@ -20,9 +20,9 @@ Do not rewrite accepted history. Add a note or superseding ADR.
 | [0001](0001-frontend-platform-and-boundary.md) | React/TypeScript frontend through Lovable with a strict backend boundary | Superseded by ADR-0007 |
 | [0002](0002-backend-platform-and-modular-monolith.md) | .NET 10 ASP.NET Core modular monolith and .NET workers | Accepted |
 | [0003](0003-primary-data-and-asynchronous-messaging.md) | PostgreSQL, transactional outbox, RabbitMQ, and optional Redis | Accepted |
-| [0004](0004-identity-and-browser-session.md) | Keycloak OIDC and backend-managed browser session | Accepted |
+| [0004](0004-identity-and-browser-session.md) | OIDC (Keycloak as development fixture; any compliant provider in deployments, 2026-10-28 amendment) and backend-managed browser session | Accepted |
 | [0005](0005-ai-gateway-and-usage-governance.md) | Central AI gateway, structured context, model routing, and quota ledger | Accepted |
-| [0006](0006-deployment-and-observability.md) | Containers, Docker Compose test environment, Virginia production, and OpenTelemetry | Accepted |
+| [0006](0006-deployment-and-observability.md) | Containers, Docker Compose test environment, Virginia production, and OpenTelemetry (owner Linux host as development and deployment environment, 2026-10-28 amendment) | Accepted |
 | [0007](0007-frontend-platform-monorepo-and-generation-tooling.md) | React/TypeScript frontend; monorepo `apps/frontend` authority; Emergent/Lovable optional | Accepted |
 
 ## Future decision backlog
@@ -39,7 +39,7 @@ ADRs or implementation designs are still required for:
 - object-storage provider and media pipeline;
 - billing and advertising;
 - secret management;
-- deployment pipeline and release gates;
+- deployment pipeline and release gates (owner-host scripted deployment exists since PLAN-0031; production pipeline remains open);
 - retention schedule and legal launch-country matrix.
 
 Use [`0000-adr-template.md`](0000-adr-template.md) for future records.

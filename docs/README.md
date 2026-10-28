@@ -71,6 +71,7 @@ Read:
 - [`ai/usage-and-cost-governance.md`](ai/usage-and-cost-governance.md)
 - [`security/security-and-abuse.md`](security/security-and-abuse.md)
 - [`operations/platform-and-reliability.md`](operations/platform-and-reliability.md)
+- [`operations/linux-host-deployment-runbook.md`](operations/linux-host-deployment-runbook.md) for building, deploying, rolling back, and restoring on the owner Linux host
 - [`operations/backend-inventory-runbook.md`](operations/backend-inventory-runbook.md) for PLAN-0003
   development, migration, contract, identity, and recovery operations
 - [`testing/strategy.md`](testing/strategy.md)

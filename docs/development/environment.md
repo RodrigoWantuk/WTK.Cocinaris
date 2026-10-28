@@ -18,12 +18,39 @@ Cocinaris supports three local host modes.
 
 ### Linux host
 
-Recommended for autonomous agents, CI parity, and the Texas VPS.
+Recommended for autonomous agents, CI parity, and the owner Linux host (see below).
 
 - Use a Docker-supported 64-bit Linux distribution.
 - Debian and Ubuntu are preferred because Docker and .NET publish direct installation guidance.
 - Run repository commands from a normal user account.
 - Docker Engine may run rootful or rootless according to host policy.
+
+### Owner Linux host
+
+Since 2026-10-28 the owner's Debian 13 host (the host that serves the current deployment) is the canonical development, test, build and deployment environment. Everything in this guide, including integration tests, the OIDC development fixture, browser checks and deployment, must work there. Deployment is described in the [Linux host deployment runbook](../operations/linux-host-deployment-runbook.md).
+
+Host specifics, verified 2026-10-28:
+
+| Concern | Setup |
+|---|---|
+| .NET | SDK 10.0.302 at `/opt/dotnet`, not on the default `PATH`: `export PATH=/opt/dotnet:$PATH DOTNET_ROOT=/opt/dotnet` |
+| Node.js | 24.x at `/opt/node24` with Yarn 1.22.22 through Corepack. The system Node.js 20 stays for other services: `export PATH=/opt/node24/bin:$PATH` |
+| Docker | Debian `docker.io` and `docker-compose` (Compose v2). The daemon runs with `"iptables": false` and `"ip6tables": false` in `/etc/docker/daemon.json`, so the host firewall, forwarding and VPN routing are never modified. Containers publish ports through the userland proxy on `127.0.0.1` only and do not need outbound access. |
+| PostgreSQL clash | The host runs PostgreSQL on 5432 for the deployment. Start the development stack with `COCINARIS_DEV_POSTGRES_PORT=55432` and point `COCINARIS_DB_CONNECTION` at port 55432. |
+| Browsers | Playwright Chromium for the pinned Playwright version (`npx playwright install chromium`) plus its system libraries |
+| Memory | 3.8 GiB total. The OIDC fixture (Keycloak) and Testcontainers fit, but stop the compose stack after use (`docker compose -f infrastructure/compose/compose.dev.yml down`) |
+| Working copies | `/svr/www/wtk-cocinaris` is the development checkout. Deployments build from a temporary worktree and never change its branch or files. |
+
+Complete local validation (the same steps as CI):
+
+```sh
+export PATH=/opt/dotnet:/opt/node24/bin:$PATH DOTNET_ROOT=/opt/dotnet COCINARIS_DEV_POSTGRES_PORT=55432
+docker compose -f infrastructure/compose/compose.dev.yml up -d postgres keycloak
+(cd apps/backend && dotnet restore Cocinaris.slnx --locked-mode && dotnet format Cocinaris.slnx --verify-no-changes --no-restore \
+  && dotnet build Cocinaris.slnx -c Release --no-restore && dotnet test Cocinaris.slnx -c Release --no-build)
+(cd apps/frontend && yarn install --frozen-lockfile && yarn typecheck && yarn lint && yarn format:check && yarn test \
+  && yarn build:production && yarn guard:build-mode && yarn guard:production-isolation && yarn inspect:production-bundle && yarn audit:policy)
+```
 
 ### Windows native tools with Docker Desktop
 
@@ -192,7 +219,7 @@ Requirements:
 - no preview SDK is selected by default;
 - once PLAN-0003 creates `apps/backend/global.json`, `dotnet --version` from that directory resolves the pinned SDK/roll-forward policy.
 
-When the SDK is installed outside the default search path (for example a tarball install under `/opt/dotnet`, as on the owner's test host verified on 2026-10-28), add that directory to `PATH` and set `DOTNET_ROOT` to it before running backend commands. Without it, `dotnet` is not found even though the SDK is present.
+When the SDK is installed outside the default search path (for example a tarball install under `/opt/dotnet`, as on the [owner Linux host](#owner-linux-host)), add that directory to `PATH` and set `DOTNET_ROOT` to it before running backend commands. Without it, `dotnet` is not found even though the SDK is present.
 
 Do not globally install `dotnet-ef`. PLAN-0003 must create a local .NET tool manifest, and agents run:
 
@@ -222,7 +249,7 @@ Requirements:
 - do not install frontend build tools globally;
 - use project scripts through the chosen package manager.
 
-The frontend and `packages/api-client` pin Yarn Classic through `packageManager` (`yarn@1.22.22`). Enable it with Corepack (`corepack enable`) rather than a global npm install. Several gates, including `yarn audit:policy`, spawn `yarn` directly and fail with `spawnSync yarn ENOENT` when it is missing. Node.js 24 is the supported baseline, but as of 2026-10-28 `.github/workflows/frontend.yml` still runs Node.js 20 (the Backend and PLAN-0005 workflows use 24.18.0), and the owner's test host runs 20.19.2. Aligning the frontend workflow on Node.js 24 is tracked by PLAN-0030.
+The frontend and `packages/api-client` pin Yarn Classic through `packageManager` (`yarn@1.22.22`). Enable it with Corepack (`corepack enable`) rather than a global npm install. Several gates, including `yarn audit:policy`, spawn `yarn` directly and fail with `spawnSync yarn ENOENT` when it is missing. Every workflow and the owner Linux host run Node.js 24.
 
 PLAN-0004 must inspect whether Lovable generated TanStack Start or React/Vite and preserve that supported runtime. New Lovable projects created after May 13, 2026 commonly use TanStack Start with SSR except where the Lovable plan/runtime says otherwise.
 

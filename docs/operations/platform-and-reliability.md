@@ -19,6 +19,8 @@ Containerized dependencies with reproducible configuration. Developers may run o
 
 Docker Compose may host the complete integration environment for functional, migration, queue, and operational testing.
 
+Since 2026-10-28 the owner-operated Linux host is the development, test, build and deployment environment (ADR-0006 amendment). It runs the API under systemd from immutable release directories, with PostgreSQL on the host and Docker Compose for development fixtures. See the [Linux host deployment runbook](linux-host-deployment-runbook.md).
+
 ### Virginia production
 
 Initial production is a single cloud region with:

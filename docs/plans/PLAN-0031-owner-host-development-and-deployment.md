@@ -1,6 +1,6 @@
 # PLAN-0031: Establish the Owner Linux Host as the Development and Deployment Environment
 
-- **Status:** Ready
+- **Status:** In Progress
 - **Type:** Operations
 - **Priority:** Critical
 - **Owner:** Claude Code
@@ -38,7 +38,7 @@ Its procedure lived outside this repository and built from the same checkout tha
    - `scripts/deploy/deploy-linux-host.sh`, which builds from a clean worktree of a chosen ref (default `origin/main`) instead of the development checkout, backs up, applies idempotent migrations as the schema owner, publishes, and health-checks;
    - an operations runbook covering first install, update, rollback/forward repair, restore rehearsal, the rename migration from PLAN-0030, and log locations.
 5. **Identity documentation:** deployments document a generic OIDC provider (authority, client ID/secret, redirect and sign-out callback paths). ADR-0004 gets an amendment note stating that Keycloak is the development/test fixture and any standards-compliant OIDC provider may back a deployment.
-6. **Agent workflow:** `AGENTS.md` §13 authorizes this host for remote Git/GitHub operations using the owner-configured credentials, with the same safety rules (no merge, no pushes to `main`, no auth login/logout, never print tokens).
+6. **Agent workflow:** propose an `AGENTS.md` §13 change that authorizes this host for remote Git/GitHub operations with owner-configured credentials. **The owner applies it**: agents may not change the rules that govern their own remote authority (an agent attempt on 2026-10-28 was blocked by the agent permission classifier). Until then, no push or PR is made from this host.
 7. **Reconcile ADR-0006:** the owner host is the current development and deployment environment, and the Virginia production target stays as the accepted future production region.
 8. **Deploy the renamed build** once it is merged, following the runbook. Merge itself remains the owner's action.
 
@@ -49,22 +49,65 @@ Its procedure lived outside this repository and built from the same checkout tha
 
 ## Acceptance criteria
 
-- [ ] Backend unit, architecture and **integration** tests pass on the host, including the OIDC-fixture-dependent tests.
+- [x] Backend unit, architecture and **integration** tests pass on the host, including the OIDC-fixture-dependent tests.
 - [ ] Frontend gates pass on the host with Node.js 24 and Yarn via Corepack. The frontend workflow uses Node.js 24.
 - [ ] The deployment script and runbook can rebuild the running deployment from a ref without touching the development checkout. Verified with a dry run (`--dry-run`) on the host.
-- [ ] A backup restore rehearsal into a scratch database succeeds and is documented.
-- [ ] No identity-provider product name appears in deployment documentation.
-- [ ] `AGENTS.md` §13 reflects the host decision.
+- [x] A backup restore rehearsal into a scratch database succeeds and is documented.
+- [x] No identity-provider product name appears in deployment documentation.
+- [ ] `AGENTS.md` §13 reflects the host decision (owner action; proposed text below).
+
+## Proposed `AGENTS.md` §13 change (owner to apply)
+
+Insert before "### Quando o hostname for diferente" and adapt the publish check to accept both hostnames:
+
+```markdown
+### Quando o hostname for `rwantuk` (host de desenvolvimento e deploy)
+
+Desde 2026-10-28 o host Linux `rwantuk` é o ambiente canônico de desenvolvimento, teste, build e deploy
+do Cocinaris (docs/development/environment.md#owner-linux-host). Neste host:
+
+* operações remotas usam `git` e `gh` diretamente, com as credenciais que o owner configurou no host;
+  o GitHub App e seus scripts não existem aqui e não devem ser instalados ou recriados;
+* se a autenticação remota não estiver configurada, o agente para e informa o owner, sem procurar,
+  ler ou criar credenciais;
+* branches de trabalho usam o prefixo `agent/`; o agente abre ou atualiza um pull request draft e
+  solicita revisão de `RodrigoWantuk`;
+* o agente nunca executa `gh pr merge`, nunca faz push direto para `main`, nunca executa
+  `gh auth login`/`gh auth logout` e nunca exibe tokens ou segredos;
+* o deploy segue docs/operations/linux-host-deployment-runbook.md; deploy de `main` após merge feito
+  pelo owner é permitido; deploy de código não mergeado exige instrução explícita do owner.
+```
 
 ## Execution state
 
-- **Current run delivery target:** All included items except item 8, which needs the owner merge.
-- **Current checkpoint:** Docker installed with `iptables: false`; backend integration tests ran (164/175 passed; the 11 failures need the OIDC development fixture running, as in CI).
-- **Exact next action:** After PLAN-0030 lands on the stack, install Node.js 24, adapt the compose ports, and run the full gate set.
-- **Blockers:** None.
+- **Current run delivery target:** All included items except the `AGENTS.md` change (owner) and the post-merge deploy.
+- **Current checkpoint:** Host tooling, development fixtures, documentation, deployment assets and runbook delivered.
+  - Docker 26.1.5 / Compose 2.26.1 with `iptables: false`; Node.js 24.22.1 at `/opt/node24` (checksum verified) with Yarn 1.22.22 via Corepack; `jq`; Playwright Chromium and system libraries.
+  - Compose PostgreSQL port configurable (`COCINARIS_DEV_POSTGRES_PORT`).
+  - Frontend workflow on Node.js 24.18.0.
+  - ADR-0004 and ADR-0006 amendments, environment guide "Owner Linux host" section, deployment runbook, `infrastructure/deploy/linux-host/`, `scripts/deploy/deploy-linux-host.sh`.
+- **Last completed step:** A deploy dry run of `8f74062` (PLAN-0030 head) built, published and generated the migration script, then **refused to publish** because the entry page loads third-party scripts. That is the intended guard behavior; the scripts are removed by PLAN-0032. The failed partial release was left behind, so the script now deletes any release that does not finish building.
+- **Exact next action:** On the PLAN-0032 head (trackers removed), rerun `scripts/deploy/deploy-linux-host.sh --ref <PLAN-0032 head> --dry-run` and confirm the release builds completely. After owner merge: rename migration steps from the runbook and a real deploy.
+- **Blockers:** Owner must apply the `AGENTS.md` §13 change before pushes and PRs from this host. Owner merge before deploying.
+- **Validation performed:**
+  - On the host: backend unit 52/52, architecture 14/14 and integration 175/175 with the OIDC fixture; format; migrations; OpenAPI (recorded under PLAN-0030).
+  - Frontend full gate set on Node.js 24.
+  - Backup restore rehearsal: 15 tables and 9 migration rows matched.
+  - Deploy dry run as described above.
+  - Existing sites returned HTTP 200 after the Docker install.
+- **Known failures or limitations:** No complete dry-run success yet, by design, until PLAN-0032 removes the trackers. CSP is documented in the reverse-proxy template but not enabled live, because sign-in cannot be verified end to end by an agent.
+- **Working tree state:** Committed on `agent/plan-0031-owner-host-environment`.
 
 ## Progress log
 
 ### 2026-10-28T14:45:00Z — Claude Code
 
 - Plan created from owner instruction. Docker Engine 26.1.5 and Compose 2.26.1 installed with `iptables`/`ip6tables` disabled; existing sites verified up afterwards (HTTP 200).
+
+### 2026-10-28T18:10:00Z — Claude Code
+
+- **Checkpoint:** Host environment, deployment assets and documentation delivered (see execution state).
+- **Incidents handled:** A session restart interrupted the first dry run mid-build; the partial release was removed and the dry run repeated. The development compose stack was stopped to free memory.
+- **Privacy incident (handled under PLAN-0032):** The deployed `index.html` loaded a third-party script and a session-recording analytics snippet inherited from the Emergent import. At 15:29Z the deployed file was hot-fixed (scripts removed, title corrected; backup at `/var/backups/wtk-cocinaris/web-index-20261028T152920Z.html`). The deploy script now refuses entry pages with external script or style origins.
+- **Next action:** See execution state.
+

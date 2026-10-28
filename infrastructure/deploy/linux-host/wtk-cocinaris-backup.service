@@ -1,0 +1,6 @@
+[Unit]
+Description=Backup of the Cocinaris database
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/cocinaris-db-backup
