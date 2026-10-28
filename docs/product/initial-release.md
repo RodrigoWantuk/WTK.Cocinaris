@@ -32,7 +32,7 @@ There is no native Android or iOS application in this release.
 - optional short video, animation, interactive demonstration, or illustrated walkthrough;
 - static, reduced-motion, reduced-data, caption, transcript, and media-failure fallbacks;
 - synthetic demonstration data only;
-- adult-only notice and policy-link placeholders without fabricated legal text;
+- policy-link placeholders without fabricated legal text; the age requirement lives in the terms of use and a one-time adult declaration;
 - no authenticated or personal data in public rendering;
 - truthful capability claims that distinguish live, unavailable, plan-limited, and prototype-only behavior.
 

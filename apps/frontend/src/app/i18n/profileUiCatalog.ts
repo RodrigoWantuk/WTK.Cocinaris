@@ -38,7 +38,6 @@ export const REQUIRED_PROFILE_I18N_KEYS = [
   "profile.overview.linkPreferences",
   "profile.overview.linkEquipment",
   "profile.overview.adultDeclaration.title",
-  "profile.overview.adultDeclaration.declared",
   "profile.overview.adultDeclaration.notDeclared",
   "profile.overview.adultDeclaration.declined",
   "profile.overview.adultDeclaration.unavailable",
@@ -178,9 +177,6 @@ export const REQUIRED_PROFILE_I18N_KEYS = [
   "profile.unsavedChanges.stay",
   "profile.data.serverVersionNotice",
   "profile.overview.adultDeclaration.unknown",
-  "profile.overview.adultDeclaration.acceptedAt",
-  "profile.overview.adultDeclaration.termsVersion",
-  "profile.overview.adultDeclaration.privacyVersion",
   "profile.overview.nextSteps.household",
   "profile.overview.nextSteps.preferences",
   "profile.overview.nextSteps.equipment",
@@ -285,7 +281,6 @@ const en: Record<ProfileI18nKey, string> = {
   "profile.overview.linkPreferences": "Edit preferences & restrictions",
   "profile.overview.linkEquipment": "Edit equipment",
   "profile.overview.adultDeclaration.title": "Adult declaration",
-  "profile.overview.adultDeclaration.declared": "Declared",
   "profile.overview.adultDeclaration.notDeclared": "Not declared yet",
   "profile.overview.adultDeclaration.declined": "Declined",
   "profile.overview.adultDeclaration.unavailable":
@@ -443,10 +438,6 @@ const en: Record<ProfileI18nKey, string> = {
   "profile.data.serverVersionNotice":
     "This changed on the server. The current server value is shown next to your unsaved edit so you can compare before retrying.",
   "profile.overview.adultDeclaration.unknown": "Unknown status",
-  "profile.overview.adultDeclaration.acceptedAt": "Accepted on {date}",
-  "profile.overview.adultDeclaration.termsVersion": "Terms version {version}",
-  "profile.overview.adultDeclaration.privacyVersion":
-    "Privacy version {version}",
   "profile.overview.nextSteps.household": "Add household & cooking data",
   "profile.overview.nextSteps.preferences": "Add preferences & restrictions",
   "profile.overview.nextSteps.equipment": "Add equipment",
@@ -539,7 +530,6 @@ const ptBR: Record<ProfileI18nKey, string> = {
   "profile.overview.linkPreferences": "Editar preferências e restrições",
   "profile.overview.linkEquipment": "Editar equipamentos",
   "profile.overview.adultDeclaration.title": "Declaração de maioridade",
-  "profile.overview.adultDeclaration.declared": "Declarada",
   "profile.overview.adultDeclaration.notDeclared": "Ainda não declarada",
   "profile.overview.adultDeclaration.declined": "Recusada",
   "profile.overview.adultDeclaration.unavailable":
@@ -699,11 +689,6 @@ const ptBR: Record<ProfileI18nKey, string> = {
   "profile.data.serverVersionNotice":
     "Isso mudou no servidor. O valor atual do servidor é mostrado ao lado da sua edição não salva para você comparar antes de tentar novamente.",
   "profile.overview.adultDeclaration.unknown": "Status desconhecido",
-  "profile.overview.adultDeclaration.acceptedAt": "Aceito em {date}",
-  "profile.overview.adultDeclaration.termsVersion":
-    "Versão dos termos {version}",
-  "profile.overview.adultDeclaration.privacyVersion":
-    "Versão da privacidade {version}",
   "profile.overview.nextSteps.household":
     "Adicionar dados de família e culinária",
   "profile.overview.nextSteps.preferences":
@@ -802,7 +787,6 @@ const es: Record<ProfileI18nKey, string> = {
   "profile.overview.linkPreferences": "Editar preferencias y restricciones",
   "profile.overview.linkEquipment": "Editar equipamiento",
   "profile.overview.adultDeclaration.title": "Declaración de mayoría de edad",
-  "profile.overview.adultDeclaration.declared": "Declarada",
   "profile.overview.adultDeclaration.notDeclared": "Aún no declarada",
   "profile.overview.adultDeclaration.declined": "Rechazada",
   "profile.overview.adultDeclaration.unavailable":
@@ -964,11 +948,6 @@ const es: Record<ProfileI18nKey, string> = {
   "profile.data.serverVersionNotice":
     "Esto cambió en el servidor. El valor actual del servidor se muestra junto a tu edición sin guardar para que puedas comparar antes de reintentar.",
   "profile.overview.adultDeclaration.unknown": "Estado desconocido",
-  "profile.overview.adultDeclaration.acceptedAt": "Aceptado el {date}",
-  "profile.overview.adultDeclaration.termsVersion":
-    "Versión de términos {version}",
-  "profile.overview.adultDeclaration.privacyVersion":
-    "Versión de privacidad {version}",
   "profile.overview.nextSteps.household": "Agregar datos del hogar y cocina",
   "profile.overview.nextSteps.preferences":
     "Agregar preferencias y restricciones",

@@ -1,0 +1,74 @@
+# PLAN-0053: Owner Feedback Fixes and Host-Local Merge Gates
+
+- **Status:** In Progress
+- **Type:** Implementation
+- **Priority:** High
+- **Owner:** Claude Code (claimed 2026-10-28)
+- **Created:** 2026-10-28
+- **Last updated:** 2026-10-28
+- **Branch:** `agent/plan-0053-owner-feedback-local-gates`
+- **Pull request:** Not opened
+- **Related documents:** `docs/product/entry-and-contextual-home.md`, `docs/product/audience-and-profile.md`, `docs/security/privacy-and-data-protection.md`, `docs/development/environment.md`, `AGENTS.md` §9 and §11
+
+## Owner decisions recorded (2026-10-28)
+
+- **D-4, no GitHub Actions:** "teremos que viver sem as pipelines do github nesse projeto". The GitHub account is locked for billing and Actions jobs never start. The merge gates move to a versioned script that runs on the owner host.
+- **D-5, entry redirect:** "A home page do cocinaris não identifica que já tem uma sessão iniciada, deveria identificar e levar pra home". A visitor with a valid session who opens `/` goes to `/app/hoje`.
+- **D-6, age requirement presentation:** "vamos parar de esfregar na cara do usuário toda hora que o aplicativo é pra maiores de idade. Colocamos isso nos termos de uso, no máximo pedimos uma confirmação formal do usuário ser maior de idade durante o cadastro". The 18+ policy and the recorded declaration remain; the interface asks once and does not repeat age notices.
+
+## Scope
+
+### Included
+
+1. D-5: the `/` route checks the session and redirects signed-in visitors. The public page renders immediately for everyone else and still never reads the session itself.
+2. D-6:
+   - remove the age notice from the public footer;
+   - reword the entry hero line so it no longer addresses "adults";
+   - show the profile adult-confirmation card only while the confirmation is pending;
+   - remove the strings used only by the completed-confirmation details;
+   - update the product, journey and privacy documents.
+3. D-4:
+   - `scripts/ci/run-local-gates.sh` runs every step of `backend.yml` and `frontend.yml` (including the browser smoke and the gitleaks secret scan) on a clean worktree of a committed ref, and writes a summary per commit under `artifacts/local-gates/<sha>/`;
+   - environment guide section;
+   - proposed `AGENTS.md` change below.
+4. The secret scan flagged a browser-storage key name (`LS_PREFS_KEY`) in historical commit `e248126`. That is a false positive: it is not a credential. A narrow line allowlist was added to `.gitleaks.toml`.
+
+### Excluded
+
+- The PLAN-0005 headed-browser validation workflow (it needs Xvfb and a headed Firefox; it is run on demand with `scripts/plan-0005/`).
+- A first-access onboarding screen for the adult confirmation (today the pending confirmation is in the profile overview; a dedicated first-access step can follow the account onboarding work).
+
+## Proposed `AGENTS.md` change (owner to authorize)
+
+The owner applies it, or explicitly instructs the agent to apply it, because agents do not change the rules that govern their own validation.
+
+In §9 "Lean risk-based validation", replace "and **one final CI execution on the PR head**" with:
+
+> and one final run of `scripts/ci/run-local-gates.sh --ref <PR head>` on the owner host. GitHub Actions does not run for this repository (owner decision 2026-10-28); the summary under `artifacts/local-gates/<sha>/summary.md` replaces the CI run, and its result is recorded in the PR description.
+
+In §9, replace "After CI passes on the final head, record workflow run IDs" with "After the local gates pass on the final head, record the commit and summary".
+
+In §11, read "Do not merge failing checks" as "do not merge a head whose local gates failed".
+
+## Acceptance criteria
+
+- [x] Signed-in visitors at `/` reach `/app/hoje`; signed-out visitors see the public page without delay; tests cover both.
+- [x] No age notice on the public page; the profile shows the adult confirmation only while pending; product and privacy documents updated.
+- [ ] `scripts/ci/run-local-gates.sh` passes on this branch's head, and the result is recorded.
+- [ ] Deployed to the owner host (owner standing instruction).
+- [ ] `AGENTS.md` updated by or on explicit instruction of the owner.
+
+## Execution state
+
+- **Current run delivery target:** All included items.
+- **Current checkpoint:** D-5 and D-6 implemented, and the frontend validated (Vitest 51 files / 423 tests, typecheck, lint, format, guards). The local gate script is written; the gitleaks false positive is allowlisted, and the full history scan is clean.
+- **Exact next action:** Commit, run `scripts/ci/run-local-gates.sh` on the commit, record the summary, deploy, open the draft PR.
+- **Blockers:** `AGENTS.md` change awaits the owner.
+- **Working tree state:** Uncommitted, about to be committed.
+
+## Progress log
+
+### 2026-10-28T23:30:00Z — Claude Code
+
+- Plan created from three owner messages (D-4, D-5, D-6). Implemented D-5 and D-6 with tests. The old entry test that asserted "no session request on `/`" encoded the previous engineering rule from PLAN-0011; it now asserts that the session check is the only request.
+- Wrote the local gate script. Verified the pinned gitleaks image over full history: one false positive (storage key name), allowlisted narrowly, then no leaks.

@@ -53,13 +53,6 @@ const NEXT_STEP_SECTIONS: readonly NextStep[] = [
   },
 ];
 
-function formatAcceptedAt(acceptedAt: string | null): string | null {
-  if (!acceptedAt) return null;
-  const parsed = new Date(acceptedAt);
-  if (Number.isNaN(parsed.getTime())) return acceptedAt;
-  return parsed.toLocaleDateString();
-}
-
 /**
  * Read-only landing surface for the profile area: completeness, existence, adult
  * declaration status, progressive next steps, and links into the three editable
@@ -128,9 +121,6 @@ export function ProfileOverviewPage() {
 
   const { profile, completeness } = workspace;
   const adultKind = classifyAdultState(profile.adultDeclaration.state);
-  const acceptedAtDisplay = formatAcceptedAt(
-    profile.adultDeclaration.acceptedAt,
-  );
   const canDeclare = adultKind !== "declared" && adultPolicy.available;
 
   function describeDeclarationError(err: unknown): string {
@@ -245,98 +235,72 @@ export function ProfileOverviewPage() {
         )}
       </div>
 
-      <div
-        data-testid="profile-overview-adult-declaration"
-        className="rounded-xl border border-border p-4"
-      >
-        <h2 className="font-medium">
-          {t("profile.overview.adultDeclaration.title")}
-        </h2>
-        <p
-          className="mt-1 text-sm text-muted-foreground"
-          data-testid="profile-overview-adult-state"
+      {/* Owner decision 2026-10-28: the adult confirmation is asked once and then disappears;
+          the age requirement itself lives in the terms of use. */}
+      {adultKind !== "declared" && (
+        <div
+          data-testid="profile-overview-adult-declaration"
+          className="rounded-xl border border-border p-4"
         >
-          {adultKind === "declared" &&
-            t("profile.overview.adultDeclaration.declared")}
-          {adultKind === "declined" &&
-            t("profile.overview.adultDeclaration.declined")}
-          {adultKind === "notDeclared" &&
-            t("profile.overview.adultDeclaration.notDeclared")}
-          {adultKind === "unknown" &&
-            t("profile.overview.adultDeclaration.unknown")}
-        </p>
-        {adultKind === "declared" && (
-          <div className="mt-1 space-y-0.5 text-xs text-muted-foreground">
-            {acceptedAtDisplay && (
-              <p data-testid="profile-overview-adult-accepted-at">
-                {t("profile.overview.adultDeclaration.acceptedAt").replace(
-                  "{date}",
-                  acceptedAtDisplay,
-                )}
-              </p>
-            )}
-            {profile.adultDeclaration.termsVersion && (
-              <p data-testid="profile-overview-adult-terms-version">
-                {t("profile.overview.adultDeclaration.termsVersion").replace(
-                  "{version}",
-                  profile.adultDeclaration.termsVersion,
-                )}
-              </p>
-            )}
-            {profile.adultDeclaration.privacyVersion && (
-              <p data-testid="profile-overview-adult-privacy-version">
-                {t("profile.overview.adultDeclaration.privacyVersion").replace(
-                  "{version}",
-                  profile.adultDeclaration.privacyVersion,
-                )}
-              </p>
-            )}
-          </div>
-        )}
-        {!adultPolicy.available && adultKind !== "declared" && (
+          <h2 className="font-medium">
+            {t("profile.overview.adultDeclaration.title")}
+          </h2>
           <p
-            className="mt-1 text-xs text-muted-foreground"
-            data-testid="profile-overview-adult-policy-unavailable"
+            className="mt-1 text-sm text-muted-foreground"
+            data-testid="profile-overview-adult-state"
           >
-            {t("profile.overview.adultDeclaration.unavailable")}
+            {adultKind === "declined" &&
+              t("profile.overview.adultDeclaration.declined")}
+            {adultKind === "notDeclared" &&
+              t("profile.overview.adultDeclaration.notDeclared")}
+            {adultKind === "unknown" &&
+              t("profile.overview.adultDeclaration.unknown")}
           </p>
-        )}
-        {(declarationError || lastMutationError) && (
-          <p
-            role="alert"
-            className="mt-1 text-xs text-destructive"
-            data-testid="profile-overview-adult-error"
-          >
-            {declarationError ??
-              (lastMutationError
-                ? describeDeclarationError(lastMutationError)
-                : "")}
-          </p>
-        )}
-        {canDeclare && (
-          <div className="mt-2 flex gap-2">
-            <Button
-              type="button"
-              size="sm"
-              disabled={!canMutate}
-              data-testid="profile-overview-adult-accept"
-              onClick={() => void submitDeclaration(true)}
+          {!adultPolicy.available && (
+            <p
+              className="mt-1 text-xs text-muted-foreground"
+              data-testid="profile-overview-adult-policy-unavailable"
             >
-              {t("profile.actions.confirm")}
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="secondary"
-              disabled={!canMutate}
-              data-testid="profile-overview-adult-decline"
-              onClick={() => void submitDeclaration(false)}
+              {t("profile.overview.adultDeclaration.unavailable")}
+            </p>
+          )}
+          {(declarationError || lastMutationError) && (
+            <p
+              role="alert"
+              className="mt-1 text-xs text-destructive"
+              data-testid="profile-overview-adult-error"
             >
-              {t("profile.actions.remove")}
-            </Button>
-          </div>
-        )}
-      </div>
+              {declarationError ??
+                (lastMutationError
+                  ? describeDeclarationError(lastMutationError)
+                  : "")}
+            </p>
+          )}
+          {canDeclare && (
+            <div className="mt-2 flex gap-2">
+              <Button
+                type="button"
+                size="sm"
+                disabled={!canMutate}
+                data-testid="profile-overview-adult-accept"
+                onClick={() => void submitDeclaration(true)}
+              >
+                {t("profile.actions.confirm")}
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                disabled={!canMutate}
+                data-testid="profile-overview-adult-decline"
+                onClick={() => void submitDeclaration(false)}
+              >
+                {t("profile.actions.remove")}
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
 
       <nav
         aria-label={t("profile.overview.title")}

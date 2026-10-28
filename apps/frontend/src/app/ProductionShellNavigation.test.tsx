@@ -104,6 +104,24 @@ describe("Production shell and navigation (PLAN-0035)", () => {
     expect(screen.getByTestId("feature-unavailable-app")).toBeInTheDocument();
   });
 
+  it("sends a visitor who already has a session from the entry page to the home", async () => {
+    window.history.pushState({}, "", "/");
+    render(<ProductionApp />);
+    await screen.findByTestId("production-primary-nav");
+    await waitFor(() => expect(window.location.pathname).toBe("/app/hoje"));
+  });
+
+  it("keeps signed-out visitors on the public entry page", async () => {
+    fetchSpy.mockImplementation(
+      async () => new Response(null, { status: 401 }),
+    );
+    window.history.pushState({}, "", "/");
+    render(<ProductionApp />);
+    await waitFor(() => expect(sessionFetches()).toBe(1));
+    expect(window.location.pathname).toBe("/");
+    expect(screen.queryByTestId("production-primary-nav")).toBeNull();
+  });
+
   it.each([
     ["/", "page.title.entry"],
     ["/acesso", "page.title.access"],

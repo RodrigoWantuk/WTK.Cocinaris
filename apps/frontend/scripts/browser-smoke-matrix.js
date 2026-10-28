@@ -1151,9 +1151,17 @@ async function run() {
           timeout: 30000,
         });
         await page.getByTestId("profile-overview").waitFor({ timeout: 15000 });
-        await page
-          .getByTestId("profile-overview-adult-accepted-at")
-          .waitFor({ timeout: 5000 });
+        // The fixture's adult confirmation is complete, so it is not shown again.
+        if (
+          (await page
+            .getByTestId("profile-overview-adult-declaration")
+            .count()) !== 0
+        ) {
+          fail(
+            "production profile intercepted: overview",
+            "completed adult confirmation is still shown",
+          );
+        }
         if (
           (await page.getByTestId("profile-overview-next-steps").count()) === 0
         ) {
@@ -1165,7 +1173,7 @@ async function run() {
         record(
           "production profile intercepted: overview",
           "Passed",
-          "intercepted session+profile fixtures render completeness and adult declaration",
+          "intercepted session+profile fixtures render completeness without a completed adult confirmation",
         );
 
         await page.goto(PRODUCTION_BASE + "/app/perfil/dados", {

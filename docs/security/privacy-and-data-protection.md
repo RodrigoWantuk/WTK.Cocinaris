@@ -14,7 +14,7 @@ Production is initially expected in the United States, so international data-tra
 
 Cocinaris is for users aged 18 or older who can legally accept the terms in their jurisdiction.
 
-The initial product records an adult declaration and terms version. It does not collect a complete birth date without a separate documented purpose. Country availability and wording require legal review.
+The initial product records an adult declaration and terms version. It does not collect a complete birth date without a separate documented purpose. Country availability and wording require legal review. The declaration is asked once and the interface does not repeat age notices (owner decision 2026-10-28, PLAN-0053).
 
 The service, onboarding, advertising, and community content must not target children.
 
