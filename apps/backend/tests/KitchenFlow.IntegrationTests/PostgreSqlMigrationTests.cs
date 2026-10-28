@@ -68,6 +68,7 @@ public sealed class PostgreSqlMigrationTests : IAsyncLifetime
         Assert.Contains("preparation_inputs_are_append_only", triggers);
         Assert.Contains("preparation_outputs_are_append_only", triggers);
         Assert.Contains("prepared_lots_are_append_only", triggers);
+        Assert.Contains("recipe_revisions_are_append_only", triggers);
     }
 
     [Fact]

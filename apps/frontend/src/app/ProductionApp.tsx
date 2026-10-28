@@ -21,6 +21,10 @@ import { InventoryProvider } from "@/features/inventory/InventoryProvider";
 import { ProductionInventoryList } from "@/features/inventory/ProductionInventoryList";
 import { ProductionInventoryDetail } from "@/features/inventory/ProductionInventoryDetail";
 import { ProductionInventoryForm } from "@/features/inventory/ProductionInventoryForm";
+import { RecipeProvider } from "@/features/recipes/RecipeProvider";
+import { RecipesListPage } from "@/features/recipes/RecipesListPage";
+import { RecipeGeneratePage } from "@/features/recipes/RecipeGeneratePage";
+import { RecipeDetailPage } from "@/features/recipes/RecipeDetailPage";
 import { PublicEntryPage } from "@/features/entry/PublicEntryPage";
 import { ContextualHomePage } from "@/features/home/ContextualHomePage";
 import { ContextualHomeProvider } from "@/features/home/ContextualHomeProvider";
@@ -138,6 +142,7 @@ function ProductionAccess() {
 const PRIMARY_NAV_ITEMS = [
   { to: "/app/hoje", key: "home", testId: "production-nav-home" },
   { to: "/app/despensa", key: "inventory", testId: "production-nav-despensa" },
+  { to: "/app/receitas", key: "recipes", testId: "production-nav-receitas" },
   { to: "/app/perfil", key: "profile", testId: "production-nav-perfil" },
 ] as const;
 
@@ -147,6 +152,7 @@ function PrimaryNav() {
   const labels: Record<(typeof PRIMARY_NAV_ITEMS)[number]["key"], string> = {
     home: t("nav.home"),
     inventory: t("inventory.title"),
+    recipes: t("nav.recipes"),
     profile: t("nav.profile"),
   };
   return (
@@ -286,7 +292,9 @@ function SessionScopedRoutes({ children }: { children: ReactNode }) {
   return (
     <SessionProvider adapter={runtime.sessionAdapter}>
       <InventoryProvider repository={runtime.inventoryRepository}>
-        {children}
+        <RecipeProvider repository={runtime.recipeRepository}>
+          {children}
+        </RecipeProvider>
       </InventoryProvider>
     </SessionProvider>
   );
@@ -424,6 +432,42 @@ function createProductionRouter() {
           <RequireAuth>
             <ProductionAppShell>
               <ProductionInventoryDetail />
+            </ProductionAppShell>
+          </RequireAuth>
+        </SessionScopedRoutes>
+      ),
+    },
+    {
+      path: "/app/receitas",
+      element: (
+        <SessionScopedRoutes>
+          <RequireAuth>
+            <ProductionAppShell>
+              <RecipesListPage />
+            </ProductionAppShell>
+          </RequireAuth>
+        </SessionScopedRoutes>
+      ),
+    },
+    {
+      path: "/app/receitas/gerar",
+      element: (
+        <SessionScopedRoutes>
+          <RequireAuth>
+            <ProductionAppShell>
+              <RecipeGeneratePage />
+            </ProductionAppShell>
+          </RequireAuth>
+        </SessionScopedRoutes>
+      ),
+    },
+    {
+      path: "/app/receitas/:recipeId",
+      element: (
+        <SessionScopedRoutes>
+          <RequireAuth>
+            <ProductionAppShell>
+              <RecipeDetailPage />
             </ProductionAppShell>
           </RequireAuth>
         </SessionScopedRoutes>

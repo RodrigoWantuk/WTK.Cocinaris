@@ -4,8 +4,9 @@ using Microsoft.EntityFrameworkCore;
 namespace KitchenFlow.Infrastructure.Persistence;
 
 /// <summary>
-/// Entity Framework Core persistence boundary for KitchenFlow identity, inventory, audit, and
-/// idempotency records. Composite owner keys prevent cross-user links at the database boundary.
+/// Entity Framework Core persistence boundary for KitchenFlow identity, inventory, profiles,
+/// recipes, AI usage, audit, and idempotency records. Composite owner keys prevent cross-user
+/// links at the database boundary.
 /// </summary>
 /// <param name="options">Configured PostgreSQL context options.</param>
 public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : DbContext(options)
@@ -54,6 +55,18 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
 
     /// <summary>Gets privacy-minimizing profile change-history records.</summary>
     public DbSet<ProfileChangeHistoryEntryRecord> ProfileChangeHistoryEntries => Set<ProfileChangeHistoryEntryRecord>();
+
+    /// <summary>Gets the authoritative AI usage ledger records.</summary>
+    public DbSet<AiUsageLedgerRecord> AiUsageLedgerEntries => Set<AiUsageLedgerRecord>();
+
+    /// <summary>Gets user-owned recipe identity records.</summary>
+    public DbSet<RecipeRecord> Recipes => Set<RecipeRecord>();
+
+    /// <summary>Gets immutable, append-only recipe revision content records.</summary>
+    public DbSet<RecipeRevisionRecord> RecipeRevisions => Set<RecipeRevisionRecord>();
+
+    /// <summary>Gets owner-scoped cook-now recipe generation session records.</summary>
+    public DbSet<RecipeGenerationSessionRecord> RecipeGenerationSessions => Set<RecipeGenerationSessionRecord>();
 
     /// <inheritdoc />
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -291,6 +304,82 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             entity.Property(x => x.CorrelationId).HasMaxLength(100).IsRequired();
             entity.HasOne<UserProfileRecord>().WithMany().HasForeignKey(x => x.OwnerUserId).HasPrincipalKey(x => x.OwnerUserId).OnDelete(DeleteBehavior.Cascade);
             entity.HasIndex(x => new { x.OwnerUserId, x.OccurredAt });
+        });
+
+        modelBuilder.Entity<AiUsageLedgerRecord>(entity =>
+        {
+            entity.ToTable("usage_ledger", "ai", table =>
+            {
+                table.HasCheckConstraint("ck_usage_ledger_status", "\"Status\" IN ('Reserved', 'Settled', 'Released')");
+                table.HasCheckConstraint("ck_usage_ledger_reserved_units", "\"ReservedUnits\" > 0");
+                table.HasCheckConstraint(
+                    "ck_usage_ledger_settlement",
+                    "(\"Status\" = 'Reserved' AND \"SettledUnits\" IS NULL AND \"Provider\" IS NULL AND \"Model\" IS NULL AND \"ClosedAt\" IS NULL) " +
+                    "OR (\"Status\" = 'Settled' AND \"SettledUnits\" IS NOT NULL AND \"SettledUnits\" > 0 AND \"Provider\" IS NOT NULL AND \"Model\" IS NOT NULL AND \"ClosedAt\" IS NOT NULL) " +
+                    "OR (\"Status\" = 'Released' AND \"SettledUnits\" IS NULL AND \"ClosedAt\" IS NOT NULL)");
+            });
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Operation).HasMaxLength(100).IsRequired();
+            entity.Property(x => x.Status).HasMaxLength(20).IsRequired();
+            entity.Property(x => x.Provider).HasMaxLength(60);
+            entity.Property(x => x.Model).HasMaxLength(100);
+            entity.Property(x => x.CorrelationId).HasMaxLength(100).IsRequired();
+            entity.HasOne<InternalUser>().WithMany().HasForeignKey(x => x.OwnerUserId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasIndex(x => new { x.OwnerUserId, x.Status });
+            entity.HasIndex(x => new { x.OwnerUserId, x.CreatedAt });
+            entity.HasIndex(x => x.CreatedAt);
+        });
+
+        modelBuilder.Entity<RecipeRecord>(entity =>
+        {
+            entity.ToTable("recipes", "recipes", table => table.HasCheckConstraint("ck_recipes_current_revision_number", "\"CurrentRevisionNumber\" >= 1"));
+            entity.HasKey(x => x.Id);
+            entity.HasAlternateKey(x => new { x.Id, x.OwnerUserId });
+            entity.HasOne<InternalUser>().WithMany().HasForeignKey(x => x.OwnerUserId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasIndex(x => new { x.OwnerUserId, x.CreatedAt, x.Id });
+        });
+
+        modelBuilder.Entity<RecipeRevisionRecord>(entity =>
+        {
+            entity.ToTable("recipe_revisions", "recipes", table =>
+            {
+                table.HasCheckConstraint("ck_recipe_revisions_revision_number", "\"RevisionNumber\" >= 1");
+                table.HasCheckConstraint("ck_recipe_revisions_servings", "\"Servings\" BETWEEN 1 AND 24");
+                table.HasCheckConstraint("ck_recipe_revisions_name", "length(btrim(\"Name\")) > 0");
+                table.HasCheckConstraint("ck_recipe_revisions_source_candidate_id", "length(btrim(\"SourceCandidateId\")) > 0");
+            });
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Name).HasMaxLength(80).IsRequired();
+            entity.Property(x => x.MealTypesJson).HasColumnType("jsonb").IsRequired();
+            entity.Property(x => x.NormalizedRecipeJson).HasColumnType("jsonb").IsRequired();
+            entity.Property(x => x.ThumbnailVisualJson).HasColumnType("jsonb").IsRequired();
+            entity.Property(x => x.SourceCandidateId).HasMaxLength(64).IsRequired();
+            entity.HasOne<RecipeRecord>().WithMany().HasForeignKey(x => new { x.RecipeId, x.OwnerUserId }).HasPrincipalKey(x => new { x.Id, x.OwnerUserId }).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne<InternalUser>().WithMany().HasForeignKey(x => x.OwnerUserId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasIndex(x => new { x.RecipeId, x.RevisionNumber }).IsUnique();
+            entity.HasIndex(x => new { x.OwnerUserId, x.RecipeId, x.RevisionNumber });
+        });
+
+        modelBuilder.Entity<RecipeGenerationSessionRecord>(entity =>
+        {
+            entity.ToTable("generation_sessions", "recipes", table =>
+            {
+                table.HasCheckConstraint("ck_generation_sessions_execution_mode", "\"ExecutionMode\" IN ('cook_now')");
+                table.HasCheckConstraint("ck_generation_sessions_status", "\"Status\" IN ('AwaitingCandidates', 'CandidatesReady', 'Expanding', 'Selected', 'Failed')");
+            });
+            entity.HasKey(x => x.Id);
+            entity.HasAlternateKey(x => new { x.Id, x.OwnerUserId });
+            entity.Property(x => x.ExecutionMode).HasMaxLength(20).IsRequired();
+            entity.Property(x => x.Status).HasMaxLength(30).IsRequired();
+            entity.Property(x => x.CandidatesSnapshotJson).HasColumnType("jsonb");
+            entity.Property(x => x.SelectedCandidateId).HasMaxLength(64);
+            entity.Property(x => x.FailureReason).HasMaxLength(100);
+            entity.HasOne<InternalUser>().WithMany().HasForeignKey(x => x.OwnerUserId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne<RecipeRecord>().WithMany().HasForeignKey(x => new { x.SelectedRecipeId, x.OwnerUserId }).HasPrincipalKey(x => new { x.Id, x.OwnerUserId }).IsRequired(false).OnDelete(DeleteBehavior.Restrict);
+            entity.HasIndex(x => new { x.OwnerUserId, x.IdempotencyKey }).IsUnique();
+            entity.HasIndex(x => new { x.OwnerUserId, x.SelectIdempotencyKey }).IsUnique().HasFilter("\"SelectIdempotencyKey\" IS NOT NULL");
+            entity.HasIndex(x => new { x.OwnerUserId, x.CreatedAt });
+            entity.HasIndex(x => new { x.OwnerUserId, x.UpdatedAt, x.Id });
         });
     }
 }

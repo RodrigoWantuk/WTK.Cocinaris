@@ -1,11 +1,23 @@
 # AI Usage, Cost, Quota, and Abuse Governance
 
 - **Status:** Accepted
-- **Last updated:** 2026-07-28
+- **Last updated:** 2026-08-06
 
 ## Objective
 
 AI cost is one of KitchenFlow's largest variable operational risks. Usage governance is a first-class product and architecture capability.
+
+## Normalized KitchenFlow units versus provider tokens
+
+The PLAN-0028 cook-now ledger distinguishes three related but separate concepts:
+
+| Concept | Fields | Role |
+|---|---|---|
+| **KitchenFlow usage units** | `ReservedUnits`, `SettledUnits` | Normalized operation credits enforced by the usage governor (defaults: suggest = 3, expand = 5). Daily ceilings and concurrency limits apply only to these units. |
+| **Provider-reported tokens** | `PromptTokens`, `CompletionTokens` | Optional observability metadata returned by the model provider. Nullable when the provider does not report usage. Never used as budget units. |
+| **Future monetary cost** | not implemented in PLAN-0028 | Estimated USD cost may be derived later from provider tokens and published price tables. Billing, subscriptions, and paid credits remain out of scope. |
+
+Do not describe settled KitchenFlow units as provider token usage.
 
 ## Central ledger
 
@@ -15,8 +27,8 @@ The authoritative PostgreSQL ledger records:
 - operation type;
 - provider and model;
 - prompt or workflow version;
-- input, output, reasoning, and cached usage when reported;
-- provider cost and currency;
+- reserved and settled KitchenFlow usage units;
+- provider-reported prompt and completion tokens when available;
 - reserved allowance;
 - settled allowance;
 - adjustment and refund;
@@ -25,9 +37,36 @@ The authoritative PostgreSQL ledger records:
 
 Redis may accelerate rejection checks but does not own the official balance.
 
+## Atomic reservation (PLAN-0028)
+
+Reservation decisions are a single persistence operation (`TryReserveAsync`):
+
+1. obtain a dedicated PostgreSQL transactional advisory lock;
+2. evaluate the global daily unit ceiling;
+3. evaluate the owner daily unit ceiling;
+4. evaluate the owner concurrency ceiling;
+5. insert the reservation only when every ceiling permits it;
+6. otherwise return the exact rejection reason without inserting.
+
+The application governor must not perform separate read/check/insert calls around reservation.
+
+## Reservation and settlement
+
+```text
+Authorize user and operation
+→ estimate maximum permitted KitchenFlow units
+→ atomically reserve units
+→ execute model operation
+→ record optional provider token metadata
+→ settle KitchenFlow units (and release unused reservation)
+→ refund according to failure policy
+```
+
+The operation must not start if the maximum permitted budget cannot be reserved, except for an explicit emergency or support policy.
+
 ## User-visible allowance
 
-Raw model tokens are not necessarily comparable across providers or models. The UI may present normalized `AI credits`, operation allowances, or another understandable unit while still exposing enough detail for transparency.
+Raw model tokens are not necessarily comparable across providers or models. The UI may present normalized KitchenFlow usage units / `AI credits`, operation allowances, or another understandable unit while still exposing enough detail for transparency.
 
 The user can see:
 
@@ -40,21 +79,6 @@ The user can see:
 - plan upgrade impact.
 
 The final public unit and conversion require a commercial plan.
-
-## Reservation and settlement
-
-```text
-Authorize user and operation
-→ estimate maximum permitted cost
-→ reserve allowance
-→ execute model operation
-→ record actual provider usage
-→ settle actual charge
-→ release unused reservation
-→ refund according to failure policy
-```
-
-The operation must not start if the maximum permitted budget cannot be reserved, except for an explicit emergency or support policy.
 
 ## Limits
 

@@ -1,6 +1,6 @@
 # PLAN-0021: Implement Contextual Home Live Source Contracts and Adapters
 
-- **Status:** Ready
+- **Status:** Blocked
 - **Type:** Implementation
 - **Priority:** High
 - **Owner:** Unassigned backend/frontend vertical-slice agent
@@ -8,7 +8,7 @@
 - **Last updated:** 2026-08-05
 - **Branch:** `agent/plan-0021-contextual-home-live-sources`
 - **Pull request:** Not opened
-- **Dependencies:** PLAN-0011 presentation boundary; PLAN-0020 production profile UI; PLAN-0022 recipe contract decisions (Completed); accepted menu/planning source contract
+- **Dependencies:** PLAN-0011 presentation boundary; PLAN-0020 production profile UI; PLAN-0022 recipe contract decisions (Completed); accepted menu/planning read contract from PLAN-0029
 - **Related product:** `docs/product/entry-and-contextual-home.md`
 - **Parent implementation plan:** PLAN-0011 Phase 3 and Phase 4 transfer
 
@@ -101,6 +101,6 @@ Represent:
 
 ## Execution state
 
-- **Current checkpoint:** PLAN-0011, PLAN-0020, and PLAN-0022 recipe AI contracts are complete. Remaining prerequisite before full live AI-backed home sources is an accepted menu/planning source contract.
-- **Blockers:** Accepted menu/planning source contract.
-- **Exact next action:** Confirm or create the accepted menu/planning source contract, then claim `agent/plan-0021-contextual-home-live-sources` and implement the deterministic inventory/profile slices first if menu/AI sources remain pending.
+- **Current checkpoint:** PLAN-0011, PLAN-0020, and PLAN-0022 are complete. PLAN-0028 delivers recipe revisions. PLAN-0021 remains blocked on the accepted menu/planning read contract.
+- **Blockers:** Accepted menu/planning read contract from the future sequential-planning slice (PLAN-0029).
+- **Exact next action:** Keep blocked until PLAN-0029 publishes the accepted-menu read contract; then claim `agent/plan-0021-contextual-home-live-sources`.

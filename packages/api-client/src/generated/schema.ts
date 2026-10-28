@@ -232,6 +232,91 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/recipes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** GET /api/v1/recipes */
+        get: operations["getApiV1Recipes"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/recipes/generation-sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** POST /api/v1/recipes/generation-sessions */
+        post: operations["postApiV1RecipesGeneration-sessions"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/recipes/generation-sessions/{sessionId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** GET /api/v1/recipes/generation-sessions/{sessionId} */
+        get: operations["getApiV1RecipesGeneration-sessionsSessionId"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/recipes/generation-sessions/{sessionId}/selection": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** POST /api/v1/recipes/generation-sessions/{sessionId}/selection */
+        post: operations["postApiV1RecipesGeneration-sessionsSessionIdSelection"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/recipes/{recipeId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** GET /api/v1/recipes/{recipeId} */
+        get: operations["getApiV1RecipesRecipeId"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/session": {
         parameters: {
             query?: never;
@@ -697,6 +782,67 @@ export interface components {
             measuredValue?: null;
             unit?: null;
         });
+        /** @description HTTP projection of one cook-now candidate. */
+        RecipeCandidateResponse: {
+            /** Format: int32 */
+            activeMinutes: number | string;
+            candidateId: string;
+            candidateStrategy: string;
+            difficulty: string;
+            dishFormat: string;
+            name: string;
+            /** Format: int32 */
+            passiveMinutes: number | string;
+            primaryIngredientRefs: string[];
+            primaryTechnique: string;
+            requiredCapabilities: string[];
+            requiredEquipmentIds: string[];
+            /** Format: int32 */
+            servings: number | string;
+            summary: string;
+            targetMealType: string;
+            /** Format: int32 */
+            totalMinutes: number | string;
+        };
+        /** @description HTTP projection of one owned recipe detail. */
+        RecipeDetailResponse: {
+            /** Format: date-time */
+            createdAt: string;
+            mealTypes: string[];
+            name: string;
+            normalizedRecipeJson: string;
+            /** Format: uuid */
+            recipeId: string;
+            /** Format: int32 */
+            revisionNumber: number | string;
+            /** Format: int32 */
+            servings: number | string;
+            thumbnailVisualJson: string;
+        };
+        /** @description HTTP projection of one cook-now generation session. */
+        RecipeGenerationSessionResponse: {
+            candidates: null | components["schemas"]["RecipeCandidateResponse"][];
+            failureReason: null | string;
+            /** Format: uuid */
+            sessionId: string;
+            status: string;
+        };
+        /** @description HTTP projection of one owned recipe summary. */
+        RecipeSummaryResponse: {
+            /** Format: date-time */
+            createdAt: string;
+            mealTypes: string[];
+            name: string;
+            /** Format: uuid */
+            recipeId: string;
+            /** Format: int32 */
+            servings: number | string;
+        };
+        /** @description HTTP body for selecting one cook-now candidate. */
+        SelectCandidateRequest: {
+            /** @description Stable candidate identifier from the generation session. */
+            candidateId: string;
+        };
         /** @description Returns the KitchenFlow internal user identifier, request-specific CSRF token, and safe profile session projection
          *     for a backend-managed browser session. OIDC access and refresh tokens are intentionally never present in this response. */
         SessionResponse: {
@@ -2200,6 +2346,360 @@ export interface operations {
             };
             /** @description Precondition Required */
             428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    getApiV1Recipes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecipeSummaryResponse"][];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    "postApiV1RecipesGeneration-sessions": {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Required CSRF token issued by GET /api/v1/session. */
+                "X-CSRF-TOKEN": string;
+                /** @description Required UUID key for cook-now generation or selection replay. */
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecipeGenerationSessionResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description The mutation rate limit was exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    "getApiV1RecipesGeneration-sessionsSessionId": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                sessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecipeGenerationSessionResponse"];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    "postApiV1RecipesGeneration-sessionsSessionIdSelection": {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Required CSRF token issued by GET /api/v1/session. */
+                "X-CSRF-TOKEN": string;
+                /** @description Required UUID key for cook-now generation or selection replay. */
+                "Idempotency-Key": string;
+            };
+            path: {
+                sessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SelectCandidateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecipeDetailResponse"];
+                };
+            };
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecipeDetailResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description The request content type is not supported. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description The mutation rate limit was exceeded. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    getApiV1RecipesRecipeId: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                recipeId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecipeDetailResponse"];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

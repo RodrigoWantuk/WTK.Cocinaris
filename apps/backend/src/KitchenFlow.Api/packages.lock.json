@@ -342,11 +342,19 @@
       "kitchenflow.infrastructure": {
         "type": "Project",
         "dependencies": {
+          "KitchenFlow.Modules.Ai": "[1.0.0, )",
           "KitchenFlow.Modules.Identity": "[1.0.0, )",
           "KitchenFlow.Modules.Inventory": "[1.0.0, )",
           "KitchenFlow.Modules.Profiles": "[1.0.0, )",
+          "KitchenFlow.Modules.Recipes": "[1.0.0, )",
           "KitchenFlow.SharedKernel": "[1.0.0, )",
           "Npgsql.EntityFrameworkCore.PostgreSQL": "[10.0.3, )"
+        }
+      },
+      "kitchenflow.modules.ai": {
+        "type": "Project",
+        "dependencies": {
+          "KitchenFlow.SharedKernel": "[1.0.0, )"
         }
       },
       "kitchenflow.modules.identity": {
@@ -366,6 +374,16 @@
         "type": "Project",
         "dependencies": {
           "KitchenFlow.Modules.Identity": "[1.0.0, )",
+          "KitchenFlow.SharedKernel": "[1.0.0, )"
+        }
+      },
+      "kitchenflow.modules.recipes": {
+        "type": "Project",
+        "dependencies": {
+          "KitchenFlow.Modules.Ai": "[1.0.0, )",
+          "KitchenFlow.Modules.Identity": "[1.0.0, )",
+          "KitchenFlow.Modules.Inventory": "[1.0.0, )",
+          "KitchenFlow.Modules.Profiles": "[1.0.0, )",
           "KitchenFlow.SharedKernel": "[1.0.0, )"
         }
       },
