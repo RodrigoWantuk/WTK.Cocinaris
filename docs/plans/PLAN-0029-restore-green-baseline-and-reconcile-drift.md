@@ -5,7 +5,7 @@
 - **Priority:** Critical
 - **Owner:** Claude Code (claimed 2026-10-28)
 - **Created:** 2026-10-28
-- **Last updated:** 2026-10-28T14:20:00Z
+- **Last updated:** 2026-10-28T14:45:00Z
 - **Branch:** `agent/plan-0029-green-baseline`
 - **Pull request:** Not opened
 - **Related issues:** None
@@ -108,15 +108,15 @@ Apply the F-0028-03 corrections, update the environment guide, then update this 
 ## Execution state
 
 - **Current run delivery target:** Phases 1–3 in one run (backend repair, frontend/API-client dependency hygiene, documentation drift).
-- **Current checkpoint:** Phase 1 complete. `Testcontainers.PostgreSql` 4.8.1 → 4.16.0 removes the vulnerable transitive `SSH.NET 2024.2.0`. The eight integration fixtures moved from the obsolete parameterless `PostgreSqlBuilder()` plus `.WithImage("postgres:18.4")` to `new PostgreSqlBuilder("postgres:18.4")`, because the obsolete constructor is a `CS0618` error under warnings-as-errors.
-- **Last completed step:** Backend Release build with NuGet audit enabled: 0 warnings, 0 errors; `dotnet list package --vulnerable --include-transitive` reports no vulnerable packages; architecture tests 14/14 and unit tests 52/52 pass.
-- **Exact next action:** Phase 2. Remove unused frontend dependencies, upgrade the patched runtime packages, triage `audit-allowlist.json`, then audit `packages/api-client`.
-- **Blockers:** None for Phases 1–2. The naming portion of Phase 3 waits for PLAN-0028 decision D-1.
+- **Current checkpoint:** Phases 1 and 2 complete. Backend audit is clean (Testcontainers 4.16.0). Frontend `audit:policy` passes with an **empty** allowlist: 11 unused packages removed, `react-router`/`react-router-dom` moved to 7.18.5 (fix backported, RR 8 not needed), nested-dependency resolutions bumped, and in-range lockfile entries re-resolved. `packages/api-client` reports 0 vulnerabilities (`@redocly/openapi-core` 1.34.22). Generated client unchanged.
+- **Last completed step:** Frontend typecheck, lint (0 warnings), Prettier, the four guards, Jest 45/369, production build, bundle inspection, `audit:policy`; API client audit, generate + drift check, typecheck, format; `--frozen-lockfile` installs for both.
+- **Exact next action:** Phase 3. Apply the F-0028-03 documentation drift corrections and the environment guide update, except the product-name portion, which waits for D-1.
+- **Blockers:** Naming portion of Phase 3 waits for PLAN-0028 decision D-1.
 - **Partially modified areas:** None.
-- **Documentation delivered:** Plan state only.
-- **Validation performed:** See last completed step. Integration tests were not run locally because host `rwantuk` has no Docker; they run in the Backend CI workflow.
-- **Known failures or limitations:** Integration tests unverified locally.
-- **Working tree state:** Phase 1 committed on stacked branch `agent/plan-0029-green-baseline` (base `agent/plan-0028-resume-roadmap`).
+- **Documentation delivered:** `apps/frontend/docs/dependency-vulnerability-triage.md` (2026-10-28 section, empty allowlist), `dependency-resolution-triage.md` (updated pins).
+- **Validation performed:** See last completed step. Backend integration tests still unverified locally (no Docker).
+- **Known failures or limitations:** `deepmerge` low advisory `1243505` has no patched release and is accepted by policy (low severity passes by design). The dev-toolchain debt from CRA remains (PLAN-0030), but nothing currently needs an exception.
+- **Working tree state:** Phases 1–2 committed on stacked branch `agent/plan-0029-green-baseline`.
 
 ## Progress log
 
@@ -132,3 +132,11 @@ Apply the F-0028-03 corrections, update the environment guide, then update this 
 - **Documentation and code-documentation delivered:** Plan and registry state. No public API changed.
 - **Validation performed:** Release build with audit on (0/0); vulnerable-package scan clean; architecture 14/14; unit 52/52. Integration tests not run locally (no Docker).
 - **Next action:** Phase 2 frontend dependency hygiene.
+
+### 2026-10-28T14:45:00Z — Claude Code
+
+- **Checkpoint:** Phase 2 (frontend and API-client dependency hygiene) complete.
+- **Changes included in the commit:** Removed unused `@hookform/resolvers`, `axios`, `cra-template`, `date-fns`, `dayjs`, `framer-motion`, `lodash`, `@types/lodash`, `recharts`, `swr`, `zod`. `react-router-dom`/`react-router` 7.18.5. Resolution bumps for fast-uri, qs, follow-redirects, shell-quote, serialize-javascript, nested svgo and js-yaml. Re-resolved in-range lock entries. Emptied `audit-allowlist.json`. API-client lock refreshed.
+- **Documentation delivered:** Frontend vulnerability and resolution triage documents.
+- **Validation performed:** Frontend full local gate set green; API client audit 0, drift check passed.
+- **Next action:** Phase 3 documentation drift.
