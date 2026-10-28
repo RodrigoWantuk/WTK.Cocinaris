@@ -47,7 +47,7 @@ note contents, complete request bodies, credentials, or tokens.
 
 The production TypeScript client is generated from this snapshot by PLAN-0016 into
 `packages/api-client` (pinned `openapi-typescript` 7.9.1) and mirrored into
-`apps/frontend/src/generated/api-client` for CRA compilation. Regenerate with
+`apps/frontend/src/generated/api-client` for frontend compilation. Regenerate with
 `cd packages/api-client && yarn generate`. Drift is enforced by
 `yarn check:drift` / frontend `yarn check:api-client-drift`.
 

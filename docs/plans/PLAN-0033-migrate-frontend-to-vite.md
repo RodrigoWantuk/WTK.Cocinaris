@@ -1,6 +1,6 @@
 # PLAN-0033: Migrate the Frontend Toolchain from CRA/CRACO to Vite
 
-- **Status:** In Progress
+- **Status:** Validating
 - **Type:** Implementation
 - **Priority:** High
 - **Owner:** Claude Code (claimed 2026-10-28)
@@ -37,13 +37,13 @@ Replace Create React App 5 and CRACO, which are deprecated and pull a large unma
 - [x] All existing tests pass under Vitest without weakening assertions.
 - [x] `audit:policy` passes and the remaining dependency tree is substantially smaller.
 - [x] Browser smoke and the PLAN-0032 review capture run against the Vite build.
-- [ ] Deploy dry run builds the Vite output.
+- [x] Deploy dry run builds the Vite output.
 - [x] ADR-0008 and documentation updated.
 
 ## Execution state
 
 - **Current run delivery target:** Complete migration with validation.
-- **Current checkpoint:** Migration implemented and validated locally on Node.js 24.22.1. Remaining: deploy dry run of the committed head.
+- **Current checkpoint:** Migration implemented and validated locally on Node.js 24.22.1. Deploy dry run of `34f1e5e` passed.
   - Builds: production and prototype in about 2.5 s; a build without a mode fails.
   - Bundle: inspection confirms production isolation (631 KB main chunk, down from 677 KB).
   - Guards: all five pass.
@@ -56,7 +56,7 @@ Replace Create React App 5 and CRACO, which are deprecated and pull a large unma
   - **Production bug (API errors):** `readProblemDetails` re-read response bodies that openapi-fetch had already consumed. Browsers reject `clone()` on a consumed body, so live inventory and profile errors lost their `errorCode` and field errors: a 409 `profile_already_exists` showed as a generic conflict, and 400 validation errors as messages without fields. CRA's test fetch polyfill allowed the clone, which hid it. The generated client's parsed `error` body is now passed through (`packages/api-client/src/problemDetails.ts`, both live repositories). Existing 409/400 tests now act as regression tests under real `Response` semantics.
   - **Undeclared dependency:** `scripts/guard-interactive-nesting.js` required `@babel/parser`, which was available only through `react-scripts`. Now declared (7.29.9).
   - **Browser smoke orphaned its dev server:** the script killed `yarn` but not its child server, and it accepted any server already on the port, so a later run tested a stale orphan. Fixed with a process group teardown and a fail-fast port check.
-- **Exact next action:** Deploy dry run on this branch's head; then CI on the PR head once pushes are enabled.
+- **Exact next action:** CI on the PR head once pushes are enabled, then owner review and merge.
 - **Blockers:** Push/PR awaits the owner's `AGENTS.md` §13 change (PLAN-0031).
 - **Known failures or limitations:**
   - Vite warns that the main chunk exceeds 500 KB; code splitting is a later optimization.
@@ -79,4 +79,8 @@ Replace Create React App 5 and CRACO, which are deprecated and pull a large unma
   - Fixes: problem-details fix; browser smoke teardown; PLAN-0005 script test filter.
   - Docs: ADR-0008, ADR-0007 note, ADR index, READMEs, dependency triage documents.
 - **Validation:** All frontend gates, smoke 28/28, review capture as above.
+
+### 2026-10-28T19:32:00Z — Claude Code
+
+- Deploy dry run of `34f1e5e` passed in 43 s (95 s with CRA). The release has `web/static/{css,js,media}` and the title "Cocinaris", with no external origins. The pre-flight still reports the two rename-migration steps. The unactivated release was removed. `packages/contracts/README.md` wording update included in this commit.
 
