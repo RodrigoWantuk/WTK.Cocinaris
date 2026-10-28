@@ -216,3 +216,7 @@ The order follows the accepted closed-loop implementation order (`product/closed
 - **New finding:** `.github/workflows/frontend.yml` runs Node.js 20 (end of life), while `docs/development/environment.md` requires Node.js 24 and the Backend/PLAN-0005 workflows use 24.18.0. Added to PLAN-0030 (A2) scope.
 - **Update:** PLAN-0029 cleared every frontend advisory by upgrades. React Router 8 is no longer required for security (the fix was backported to 7.18.2), so PLAN-0030 is now motivated by CRA deprecation, Node.js 24 alignment, and toolchain debt, not by an allowlisted advisory.
 
+### 2026-10-28T14:45:00Z — Claude Code
+
+- Owner resolved D-1 (Cocinaris everywhere) and designated the owner Linux host as the development and deployment environment. A full plan coverage review is recorded in [`PLAN-0028-amendment-2026-10-28-coverage-review.md`](PLAN-0028-amendment-2026-10-28-coverage-review.md), which **replaces the roadmap table above** (renumbered PLAN-0030–PLAN-0051).
+

@@ -147,3 +147,9 @@ Apply the F-0028-03 corrections, update the environment guide, then update this 
 - **Changes included in the commit:** README status, AGENTS.md frontend wording, environment guide, plan header/state reconciliations (PLAN-0014, PLAN-0017, PLAN-0021, PLAN-0023), PLAN-0028 correction entry, registry.
 - **Validation performed:** Documentation-only commit; no rerun of code gates needed (PLAN-0007 amendment).
 - **Next action:** Publish both branches from the GitHub App host and run CI on the PR head.
+
+### 2026-10-28T14:45:00Z — Claude Code (correction)
+
+- The progress-log timestamps 14:20, 14:45 and 15:10 above were estimated, not measured. The commit timestamps are authoritative (`955bbc7`, `0ff6d2a`, `5a16b9a`, all before 14:45Z).
+- Docker became available on the host (PLAN-0031). Backend integration tests with Testcontainers 4.16.0 ran: 164/175 passed. The 11 failures are login/logout tests that need the OIDC development fixture from the compose stack, which CI starts first. They are revalidated under PLAN-0030/PLAN-0031 with the fixture running.
+
