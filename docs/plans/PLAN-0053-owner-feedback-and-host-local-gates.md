@@ -16,6 +16,8 @@
 - **D-5, entry redirect:** "A home page do cocinaris não identifica que já tem uma sessão iniciada, deveria identificar e levar pra home". A visitor with a valid session who opens `/` goes to `/app/hoje`.
 - **D-6, age requirement presentation:** "vamos parar de esfregar na cara do usuário toda hora que o aplicativo é pra maiores de idade. Colocamos isso nos termos de uso, no máximo pedimos uma confirmação formal do usuário ser maior de idade durante o cadastro". The 18+ policy and the recorded declaration remain; the interface asks once and does not repeat age notices.
 
+- **Owner report (2026-10-28):** "A página de preencher perfil do usuário está toda quebrada ... depois de salvar, Suas alterações foram salvas, mas não foi possível carregar os dados mais recentes do perfil." Root cause below (item 5).
+
 ## Scope
 
 ### Included
@@ -32,6 +34,11 @@
    - environment guide section;
    - proposed `AGENTS.md` change below.
 4. The secret scan flagged a browser-storage key name (`LS_PREFS_KEY`) in historical commit `e248126`. That is a false positive: it is not a credential. A narrow line allowlist was added to `.gitleaks.toml`.
+
+5. **Proxy-altered ETags (production defect).** At the origin, Caddy's `encode` returned `etag: "<token>-gzip"` for compressed responses, and Cloudflare removes strong ETags from responses it re-encodes. The profile workspace verifies that its four parallel reads (profile, preferences, equipment, completeness) carry the same version and ETag. Behind the proxy they did not, so every resync after a save failed, and the workspace then blocked further edits until a reload. Tests and local runs do not pass through the proxy. Fix:
+   - API responses under `/api` now carry `Cache-Control: no-store, no-transform`; private data must not be cached anyway;
+   - the Caddy site block compresses only static files (repository template and live host; previous live file backed up under `/var/backups/wtk-cocinaris/`);
+   - integration test `ApiResponsesForbidCachingAndTransformationSoProxiesKeepETags`.
 
 ### Excluded
 
@@ -62,7 +69,7 @@ In §11, read "Do not merge failing checks" as "do not merge a head whose local 
 
 - **Current run delivery target:** All included items.
 - **Current checkpoint:** D-5 and D-6 implemented, and the frontend validated (Vitest 51 files / 423 tests, typecheck, lint, format, guards). The local gate script is written; the gitleaks false positive is allowlisted, and the full history scan is clean.
-- **Exact next action:** Commit, run `scripts/ci/run-local-gates.sh` on the commit, record the summary, deploy, open the draft PR.
+- **Exact next action:** Deploy the ETag fix, verify headers through the CDN, then make profile saving consistent; run the local gates on the final head and open the draft PR.
 - **Blockers:** `AGENTS.md` change awaits the owner.
 - **Working tree state:** Uncommitted, about to be committed.
 
@@ -72,3 +79,8 @@ In §11, read "Do not merge failing checks" as "do not merge a head whose local 
 
 - Plan created from three owner messages (D-4, D-5, D-6). Implemented D-5 and D-6 with tests. The old entry test that asserted "no session request on `/`" encoded the previous engineering rule from PLAN-0011; it now asserts that the session check is the only request.
 - Wrote the local gate script. Verified the pinned gitleaks image over full history: one false positive (storage key name), allowlisted narrowly, then no leaks.
+
+### 2026-10-28T23:50:00Z — Claude Code
+
+- Diagnosed the owner's profile report: proxy compression altered or removed API ETags (verified at the origin: `"dmgu8eyhbvuouf"` uncompressed vs `"dmgu8eyhbvuouf-gzip"` compressed). Added the API cache header and limited Caddy compression to static files; the live Caddy reload was validated and other sites on the host still answer. Integration test class passes (5/5).
+- Mixed save behavior across profile pages (immediate list actions, per-form save buttons, a deferred equipment save) is reviewed next under this plan.

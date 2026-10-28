@@ -145,6 +145,28 @@ public sealed class InventoryLifecycleTransitionApiTests : IAsyncLifetime
         await AssertProblemAsync(await TransitionAsync(owner, csrf, lotId, etag, Guid.NewGuid(), new { kind = "Freeze" }), HttpStatusCode.PreconditionFailed, "precondition_failed");
     }
 
+    [Fact]
+    public async Task ApiResponsesForbidCachingAndTransformationSoProxiesKeepETags()
+    {
+        // Behind the deployment proxy, compression rewrote ETags and broke If-Match (PLAN-0053).
+        using var client = Client("cache-header-user");
+        var csrf = await CsrfAsync(client);
+        using var created = new HttpRequestMessage(HttpMethod.Post, "/api/v1/inventory/lots")
+        {
+            Content = JsonContent.Create(new { productName = "Rice", quantity = new { measuredValue = 1, unit = "Unit" }, storageLocation = "Pantry" })
+        };
+        created.Headers.Add("X-CSRF-TOKEN", csrf);
+        created.Headers.Add("Idempotency-Key", Guid.NewGuid().ToString());
+        var response = await client.SendAsync(created);
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        Assert.True(response.Headers.CacheControl!.NoStore);
+        Assert.True(response.Headers.CacheControl.NoTransform);
+        Assert.NotNull(response.Headers.ETag);
+        var problem = await client.GetAsync($"/api/v1/inventory/lots/{Guid.NewGuid()}");
+        Assert.True(problem.Headers.CacheControl!.NoTransform);
+    }
+
     private HttpClient Client(string subject)
     {
         var client = _factory.CreateClient(new WebApplicationFactoryClientOptions { BaseAddress = new Uri("https://localhost"), HandleCookies = true });
