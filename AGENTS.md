@@ -267,9 +267,9 @@ A change is complete only when:
 
 When an item cannot be completed, document the exact limitation and leave a truthful, resumable state.
 
-## 13. ## GitHub App workflow por host
+## 13. Remote Git/GitHub workflow by host
 
-As instruções desta seção aplicam-se **somente quando o agente estiver rodando no host cujo hostname exato seja**:
+Operações remotas (fetch, pull, push, PRs e alterações no GitHub) são permitidas somente nos hosts listados nesta seção. As instruções de **GitHub App** aplicam-se **somente quando o agente estiver rodando no host cujo hostname exato seja**:
 
 ```text
 NOTEBOOK-DEB-RODRIGO
@@ -352,22 +352,26 @@ git branch
 git switch
 ```
 
+### Quando o hostname for `rwantuk` (host de desenvolvimento e deploy)
+
+Desde 2026-10-28, por decisão do owner, o host Linux `rwantuk` é o ambiente canônico de desenvolvimento, teste, build e deploy do Cocinaris (ver [`docs/development/environment.md`](docs/development/environment.md#owner-linux-host) e [`docs/operations/linux-host-deployment-runbook.md`](docs/operations/linux-host-deployment-runbook.md)). Neste host:
+
+* operações remotas usam `git` e `gh` diretamente, com as credenciais que o owner configurou no host; o GitHub App e seus scripts não existem aqui e não devem ser instalados ou recriados;
+* se a autenticação remota não estiver configurada, o agente para e informa o owner, sem procurar, ler ou criar credenciais;
+* branches de trabalho usam o prefixo `agent/`; o agente abre ou atualiza um pull request draft e solicita revisão de `RodrigoWantuk` quando a identidade do autor for diferente dele;
+* o agente nunca executa `gh pr merge`, nunca faz push direto para `main`, nunca executa `gh auth login`/`gh auth logout` e nunca exibe tokens ou segredos;
+* o deploy segue o runbook e usa `scripts/deploy/deploy-linux-host.sh`; deploy de `main` após merge feito pelo owner é permitido; deploy de código não mergeado exige instrução explícita do owner.
+
 ### Quando o hostname for diferente
 
-Se:
-
-```bash
-[[ "$(hostname)" != "NOTEBOOK-DEB-RODRIGO" ]]
-```
-
-então:
+Se o hostname não for `NOTEBOOK-DEB-RODRIGO` nem `rwantuk`, então:
 
 * não presuma que `github-app-run`, `agent-gh` ou `agent-git-remote` existam;
 * não tente instalar, copiar ou recriar esses scripts automaticamente;
 * não tente acessar `~/.config/github-agent`;
 * não tente usar a identidade do GitHub App;
 * não execute operações remotas de escrita sem seguir as regras próprias do ambiente atual;
-* informe claramente que o fluxo de GitHub App está disponível somente no host `NOTEBOOK-DEB-RODRIGO`.
+* informe claramente que operações remotas estão disponíveis somente nos hosts `NOTEBOOK-DEB-RODRIGO` (GitHub App) e `rwantuk` (credenciais do owner).
 
 A ausência dos comandos específicos em outro host não deve ser tratada como erro de configuração do repositório.
 
@@ -376,16 +380,16 @@ A ausência dos comandos específicos em outro host não deve ser tratada como e
 Antes de qualquer `fetch`, `pull`, `push`, criação de PR ou alteração remota, execute logicamente o equivalente a:
 
 ```bash
-if [[ "$(hostname)" == "NOTEBOOK-DEB-RODRIGO" ]]; then
-    echo "GitHub App workflow habilitado."
-else
-    echo "GitHub App workflow indisponível neste host." >&2
-    exit 1
-fi
+case "$(hostname)" in
+    NOTEBOOK-DEB-RODRIGO) echo "GitHub App workflow habilitado." ;;
+    rwantuk) echo "Host de desenvolvimento e deploy: git/gh com credenciais do owner." ;;
+    *) echo "Operações remotas indisponíveis neste host." >&2; exit 1 ;;
+esac
 ```
 
-Não use o fluxo especial apenas porque o sistema é Linux, Debian, pertence ao usuário `rodrigo` ou contém os scripts no `PATH`. A condição autorizadora é exclusivamente o hostname exato:
+Não use um fluxo remoto apenas porque o sistema é Linux, Debian, pertence ao usuário `rodrigo` ou contém os scripts no `PATH`. A condição autorizadora é exclusivamente o hostname exato:
 
 ```text
 NOTEBOOK-DEB-RODRIGO
+rwantuk
 ```

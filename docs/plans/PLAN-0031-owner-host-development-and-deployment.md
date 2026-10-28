@@ -54,7 +54,7 @@ Its procedure lived outside this repository and built from the same checkout tha
 - [x] The deployment script and runbook can rebuild the running deployment from a ref without touching the development checkout. Verified with a dry run (`--dry-run`) on the host.
 - [x] A backup restore rehearsal into a scratch database succeeds and is documented.
 - [x] No identity-provider product name appears in deployment documentation.
-- [ ] `AGENTS.md` §13 reflects the host decision (owner action; proposed text below).
+- [x] `AGENTS.md` §13 reflects the host decision (applied 2026-10-28 on explicit owner instruction).
 
 ## Proposed `AGENTS.md` §13 change (owner to apply)
 
@@ -118,4 +118,10 @@ do Cocinaris (docs/development/environment.md#owner-linux-host). Neste host:
   - the third-party check passed;
   - the pre-flight listed the unit and environment-key rename steps.
 - The unactivated release was removed. Remaining acceptance: `AGENTS.md` §13 (owner) and the post-merge deploy.
+
+### 2026-10-28T20:15:00Z — Claude Code
+
+- The owner confirmed the GitHub CLI login on this host and explicitly instructed: "pode aplicar a mudança do AGENTS.md proposta no PLAN-0031". Applied, with one adjustment: the review request applies when the author identity differs from `RodrigoWantuk`, because pushes from this host use the owner's own account and GitHub does not allow requesting a review from the author. The section intro now states that remote operations are allowed only on the listed hosts.
+- Remote access verified (`gh auth status`, `git ls-remote`). The token has very broad scopes; recommended to the owner to replace it with a token restricted to this repository.
+- The first fetch revealed open PR #44 (another agent, 2026-08-06): it implements the recipe AI gateway and cook-now generation as PLAN-0028, and drafts PLAN-0029/PLAN-0030, which collide with this stack's plan IDs. Nothing was pushed; owner decision requested on integration order.
 
