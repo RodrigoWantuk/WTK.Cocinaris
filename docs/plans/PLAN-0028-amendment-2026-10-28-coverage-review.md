@@ -8,7 +8,8 @@
   - **D-1 resolved:** the product name is **Cocinaris** everywhere, including technical identifiers (namespaces, assemblies, packages, configuration keys, cookies, metrics).
   - **Host decision:** the owner's Linux host that serves `cocinaris.rwantuk.com.br` is the development and deployment environment. Every development, test, build, and deploy activity must be executable there.
   - **Identity documentation:** documentation treats the identity provider as a generic standards-compliant OIDC provider and does not name the provider used by a deployment.
-- **Pending decisions:** D-2 (Vite migration) and D-3 (AI provider and development spend cap) from PLAN-0028.
+- **D-2 resolved (owner, 2026-10-28, later the same day):** migrate the frontend from CRA/CRACO to Vite (PLAN-0033).
+- **D-3 resolved (owner, 2026-10-28):** the recipe AI provider is the one the owner evaluated satisfactorily in PLAN-0017/PLAN-0022: **DeepSeek `deepseek-v4-flash` through the DeepSeek API** (`api.deepseek.com`, server-side `DEEPSEEK_API_KEY`), routed as in `docs/ai/decisions/model-routing-cook-now-menu-planning-2026-08-05.md`. The owner set no spend cap. PLAN-0037 starts with a configurable development cap of **US$ 5 per calendar month**, plus per-operation ceilings from the routing decision. That default is conservative relative to PLAN-0022's ≈ US$ 0.0016 per call, and the owner may change it. PLAN-0037 records the provider ADR.
 
 ## Purpose
 
