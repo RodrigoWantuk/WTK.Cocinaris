@@ -8,7 +8,7 @@ This file defines mandatory working rules for AI coding, testing, documentation,
 - Repository and technical namespace: **WTK.KitchenFlow**.
 - Product purpose: help adults transform available, planned, or purchasable food into useful meals with less effort, waste, and delivery dependence.
 - Platform: responsive multilingual web application.
-- Frontend: React and TypeScript generated and evolved through Lovable.
+- Frontend: React and TypeScript under monorepo `apps/frontend` authority; Lovable or Emergent may be used as optional generation tools ([ADR-0007](docs/architecture/decisions/0007-frontend-platform-monorepo-and-generation-tooling.md)).
 - Backend: .NET 10 / ASP.NET Core modular monolith with independently scalable workers.
 
 ## 2. Language policy
@@ -110,7 +110,7 @@ Do not mark a plan completed until acceptance criteria and validation are truthf
 
 ## 6. Architecture boundaries
 
-- `apps/frontend`: React/Lovable user experience and generated API consumption.
+- `apps/frontend`: React user experience and generated API consumption.
 - `apps/backend`: ASP.NET Core API, BFF, application modules, workers, persistence, authorization, AI gateway, and integrations.
 - `packages/contracts`: OpenAPI, events, AI schemas, identifiers, units, and compatibility fixtures.
 - `docs`: durable product and engineering truth.

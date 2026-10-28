@@ -1,11 +1,11 @@
 # PLAN-0029: Restore the Green Baseline and Reconcile Documentation Drift
 
-- **Status:** In Progress
+- **Status:** Validating
 - **Type:** Operations
 - **Priority:** Critical
 - **Owner:** Claude Code (claimed 2026-10-28)
 - **Created:** 2026-10-28
-- **Last updated:** 2026-10-28T14:45:00Z
+- **Last updated:** 2026-10-28T15:10:00Z
 - **Branch:** `agent/plan-0029-green-baseline`
 - **Pull request:** Not opened
 - **Related issues:** None
@@ -107,16 +107,16 @@ Apply the F-0028-03 corrections, update the environment guide, then update this 
 
 ## Execution state
 
-- **Current run delivery target:** Phases 1–3 in one run (backend repair, frontend/API-client dependency hygiene, documentation drift).
-- **Current checkpoint:** Phases 1 and 2 complete. Backend audit is clean (Testcontainers 4.16.0). Frontend `audit:policy` passes with an **empty** allowlist: 11 unused packages removed, `react-router`/`react-router-dom` moved to 7.18.5 (fix backported, RR 8 not needed), nested-dependency resolutions bumped, and in-range lockfile entries re-resolved. `packages/api-client` reports 0 vulnerabilities (`@redocly/openapi-core` 1.34.22). Generated client unchanged.
-- **Last completed step:** Frontend typecheck, lint (0 warnings), Prettier, the four guards, Jest 45/369, production build, bundle inspection, `audit:policy`; API client audit, generate + drift check, typecheck, format; `--frozen-lockfile` installs for both.
-- **Exact next action:** Phase 3. Apply the F-0028-03 documentation drift corrections and the environment guide update, except the product-name portion, which waits for D-1.
-- **Blockers:** Naming portion of Phase 3 waits for PLAN-0028 decision D-1.
+- **Current run delivery target:** Phases 1–3 in one run.
+- **Current checkpoint:** All three phases implemented and locally validated, except the product-name portion of Phase 3, which waits for PLAN-0028 decision D-1. Remaining validation is the CI run on the PR head.
+- **Last completed step:** Phase 3. README project status reflects PLAN-0011/0020/0022/0023 delivery and links the PLAN-0028 roadmap. `AGENTS.md` §1 and §6 frontend wording is aligned with ADR-0007. PLAN-0014 and PLAN-0017 header statuses are reconciled with the registry. PLAN-0021 per-tier gating is clarified. PLAN-0023's stale execution state is replaced. `docs/development/environment.md` documents an SDK outside `PATH`, Yarn via Corepack, and the Node.js 20 vs 24 inconsistency.
+- **Exact next action:** Push `agent/plan-0028-resume-roadmap` and `agent/plan-0029-green-baseline` from the GitHub App host (`NOTEBOOK-DEB-RODRIGO`), or let the owner push them. Open draft PRs (0028 first, then 0029 based on it), request review from `RodrigoWantuk`, and record the Backend, Frontend and PLAN-0005 run IDs on the 0029 PR. After D-1, apply the product-name documentation change in this plan or in PLAN-0044.
+- **Blockers:** Remote operations are not allowed from host `rwantuk` (AGENTS.md §13). D-1 is pending for the naming portion.
 - **Partially modified areas:** None.
-- **Documentation delivered:** `apps/frontend/docs/dependency-vulnerability-triage.md` (2026-10-28 section, empty allowlist), `dependency-resolution-triage.md` (updated pins).
-- **Validation performed:** See last completed step. Backend integration tests still unverified locally (no Docker).
-- **Known failures or limitations:** `deepmerge` low advisory `1243505` has no patched release and is accepted by policy (low severity passes by design). The dev-toolchain debt from CRA remains (PLAN-0030), but nothing currently needs an exception.
-- **Working tree state:** Phases 1–2 committed on stacked branch `agent/plan-0029-green-baseline`.
+- **Documentation delivered:** Frontend vulnerability/resolution triage; README; AGENTS.md; environment guide; PLAN-0014/0017/0021/0023 reconciliation entries; PLAN-0028 correction entry.
+- **Validation performed:** Backend Release build with audit (0/0), vulnerable scan clean, architecture 14/14, unit 52/52. Frontend typecheck, lint, Prettier, four guards, Jest 45/369, production build, bundle inspection, `audit:policy` (empty allowlist), frozen-lockfile install. API client audit 0, generate + drift check, typecheck, format.
+- **Known failures or limitations:** Backend integration tests and the PLAN-0005 workflow were not run locally (no Docker); CI on the PR head is required. `deepmerge` low advisory has no patch and is accepted by policy. The frontend CI Node.js 20 vs 24 mismatch is recorded and deferred to PLAN-0030. F-0028-03's "duplicated lines" item was retracted (review artifact).
+- **Working tree state:** All changes committed on stacked branch `agent/plan-0029-green-baseline`.
 
 ## Progress log
 
@@ -140,3 +140,10 @@ Apply the F-0028-03 corrections, update the environment guide, then update this 
 - **Documentation delivered:** Frontend vulnerability and resolution triage documents.
 - **Validation performed:** Frontend full local gate set green; API client audit 0, drift check passed.
 - **Next action:** Phase 3 documentation drift.
+
+### 2026-10-28T15:10:00Z — Claude Code
+
+- **Checkpoint:** Phase 3 (documentation drift) complete except D-1 naming. Plan moves to `Validating`, pending PR CI.
+- **Changes included in the commit:** README status, AGENTS.md frontend wording, environment guide, plan header/state reconciliations (PLAN-0014, PLAN-0017, PLAN-0021, PLAN-0023), PLAN-0028 correction entry, registry.
+- **Validation performed:** Documentation-only commit; no rerun of code gates needed (PLAN-0007 amendment).
+- **Next action:** Publish both branches from the GitHub App host and run CI on the PR head.

@@ -1,6 +1,6 @@
 # PLAN-0014: Integrate Emergent Frontend and Establish Production Frontend Baseline
 
-- **Status:** Implemented — remediation and independent validation pending through PLAN-0015
+- **Status:** Completed (remediation and validation completed through PLAN-0015; see registry)
 - **Type:** Implementation
 - **Priority:** Critical
 - **Owner:** Cursor agent (PLAN-0014); remediation ownership transferred to PLAN-0015
@@ -27,7 +27,6 @@
 ## Objective
 
 Import the final Emergent frontend snapshot into `apps/frontend` as the sole official KitchenFlow frontend source, complete three partially implemented product flows (shared preparation-route state, reserved prepared-component presentation, route-to-cooking handoff), add reservation-aware shopping projections, remove Emergent platform coupling, establish TypeScript and adapter boundaries for gradual backend integration, **migrate all application source under `apps/frontend/src` from JavaScript to TypeScript**, activate frontend quality gates and CI, and open a draft PR against `main`.
-
 
 ## Context
 
@@ -268,6 +267,10 @@ Convert and type, in dependency order:
 - **Substantial run target:** Historical — delivered import/features/TS; remediations out of scope here.
 
 ## Progress log
+
+### 2026-10-28T15:00:00Z — Claude Code (PLAN-0029 drift reconciliation)
+
+- Header status reconciled with the registry: PLAN-0015 completed the remediation and validation this plan deferred. Historical entries below are unchanged.
 
 ### 2026-07-31T22:47:18Z — Cursor agent (PLAN-0015 governance)
 

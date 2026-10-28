@@ -40,7 +40,7 @@ The backend may aggregate projections, but each source retains explicit status, 
 - PLAN-0022 finalizes recipe candidate/expansion contract decisions needed by AI-backed suggestion work.
 - A planning implementation publishes the accepted-menu read contract before Tier 1 can be claimed live.
 
-Until all prerequisites exist, this plan remains `Blocked`. Do not fake missing tiers with production mock data.
+Each tier stays blocked until its own prerequisite exists: the deterministic inventory-attention and confirmed-profile tiers may be delivered first, Tier 1 waits for the accepted-menu contract (PLAN-0034 in the PLAN-0028 roadmap), and AI-backed chooser behavior waits for the AI Gateway (PLAN-0033). Do not fake missing tiers with production mock data.
 
 ## Included scope
 
@@ -104,3 +104,9 @@ Represent:
 - **Current checkpoint:** PLAN-0011, PLAN-0020, and PLAN-0022 recipe AI contracts are complete. Remaining prerequisite before full live AI-backed home sources is an accepted menu/planning source contract.
 - **Blockers:** Accepted menu/planning source contract.
 - **Exact next action:** Confirm or create the accepted menu/planning source contract, then claim `agent/plan-0021-contextual-home-live-sources` and implement the deterministic inventory/profile slices first if menu/AI sources remain pending.
+
+## Progress log
+
+### 2026-10-28T15:00:00Z — Claude Code (PLAN-0029 drift reconciliation)
+
+- Clarified per-tier gating so the prerequisite paragraph agrees with the `Ready` status and the existing exact next action (deterministic inventory/profile tiers first). No scope or acceptance criterion changed.

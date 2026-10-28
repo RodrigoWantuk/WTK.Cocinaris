@@ -192,6 +192,8 @@ Requirements:
 - no preview SDK is selected by default;
 - once PLAN-0003 creates `apps/backend/global.json`, `dotnet --version` from that directory resolves the pinned SDK/roll-forward policy.
 
+When the SDK is installed outside the default search path (for example a tarball install under `/opt/dotnet`, as on the owner's test host verified on 2026-10-28), add that directory to `PATH` and set `DOTNET_ROOT` to it before running backend commands. Without it, `dotnet` is not found even though the SDK is present.
+
 Do not globally install `dotnet-ef`. PLAN-0003 must create a local .NET tool manifest, and agents run:
 
 ```text
@@ -219,6 +221,8 @@ Requirements:
 - do not create multiple lockfiles;
 - do not install frontend build tools globally;
 - use project scripts through the chosen package manager.
+
+The frontend and `packages/api-client` pin Yarn Classic through `packageManager` (`yarn@1.22.22`). Enable it with Corepack (`corepack enable`) rather than a global npm install. Several gates, including `yarn audit:policy`, spawn `yarn` directly and fail with `spawnSync yarn ENOENT` when it is missing. Node.js 24 is the supported baseline, but as of 2026-10-28 `.github/workflows/frontend.yml` still runs Node.js 20 (the Backend and PLAN-0005 workflows use 24.18.0), and the owner's test host runs 20.19.2. Aligning the frontend workflow on Node.js 24 is tracked by PLAN-0030.
 
 PLAN-0004 must inspect whether Lovable generated TanStack Start or React/Vite and preserve that supported runtime. New Lovable projects created after May 13, 2026 commonly use TanStack Start with SSR except where the Lovable plan/runtime says otherwise.
 

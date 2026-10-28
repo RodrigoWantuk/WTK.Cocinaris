@@ -81,7 +81,7 @@ Remote CI state on `main` was not queried because remote operations are restrict
 - `README.md` (commit `6b66711`) renames the product to **Cocinaris**, while `AGENTS.md`, `docs/`, code namespaces (`KitchenFlow.*`), metrics (`kitchenflow.*`), and environment variables (`KITCHENFLOW_*`) still use KitchenFlow. No accepted document or plan records the rename decision.
 - `README.md` still says public entry, contextual home and production profile UI are future work, but PLAN-0011 and PLAN-0020 delivered them.
 - Plan headers disagree with the registry: PLAN-0014 (`Implemented — remediation … pending`), PLAN-0017 (`Validating`), and PLAN-0008 amendments.
-- PLAN-0023 `Execution state` duplicates its blocker and next-action lines and still says that the PLAN-0027 retest is pending, which it no longer is. Its `Excluded scope` heading is empty.
+- PLAN-0023 `Execution state` still says that the PLAN-0027 retest is pending, which it no longer is. (Corrected 2026-10-28: the duplicated lines and empty excluded-scope heading originally reported here were an artifact of the review command, not file content.)
 - PLAN-0021 header says `Ready`, but its body says it stays `Blocked` until the prerequisites exist. Its own next action allows the deterministic inventory/profile tiers to start first.
 - `AGENTS.md` §1 still says the frontend is "generated and evolved through Lovable", which ADR-0007 superseded (Lovable/Emergent optional).
 
@@ -115,7 +115,7 @@ The order follows the accepted closed-loop implementation order (`product/closed
 | Order | Plan | Type | Outcome | Depends on |
 |---|---|---|---|---|
 | A1 | **PLAN-0029** Restore green baseline and reconcile drift | Operations | Backend restore passes; unused frontend deps removed; runtime advisories patched; dev-toolchain advisories documented with expiry; documentation drift F-0028-03 corrected; CI green on PR head | — |
-| A2 | PLAN-0030 Frontend toolchain migration (ADR-0008, CRA → Vite) | Implementation | Same guards, tests, production isolation and bundle inspection on Vite; React Router 8; CRA exceptions removed | A1, D-2 |
+| A2 | PLAN-0030 Frontend toolchain migration (ADR-0008, CRA → Vite) | Implementation | Same guards, tests, production isolation and bundle inspection on Vite; React Router 8; frontend CI on Node.js 24 like the other workflows | A1, D-2 |
 
 ### Stage B — Recipe core and AI foundation (unblocks everything downstream)
 
@@ -209,3 +209,10 @@ The order follows the accepted closed-loop implementation order (`product/closed
 - **Validation performed:** See "Local validation performed".
 - **Result:** Two P0 baseline failures (backend restore, frontend audit policy), documentation drift, and a missing recipe-module plan on the critical path.
 - **Next action:** Owner decisions D-1 to D-4, then PLAN-0029.
+
+### 2026-10-28T15:05:00Z — Claude Code (corrections found while executing PLAN-0029)
+
+- **Correction:** PLAN-0023 had no duplicated lines and its excluded-scope section has content. Only the stale retest blocker was real; F-0028-03 is amended above.
+- **New finding:** `.github/workflows/frontend.yml` runs Node.js 20 (end of life), while `docs/development/environment.md` requires Node.js 24 and the Backend/PLAN-0005 workflows use 24.18.0. Added to PLAN-0030 (A2) scope.
+- **Update:** PLAN-0029 cleared every frontend advisory by upgrades. React Router 8 is no longer required for security (the fix was backported to 7.18.2), so PLAN-0030 is now motivated by CRA deprecation, Node.js 24 alignment, and toolchain debt, not by an allowlisted advisory.
+

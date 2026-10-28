@@ -1,6 +1,6 @@
 # PLAN-0017: Define AI Recipe Artifact Protocol and Model Evaluation Pack
 
-- **Status:** Validating
+- **Status:** Completed (documentation delivered via PR #31; residual research transferred to PLAN-0022 — see [completion handoff](PLAN-0017-completion-and-research-handoff.md))
 - **Type:** Documentation
 - **Priority:** High
 - **Owner:** Stakeholder + AI architecture collaboration
@@ -180,6 +180,10 @@ Before completion:
 - **Working tree state:** Replacement draft delivery for PR #23; no automatic merge.
 
 ## Progress log
+
+### 2026-10-28T15:00:00Z — Claude Code (PLAN-0029 drift reconciliation)
+
+- Header status reconciled with the registry and the completion handoff. Historical entries below are unchanged.
 
 ### 2026-08-02 — Renumbering and thumbnail integration
 
