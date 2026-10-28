@@ -88,7 +88,7 @@ do Cocinaris (docs/development/environment.md#owner-linux-host). Neste host:
   - Frontend workflow on Node.js 24.18.0.
   - ADR-0004 and ADR-0006 amendments, environment guide "Owner Linux host" section, deployment runbook, `infrastructure/deploy/linux-host/`, `scripts/deploy/deploy-linux-host.sh`.
 - **Last completed step:** A deploy dry run of `8f74062` (PLAN-0033 head) built, published and generated the migration script, then **refused to publish** because the entry page loads third-party scripts. That is the intended guard behavior; the scripts are removed by PLAN-0035. The failed partial release was left behind, so the script now deletes any release that does not finish building.
-- **Exact next action:** Deploy `agent/plan-0031-0036-foundation-stack` with the runbook rename migration (owner standing instruction, 2026-10-28), then final PR CI.
+- **Exact next action:** Final CI on the draft PR head; owner merge. Owner may add the AI Gateway key to `api.env` (runbook, first install step 5) and restart the service.
 - **Blockers:** None. Owner merge determines delivery state only.
 - **Validation performed:**
   - On the host: backend unit 52/52, architecture 14/14 and integration 175/175 with the OIDC fixture; format; migrations; OpenAPI (recorded under PLAN-0033).
@@ -133,3 +133,11 @@ do Cocinaris (docs/development/environment.md#owner-linux-host). Neste host:
 - Found and fixed a deployment gap: the PR #44 migration creates the `recipes` and `ai` schemas, and the deploy script did not grant them to `cocinaris_app`, so the first deploy would have failed with permission errors. The script now grants USAGE and DML on every schema owned by `cocinaris_owner` after migrations, plus default privileges. Verified twice on a scratch database (idempotent).
 - `api.env.example` and the runbook document the optional AI Gateway keys (`Ai__Providers__DeepSeek__Enabled`, `Ai__Providers__DeepSeek__ApiKey`).
 - **Next action:** Deploy this branch with the rename migration (`api.env` keys, `--install-units`), verify health and the public site, then push and open the draft PR.
+
+### 2026-10-28T22:12:00Z — Claude Code (deploy)
+
+- Deployed `bf2f258` from `agent/plan-0031-0036-foundation-stack` under the owner's standing instruction, with the one-time rename migration: `api.env` keys renamed `KITCHENFLOW_*` → `COCINARIS_*` (copy kept at `api.env.pre-rename`), `--install-units`.
+- The script took a backup (`cocinaris-20261028T220912Z.dump`), applied the PR #44 migration (10 rows in `__EFMigrationsHistory`), granted `cocinaris_app` on the new `recipes` and `ai` schemas, adopted the old plain directories as release `20261028T220913Z-legacy` and switched to `20261028T220813Z-bf2f2583ce27`.
+- Verified: the unit starts `Cocinaris.Api.dll`; `/health/ready` 200; public `/` and `/app/receitas` 200; `/api/v1/session` and `/api/v1/recipes` 401 without a session; entry page title "Cocinaris" with no external origins; no warnings in the service journal. Existing sessions ended, as documented for the rename.
+- The AI Gateway is not configured (`Ai__Providers__DeepSeek__*` absent), so recipe generation shows its unavailable state until the owner adds the key.
+- Browser smoke repeated at normal host load: 28/28 passed. The two earlier timeouts were caused by load from another project on the host.
