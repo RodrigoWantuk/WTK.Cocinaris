@@ -47,7 +47,7 @@ describe("PreparedComponentAvailabilityBar", () => {
 
   it("renders shortfall and invokes review action", async () => {
     const user = userEvent.setup();
-    const onReview = jest.fn();
+    const onReview = vi.fn();
     render(
       <PreparedComponentAvailabilityBar
         availability={MOCK_PREPARED_COMPONENT_SHORTFALL}

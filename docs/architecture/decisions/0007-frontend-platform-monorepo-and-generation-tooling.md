@@ -116,3 +116,7 @@ Frontend CI is independent of backend CI. Deployment remains independently scala
 - [PLAN-0014](../../plans/PLAN-0014-integrate-emergent-frontend.md)
 - [ADR-0001](0001-frontend-platform-and-boundary.md) (superseded)
 - [apps/frontend/README.md](../../../apps/frontend/README.md)
+
+## Note — 2026-10-28
+
+The build runtime decision ("preserve Create React App + CRACO unless a later ADR changes it") is amended by [ADR-0008](0008-frontend-toolchain-vite.md): the frontend now uses Vite and Vitest. The monorepo authority and optional generation tooling decisions are unchanged.

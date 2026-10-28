@@ -11,12 +11,13 @@
         <!--
           Everything this page loads must come from the same origin. Third-party scripts or styles here
           (analytics, session recording, font CDNs) would run on every authenticated page and see pantry,
-          profile, and restriction data. Enforced by `yarn guard:third-party-html` and the deploy script.
+          profile, and restriction data. Enforced by `yarn guard:third-party-html` and the deploy script. The module entry above is same-origin.
         -->
         <title>Cocinaris</title>
     </head>
     <body>
         <noscript>Cocinaris needs JavaScript to run.</noscript>
         <div id="root"></div>
+        <script type="module" src="/src/index.tsx"></script>
     </body>
 </html>

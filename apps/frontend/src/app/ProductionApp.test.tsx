@@ -7,7 +7,7 @@ describe("ProductionApp landing controls", () => {
   beforeEach(() => {
     localStorage.removeItem(PRODUCTION_LOCALE_STORAGE_KEY);
     window.history.pushState({}, "", "/");
-    jest.spyOn(globalThis, "fetch").mockResolvedValue(
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
       new Response(
         JSON.stringify({
           errorCode: "authentication_required",
@@ -22,11 +22,11 @@ describe("ProductionApp landing controls", () => {
   });
 
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   it("renders public `/` without calling session or fetch", async () => {
-    const fetchSpy = jest.spyOn(globalThis, "fetch");
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
     render(<ProductionApp />);
     expect(await screen.findByTestId("production-landing")).toBeInTheDocument();
     expect(fetchSpy).not.toHaveBeenCalled();

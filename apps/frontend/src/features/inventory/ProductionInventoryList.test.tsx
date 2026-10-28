@@ -10,7 +10,7 @@ import {
 describe("ProductionInventoryList", () => {
   it("shows loading then rows without requesting on each keystroke", async () => {
     const user = userEvent.setup();
-    const listLots = jest.fn(async () => ({
+    const listLots = vi.fn(async () => ({
       items: [sampleLot],
       nextCursor: null,
     }));
@@ -38,7 +38,7 @@ describe("ProductionInventoryList", () => {
 
   it("shows empty inventory and empty filtered states", async () => {
     const user = userEvent.setup();
-    const listLots = jest.fn(async () => ({ items: [], nextCursor: null }));
+    const listLots = vi.fn(async () => ({ items: [], nextCursor: null }));
     const repo = createMockInventoryRepo({ listLots });
     render(
       renderInventoryTree({
@@ -59,7 +59,7 @@ describe("ProductionInventoryList", () => {
 
   it("applies status/location filters, clears them, and loads more with cursor", async () => {
     const user = userEvent.setup();
-    const listLots = jest
+    const listLots = vi
       .fn()
       // Initial load
       .mockResolvedValueOnce({
@@ -133,7 +133,7 @@ describe("ProductionInventoryList", () => {
 
   it("retries after failure", async () => {
     const user = userEvent.setup();
-    const listLots = jest
+    const listLots = vi
       .fn()
       .mockRejectedValueOnce(new Error("network"))
       .mockResolvedValueOnce({ items: [sampleLot], nextCursor: null });

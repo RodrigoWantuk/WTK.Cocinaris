@@ -52,7 +52,7 @@ const ABSENT_PROFILE_BODY = {
 };
 
 function mockProductionFetch() {
-  return jest.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+  return vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
     const url =
       typeof input === "string"
         ? input
@@ -113,7 +113,7 @@ function mockProductionFetch() {
 
 describe("Production profile routes", () => {
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   it("renders the profile overview instead of FeatureUnavailable and exposes primary nav links", async () => {

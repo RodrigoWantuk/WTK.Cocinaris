@@ -80,7 +80,7 @@ function mockAuthenticatedFetch(
   options?: { logoutStatus?: number },
 ) {
   const logoutStatus = options?.logoutStatus ?? 204;
-  return jest
+  return vi
     .spyOn(globalThis, "fetch")
     .mockImplementation(async (input, init) => {
       const url =
@@ -173,7 +173,7 @@ describe("ProductionApp dirty logout protection", () => {
   });
 
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   it("logs out immediately from a clean profile page", async () => {

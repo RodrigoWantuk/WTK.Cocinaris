@@ -6,7 +6,7 @@ describe("Production inventory routes", () => {
   beforeEach(() => {
     localStorage.removeItem(PRODUCTION_LOCALE_STORAGE_KEY);
     window.history.pushState({}, "", "/app/despensa");
-    jest.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
       const url =
         typeof input === "string"
           ? input
@@ -41,7 +41,7 @@ describe("Production inventory routes", () => {
   });
 
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   it("renders production inventory list instead of FeatureUnavailable", async () => {
@@ -58,7 +58,7 @@ describe("Production inventory routes", () => {
   });
 
   it("never calls the profile endpoints from /app/despensa (ProfileProvider is scoped to /app/perfil*)", async () => {
-    const fetchSpy = jest.spyOn(globalThis, "fetch");
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
     render(<ProductionApp />);
     await waitFor(() =>
       expect(screen.getByTestId("inventory-empty")).toBeInTheDocument(),

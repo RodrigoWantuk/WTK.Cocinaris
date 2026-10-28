@@ -1,3 +1,4 @@
+import type { MockInstance } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import ProductionApp, { pageTitleKeyFor } from "./ProductionApp";
@@ -30,11 +31,11 @@ function requestUrl(input: RequestInfo | URL): string {
 }
 
 describe("Production shell and navigation (PLAN-0032)", () => {
-  let fetchSpy: jest.SpyInstance;
+  let fetchSpy: MockInstance;
 
   beforeEach(() => {
     localStorage.setItem(PRODUCTION_LOCALE_STORAGE_KEY, "en");
-    fetchSpy = jest
+    fetchSpy = vi
       .spyOn(globalThis, "fetch")
       .mockImplementation(async (input) => {
         const url = requestUrl(input);
@@ -47,7 +48,7 @@ describe("Production shell and navigation (PLAN-0032)", () => {
   });
 
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
     localStorage.removeItem(PRODUCTION_LOCALE_STORAGE_KEY);
   });
 

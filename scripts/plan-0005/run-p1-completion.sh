@@ -66,7 +66,8 @@ run_group observability-performance bash scripts/plan-0005/observability-perform
 # Frontend unit/i18n tests already in package
 run_group frontend-unit bash -c '
   cd apps/frontend
-  yarn test --watchAll=false --testPathPattern="i18n|productionIsolation|productionCatalog" --passWithNoTests
+  # Vitest filters by positional path substrings (Jest used --testPathPattern).
+  yarn test --passWithNoTests i18n productionIsolation productionCatalog
 '
 
 kill "${CONTAINER_SAMPLER_PID}" 2>/dev/null || true

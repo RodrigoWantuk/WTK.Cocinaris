@@ -5,11 +5,6 @@ import { PantryItemCard } from "./Pantry";
 import { StoreProvider } from "@/lib/store";
 import { MOCK_PREPARED_COMPONENT_SHORTFALL } from "@/adapters/mock/preparedComponentFixtures";
 
-jest.mock("react-router-dom", () => {
-  const actual = jest.requireActual("react-router-dom");
-  return { ...actual };
-});
-
 function tr(key: string): string {
   const map: Record<string, string> = {
     "pantry.reserved.label": "reservado",

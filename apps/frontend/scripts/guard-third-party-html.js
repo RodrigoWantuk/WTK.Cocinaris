@@ -7,7 +7,7 @@
  * disclose every visitor's address to a third party. PLAN-0032 removed such snippets inherited from
  * the Emergent import; this guard keeps them from coming back.
  *
- * Checks `public/index.html`, `build/index.html` when present, and every CSS file under `src/`.
+ * Checks the Vite entry `index.html`, `build/index.html` when present, and every CSS file under `src/`.
  */
 const fs = require("fs");
 const path = require("path");
@@ -43,7 +43,7 @@ function walkCss(dir) {
   }
 }
 
-checkHtml(path.join(root, "public", "index.html"));
+checkHtml(path.join(root, "index.html"));
 checkHtml(path.join(root, "build", "index.html"));
 walkCss(path.join(root, "src"));
 

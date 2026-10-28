@@ -14,8 +14,8 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 
 function renderDetail(
   repo = createMockInventoryRepo({
-    getLot: jest.fn(async () => sampleLot),
-    getHistory: jest.fn(async () => [
+    getLot: vi.fn(async () => sampleLot),
+    getHistory: vi.fn(async () => [
       {
         entryId: "dddddddd-dddd-dddd-dddd-dddddddddddd",
         kind: "LifecycleTransaction",
@@ -25,7 +25,7 @@ function renderDetail(
         occurredAt: "2026-08-01T12:00:00Z",
       },
     ]),
-    adjustLot: jest.fn(async () => ({
+    adjustLot: vi.fn(async () => ({
       ...sampleLot,
       quantity: {
         kind: "measured" as const,
@@ -70,7 +70,7 @@ describe("ProductionInventoryDetail", () => {
 
   it("consumes with ETag and new idempotency key, then refreshes history", async () => {
     const user = userEvent.setup();
-    const adjustLot = jest.fn(async () => ({
+    const adjustLot = vi.fn(async () => ({
       ...sampleLot,
       quantity: {
         kind: "measured" as const,
@@ -79,7 +79,7 @@ describe("ProductionInventoryDetail", () => {
       },
       etag: '"v2"',
     }));
-    const getHistory = jest
+    const getHistory = vi
       .fn()
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([
@@ -93,7 +93,7 @@ describe("ProductionInventoryDetail", () => {
         },
       ]);
     const repo = createMockInventoryRepo({
-      getLot: jest.fn(async () => sampleLot),
+      getLot: vi.fn(async () => sampleLot),
       getHistory,
       adjustLot,
     });
@@ -115,7 +115,7 @@ describe("ProductionInventoryDetail", () => {
 
   it("supports discard and correct actions", async () => {
     const user = userEvent.setup();
-    const adjustLot = jest.fn(async (_id, input) => ({
+    const adjustLot = vi.fn(async (_id, input) => ({
       ...sampleLot,
       etag: '"v3"',
       quantity: {
@@ -125,8 +125,8 @@ describe("ProductionInventoryDetail", () => {
       },
     }));
     const repo = createMockInventoryRepo({
-      getLot: jest.fn(async () => sampleLot),
-      getHistory: jest.fn(async () => []),
+      getLot: vi.fn(async () => sampleLot),
+      getHistory: vi.fn(async () => []),
       adjustLot,
     });
     renderDetail(repo);
@@ -155,7 +155,7 @@ describe("ProductionInventoryDetail", () => {
         availability: "Low" as const,
       },
     };
-    const adjustLot = jest.fn(async () => ({
+    const adjustLot = vi.fn(async () => ({
       ...qualitative,
       quantity: {
         kind: "qualitative" as const,
@@ -164,8 +164,8 @@ describe("ProductionInventoryDetail", () => {
       etag: '"v9"',
     }));
     const repo = createMockInventoryRepo({
-      getLot: jest.fn(async () => qualitative),
-      getHistory: jest.fn(async () => []),
+      getLot: vi.fn(async () => qualitative),
+      getHistory: vi.fn(async () => []),
       adjustLot,
     });
     renderDetail(repo);
@@ -189,14 +189,14 @@ describe("ProductionInventoryDetail", () => {
 
   it("surfaces 412 and 428 without retry", async () => {
     const user = userEvent.setup();
-    const adjustLot = jest
+    const adjustLot = vi
       .fn()
       .mockRejectedValueOnce(
         new InventoryApiError("precondition_failed", "stale", 412),
       );
     const repo = createMockInventoryRepo({
-      getLot: jest.fn(async () => sampleLot),
-      getHistory: jest.fn(async () => []),
+      getLot: vi.fn(async () => sampleLot),
+      getHistory: vi.fn(async () => []),
       adjustLot,
     });
     renderDetail(repo);
@@ -222,8 +222,8 @@ describe("ProductionInventoryDetail", () => {
 
   it("disables mutations when CSRF is missing", async () => {
     const repo = createMockInventoryRepo({
-      getLot: jest.fn(async () => sampleLot),
-      getHistory: jest.fn(async () => []),
+      getLot: vi.fn(async () => sampleLot),
+      getHistory: vi.fn(async () => []),
     });
     renderDetail(
       repo,
@@ -240,7 +240,7 @@ describe("ProductionInventoryDetail", () => {
 
   it("does not treat history refresh failure as adjust failure", async () => {
     const user = userEvent.setup();
-    const adjustLot = jest.fn(async () => ({
+    const adjustLot = vi.fn(async () => ({
       ...sampleLot,
       quantity: {
         kind: "measured" as const,
@@ -249,7 +249,7 @@ describe("ProductionInventoryDetail", () => {
       },
       etag: '"v2"',
     }));
-    const getHistory = jest
+    const getHistory = vi
       .fn()
       .mockResolvedValueOnce([
         {
@@ -263,7 +263,7 @@ describe("ProductionInventoryDetail", () => {
       ])
       .mockRejectedValueOnce(new InventoryApiError("unavailable", "down", 503));
     const repo = createMockInventoryRepo({
-      getLot: jest.fn(async () => sampleLot),
+      getLot: vi.fn(async () => sampleLot),
       getHistory,
       adjustLot,
     });
@@ -312,7 +312,7 @@ describe("ProductionInventoryDetail", () => {
         availability: "Low" as const,
       },
     };
-    const adjustLot = jest.fn(async () => ({
+    const adjustLot = vi.fn(async () => ({
       ...qualitative,
       quantity: {
         kind: "qualitative" as const,
@@ -320,12 +320,12 @@ describe("ProductionInventoryDetail", () => {
       },
       etag: '"v9"',
     }));
-    const getHistory = jest
+    const getHistory = vi
       .fn()
       .mockResolvedValueOnce([])
       .mockRejectedValueOnce(new InventoryApiError("unavailable", "down", 503));
     const repo = createMockInventoryRepo({
-      getLot: jest.fn(async () => qualitative),
+      getLot: vi.fn(async () => qualitative),
       getHistory,
       adjustLot,
     });
@@ -360,7 +360,7 @@ describe("ProductionInventoryDetail", () => {
         occurredAt: "2026-08-01T12:00:00Z",
       },
     ];
-    const adjustLot = jest.fn(async () => ({
+    const adjustLot = vi.fn(async () => ({
       ...sampleLot,
       quantity: {
         kind: "measured" as const,
@@ -369,13 +369,13 @@ describe("ProductionInventoryDetail", () => {
       },
       etag: '"v2"',
     }));
-    const getHistory = jest
+    const getHistory = vi
       .fn()
       .mockResolvedValueOnce(initialHistory)
       .mockRejectedValueOnce(new InventoryApiError("unavailable", "down", 503))
       .mockRejectedValueOnce(new InventoryApiError("unavailable", "down", 503))
       .mockRejectedValueOnce(new InventoryApiError("unavailable", "down", 503));
-    const getLot = jest.fn(async () => sampleLot);
+    const getLot = vi.fn(async () => sampleLot);
     const repo = createMockInventoryRepo({
       getLot,
       getHistory,
@@ -443,7 +443,7 @@ describe("ProductionInventoryDetail", () => {
         occurredAt: "2026-08-01T13:00:00Z",
       },
     ];
-    const adjustLot = jest.fn(async () => ({
+    const adjustLot = vi.fn(async () => ({
       ...sampleLot,
       quantity: {
         kind: "measured" as const,
@@ -452,14 +452,14 @@ describe("ProductionInventoryDetail", () => {
       },
       etag: '"v2"',
     }));
-    const getHistory = jest
+    const getHistory = vi
       .fn()
       .mockResolvedValueOnce(initialHistory)
       .mockRejectedValueOnce(new InventoryApiError("unavailable", "down", 503))
       .mockRejectedValueOnce(new InventoryApiError("unavailable", "down", 503))
       .mockResolvedValueOnce(refreshedHistory);
     const repo = createMockInventoryRepo({
-      getLot: jest.fn(async () => ({
+      getLot: vi.fn(async () => ({
         ...sampleLot,
         quantity: {
           kind: "measured" as const,

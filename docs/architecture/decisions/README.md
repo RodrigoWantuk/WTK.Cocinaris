@@ -24,12 +24,13 @@ Do not rewrite accepted history. Add a note or superseding ADR.
 | [0005](0005-ai-gateway-and-usage-governance.md) | Central AI gateway, structured context, model routing, and quota ledger | Accepted |
 | [0006](0006-deployment-and-observability.md) | Containers, Docker Compose test environment, Virginia production, and OpenTelemetry (owner Linux host as development and deployment environment, 2026-10-28 amendment) | Accepted |
 | [0007](0007-frontend-platform-monorepo-and-generation-tooling.md) | React/TypeScript frontend; monorepo `apps/frontend` authority; Emergent/Lovable optional | Accepted |
+| [0008](0008-frontend-toolchain-vite.md) | Vite and Vitest replace Create React App + CRACO (amends ADR-0007) | Accepted |
 
 ## Future decision backlog
 
 ADRs or implementation designs are still required for:
 
-- exact frontend package set evolution beyond the imported CRA/CRACO baseline (state, component, localization, and test libraries);
+- frontend package set evolution beyond the ADR-0008 toolchain (state, component, and localization libraries; React Router 8);
 - detailed .NET solution and module enforcement;
 - migration tooling conventions and schema ownership;
 - exact RabbitMQ topology and scheduler implementation;

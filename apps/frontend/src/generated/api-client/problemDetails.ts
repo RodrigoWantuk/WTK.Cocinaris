@@ -12,11 +12,25 @@ export interface CocinarisProblemDetails {
 }
 
 /**
- * Parses a problem+json body when present; returns null for empty or non-object bodies.
+ * Returns problem details for a failed response, or null for empty or non-object bodies.
+ *
+ * Pass `parsedBody` (the `error` value returned by the generated client) whenever it is
+ * available: openapi-fetch has already consumed the response body to produce it, and
+ * browsers reject `clone()` on a consumed body, so re-reading would silently lose the
+ * error code and field errors. Without `parsedBody` the response is read via a clone.
  */
 export async function readProblemDetails(
   response: Response,
+  parsedBody?: unknown,
 ): Promise<CocinarisProblemDetails | null> {
+  if (parsedBody !== undefined) {
+    return parsedBody && typeof parsedBody === "object"
+      ? (parsedBody as CocinarisProblemDetails)
+      : null;
+  }
+  if (response.bodyUsed) {
+    return null;
+  }
   const contentType = response.headers.get("content-type") ?? "";
   if (
     !contentType.includes("application/problem+json") &&

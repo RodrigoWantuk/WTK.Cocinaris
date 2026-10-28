@@ -17,18 +17,18 @@ Official Cocinaris frontend package living at `apps/frontend`.
 ## Stack
 
 - React 19 + TypeScript (`allowJs: false`)
-- Create React App + CRACO
+- Vite 8 (dev server and builds) and Vitest 5 (tests), see [ADR-0008](../../docs/architecture/decisions/0008-frontend-toolchain-vite.md)
 - Yarn classic (`packageManager` field)
 
 ## Frontend modes (build-time)
 
-Set `REACT_APP_FRONTEND_MODE` at build/start time (validated):
+Set `REACT_APP_FRONTEND_MODE` at build/start time (validated in `vite.config.ts`; builds fail without it). Vite replaces `process.env.REACT_APP_FRONTEND_MODE` in application code at build time, and production builds swap prototype-only modules for their `.production` stubs:
 
 | Mode | Script | Behavior |
 |---|---|---|
 | `prototype` | `yarn start` / `yarn build:prototype` | ScenarioBar, fixtures, mock session allowed |
 | `production` | `yarn build:production` | No scenario tooling; live session/inventory adapters; unavailable adapters for undeveloped areas |
-| `test` | `yarn test` | Prototype-compatible composition for Jest |
+| `test` | `yarn test` | Prototype-compatible composition for Vitest |
 
 Composition roots live under `src/app/runtime/`. Providers require injected adapters — no silent mock defaults in production.
 
@@ -79,7 +79,7 @@ Historical reports and plan-specific evidence live under the documented evidence
 |---|---|
 | `src/adapters/mock/` | Fixture-backed presentation projections for **prototype/test** only (includes contextual-home mocks) |
 | `src/adapters/live/` | Live inventory repository and unavailable stand-ins for undeveloped areas (including contextual home) |
-| `src/generated/api-client/` | CRA mirror of `@cocinaris/api-client` (do not edit; regenerate) |
+| `src/generated/api-client/` | Frontend mirror of `@cocinaris/api-client` (do not edit; regenerate) |
 | `src/contracts/` | Presentation models (inventory quantity, preparation, contextual home) |
 | `src/features/inventory/` | Production inventory screens |
 | `src/features/entry/` | Public entry (Phase 1) |

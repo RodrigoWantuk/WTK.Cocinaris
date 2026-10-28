@@ -33,7 +33,7 @@ const results = [];
 let failedArtifacts = [];
 
 /**
- * Minimal static SPA server for the production CRA build.
+ * Minimal static SPA server for the production build.
  * @returns {import('http').Server}
  */
 function startStaticSpa(rootDir, port) {
@@ -405,6 +405,15 @@ async function installProfileInterception(page) {
   };
 }
 
+async function isServerUp(url) {
+  try {
+    await fetch(url, { method: "GET" });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 async function waitForServer(url, timeoutMs = 120000) {
   const start = Date.now();
   while (Date.now() - start < timeoutMs) {
@@ -426,21 +435,23 @@ async function run() {
   let serverProc = null;
   let productionServer = null;
   if (process.env.SMOKE_MANAGE_SERVER === "1") {
+    // A server already listening would be tested instead of the one started here
+    // (for example an orphan from an earlier run with a stale dependency cache).
+    if (await isServerUp(BASE)) {
+      throw new Error(
+        `${BASE} is already serving; stop that process before a managed smoke run.`,
+      );
+    }
     serverProc = spawn("yarn", ["start"], {
       cwd: path.join(__dirname, ".."),
       env: {
         ...process.env,
-        BROWSER: "none",
         CI: "true",
-        HOST: process.env.HOST || "127.0.0.1",
-        PORT: process.env.PORT || "3000",
         REACT_APP_FRONTEND_MODE: "prototype",
-        // Prevent CRA interactive prompt when port is busy.
-        WDS_SOCKET_PORT: "0",
       },
-      // Do not pipe stdio — CRA can deadlock when stdout buffers fill.
       stdio: "ignore",
-      detached: false,
+      // Own process group, so teardown stops yarn *and* the Vite server it spawned.
+      detached: true,
     });
     await waitForServer(BASE, 180000);
 
@@ -1225,10 +1236,11 @@ async function run() {
         await page.getByTestId("profile-unsaved-stay").click();
         await page.getByTestId("profile-data").waitFor({ timeout: 5000 });
         if (
-          !(await page
-            .getByTestId("profile-data-input-displayName")
-            .inputValue())
-            .includes("Ada Logout Stay")
+          !(
+            await page
+              .getByTestId("profile-data-input-displayName")
+              .inputValue()
+          ).includes("Ada Logout Stay")
         ) {
           fail(
             "production profile intercepted: dirty logout Stay",
@@ -1387,9 +1399,7 @@ async function run() {
         await page
           .getByTestId("profile-save-refresh-failed")
           .waitFor({ timeout: 10000 });
-        if (
-          await page.getByTestId("profile-data-household-save").isEnabled()
-        ) {
+        if (await page.getByTestId("profile-data-household-save").isEnabled()) {
           fail(
             "production profile intercepted: save refresh failed",
             "save remained enabled after saveRefreshFailed",
@@ -1572,7 +1582,11 @@ async function run() {
   } finally {
     await browser.close();
     if (serverProc) {
-      serverProc.kill("SIGTERM");
+      try {
+        process.kill(-serverProc.pid, "SIGTERM");
+      } catch {
+        serverProc.kill("SIGTERM");
+      }
     }
     if (productionServer) {
       productionServer.close();

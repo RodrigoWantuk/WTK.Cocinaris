@@ -8,13 +8,13 @@ import { MockPreparationRouteRepository } from "../../adapters/mock/preparationR
 import { HomeRouteCarousel } from "./HomeRouteCarousel";
 import { StoreProvider } from "../../lib/store";
 
-jest.mock("react-router-dom", () => ({
+vi.mock("react-router-dom", () => ({
   MemoryRouter: ({ children }: { children: React.ReactNode }) => children,
-  useNavigate: () => jest.fn(),
+  useNavigate: () => vi.fn(),
   Link: ({ children }: { children: React.ReactNode }) => children,
   NavLink: ({ children }: { children: React.ReactNode }) => children,
   useLocation: () => ({ pathname: "/app/hoje" }),
-  useSearchParams: () => [new URLSearchParams(), jest.fn()],
+  useSearchParams: () => [new URLSearchParams(), vi.fn()],
 }));
 
 function SnapshotProbe({ label }: { label: string }) {
@@ -45,7 +45,7 @@ describe("PreparationRouteProvider external store", () => {
   it("mounts without getSnapshot cache warning and shares one snapshot", () => {
     const repo = new MockPreparationRouteRepository();
     const errors: string[] = [];
-    const spy = jest
+    const spy = vi
       .spyOn(console, "error")
       .mockImplementation((...args: unknown[]) => {
         errors.push(String(args[0]));

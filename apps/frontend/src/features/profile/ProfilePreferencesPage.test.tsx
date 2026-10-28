@@ -14,17 +14,19 @@ import {
 } from "./testUtils";
 
 function mockMutatePreferences() {
-  return jest.fn<
-    Promise<PreferenceSnapshot>,
-    [PreferenceCommand[], ProfileMutationContext]
+  return vi.fn<
+    (
+      ...args: [PreferenceCommand[], ProfileMutationContext]
+    ) => Promise<PreferenceSnapshot>
   >(async () => createEmptyPreferenceSnapshot());
 }
 
 describe("ProfilePreferencesPage", () => {
   it("adds a non-sensitive catalog preference immediately, without a confirmation step", async () => {
-    const mutatePreferences = jest.fn<
-      Promise<PreferenceSnapshot>,
-      [PreferenceCommand[], ProfileMutationContext]
+    const mutatePreferences = vi.fn<
+      (
+        ...args: [PreferenceCommand[], ProfileMutationContext]
+      ) => Promise<PreferenceSnapshot>
     >(async () =>
       createEmptyPreferenceSnapshot({
         entries: [
@@ -216,9 +218,10 @@ describe("ProfilePreferencesPage", () => {
   });
 
   it("preserves the typed custom label after a failed add instead of discarding it", async () => {
-    const mutatePreferences = jest.fn<
-      Promise<PreferenceSnapshot>,
-      [PreferenceCommand[], ProfileMutationContext]
+    const mutatePreferences = vi.fn<
+      (
+        ...args: [PreferenceCommand[], ProfileMutationContext]
+      ) => Promise<PreferenceSnapshot>
     >(async () => {
       throw new ProfileApiError("validation_failed", "rejected", 400);
     });
@@ -250,9 +253,10 @@ describe("ProfilePreferencesPage", () => {
   });
 
   it("preserves the pending sensitive add's typed note when the confirmation is cancelled", async () => {
-    const mutatePreferences = jest.fn<
-      Promise<PreferenceSnapshot>,
-      [PreferenceCommand[], ProfileMutationContext]
+    const mutatePreferences = vi.fn<
+      (
+        ...args: [PreferenceCommand[], ProfileMutationContext]
+      ) => Promise<PreferenceSnapshot>
     >(async () => createEmptyPreferenceSnapshot());
     const repo = createMockProfileRepo({ mutatePreferences });
     const user = userEvent.setup();
@@ -320,7 +324,7 @@ describe("ProfilePreferencesPage", () => {
 
   it("provides visible, contextual names for preference controls", async () => {
     const repo = createMockProfileRepo({
-      getPreferences: jest.fn(async () =>
+      getPreferences: vi.fn(async () =>
         createEmptyPreferenceSnapshot({
           entries: [
             {

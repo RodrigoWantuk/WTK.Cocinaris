@@ -45,14 +45,14 @@ describe("ProfileOverviewPage", () => {
     // A real backend never resolves a preferences/equipment version for an owner
     // with no persisted profile; the workspace consistency check enforces this.
     const repo = createMockProfileRepo({
-      getProfile: jest.fn(async () => createAbsentProfileSnapshot()),
-      getPreferences: jest.fn(async () =>
+      getProfile: vi.fn(async () => createAbsentProfileSnapshot()),
+      getPreferences: vi.fn(async () =>
         createEmptyPreferenceSnapshot({ version: null, etag: null }),
       ),
-      getEquipment: jest.fn(async () =>
+      getEquipment: vi.fn(async () =>
         createEmptyEquipmentSnapshot({ version: null, etag: null }),
       ),
-      getCompleteness: jest.fn(async () =>
+      getCompleteness: vi.fn(async () =>
         createCompleteness({ profileExists: false, percentComplete: 0 }),
       ),
     });
@@ -72,7 +72,7 @@ describe("ProfileOverviewPage", () => {
 
   it("shows a retry action when loading fails", async () => {
     const repo = createMockProfileRepo({
-      getProfile: jest.fn(async () => {
+      getProfile: vi.fn(async () => {
         throw new Error("boom");
       }),
     });

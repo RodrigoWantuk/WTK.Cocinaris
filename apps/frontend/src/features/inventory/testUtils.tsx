@@ -10,13 +10,13 @@ export function createMockInventoryRepo(
   overrides: Partial<InventoryRepository> = {},
 ): InventoryRepository {
   return {
-    listLots: jest.fn(async () => ({ items: [], nextCursor: null })),
-    getLot: jest.fn(),
-    createLot: jest.fn(),
-    updateLot: jest.fn(),
-    adjustLot: jest.fn(),
-    deleteLot: jest.fn(),
-    getHistory: jest.fn(async () => []),
+    listLots: vi.fn(async () => ({ items: [], nextCursor: null })),
+    getLot: vi.fn(),
+    createLot: vi.fn(),
+    updateLot: vi.fn(),
+    adjustLot: vi.fn(),
+    deleteLot: vi.fn(),
+    getHistory: vi.fn(async () => []),
     ...overrides,
   };
 }
@@ -31,9 +31,9 @@ export function createSessionAdapter(
   },
 ): SessionAdapter {
   return {
-    getSession: jest.fn(async () => state),
-    beginLogin: jest.fn(),
-    logout: jest.fn(async () => undefined),
+    getSession: vi.fn(async () => state),
+    beginLogin: vi.fn(),
+    logout: vi.fn(async () => undefined),
   };
 }
 

@@ -12,14 +12,6 @@ import { StoreProvider } from "../../lib/store";
 import type { PreparationRouteTask } from "../../contracts/preparation";
 import { isCookTargetReady } from "./cookTargetReady";
 
-jest.mock("react-router-dom", () => {
-  const actual = jest.requireActual("react-router-dom");
-  return {
-    ...actual,
-    // Keep MemoryRouter/Routes real; only ensure package resolves.
-  };
-});
-
 function tr(key: string): string {
   return key;
 }
