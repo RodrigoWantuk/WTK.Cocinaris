@@ -12,8 +12,7 @@ namespace KitchenFlow.IntegrationTests;
 
 public sealed class PostgreSqlMigrationTests : IAsyncLifetime
 {
-    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder()
-        .WithImage("postgres:18.4")
+    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:18.4")
         .WithDatabase("kitchenflow_test")
         .WithUsername("kitchenflow_test")
         .WithPassword("development-only-test-password")

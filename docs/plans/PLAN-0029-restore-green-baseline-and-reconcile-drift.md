@@ -1,11 +1,11 @@
 # PLAN-0029: Restore the Green Baseline and Reconcile Documentation Drift
 
-- **Status:** Ready
+- **Status:** In Progress
 - **Type:** Operations
 - **Priority:** Critical
-- **Owner:** Unassigned
+- **Owner:** Claude Code (claimed 2026-10-28)
 - **Created:** 2026-10-28
-- **Last updated:** 2026-10-28T14:05:00Z
+- **Last updated:** 2026-10-28T14:20:00Z
 - **Branch:** `agent/plan-0029-green-baseline`
 - **Pull request:** Not opened
 - **Related issues:** None
@@ -107,19 +107,28 @@ Apply the F-0028-03 corrections, update the environment guide, then update this 
 
 ## Execution state
 
-- **Current run delivery target:** Not started.
-- **Current checkpoint:** Plan created by PLAN-0028.
-- **Last completed step:** None.
-- **Exact next action:** Claim the plan, create `agent/plan-0029-green-baseline` from `main`, and execute Phase 1.
-- **Blockers:** None for Phases 1–2. The naming portion of Phase 3 waits for D-1.
+- **Current run delivery target:** Phases 1–3 in one run (backend repair, frontend/API-client dependency hygiene, documentation drift).
+- **Current checkpoint:** Phase 1 complete. `Testcontainers.PostgreSql` 4.8.1 → 4.16.0 removes the vulnerable transitive `SSH.NET 2024.2.0`. The eight integration fixtures moved from the obsolete parameterless `PostgreSqlBuilder()` plus `.WithImage("postgres:18.4")` to `new PostgreSqlBuilder("postgres:18.4")`, because the obsolete constructor is a `CS0618` error under warnings-as-errors.
+- **Last completed step:** Backend Release build with NuGet audit enabled: 0 warnings, 0 errors; `dotnet list package --vulnerable --include-transitive` reports no vulnerable packages; architecture tests 14/14 and unit tests 52/52 pass.
+- **Exact next action:** Phase 2. Remove unused frontend dependencies, upgrade the patched runtime packages, triage `audit-allowlist.json`, then audit `packages/api-client`.
+- **Blockers:** None for Phases 1–2. The naming portion of Phase 3 waits for PLAN-0028 decision D-1.
 - **Partially modified areas:** None.
-- **Documentation delivered:** None.
-- **Validation performed:** None.
-- **Known failures or limitations:** Integration tests require Docker, which host `rwantuk` lacks.
-- **Working tree state:** Clean.
+- **Documentation delivered:** Plan state only.
+- **Validation performed:** See last completed step. Integration tests were not run locally because host `rwantuk` has no Docker; they run in the Backend CI workflow.
+- **Known failures or limitations:** Integration tests unverified locally.
+- **Working tree state:** Phase 1 committed on stacked branch `agent/plan-0029-green-baseline` (base `agent/plan-0028-resume-roadmap`).
 
 ## Progress log
 
 ### 2026-10-28T14:05:00Z — Claude Code resumption review (PLAN-0028)
 
 - Created this plan from PLAN-0028 findings. No execution yet.
+
+### 2026-10-28T14:20:00Z — Claude Code
+
+- **Run delivery target:** Phases 1–3.
+- **Checkpoint:** Phase 1 (backend dependency repair) complete.
+- **Changes included in the commit:** `Directory.Packages.props` Testcontainers 4.16.0; integration lock file; eight integration fixtures use the image-parameter builder constructor.
+- **Documentation and code-documentation delivered:** Plan and registry state. No public API changed.
+- **Validation performed:** Release build with audit on (0/0); vulnerable-package scan clean; architecture 14/14; unit 52/52. Integration tests not run locally (no Docker).
+- **Next action:** Phase 2 frontend dependency hygiene.

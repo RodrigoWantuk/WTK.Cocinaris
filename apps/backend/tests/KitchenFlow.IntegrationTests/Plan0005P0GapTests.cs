@@ -418,8 +418,7 @@ public sealed class Plan0005SharedPostgresCollection : ICollectionFixture<Plan00
 /// <summary>Starts exactly one PostgreSQL container for all PLAN-0005 gap tests in a run.</summary>
 public sealed class Plan0005SharedPostgresFixture : IAsyncLifetime
 {
-    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder()
-        .WithImage("postgres:18.4")
+    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:18.4")
         .WithDatabase("kitchenflow_plan0005")
         .WithUsername("kitchenflow_test")
         .WithPassword("development-only-test-password")

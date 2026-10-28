@@ -22,8 +22,7 @@ namespace KitchenFlow.IntegrationTests;
 
 public sealed class ApiAuthenticationTests : IAsyncLifetime
 {
-    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder()
-        .WithImage("postgres:18.4")
+    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:18.4")
         .WithDatabase("kitchenflow_api_test")
         .WithUsername("kitchenflow_test")
         .WithPassword("development-only-test-password")

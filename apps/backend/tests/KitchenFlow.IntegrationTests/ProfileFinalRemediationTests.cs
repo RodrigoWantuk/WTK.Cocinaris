@@ -19,8 +19,7 @@ namespace KitchenFlow.IntegrationTests;
 /// <summary>Final PLAN-0012 remediation: missing-profile version semantics, owner-bound ETags, and unique equipment identity/order.</summary>
 public sealed class ProfileFinalRemediationTests : IAsyncLifetime
 {
-    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder()
-        .WithImage("postgres:18.4")
+    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:18.4")
         .WithDatabase("kitchenflow_profile_final")
         .WithUsername("kitchenflow_test")
         .WithPassword("development-only-test-password")

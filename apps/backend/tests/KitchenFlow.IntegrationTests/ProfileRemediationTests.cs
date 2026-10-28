@@ -18,8 +18,7 @@ namespace KitchenFlow.IntegrationTests;
 /// <summary>Integration tests for PLAN-0012 remediation: concurrency, PUT semantics, validation, privacy, and equipment identity.</summary>
 public sealed class ProfileRemediationTests : IAsyncLifetime
 {
-    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder()
-        .WithImage("postgres:18.4")
+    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:18.4")
         .WithDatabase("kitchenflow_profile_remediation")
         .WithUsername("kitchenflow_test")
         .WithPassword("development-only-test-password")
