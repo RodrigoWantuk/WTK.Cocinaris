@@ -5,7 +5,7 @@
 
 ## Context
 
-KitchenFlow's central complexity is transactional inventory, recipes, reservations, execution reconciliation, privacy, quotas, and reliable workflows. Normal AI provider integration is HTTP-based and does not require Python to own the application core.
+Cocinaris's central complexity is transactional inventory, recipes, reservations, execution reconciliation, privacy, quotas, and reliable workflows. Normal AI provider integration is HTTP-based and does not require Python to own the application core.
 
 The project owner has extensive C# experience and requires strong security, quality, maintainability, and scaling without premature distributed complexity.
 
@@ -24,7 +24,7 @@ The project owner has extensive C# experience and requires strong security, qual
 
 ### Python backend
 
-Viable, especially for model or data workloads, but rejected for the authoritative core because KitchenFlow is dominated by transactional domain behavior and the owner is more productive in C#.
+Viable, especially for model or data workloads, but rejected for the authoritative core because Cocinaris is dominated by transactional domain behavior and the owner is more productive in C#.
 
 ### Microservices from the start
 

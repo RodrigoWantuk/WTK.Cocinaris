@@ -50,7 +50,7 @@ Shelf life is not one field. The system represents evidence and conditions.
 
 1. manufacturer-printed date;
 2. explicit user date or override;
-3. curated KitchenFlow rule;
+3. curated Cocinaris rule;
 4. curated regional reference;
 5. AI-assisted estimate;
 6. unknown.

@@ -4,8 +4,8 @@ This file defines mandatory working rules for AI coding, testing, documentation,
 
 ## 1. Project identity
 
-- Product: **KitchenFlow**.
-- Repository and technical namespace: **WTK.KitchenFlow**.
+- Product: **Cocinaris**.
+- Repository and technical namespace: **WTK.Cocinaris**.
 - Product purpose: help adults transform available, planned, or purchasable food into useful meals with less effort, waste, and delivery dependence.
 - Platform: responsive multilingual web application.
 - Frontend: React and TypeScript under monorepo `apps/frontend` authority; Lovable or Emergent may be used as optional generation tools ([ADR-0007](docs/architecture/decisions/0007-frontend-platform-monorepo-and-generation-tooling.md)).
@@ -35,7 +35,7 @@ Do not infer that an undocumented requirement, technology, pattern, exception, o
 ## 4. Foundation behavior that must not be silently changed
 
 - The central decision problem is how to transform available, usable food into useful meals under user intent and constraints.
-- KitchenFlow is not reduced to a recipe generator or recipe catalog.
+- Cocinaris is not reduced to a recipe generator or recipe catalog.
 - Inventory uses products and lots with quantity, state, shelf-life evidence, source, confidence, and lifecycle history.
 - Shelf-life behavior is advisory and explainable; it does not arbitrarily force or block a user's choice.
 - Optional modules and context sources must degrade gracefully.

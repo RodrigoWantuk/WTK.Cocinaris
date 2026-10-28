@@ -6,7 +6,7 @@
 
 ## Purpose
 
-AI is central to KitchenFlow's reasoning and interaction, but it does not own application state, safety truth, authorization, or business correctness.
+AI is central to Cocinaris's reasoning and interaction, but it does not own application state, safety truth, authorization, or business correctness.
 
 All AI access passes through an application-owned backend gateway.
 
@@ -108,7 +108,7 @@ A cheaper model may compress noncritical narrative context when a measured need 
 
 ## Content reuse
 
-KitchenFlow should generate reusable culinary content once when safe and reuse it:
+Cocinaris should generate reusable culinary content once when safe and reuse it:
 
 - normalized recipes;
 - recipe stages and detail variants;

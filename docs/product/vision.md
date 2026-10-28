@@ -2,12 +2,12 @@
 
 - **Status:** Accepted
 - **Last updated:** 2026-07-28
-- **Product:** KitchenFlow
+- **Product:** Cocinaris
 - **Discovery source:** [`2026-07-28 stakeholder discovery`](../discovery/2026-07-28-stakeholder-discovery.md)
 
 ## Vision
 
-KitchenFlow makes home cooking practical enough to fit real life.
+Cocinaris makes home cooking practical enough to fit real life.
 
 It is not primarily a recipe catalog. It is a household food decision and execution system that connects what the user owns, what remains usable, what may be purchased, what the user is willing and able to do, and how those resources can become useful meals.
 
@@ -35,7 +35,7 @@ The absence of recipes is not the primary problem. The accumulated planning, mem
 
 ## Initial audience
 
-KitchenFlow is initially optimized, in priority order, for:
+Cocinaris is initially optimized, in priority order, for:
 
 1. people living alone;
 2. people with limited cooking experience;
@@ -47,7 +47,7 @@ The architecture may support other household sizes, but the first experience mus
 
 ## Value proposition
 
-> KitchenFlow helps people with limited time or cooking experience plan, shop, and cook better at home, with less effort, waste, and dependence on delivery.
+> Cocinaris helps people with limited time or cooking experience plan, shop, and cook better at home, with less effort, waste, and dependence on delivery.
 
 It supports three compatible motivations:
 

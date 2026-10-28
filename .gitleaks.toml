@@ -1,7 +1,7 @@
-# Gitleaks configuration for KitchenFlow.
+# Gitleaks configuration for Cocinaris.
 # Extend the default rule set; add narrow allowlists only for documented false positives.
 
-title = "KitchenFlow gitleaks"
+title = "Cocinaris gitleaks"
 
 [extend]
 useDefault = true

@@ -1,4 +1,4 @@
-import type { components } from "@kitchenflow/api-client";
+import type { components } from "@cocinaris/api-client";
 import {
   mapCompleteness,
   mapEquipmentCollection,

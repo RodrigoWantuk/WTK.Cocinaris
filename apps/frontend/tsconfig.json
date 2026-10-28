@@ -18,8 +18,8 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"],
-      "@kitchenflow/api-client": ["src/generated/api-client/index.ts"],
-      "@kitchenflow/api-client/*": ["src/generated/api-client/*"]
+      "@cocinaris/api-client": ["src/generated/api-client/index.ts"],
+      "@cocinaris/api-client/*": ["src/generated/api-client/*"]
     }
   },
   "include": ["src"]

@@ -1,7 +1,7 @@
-# @kitchenflow/api-client
+# @cocinaris/api-client
 
 Reproducible TypeScript client generated from
-`packages/contracts/openapi/kitchenflow-v1.json`.
+`packages/contracts/openapi/cocinaris-v1.json`.
 
 ## Generator policy
 

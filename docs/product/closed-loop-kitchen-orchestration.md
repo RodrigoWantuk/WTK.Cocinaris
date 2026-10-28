@@ -6,7 +6,7 @@
 
 ## Product position
 
-KitchenFlow coordinates the real transformation of food across inventory, planning, preparation, cooking, preservation, leftovers, and recovery when reality differs from the plan.
+Cocinaris coordinates the real transformation of food across inventory, planning, preparation, cooking, preservation, leftovers, and recovery when reality differs from the plan.
 
 It is not reduced to a recipe catalog, pantry checklist, shopping list, or weekly calendar.
 
@@ -31,7 +31,7 @@ A plan is an intention, not an obligation.
 
 Relevant divergence includes:
 
-- a meal was skipped, cancelled, replaced by delivery, or prepared outside KitchenFlow;
+- a meal was skipped, cancelled, replaced by delivery, or prepared outside Cocinaris;
 - time, effort, equipment, guests, or preference changed;
 - an ingredient became unavailable or unusable;
 - an expected preparation was not completed;
@@ -40,7 +40,7 @@ Relevant divergence includes:
 - unexpected leftovers or prepared components now exist;
 - a product needs attention sooner than expected.
 
-KitchenFlow identifies the affected:
+Cocinaris identifies the affected:
 
 - planned meals;
 - reservations;
@@ -237,7 +237,7 @@ The product distinguishes at least:
 
 ## 6. Pragmatic inventory uncertainty
 
-KitchenFlow does not require false precision.
+Cocinaris does not require false precision.
 
 It distinguishes:
 

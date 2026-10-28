@@ -1,8 +1,8 @@
 import {
-  createKitchenFlowClient,
+  createCocinarisClient,
   readEtag,
   readProblemDetails,
-} from "@kitchenflow/api-client";
+} from "@cocinaris/api-client";
 import {
   ProfileApiError,
   type ProfileApiErrorCode,
@@ -132,7 +132,7 @@ export function createLiveProfileRepository(options?: {
     options?.fetchImpl ??
     ((input: RequestInfo | URL, init?: RequestInit) =>
       globalThis.fetch(input, init));
-  const client = createKitchenFlowClient({
+  const client = createCocinarisClient({
     baseUrl: options?.baseUrl ?? "",
     fetch: (request) => fetchImpl(request),
   });

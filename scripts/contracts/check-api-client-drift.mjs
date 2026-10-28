@@ -19,7 +19,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(__dirname, "../..");
 const packageDir = join(repoRoot, "packages/api-client");
 const committed = join(packageDir, "src/generated/schema.ts");
-const openapi = join(repoRoot, "packages/contracts/openapi/kitchenflow-v1.json");
+const openapi = join(repoRoot, "packages/contracts/openapi/cocinaris-v1.json");
 const packageSrc = join(packageDir, "src");
 const frontendMirror = join(
   repoRoot,
@@ -57,7 +57,7 @@ try {
   const actual = readFileSync(committed, "utf8");
   if (expected !== actual) {
     console.error(
-      "Generated API client drifted from packages/contracts/openapi/kitchenflow-v1.json.\n" +
+      "Generated API client drifted from packages/contracts/openapi/cocinaris-v1.json.\n" +
         "Run: cd packages/api-client && yarn generate",
     );
     process.exit(1);

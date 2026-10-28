@@ -4,7 +4,7 @@
  * Unlike `src/features/profile/catalog` (a frontend-owned, non-exhaustive
  * convenience catalog for free-form stable codes), every value here is a hard
  * backend enum member or a hard-coded closed value object — see
- * `apps/backend/src/KitchenFlow.Modules.Profiles/Domain/ProfileValues.cs`. The
+ * `apps/backend/src/Cocinaris.Modules.Profiles/Domain/ProfileValues.cs`. The
  * backend rejects any other value with `validation_failed`, so these unions must
  * be kept in exact sync with that file, casing included:
  *

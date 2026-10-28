@@ -80,7 +80,7 @@ A menu entry can follow the current revision or remain pinned to a specific revi
 Sharing priority is:
 
 1. private share link;
-2. direct share to another KitchenFlow user;
+2. direct share to another Cocinaris user;
 3. unlisted public link;
 4. searchable public catalog later.
 

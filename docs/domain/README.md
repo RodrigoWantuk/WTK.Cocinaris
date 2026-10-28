@@ -1,4 +1,4 @@
-# KitchenFlow Core Domain
+# Cocinaris Core Domain
 
 - **Status:** Accepted
 - **Last updated:** 2026-07-31
@@ -71,7 +71,7 @@ Supporting contexts must not directly bypass the core domain's validation and st
 ## Conceptual entities
 
 ```text
-KitchenFlowUser
+CocinarisUser
 HouseholdProfile
 CookingProfile
 KitchenCapability

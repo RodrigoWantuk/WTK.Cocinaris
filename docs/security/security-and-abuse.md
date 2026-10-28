@@ -27,7 +27,7 @@
 
 ## Authorization
 
-KitchenFlow owns domain authorization. Every private resource is checked against the authenticated internal user and household context.
+Cocinaris owns domain authorization. Every private resource is checked against the authenticated internal user and household context.
 
 Keycloak roles may represent global operational roles, but they do not replace recipe ownership, household membership, sharing snapshot rules, or inventory authorization.
 

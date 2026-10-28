@@ -18,28 +18,28 @@ const evidenceDir =
   process.env.PLAN0005_EVIDENCE_DIR ??
   join(root, "docs/evidence/plan-0018");
 const reportPath = join(evidenceDir, "production-inventory-journey-result.json");
-const apiUrl = process.env.KITCHENFLOW_SMOKE_API_URL ?? "https://localhost:7443";
-const browserPath = process.env.KITCHENFLOW_SMOKE_BROWSER ?? "google-chrome";
+const apiUrl = process.env.COCINARIS_SMOKE_API_URL ?? "https://localhost:7443";
+const browserPath = process.env.COCINARIS_SMOKE_BROWSER ?? "google-chrome";
 const allowUntrustedLocalCertificate =
-  process.env.KITCHENFLOW_SMOKE_ALLOW_UNTRUSTED_LOCAL_CERTIFICATE === "1";
+  process.env.COCINARIS_SMOKE_ALLOW_UNTRUSTED_LOCAL_CERTIFICATE === "1";
 const browserSandboxArguments = process.getuid?.() === 0 ? ["--no-sandbox"] : [];
 const browserTrustStoreArguments =
   process.platform === "linux" ? ["--disable-features=ChromeRootStoreUsed"] : [];
 const users = [
   {
-    username: process.env.KITCHENFLOW_SMOKE_USER_A ?? "inventory-user-a",
-    password: process.env.KITCHENFLOW_SMOKE_PASSWORD_A,
+    username: process.env.COCINARIS_SMOKE_USER_A ?? "inventory-user-a",
+    password: process.env.COCINARIS_SMOKE_PASSWORD_A,
   },
   {
-    username: process.env.KITCHENFLOW_SMOKE_USER_B ?? "inventory-user-b",
-    password: process.env.KITCHENFLOW_SMOKE_PASSWORD_B,
+    username: process.env.COCINARIS_SMOKE_USER_B ?? "inventory-user-b",
+    password: process.env.COCINARIS_SMOKE_PASSWORD_B,
   },
 ];
 const sutSha = process.env.PLAN0016_SUT_SHA || process.env.PLAN0018_SUT_SHA || "UNKNOWN";
 
 if (users.some((user) => !user.password)) {
   process.stderr.write(
-    "KITCHENFLOW_SMOKE_PASSWORD_A and KITCHENFLOW_SMOKE_PASSWORD_B are required.\n",
+    "COCINARIS_SMOKE_PASSWORD_A and COCINARIS_SMOKE_PASSWORD_B are required.\n",
   );
   process.exit(2);
 }
@@ -151,7 +151,7 @@ class DevToolsConnection {
 }
 
 async function startBrowser(port) {
-  const profile = await mkdtemp(join(tmpdir(), "kitchenflow-plan0018-inv-"));
+  const profile = await mkdtemp(join(tmpdir(), "cocinaris-plan0018-inv-"));
   const child = spawn(
     browserPath,
     [
@@ -191,7 +191,7 @@ async function startBrowser(port) {
     await connection.send("Page.navigate", { url: `${apiUrl}/health/live` });
     await waitFor(
       async () => (await connection.evaluate("location.href")).startsWith(apiUrl),
-      "KitchenFlow HTTPS endpoint",
+      "Cocinaris HTTPS endpoint",
     );
     return { child, connection, profile };
   } catch (error) {
@@ -248,7 +248,7 @@ async function login(browser, user, returnUrl = "/health/live") {
   });
   await waitFor(
     async () => (await currentUrl(browser)).startsWith(apiUrl),
-    "KitchenFlow session probe",
+    "Cocinaris session probe",
   );
 
   const session = await browser.connection.evaluate(

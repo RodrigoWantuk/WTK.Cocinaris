@@ -1,6 +1,6 @@
-# Contributing to KitchenFlow
+# Contributing to Cocinaris
 
-KitchenFlow is an early-stage source-available project with an accepted product and architecture foundation. Contributions must preserve product intent, domain integrity, security, privacy, food safety, accessibility, localization, cost control, operability, testability, documentation completeness, and resumability.
+Cocinaris is an early-stage source-available project with an accepted product and architecture foundation. Contributions must preserve product intent, domain integrity, security, privacy, food safety, accessibility, localization, cost control, operability, testability, documentation completeness, and resumability.
 
 ## Before starting
 

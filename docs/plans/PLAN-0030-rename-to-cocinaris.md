@@ -1,6 +1,6 @@
 # PLAN-0030: Rename the Product and Technical Identifiers to Cocinaris
 
-- **Status:** In Progress
+- **Status:** Validating
 - **Type:** Operations
 - **Priority:** Critical
 - **Owner:** Claude Code (claimed 2026-10-28)
@@ -50,23 +50,35 @@ These steps are executed and documented by PLAN-0031 (deployment runbook).
 
 ## Acceptance criteria
 
-- [ ] `git grep -i kitchenflow` returns matches only in excluded historical paths and in explicit rename notes.
-- [ ] Backend restore/build/test pass, including integration tests against the renamed development fixtures.
-- [ ] OpenAPI export, lint and drift checks pass under the new file name; the regenerated client compiles; the frontend mirror is in sync.
-- [ ] Frontend gates pass (typecheck, lint, Prettier, guards, Jest, production build, bundle inspection, `audit:policy`).
-- [ ] AI contract validators pass.
+- [x] `git grep -i kitchenflow` returns matches only in excluded historical paths and in explicit rename notes.
+- [x] Backend restore/build/test pass, including integration tests against the renamed development fixtures.
+- [x] OpenAPI export, lint and drift checks pass under the new file name; the regenerated client compiles; the frontend mirror is in sync.
+- [x] Frontend gates pass (typecheck, lint, Prettier, guards, Jest, production build, bundle inspection, `audit:policy`).
+- [x] AI contract validators pass.
 - [ ] Operational consequences are documented for deployments.
 
 ## Execution state
 
 - **Current run delivery target:** Complete rename with validation in one run.
-- **Current checkpoint:** Plan created; rename not started.
-- **Exact next action:** Execute the scripted path and content rename, then rebuild and validate.
-- **Blockers:** None.
-- **Working tree state:** Plan files uncommitted at creation.
+- **Current checkpoint:** Rename implemented and validated on the owner host. The deployment-side steps (environment keys, service entry point) are documented and executed by PLAN-0031 after the owner merges.
+- **Last completed step:** Full CI-equivalent validation on the host: NuGet restore in locked mode; `dotnet format --verify-no-changes`; Release build with 0 warnings and 0 errors; architecture 14/14, unit 52/52 and integration 175/175 tests with the renamed OIDC development fixture; empty-database migration and upgrade; idempotent migration script applied twice (9 history rows); OpenAPI export identical to the snapshot, plus check and Redocly lint. API client generate and drift check pass. Frontend typecheck, lint, Prettier, guards, Jest 45/369, production build, bundle inspection and `audit:policy` pass on Node.js 24.22.1. AI recipe contract tests and drift check pass.
+- **Exact next action:** CI run on the PR head, then owner merge, then the PLAN-0031 deployment runbook rename steps.
+- **Blockers:** Owner merge for deployment.
+- **Partially modified areas:** None.
+- **Documentation delivered:** Every living document renamed; naming history note in `docs/README.md`.
+- **Known failures or limitations:** Completed plans PLAN-0001–PLAN-0027, PLAN-0028/0029 narrative and `docs/evidence/` intentionally keep the historical name.
+- **Working tree state:** Committed on `agent/plan-0030-rename-cocinaris`.
 
 ## Progress log
 
 ### 2026-10-28T14:45:00Z — Claude Code
 
 - Plan created from owner decision D-1. Scope and historical exclusions defined.
+
+### 2026-10-28T15:40:00Z — Claude Code
+
+- **Checkpoint:** Rename implemented and validated.
+- **Changes:** Project folders, `.csproj`, solution, Keycloak realm file and OpenAPI snapshot renamed. Content of 212 living files rewritten (`KitchenFlow`/`kitchenflow`/`KITCHENFLOW` → `Cocinaris`/`cocinaris`/`COCINARIS`). `packages/api-client/src/index.ts` reformatted (shorter identifier). Naming history note added.
+- **Validation:** See execution state. All gates green on the owner host.
+- **Next action:** PR CI, owner merge, deployment steps in PLAN-0031.
+

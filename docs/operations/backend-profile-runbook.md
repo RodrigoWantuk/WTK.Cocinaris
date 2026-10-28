@@ -1,12 +1,12 @@
 # Backend Profile Runbook
 
 - **Status:** Active
-- **Applies to:** KitchenFlow API profile v1 contract, PostgreSQL `profiles` schema, and session-safe projections
+- **Applies to:** Cocinaris API profile v1 contract, PostgreSQL `profiles` schema, and session-safe projections
 - **Related plan:** PLAN-0012
 
 ## Scope
 
-This runbook documents the authenticated profile, household, preferences, equipment, and completeness endpoints delivered by `KitchenFlow.Modules.Profiles`.
+This runbook documents the authenticated profile, household, preferences, equipment, and completeness endpoints delivered by `Cocinaris.Modules.Profiles`.
 
 ## Endpoints
 
@@ -26,19 +26,19 @@ When `profileExists` is false, GET `/api/v1/profile` returns `version`, `created
 ## Local validation
 
 ```bash
-dotnet build apps/backend/KitchenFlow.slnx -c Release
-dotnet test apps/backend/KitchenFlow.slnx -c Release
+dotnet build apps/backend/Cocinaris.slnx -c Release
+dotnet test apps/backend/Cocinaris.slnx -c Release
 dotnet ef database update \
-  --project apps/backend/src/KitchenFlow.Infrastructure/KitchenFlow.Infrastructure.csproj \
-  --startup-project apps/backend/src/KitchenFlow.Api/KitchenFlow.Api.csproj
+  --project apps/backend/src/Cocinaris.Infrastructure/Cocinaris.Infrastructure.csproj \
+  --startup-project apps/backend/src/Cocinaris.Api/Cocinaris.Api.csproj
 ```
 
 After the API is running with a trusted development certificate or CI loopback URL:
 
 ```bash
-KITCHENFLOW_OPENAPI_URL=http://127.0.0.1:7080/openapi/v1.json bash scripts/backend/export-openapi.sh
+COCINARIS_OPENAPI_URL=http://127.0.0.1:7080/openapi/v1.json bash scripts/backend/export-openapi.sh
 bash scripts/backend/lint-openapi.sh
-git diff --exit-code -- packages/contracts/openapi/kitchenflow-v1.json
+git diff --exit-code -- packages/contracts/openapi/cocinaris-v1.json
 ```
 
 ## Privacy and audit

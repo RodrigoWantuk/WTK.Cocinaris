@@ -256,7 +256,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** KitchenFlow health operation. */
+        /** Cocinaris health operation. */
         get: operations["healthhealthlive"];
         put?: never;
         post?: never;
@@ -273,7 +273,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** KitchenFlow health operation. */
+        /** Cocinaris health operation. */
         get: operations["healthhealthready"];
         put?: never;
         post?: never;
@@ -562,7 +562,7 @@ export interface components {
         };
         ProblemDetails: {
             detail?: null | string;
-            /** @description Stable machine-readable KitchenFlow error code. */
+            /** @description Stable machine-readable Cocinaris error code. */
             errorCode: string;
             /** @description Field-level validation messages keyed by request field name. */
             errors?: {
@@ -697,7 +697,7 @@ export interface components {
             measuredValue?: null;
             unit?: null;
         });
-        /** @description Returns the KitchenFlow internal user identifier, request-specific CSRF token, and safe profile session projection
+        /** @description Returns the Cocinaris internal user identifier, request-specific CSRF token, and safe profile session projection
          *     for a backend-managed browser session. OIDC access and refresh tokens are intentionally never present in this response. */
         SessionResponse: {
             adultDeclarationState: string;

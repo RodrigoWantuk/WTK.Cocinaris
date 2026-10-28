@@ -27,7 +27,7 @@ The data model must not make future collaboration impossible. Meal-level serving
 
 ## Adult-only policy
 
-KitchenFlow is intended only for users aged 18 or older who have legal capacity to accept the service terms in their jurisdiction.
+Cocinaris is intended only for users aged 18 or older who have legal capacity to accept the service terms in their jurisdiction.
 
 The product records an adult-capacity declaration and the accepted terms version rather than collecting a full birth date without another documented purpose. Country availability and legal wording require professional review before launch.
 

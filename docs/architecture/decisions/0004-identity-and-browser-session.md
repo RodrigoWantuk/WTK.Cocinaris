@@ -14,9 +14,9 @@ The application requires account creation, email verification, recovery, externa
 - Use current Authorization Code Flow security practices.
 - Use a backend/BFF-managed browser session with secure cookies.
 - Do not store long-lived access or refresh tokens in React browser storage.
-- Assign every KitchenFlow user an internal UUID independent from the Keycloak subject.
+- Assign every Cocinaris user an internal UUID independent from the Keycloak subject.
 - Map identities by issuer and subject and preserve future identity linking.
-- Keep household, recipe, inventory, sharing, and application authorization in KitchenFlow.
+- Keep household, recipe, inventory, sharing, and application authorization in Cocinaris.
 - Use identity-provider roles only for limited global operational roles.
 - Require email verification for applicable flows and MFA for privileged internal accounts.
 - Initial desired user flows include email/password, verification, recovery, Google login, session revocation, and account deletion. Exact realm configuration is an implementation plan.

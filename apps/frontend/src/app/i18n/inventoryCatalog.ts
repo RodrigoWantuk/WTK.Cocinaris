@@ -108,7 +108,7 @@ export type InventoryI18nKey = (typeof REQUIRED_INVENTORY_I18N_KEYS)[number];
 
 const en: Record<InventoryI18nKey, string> = {
   "inventory.title": "Pantry",
-  "inventory.subtitle": "Lots you own, loaded from the KitchenFlow API.",
+  "inventory.subtitle": "Lots you own, loaded from the Cocinaris API.",
   "inventory.loading": "Loading…",
   "inventory.empty": "No lots yet. Add the first product to get started.",
   "inventory.emptyFiltered": "No lots match the current filters.",
@@ -222,7 +222,7 @@ const en: Record<InventoryI18nKey, string> = {
 const ptBR: Record<InventoryI18nKey, string> = {
   ...en,
   "inventory.title": "Despensa",
-  "inventory.subtitle": "Lotes seus, carregados pela API do KitchenFlow.",
+  "inventory.subtitle": "Lotes seus, carregados pela API do Cocinaris.",
   "inventory.loading": "Carregando…",
   "inventory.empty": "Nenhum lote ainda. Adicione o primeiro produto.",
   "inventory.emptyFiltered": "Nenhum lote corresponde aos filtros atuais.",
@@ -336,7 +336,7 @@ const ptBR: Record<InventoryI18nKey, string> = {
 const es: Record<InventoryI18nKey, string> = {
   ...en,
   "inventory.title": "Despensa",
-  "inventory.subtitle": "Lotes propios cargados desde la API de KitchenFlow.",
+  "inventory.subtitle": "Lotes propios cargados desde la API de Cocinaris.",
   "inventory.loading": "Cargando…",
   "inventory.empty": "Aún no hay lotes. Agrega el primer producto.",
   "inventory.emptyFiltered": "Ningún lote coincide con los filtros actuales.",

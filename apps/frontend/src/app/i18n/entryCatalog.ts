@@ -38,7 +38,7 @@ export const entryCatalogs: Record<ProductionLocale, Catalog> = {
     "entry.hero.eyebrow": "Para adultos que querem cozinhar com o que têm",
     "entry.hero.title": "Transforme alimentos disponíveis em refeições úteis",
     "entry.hero.lead":
-      "O KitchenFlow ajuda a decidir o que preparar com inventário, urgência, planos, preferências, tempo e esforço — com menos desperdício e menos dependência de delivery.",
+      "O Cocinaris ajuda a decidir o que preparar com inventário, urgência, planos, preferências, tempo e esforço — com menos desperdício e menos dependência de delivery.",
     "entry.hero.notOnlyRecipes":
       "Não é só um gerador de receitas. O centro é usar melhor a comida que você já tem ou planejou.",
     "entry.cta.login": "Criar conta ou entrar",
@@ -57,7 +57,7 @@ export const entryCatalogs: Record<ProductionLocale, Catalog> = {
     "entry.why.title": "Por que criar uma conta?",
     "entry.why.account":
       "Com uma conta, o produto pode lembrar inventário, preferências confirmadas e planos aceitos para responder “o que cozinhar hoje?” com contexto real — sem exigir que você conte a cozinha do zero a cada visita.",
-    "entry.outcomes.title": "O que o KitchenFlow ajuda a resolver",
+    "entry.outcomes.title": "O que o Cocinaris ajuda a resolver",
     "entry.outcomes.inventory": "Entender o que está disponível e utilizável",
     "entry.outcomes.decide": "Decidir o que preparar agora",
     "entry.outcomes.attention":
@@ -72,13 +72,13 @@ export const entryCatalogs: Record<ProductionLocale, Catalog> = {
     "entry.legal.placeholderNote":
       "Links jurídicos são placeholders até a revisão legal definitiva.",
     "entry.footer":
-      "KitchenFlow · experiência pública sem sessão autenticada · sem dados pessoais nesta página",
+      "Cocinaris · experiência pública sem sessão autenticada · sem dados pessoais nesta página",
   },
   en: {
     "entry.hero.eyebrow": "For adults who want to cook with what they have",
     "entry.hero.title": "Turn available food into useful meals",
     "entry.hero.lead":
-      "KitchenFlow helps you decide what to prepare using inventory, urgency, plans, preferences, time, and effort — with less waste and less delivery dependence.",
+      "Cocinaris helps you decide what to prepare using inventory, urgency, plans, preferences, time, and effort — with less waste and less delivery dependence.",
     "entry.hero.notOnlyRecipes":
       "It is not just a recipe generator. The center is making better use of food you already have or planned.",
     "entry.cta.login": "Create an account or sign in",
@@ -97,7 +97,7 @@ export const entryCatalogs: Record<ProductionLocale, Catalog> = {
     "entry.why.title": "Why create an account?",
     "entry.why.account":
       "With an account, the product can remember inventory, confirmed preferences, and accepted plans to answer “what shall we cook today?” with real context — without starting from scratch every visit.",
-    "entry.outcomes.title": "What KitchenFlow helps solve",
+    "entry.outcomes.title": "What Cocinaris helps solve",
     "entry.outcomes.inventory": "Understand what food is available and usable",
     "entry.outcomes.decide": "Decide what to prepare now",
     "entry.outcomes.attention":
@@ -112,13 +112,13 @@ export const entryCatalogs: Record<ProductionLocale, Catalog> = {
     "entry.legal.placeholderNote":
       "Legal links are placeholders until definitive legal review.",
     "entry.footer":
-      "KitchenFlow · public experience without an authenticated session · no personal data on this page",
+      "Cocinaris · public experience without an authenticated session · no personal data on this page",
   },
   es: {
     "entry.hero.eyebrow": "Para adultos que quieren cocinar con lo que tienen",
     "entry.hero.title": "Convierte alimentos disponibles en comidas útiles",
     "entry.hero.lead":
-      "KitchenFlow ayuda a decidir qué preparar usando inventario, urgencia, planes, preferencias, tiempo y esfuerzo — con menos desperdicio y menos dependencia del delivery.",
+      "Cocinaris ayuda a decidir qué preparar usando inventario, urgencia, planes, preferencias, tiempo y esfuerzo — con menos desperdicio y menos dependencia del delivery.",
     "entry.hero.notOnlyRecipes":
       "No es solo un generador de recetas. El centro es aprovechar mejor la comida que ya tienes o planificaste.",
     "entry.cta.login": "Crear cuenta o iniciar sesión",
@@ -137,7 +137,7 @@ export const entryCatalogs: Record<ProductionLocale, Catalog> = {
     "entry.why.title": "¿Por qué crear una cuenta?",
     "entry.why.account":
       "Con una cuenta, el producto puede recordar inventario, preferencias confirmadas y planes aceptados para responder “¿qué cocinamos hoy?” con contexto real — sin empezar de cero en cada visita.",
-    "entry.outcomes.title": "Qué ayuda a resolver KitchenFlow",
+    "entry.outcomes.title": "Qué ayuda a resolver Cocinaris",
     "entry.outcomes.inventory": "Entender qué comida está disponible y usable",
     "entry.outcomes.decide": "Decidir qué preparar ahora",
     "entry.outcomes.attention":
@@ -152,6 +152,6 @@ export const entryCatalogs: Record<ProductionLocale, Catalog> = {
     "entry.legal.placeholderNote":
       "Los enlaces jurídicos son marcadores de posición hasta la revisión legal definitiva.",
     "entry.footer":
-      "KitchenFlow · experiencia pública sin sesión autenticada · sin datos personales en esta página",
+      "Cocinaris · experiencia pública sin sesión autenticada · sin datos personales en esta página",
   },
 };

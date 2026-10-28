@@ -29,8 +29,8 @@ fi
 set -a
 source .env
 set +a
-export KITCHENFLOW_SMOKE_PASSWORD_A="${KITCHENFLOW_SMOKE_PASSWORD_A:-development-only-user-a}"
-export KITCHENFLOW_SMOKE_PASSWORD_B="${KITCHENFLOW_SMOKE_PASSWORD_B:-development-only-user-b}"
+export COCINARIS_SMOKE_PASSWORD_A="${COCINARIS_SMOKE_PASSWORD_A:-development-only-user-a}"
+export COCINARIS_SMOKE_PASSWORD_B="${COCINARIS_SMOKE_PASSWORD_B:-development-only-user-b}"
 
 RUN_START="$(date +%s)"
 RUN_START_UTC="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
@@ -82,8 +82,8 @@ chmod +x scripts/plan-0005/*.sh || true
 run_group environment bash scripts/plan-0005/prove-environment.sh
 
 run_group backend-domain-and-http bash -c '
-  dotnet test apps/backend/KitchenFlow.slnx -c Release --no-build \
-    --filter "FullyQualifiedName~KitchenFlow.UnitTests|FullyQualifiedName~KitchenFlow.ArchitectureTests|FullyQualifiedName~Plan0005P0GapTests|FullyQualifiedName~ApiAuthenticationTests" \
+  dotnet test apps/backend/Cocinaris.slnx -c Release --no-build \
+    --filter "FullyQualifiedName~Cocinaris.UnitTests|FullyQualifiedName~Cocinaris.ArchitectureTests|FullyQualifiedName~Plan0005P0GapTests|FullyQualifiedName~ApiAuthenticationTests" \
     --logger "trx;LogFilePrefix=plan0005-p0-" \
     --results-directory "'"${REPORT_DIR}"'/trx"
 '
@@ -93,13 +93,13 @@ run_group real-keycloak-oidc bash -c '
 '
 
 run_group migrations bash -c '
-  bash scripts/backend/generate-migration-script.sh "'"${REPORT_DIR}"'/kitchenflow-migrations.sql"
-  docker compose -f infrastructure/compose/compose.dev.yml exec -T postgres psql -U kitchenflow_dev -d postgres -c "DROP DATABASE IF EXISTS kitchenflow_plan0005_idempotent WITH (FORCE)"
-  docker compose -f infrastructure/compose/compose.dev.yml exec -T postgres psql -U kitchenflow_dev -d postgres -c "CREATE DATABASE kitchenflow_plan0005_idempotent"
-  docker compose -f infrastructure/compose/compose.dev.yml exec -T postgres psql -v ON_ERROR_STOP=1 -U kitchenflow_dev -d kitchenflow_plan0005_idempotent < "'"${REPORT_DIR}"'/kitchenflow-migrations.sql"
-  docker compose -f infrastructure/compose/compose.dev.yml exec -T postgres psql -v ON_ERROR_STOP=1 -U kitchenflow_dev -d kitchenflow_plan0005_idempotent < "'"${REPORT_DIR}"'/kitchenflow-migrations.sql"
-  expected="$(find apps/backend/src/KitchenFlow.Infrastructure/Persistence/Migrations -maxdepth 1 -type f -name "*.cs" ! -name "*Designer.cs" ! -name "ApplicationDbContextModelSnapshot.cs" | wc -l | tr -d " ")"
-  actual="$(docker compose -f infrastructure/compose/compose.dev.yml exec -T postgres psql -tAc "SELECT count(*) FROM \"__EFMigrationsHistory\"" -U kitchenflow_dev -d kitchenflow_plan0005_idempotent | tr -d " ")"
+  bash scripts/backend/generate-migration-script.sh "'"${REPORT_DIR}"'/cocinaris-migrations.sql"
+  docker compose -f infrastructure/compose/compose.dev.yml exec -T postgres psql -U cocinaris_dev -d postgres -c "DROP DATABASE IF EXISTS cocinaris_plan0005_idempotent WITH (FORCE)"
+  docker compose -f infrastructure/compose/compose.dev.yml exec -T postgres psql -U cocinaris_dev -d postgres -c "CREATE DATABASE cocinaris_plan0005_idempotent"
+  docker compose -f infrastructure/compose/compose.dev.yml exec -T postgres psql -v ON_ERROR_STOP=1 -U cocinaris_dev -d cocinaris_plan0005_idempotent < "'"${REPORT_DIR}"'/cocinaris-migrations.sql"
+  docker compose -f infrastructure/compose/compose.dev.yml exec -T postgres psql -v ON_ERROR_STOP=1 -U cocinaris_dev -d cocinaris_plan0005_idempotent < "'"${REPORT_DIR}"'/cocinaris-migrations.sql"
+  expected="$(find apps/backend/src/Cocinaris.Infrastructure/Persistence/Migrations -maxdepth 1 -type f -name "*.cs" ! -name "*Designer.cs" ! -name "ApplicationDbContextModelSnapshot.cs" | wc -l | tr -d " ")"
+  actual="$(docker compose -f infrastructure/compose/compose.dev.yml exec -T postgres psql -tAc "SELECT count(*) FROM \"__EFMigrationsHistory\"" -U cocinaris_dev -d cocinaris_plan0005_idempotent | tr -d " ")"
   test "$actual" -eq "$expected"
 '
 

@@ -11,7 +11,7 @@
 
 ## Boundary
 
-KitchenFlow uses AI to propose culinary artifacts. Application code remains authoritative for identity, authorization, inventory, quantities, expiration, reservations, shopping aggregation, package arithmetic, scheduling, concurrency and mutations.
+Cocinaris uses AI to propose culinary artifacts. Application code remains authoritative for identity, authorization, inventory, quantities, expiration, reservations, shopping aggregation, package arithmetic, scheduling, concurrency and mutations.
 
 Every model response is parsed, schema-validated and semantically validated. It may be rejected or repaired and never mutates product state directly.
 
@@ -78,7 +78,7 @@ The backend computes authoritative semantic fingerprints and rejects near-duplic
 
 ## Generation sessions
 
-KitchenFlow owns generation-session state. Another batch receives current canonical state plus at most nine compact prior semantic summaries/fingerprints and explicit rejection reasons. Full model responses, provider conversation history and reasoning are not replayed.
+Cocinaris owns generation-session state. Another batch receives current canonical state plus at most nine compact prior semantic summaries/fingerprints and explicit rejection reasons. Full model responses, provider conversation history and reasoning are not replayed.
 
 Provider cache/state is an optimization only; correctness never depends on it.
 

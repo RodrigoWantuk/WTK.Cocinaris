@@ -6,9 +6,9 @@
 
 ## Purpose
 
-This document defines the accepted initial architecture for KitchenFlow. Detailed technology choices are recorded in Architecture Decision Records under [`decisions/`](decisions/).
+This document defines the accepted initial architecture for Cocinaris. Detailed technology choices are recorded in Architecture Decision Records under [`decisions/`](decisions/).
 
-KitchenFlow is a responsive multilingual web product with independently buildable, testable, deployable, and observable frontend and backend applications.
+Cocinaris is a responsive multilingual web product with independently buildable, testable, deployable, and observable frontend and backend applications.
 
 ## Architectural goals
 
@@ -118,10 +118,10 @@ The backend owns:
 The initial backend is one logical application with explicit modules and a small number of deployables:
 
 ```text
-KitchenFlow.Api
-KitchenFlow.Worker
-KitchenFlow.Contracts
-KitchenFlow.SharedKernel
+Cocinaris.Api
+Cocinaris.Worker
+Cocinaris.Contracts
+Cocinaris.SharedKernel
 
 Modules/
   Accounts

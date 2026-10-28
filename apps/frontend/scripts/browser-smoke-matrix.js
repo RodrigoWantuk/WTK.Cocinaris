@@ -1039,18 +1039,18 @@ async function run() {
           );
         }
         const stored = await page.evaluate(() =>
-          localStorage.getItem("kitchenflow_production_locale"),
+          localStorage.getItem("cocinaris_production_locale"),
         );
         if (stored !== "en") {
           fail(
             "production locale mobile 360",
-            `expected kitchenflow_production_locale=en, got ${stored}`,
+            `expected cocinaris_production_locale=en, got ${stored}`,
           );
         }
         const tagline = await page
           .getByTestId("production-landing-tagline")
           .innerText();
-        if (!/KitchenFlow helps/i.test(tagline)) {
+        if (!/Cocinaris helps/i.test(tagline)) {
           fail(
             "production locale mobile 360",
             `EN tagline missing: ${tagline}`,
@@ -1120,7 +1120,7 @@ async function run() {
 
     // Route-interception coverage of the authenticated `/app/perfil*` journey.
     //
-    // IMPORTANT: this step never talks to a real KitchenFlow backend or Keycloak.
+    // IMPORTANT: this step never talks to a real Cocinaris backend or Keycloak.
     // Every `/api/v1/session` and `/api/v1/profile*` request against
     // PRODUCTION_BASE is intercepted with `page.route()` and answered from the
     // fixtures in `profileInterceptionFixtures` below, so the frontend renders

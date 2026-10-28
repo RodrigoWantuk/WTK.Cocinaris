@@ -1,8 +1,12 @@
-# KitchenFlow Documentation
+# Cocinaris Documentation
 
 This directory is the durable source of truth for product, domain, architecture, engineering, AI, quality, security, operations, development, and work-execution decisions.
 
 Documentation is part of the product. Code, tests, contracts, plans, and operational behavior must remain consistent with the accepted documents.
+
+## Naming history
+
+The product was called **KitchenFlow** during discovery and the first implementation plans. On 2026-10-28 the owner adopted **Cocinaris** for the product and every technical identifier ([PLAN-0030](plans/PLAN-0030-rename-to-cocinaris.md)). Living documents, code, contracts and configuration use Cocinaris. Completed plans PLAN-0001 to PLAN-0027 and `docs/evidence/` are immutable execution history and keep the old name, along with the commands and identifiers that were valid at the commits they reference.
 
 ## Documentation map
 

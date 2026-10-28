@@ -1,7 +1,7 @@
 /**
- * Minimal RFC 7807 / KitchenFlow problem-details shape from the OpenAPI contract.
+ * Minimal RFC 7807 / Cocinaris problem-details shape from the OpenAPI contract.
  */
-export interface KitchenFlowProblemDetails {
+export interface CocinarisProblemDetails {
   type?: string | null;
   title?: string | null;
   status?: number | null;
@@ -16,7 +16,7 @@ export interface KitchenFlowProblemDetails {
  */
 export async function readProblemDetails(
   response: Response,
-): Promise<KitchenFlowProblemDetails | null> {
+): Promise<CocinarisProblemDetails | null> {
   const contentType = response.headers.get("content-type") ?? "";
   if (
     !contentType.includes("application/problem+json") &&
@@ -29,7 +29,7 @@ export async function readProblemDetails(
     if (!body || typeof body !== "object") {
       return null;
     }
-    return body as KitchenFlowProblemDetails;
+    return body as CocinarisProblemDetails;
   } catch {
     return null;
   }

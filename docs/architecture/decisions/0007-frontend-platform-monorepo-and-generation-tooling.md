@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-07-31
-- **Owners:** KitchenFlow architecture / PLAN-0014
+- **Owners:** Cocinaris architecture / PLAN-0014
 - **Decision scope:** Frontend platform, repository authority, and optional UI generation tools
 - **Related issues:** None
 - **Supersedes:** [ADR-0001](0001-frontend-platform-and-boundary.md)
@@ -55,8 +55,8 @@ ADR-0001 required React/TypeScript and treated Lovable as the required design an
 
 ## Decision
 
-- Use **React** and **TypeScript** for the KitchenFlow frontend.
-- The official frontend lives only at `WTK.KitchenFlow/apps/frontend`.
+- Use **React** and **TypeScript** for the Cocinaris frontend.
+- The official frontend lives only at `WTK.Cocinaris/apps/frontend`.
 - The Emergent repository `RodrigoWantuk/kitchen-emergent` at commit `69f798f66b7987c4ed785c52c90a5539bf46f52e` is the one-time historical snapshot imported by PLAN-0014. No bidirectional sync is planned; the temporary repository may be archived after validation.
 - **Emergent** and **Lovable** are optional design/generation tools. They do not own authentication, persistence, domain rules, contracts, or deployment authority.
 - Preserve the imported runtime (Create React App + CRACO) unless a later ADR changes it.

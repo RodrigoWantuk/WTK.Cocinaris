@@ -1,0 +1,91 @@
+using Cocinaris.Modules.Inventory.Application;
+using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
+
+namespace Cocinaris.Infrastructure.Persistence;
+
+/// <summary>PostgreSQL implementation of the explicit owner-scoped inventory read boundary.</summary>
+public sealed class PostgreSqlInventoryLotReadStore(ApplicationDbContext database) : IInventoryLotReadStore
+{
+    /// <inheritdoc />
+    public async Task<InventoryLotReadModel?> FindActiveAsync(Guid ownerUserId, Guid lotId, CancellationToken cancellationToken)
+    {
+        return await (from lot in database.Lots.AsNoTracking()
+                      join product in database.Products.AsNoTracking() on lot.ProductId equals product.Id
+                      where lot.Id == lotId && lot.OwnerUserId == ownerUserId && product.OwnerUserId == ownerUserId && lot.DeletedAt == null
+                      select ToReadModel(lot, product.DisplayName)).SingleOrDefaultAsync(cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task<InventoryLotReadPage> ListAsync(InventoryLotReadQuery query, CancellationToken cancellationToken)
+    {
+        var lots = database.Lots.AsNoTracking().Where(lot => lot.OwnerUserId == query.OwnerUserId);
+        lots = query.Status switch
+        {
+            "deleted" => lots.Where(lot => lot.DeletedAt != null),
+            "depleted" => lots.Where(lot => lot.DeletedAt == null && ((lot.MeasuredValue != null && lot.MeasuredValue == 0m) || lot.AvailabilityState == "Unavailable")),
+            _ => lots.Where(lot => lot.DeletedAt == null && ((lot.MeasuredValue != null && lot.MeasuredValue > 0m) || (lot.MeasuredValue == null && lot.AvailabilityState != "Unavailable")))
+        };
+        if (query.StorageLocation is not null)
+        {
+            lots = lots.Where(lot => lot.StorageLocation == query.StorageLocation);
+        }
+
+        var records = from lot in lots
+                      join product in database.Products.AsNoTracking() on lot.ProductId equals product.Id
+                      where product.OwnerUserId == query.OwnerUserId
+                      select new { Lot = lot, ProductName = product.DisplayName, product.NormalizedSearchName };
+        if (!string.IsNullOrWhiteSpace(query.Search))
+        {
+            records = records.Where(item => item.NormalizedSearchName.Contains(query.Search.Trim().ToUpperInvariant()));
+        }
+
+        if (query.Cursor is not null)
+        {
+            records = records.Where(item => item.Lot.UpdatedAt < query.Cursor.UpdatedAt || (item.Lot.UpdatedAt == query.Cursor.UpdatedAt && item.Lot.Id.CompareTo(query.Cursor.LotId) < 0));
+        }
+
+        var page = await records.OrderByDescending(item => item.Lot.UpdatedAt).ThenByDescending(item => item.Lot.Id).Take(query.PageSize + 1).ToListAsync(cancellationToken);
+        var items = page.Take(query.PageSize).Select(item => ToReadModel(item.Lot, item.ProductName)).ToList();
+        var next = page.Count > query.PageSize ? new InventoryLotReadCursor(items[^1].UpdatedAt, items[^1].LotId) : null;
+        return new InventoryLotReadPage(items, next);
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<InventoryHistoryReadModel>?> GetHistoryAsync(Guid ownerUserId, Guid lotId, CancellationToken cancellationToken)
+    {
+        var exists = await database.Lots.AsNoTracking().AnyAsync(lot => lot.Id == lotId && lot.OwnerUserId == ownerUserId, cancellationToken);
+        if (!exists)
+        {
+            return null;
+        }
+
+        var transactions = await database.Transactions.AsNoTracking()
+            .Where(item => item.OwnerUserId == ownerUserId && item.LotId == lotId)
+            .Select(item => new InventoryHistoryReadModel(item.Id, "Transaction", item.Type, item.PreviousMeasuredValue, item.PreviousMeasuredUnit, item.PreviousAvailabilityState, item.ResultingMeasuredValue, item.ResultingMeasuredUnit, item.ResultingAvailabilityState, item.ReasonCode, null, item.OccurredAt))
+            .ToListAsync(cancellationToken);
+        var corrections = await database.AuditEvents.AsNoTracking()
+            .Where(item => item.ActorUserId == ownerUserId && item.TargetType == "inventory_lot" && item.TargetId == lotId && item.EventName == "inventory.lot.metadata_corrected")
+            .Select(item => new { item.Id, item.MetadataJson, item.OccurredAt })
+            .ToListAsync(cancellationToken);
+        var projectedCorrections = corrections.Select(item => new InventoryHistoryReadModel(item.Id, "MetadataCorrection", null, null, null, null, null, null, null, null, ReadChangedFields(item.MetadataJson), item.OccurredAt));
+        return transactions.Concat(projectedCorrections).OrderByDescending(item => item.OccurredAt).ThenByDescending(item => item.EntryId).ToList();
+    }
+
+    private static InventoryLotReadModel ToReadModel(LotRecord lot, string productName) => new(lot.Id, lot.ProductId, productName, lot.MeasuredValue, lot.MeasuredUnit, lot.AvailabilityState, lot.StorageLocation, lot.CustomLocation, lot.PackageState, lot.PrintedExpirationDate, lot.Notes, lot.ConcurrencyToken, lot.CreatedAt, lot.UpdatedAt, lot.DeletedAt);
+
+    private static IReadOnlyList<string> ReadChangedFields(string metadataJson)
+    {
+        try
+        {
+            using var document = JsonDocument.Parse(metadataJson);
+            return document.RootElement.TryGetProperty("changedFields", out var fields) && fields.ValueKind == JsonValueKind.Array
+                ? fields.EnumerateArray().Where(field => field.ValueKind == JsonValueKind.String).Select(field => field.GetString()).Where(field => !string.IsNullOrWhiteSpace(field)).Cast<string>().Distinct(StringComparer.Ordinal).ToList()
+                : [];
+        }
+        catch (JsonException)
+        {
+            return [];
+        }
+    }
+}

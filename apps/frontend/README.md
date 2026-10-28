@@ -1,10 +1,10 @@
-# KitchenFlow Frontend
+# Cocinaris Frontend
 
-Official KitchenFlow frontend package living at `apps/frontend`.
+Official Cocinaris frontend package living at `apps/frontend`.
 
 ## Authority and current state
 
-- This directory is the **only** official frontend source for KitchenFlow.
+- This directory is the **only** official frontend source for Cocinaris.
 - Imported from Emergent snapshot `69f798f66b7987c4ed785c52c90a5539bf46f52e` (see [`docs/development/emergent-frontend-import-provenance.md`](../../docs/development/emergent-frontend-import-provenance.md)).
 - `kitchen-emergent` is a historical snapshot. There is **no** bidirectional sync.
 - Emergent and Lovable remain optional generation tools only (ADR-0007).
@@ -79,7 +79,7 @@ Historical reports and plan-specific evidence live under the documented evidence
 |---|---|
 | `src/adapters/mock/` | Fixture-backed presentation projections for **prototype/test** only (includes contextual-home mocks) |
 | `src/adapters/live/` | Live inventory repository and unavailable stand-ins for undeveloped areas (including contextual home) |
-| `src/generated/api-client/` | CRA mirror of `@kitchenflow/api-client` (do not edit; regenerate) |
+| `src/generated/api-client/` | CRA mirror of `@cocinaris/api-client` (do not edit; regenerate) |
 | `src/contracts/` | Presentation models (inventory quantity, preparation, contextual home) |
 | `src/features/inventory/` | Production inventory screens |
 | `src/features/entry/` | Public entry (Phase 1) |

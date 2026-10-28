@@ -153,7 +153,7 @@ The system must not assume a package size without a source or user confirmation.
 
 ## Planned versus actual purchase
 
-When a purchase differs from the plan, KitchenFlow records the real product and quantity, then proposes impact:
+When a purchase differs from the plan, Cocinaris records the real product and quantity, then proposes impact:
 
 - keep the recipe and adapt the product;
 - change portions;

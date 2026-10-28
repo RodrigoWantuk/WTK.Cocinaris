@@ -5,7 +5,7 @@
 
 ## Context
 
-KitchenFlow requires relational transactions across executions, lots, leftovers, waste, reservations, quotas, jobs, consent, and audit. It also requires durable background work for AI, parsing, notifications, privacy, and scheduling.
+Cocinaris requires relational transactions across executions, lots, leftovers, waste, reservations, quotas, jobs, consent, and audit. It also requires durable background work for AI, parsing, notifications, privacy, and scheduling.
 
 ## Decision
 

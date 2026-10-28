@@ -14,7 +14,7 @@ export type SessionStatus =
  */
 export interface SessionState {
   status: SessionStatus;
-  /** Internal KitchenFlow user id when authenticated; never an OIDC token. */
+  /** Internal Cocinaris user id when authenticated; never an OIDC token. */
   internalUserId?: string | null;
   /** CSRF token from GET /api/v1/session when available. */
   csrfToken?: string | null;

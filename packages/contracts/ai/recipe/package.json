@@ -1,5 +1,5 @@
 {
-  "name": "@kitchenflow/recipe-ai-contracts",
+  "name": "@cocinaris/recipe-ai-contracts",
   "private": true,
   "version": "0.3.0",
   "type": "module",

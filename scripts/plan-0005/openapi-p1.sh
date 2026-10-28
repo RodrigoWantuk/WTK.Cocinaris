@@ -6,7 +6,7 @@ cd "$ROOT"
 EVIDENCE_DIR="${PLAN0005_EVIDENCE_DIR:-docs/evidence/plan-0005}"
 mkdir -p "$EVIDENCE_DIR/reports"
 INTEGRATED_SHA="${PLAN0005_INTEGRATED_SHA:-b94abd9a83fe29d88b095e3e9a42f10d01c05414}"
-SNAPSHOT="packages/contracts/openapi/kitchenflow-v1.json"
+SNAPSHOT="packages/contracts/openapi/cocinaris-v1.json"
 REPORT="$EVIDENCE_DIR/openapi-p1.json"
 
 if [[ ! -f .env ]]; then cp .env.example .env; fi
@@ -21,15 +21,15 @@ api_ready() {
 }
 
 if ! api_ready; then
-  mkdir -p .local-data/kitchenflow/session-keys
-  export KITCHENFLOW_DB_CONNECTION KITCHENFLOW_OIDC_AUTHORITY KITCHENFLOW_OIDC_CLIENT_ID KITCHENFLOW_OIDC_CLIENT_SECRET
-  export KITCHENFLOW_SESSION_KEYRING_PATH="${KITCHENFLOW_SESSION_KEYRING_PATH:-.local-data/kitchenflow/session-keys}"
+  mkdir -p .local-data/cocinaris/session-keys
+  export COCINARIS_DB_CONNECTION COCINARIS_OIDC_AUTHORITY COCINARIS_OIDC_CLIENT_ID COCINARIS_OIDC_CLIENT_SECRET
+  export COCINARIS_SESSION_KEYRING_PATH="${COCINARIS_SESSION_KEYRING_PATH:-.local-data/cocinaris/session-keys}"
   if ! dotnet dev-certs https --check >/dev/null 2>&1; then
     dotnet dev-certs https --trust >/dev/null 2>&1 || true
   fi
   ASPNETCORE_ENVIRONMENT="${ASPNETCORE_ENVIRONMENT:-Development}" \
   ASPNETCORE_URLS="https://localhost:7443;http://127.0.0.1:7080" \
-  nohup dotnet run --project apps/backend/src/KitchenFlow.Api/KitchenFlow.Api.csproj --configuration Release --no-build --no-launch-profile \
+  nohup dotnet run --project apps/backend/src/Cocinaris.Api/Cocinaris.Api.csproj --configuration Release --no-build --no-launch-profile \
     >"$EVIDENCE_DIR/reports/api-openapi.log" 2>&1 &
   echo $! > "$EVIDENCE_DIR/reports/api-openapi.pid"
   timeout 180 bash -c 'until curl --fail --silent --max-time 5 http://127.0.0.1:7080/health/ready >/dev/null 2>&1 || curl --fail --silent --max-time 5 --insecure https://localhost:7443/health/ready >/dev/null 2>&1; do sleep 2; done'
@@ -39,7 +39,7 @@ fi
 API_OPENAPI_URL="http://127.0.0.1:7080/openapi/v1.json"
 if ! curl --fail --silent --max-time 5 "$API_OPENAPI_URL" >/dev/null 2>&1; then
   API_OPENAPI_URL="https://localhost:7443/openapi/v1.json"
-  export KITCHENFLOW_OPENAPI_ALLOW_UNTRUSTED_LOCAL_CERTIFICATE=1
+  export COCINARIS_OPENAPI_ALLOW_UNTRUSTED_LOCAL_CERTIFICATE=1
 fi
 
 OPENAPI_CONTRACT_GIT_OBJECT_ID="$(git rev-parse "${INTEGRATED_SHA}:${SNAPSHOT}")"
@@ -59,13 +59,13 @@ print('openapi', doc['openapi'], 'paths', len(doc['paths']))
 PY
 
 set +e
-KITCHENFLOW_OPENAPI_URL="$API_OPENAPI_URL" bash scripts/backend/check-openapi.sh
+COCINARIS_OPENAPI_URL="$API_OPENAPI_URL" bash scripts/backend/check-openapi.sh
 DRIFT_EXIT=$?
 set -e
 if [[ $DRIFT_EXIT -ne 0 ]]; then
   # Retry with insecure only when local HTTPS cert is the sole blocker.
   set +e
-  KITCHENFLOW_OPENAPI_URL="https://localhost:7443/openapi/v1.json" KITCHENFLOW_OPENAPI_ALLOW_UNTRUSTED_LOCAL_CERTIFICATE=1 bash scripts/backend/check-openapi.sh
+  COCINARIS_OPENAPI_URL="https://localhost:7443/openapi/v1.json" COCINARIS_OPENAPI_ALLOW_UNTRUSTED_LOCAL_CERTIFICATE=1 bash scripts/backend/check-openapi.sh
   DRIFT_EXIT=$?
   set -e
 fi

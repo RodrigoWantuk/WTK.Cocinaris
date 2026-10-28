@@ -11,7 +11,7 @@ import { profileCatalogs } from "./profileUiCatalog";
 export const PRODUCTION_LOCALES = ["pt-BR", "en", "es"] as const;
 export type ProductionLocale = (typeof PRODUCTION_LOCALES)[number];
 
-export const PRODUCTION_LOCALE_STORAGE_KEY = "kitchenflow_production_locale";
+export const PRODUCTION_LOCALE_STORAGE_KEY = "cocinaris_production_locale";
 
 type Catalog = Record<string, string>;
 
@@ -20,7 +20,7 @@ const sharedShell: Record<ProductionLocale, Catalog> = {
     "brand.name": "Cocinaris",
     "landing.enter": "Entrar",
     "landing.tagline":
-      "O KitchenFlow ajuda a transformar alimentos disponíveis em refeições úteis.",
+      "O Cocinaris ajuda a transformar alimentos disponíveis em refeições úteis.",
     "landing.subtitle":
       "As superfícies autenticadas do produto exigem sessão e adapters gerenciados pelo backend.",
     "access.title.unavailable": "Serviço indisponível",
@@ -47,7 +47,7 @@ const sharedShell: Record<ProductionLocale, Catalog> = {
     "brand.name": "Cocinaris",
     "landing.enter": "Enter",
     "landing.tagline":
-      "KitchenFlow helps transform available food into useful meals.",
+      "Cocinaris helps transform available food into useful meals.",
     "landing.subtitle":
       "Authenticated product surfaces require backend-managed session and adapters.",
     "access.title.unavailable": "Service unavailable",
@@ -74,7 +74,7 @@ const sharedShell: Record<ProductionLocale, Catalog> = {
     "brand.name": "Cocinaris",
     "landing.enter": "Entrar",
     "landing.tagline":
-      "KitchenFlow ayuda a transformar alimentos disponibles en comidas útiles.",
+      "Cocinaris ayuda a transformar alimentos disponibles en comidas útiles.",
     "landing.subtitle":
       "Las superficies autenticadas del producto requieren sesión y adapters gestionados por el backend.",
     "access.title.unavailable": "Servicio no disponible",

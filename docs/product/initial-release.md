@@ -5,7 +5,7 @@
 
 ## Release intent
 
-The first release is intentionally substantial. It must demonstrate the closed KitchenFlow cycle rather than ship only a generic recipe generator.
+The first release is intentionally substantial. It must demonstrate the closed Cocinaris cycle rather than ship only a generic recipe generator.
 
 Development may require multiple implementation plans before public launch. The release definition is not permission to reduce accepted behavior into a smaller undocumented MVP.
 

@@ -6,13 +6,13 @@
 
 ## Scope
 
-KitchenFlow is designed for LGPD- and GDPR-oriented operation. This document defines engineering and product requirements, not legal advice or final lawful-basis determination.
+Cocinaris is designed for LGPD- and GDPR-oriented operation. This document defines engineering and product requirements, not legal advice or final lawful-basis determination.
 
 Production is initially expected in the United States, so international data-transfer analysis is mandatory before users in Brazil, the European Economic Area, or other regulated jurisdictions are served.
 
 ## Adult-only service
 
-KitchenFlow is for users aged 18 or older who can legally accept the terms in their jurisdiction.
+Cocinaris is for users aged 18 or older who can legally accept the terms in their jurisdiction.
 
 The initial product records an adult declaration and terms version. It does not collect a complete birth date without a separate documented purpose. Country availability and wording require legal review.
 
@@ -53,7 +53,7 @@ Health-related restrictions and allergies require heightened treatment and acces
 A minimal account may require:
 
 - email or external identity;
-- internal KitchenFlow user UUID;
+- internal Cocinaris user UUID;
 - language, region, timezone, and measurement preference;
 - adult and terms declaration;
 - privacy-notice acknowledgement;
@@ -170,7 +170,7 @@ Before production launch:
 
 ## Automated decisions and explanations
 
-KitchenFlow recommendations remain advisory. Users can inspect relevant factors, correct data, reject recommendations, and request an alternative.
+Cocinaris recommendations remain advisory. Users can inspect relevant factors, correct data, reject recommendations, and request an alternative.
 
 The system does not expose private chain-of-thought or provider reasoning. It provides product-level explanations such as urgency, inventory use, preference fit, effort, and purchase impact.
 

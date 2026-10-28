@@ -5,7 +5,7 @@
 
 ## Operating model
 
-KitchenFlow launches as a centrally operated SaaS. Future self-hosted distribution may be considered, but it is not a first-release commitment.
+Cocinaris launches as a centrally operated SaaS. Future self-hosted distribution may be considered, but it is not a first-release commitment.
 
 The architecture must support multiple API and worker instances for load balancing and redundancy without changing domain behavior.
 

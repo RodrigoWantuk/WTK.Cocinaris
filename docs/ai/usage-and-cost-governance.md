@@ -5,7 +5,7 @@
 
 ## Objective
 
-AI cost is one of KitchenFlow's largest variable operational risks. Usage governance is a first-class product and architecture capability.
+AI cost is one of Cocinaris's largest variable operational risks. Usage governance is a first-class product and architecture capability.
 
 ## Central ledger
 

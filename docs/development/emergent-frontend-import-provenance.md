@@ -1,6 +1,6 @@
 # Emergent Frontend Import Provenance
 
-This record documents the one-time import of the final Emergent frontend snapshot into the official KitchenFlow monorepo.
+This record documents the one-time import of the final Emergent frontend snapshot into the official Cocinaris monorepo.
 
 ## Source
 
@@ -13,7 +13,7 @@ This record documents the one-time import of the final Emergent frontend snapsho
 | Commit timestamp (author) | 2026-07-31 19:46:57 +0000 |
 | Source path | `frontend/` |
 | Import date (UTC) | 2026-07-31T20:17:24Z |
-| Destination | `WTK.KitchenFlow/apps/frontend/` |
+| Destination | `WTK.Cocinaris/apps/frontend/` |
 | Plan | [PLAN-0014](../../plans/PLAN-0014-integrate-emergent-frontend.md) |
 | ADR | [ADR-0007](../decisions/0007-frontend-platform-monorepo-and-generation-tooling.md) |
 

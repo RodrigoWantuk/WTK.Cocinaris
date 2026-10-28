@@ -103,9 +103,9 @@ let webpackConfig = {
       jestConfig.moduleNameMapper = {
         ...jestConfig.moduleNameMapper,
         "^@/(.*)$": "<rootDir>/src/$1",
-        "^@kitchenflow/api-client$":
+        "^@cocinaris/api-client$":
           "<rootDir>/src/generated/api-client/index.ts",
-        "^@kitchenflow/api-client/(.*)$":
+        "^@cocinaris/api-client/(.*)$":
           "<rootDir>/src/generated/api-client/$1",
         "^react-router-dom$": "<rootDir>/node_modules/react-router-dom/dist/index.js",
         "^react-router/dom$": "<rootDir>/node_modules/react-router/dist/development/dom-export.js",
@@ -120,7 +120,7 @@ let webpackConfig = {
   webpack: {
     alias: {
       '@': path.resolve(__dirname, 'src'),
-      '@kitchenflow/api-client': path.resolve(
+      '@cocinaris/api-client': path.resolve(
         __dirname,
         'src/generated/api-client/index.ts',
       ),

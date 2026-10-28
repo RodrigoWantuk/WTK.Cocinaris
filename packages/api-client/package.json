@@ -1,5 +1,5 @@
 {
-  "name": "@kitchenflow/api-client",
+  "name": "@cocinaris/api-client",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -10,7 +10,7 @@
     "./schema": "./src/generated/schema.ts"
   },
   "scripts": {
-    "generate": "openapi-typescript ../contracts/openapi/kitchenflow-v1.json -o src/generated/schema.ts && node ../../scripts/contracts/sync-api-client-to-frontend.mjs",
+    "generate": "openapi-typescript ../contracts/openapi/cocinaris-v1.json -o src/generated/schema.ts && node ../../scripts/contracts/sync-api-client-to-frontend.mjs",
     "check:drift": "node ../../scripts/contracts/check-api-client-drift.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "format:check": "prettier --check \"src/**/*.{ts,md}\" --ignore-path .prettierignore",
