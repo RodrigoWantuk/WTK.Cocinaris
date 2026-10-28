@@ -10,9 +10,8 @@ export default tseslint.config(
     ignores: [
       "build/**",
       "node_modules/**",
-      "plugins/**",
       "src/**/*.d.ts",
-      "craco.config.js",
+      "vite.config.mts",
       "eslint.config.js",
       "tailwind.config.js",
       "postcss.config.js",

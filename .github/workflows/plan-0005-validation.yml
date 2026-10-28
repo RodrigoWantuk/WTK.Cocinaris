@@ -84,10 +84,10 @@ jobs:
 
       - name: Run PLAN-0005 P0 round 1 (shared infrastructure)
         env:
-          KITCHENFLOW_SMOKE_PASSWORD_A: development-only-user-a
-          KITCHENFLOW_SMOKE_PASSWORD_B: development-only-user-b
-          KITCHENFLOW_SMOKE_BROWSER: google-chrome
-          KITCHENFLOW_SMOKE_ALLOW_UNTRUSTED_LOCAL_CERTIFICATE: "1"
+          COCINARIS_SMOKE_PASSWORD_A: development-only-user-a
+          COCINARIS_SMOKE_PASSWORD_B: development-only-user-b
+          COCINARIS_SMOKE_BROWSER: google-chrome
+          COCINARIS_SMOKE_ALLOW_UNTRUSTED_LOCAL_CERTIFICATE: "1"
           ASPNETCORE_ENVIRONMENT: Development
           PLAYWRIGHT_HOME: /home/runner
           HOME: /home/runner
@@ -166,9 +166,9 @@ jobs:
 
       - name: Run PLAN-0005 P1 completion round
         env:
-          KITCHENFLOW_SMOKE_PASSWORD_A: development-only-user-a
-          KITCHENFLOW_SMOKE_PASSWORD_B: development-only-user-b
-          KITCHENFLOW_SMOKE_ALLOW_UNTRUSTED_LOCAL_CERTIFICATE: "1"
+          COCINARIS_SMOKE_PASSWORD_A: development-only-user-a
+          COCINARIS_SMOKE_PASSWORD_B: development-only-user-b
+          COCINARIS_SMOKE_ALLOW_UNTRUSTED_LOCAL_CERTIFICATE: "1"
           ASPNETCORE_ENVIRONMENT: Development
           PLAYWRIGHT_HOME: /home/runner
           HOME: /home/runner

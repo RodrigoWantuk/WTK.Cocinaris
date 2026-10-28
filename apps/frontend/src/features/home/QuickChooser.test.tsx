@@ -56,9 +56,9 @@ function renderChooser(
     ) => Promise<HomeSourceResult>;
   }>,
 ) {
-  const onCancel = overrides?.onCancel ?? jest.fn();
-  const onRetry = overrides?.onRetry ?? jest.fn();
-  const onComplete = overrides?.onComplete ?? jest.fn();
+  const onCancel = overrides?.onCancel ?? vi.fn();
+  const onRetry = overrides?.onRetry ?? vi.fn();
+  const onComplete = overrides?.onComplete ?? vi.fn();
   const onLoadSuggestions =
     overrides?.onLoadSuggestions ??
     (async () =>
@@ -68,7 +68,7 @@ function renderChooser(
         retryable: false,
         items: [],
       }) satisfies HomeSourceResult);
-  const telemetry = { track: jest.fn() };
+  const telemetry = { track: vi.fn() };
   const view = render(
     <ProductionI18nProvider initialLocale="en">
       <QuickChooser
@@ -106,9 +106,9 @@ describe("QuickChooser", () => {
         <QuickChooser
           definition={oneQuestionDef}
           telemetry={telemetry}
-          onCancel={jest.fn()}
-          onRetry={jest.fn()}
-          onComplete={jest.fn()}
+          onCancel={vi.fn()}
+          onRetry={vi.fn()}
+          onComplete={vi.fn()}
           onLoadSuggestions={async () => ({
             tier: "quickChooser",
             status: "empty",
@@ -130,7 +130,7 @@ describe("QuickChooser", () => {
   it("retries after a failed suggestion load", async () => {
     const user = userEvent.setup();
     let attempt = 0;
-    const onComplete = jest.fn();
+    const onComplete = vi.fn();
     const { telemetry } = renderChooser(oneQuestionDef, {
       onComplete,
       onLoadSuggestions: async () => {
@@ -174,7 +174,7 @@ describe("QuickChooser", () => {
   it("keeps answers and retries after a resolved failed+retryable result", async () => {
     const user = userEvent.setup();
     let attempt = 0;
-    const onComplete = jest.fn();
+    const onComplete = vi.fn();
     const { telemetry } = renderChooser(oneQuestionDef, {
       onComplete,
       onLoadSuggestions: async () => {
@@ -221,7 +221,7 @@ describe("QuickChooser", () => {
 
   it("shows permanent unavailable suggestion without retry or completion telemetry", async () => {
     const user = userEvent.setup();
-    const onComplete = jest.fn();
+    const onComplete = vi.fn();
     const { telemetry } = renderChooser(oneQuestionDef, {
       onComplete,
       onLoadSuggestions: async () => ({
@@ -244,7 +244,7 @@ describe("QuickChooser", () => {
 
   it("emits completed with empty outcome for empty suggestion results", async () => {
     const user = userEvent.setup();
-    const onComplete = jest.fn();
+    const onComplete = vi.fn();
     const { telemetry } = renderChooser(oneQuestionDef, {
       onComplete,
       onLoadSuggestions: async () => ({

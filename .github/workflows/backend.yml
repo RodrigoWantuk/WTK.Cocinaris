@@ -38,12 +38,12 @@ jobs:
       - name: Create evidence directories
         working-directory: .
         run: mkdir -p artifacts/test-results
-      - run: dotnet restore KitchenFlow.slnx --locked-mode
+      - run: dotnet restore Cocinaris.slnx --locked-mode
       - name: Fail on vulnerable .NET dependencies
         working-directory: .
         run: bash scripts/backend/check-dotnet-vulnerabilities.sh artifacts/dotnet-vulnerabilities.json
-      - run: dotnet format KitchenFlow.slnx --verify-no-changes --no-restore
-      - run: dotnet build KitchenFlow.slnx -c Release --no-restore
+      - run: dotnet format Cocinaris.slnx --verify-no-changes --no-restore
+      - run: dotnet build Cocinaris.slnx -c Release --no-restore
       - name: Start required local dependencies
         working-directory: .
         run: docker compose -f infrastructure/compose/compose.dev.yml up -d postgres keycloak
@@ -51,36 +51,36 @@ jobs:
         working-directory: .
         run: |
           timeout 120 bash -c 'until docker compose -f infrastructure/compose/compose.dev.yml ps --status running postgres | grep -q postgres; do sleep 2; done'
-          timeout 120 bash -c 'until curl --fail --silent http://127.0.0.1:8080/realms/kitchenflow/.well-known/openid-configuration >/dev/null; do sleep 2; done'
+          timeout 120 bash -c 'until curl --fail --silent http://127.0.0.1:8080/realms/cocinaris/.well-known/openid-configuration >/dev/null; do sleep 2; done'
       - name: Run complete backend tests with retained results
-        run: dotnet test KitchenFlow.slnx -c Release --no-build --logger "trx;LogFilePrefix=kitchenflow-" --results-directory "${{ github.workspace }}/artifacts/test-results"
+        run: dotnet test Cocinaris.slnx -c Release --no-build --logger "trx;LogFilePrefix=cocinaris-" --results-directory "${{ github.workspace }}/artifacts/test-results"
       - name: Apply empty-database migration and upgrade
         working-directory: .
         run: |
           dotnet tool restore
-          dotnet ef database update 20260729013459_InitialInventorySlice --project apps/backend/src/KitchenFlow.Infrastructure/KitchenFlow.Infrastructure.csproj --startup-project apps/backend/src/KitchenFlow.Api/KitchenFlow.Api.csproj --configuration Release --no-build
-          dotnet ef database update --project apps/backend/src/KitchenFlow.Infrastructure/KitchenFlow.Infrastructure.csproj --startup-project apps/backend/src/KitchenFlow.Api/KitchenFlow.Api.csproj --configuration Release --no-build
+          dotnet ef database update 20260729013459_InitialInventorySlice --project apps/backend/src/Cocinaris.Infrastructure/Cocinaris.Infrastructure.csproj --startup-project apps/backend/src/Cocinaris.Api/Cocinaris.Api.csproj --configuration Release --no-build
+          dotnet ef database update --project apps/backend/src/Cocinaris.Infrastructure/Cocinaris.Infrastructure.csproj --startup-project apps/backend/src/Cocinaris.Api/Cocinaris.Api.csproj --configuration Release --no-build
       - name: Generate and apply idempotent migration artifact twice
         working-directory: .
         run: |
-          bash scripts/backend/generate-migration-script.sh artifacts/kitchenflow-migrations.sql
-          docker compose -f infrastructure/compose/compose.dev.yml exec -T postgres psql -U kitchenflow_dev -d postgres -c 'DROP DATABASE IF EXISTS kitchenflow_idempotent WITH (FORCE)'
-          docker compose -f infrastructure/compose/compose.dev.yml exec -T postgres psql -U kitchenflow_dev -d postgres -c 'CREATE DATABASE kitchenflow_idempotent'
-          docker compose -f infrastructure/compose/compose.dev.yml exec -T postgres psql -v ON_ERROR_STOP=1 -U kitchenflow_dev -d kitchenflow_idempotent < artifacts/kitchenflow-migrations.sql
-          docker compose -f infrastructure/compose/compose.dev.yml exec -T postgres psql -v ON_ERROR_STOP=1 -U kitchenflow_dev -d kitchenflow_idempotent < artifacts/kitchenflow-migrations.sql
-          expected_migrations="$(find apps/backend/src/KitchenFlow.Infrastructure/Persistence/Migrations -maxdepth 1 -type f -name '*.cs' ! -name '*Designer.cs' ! -name 'ApplicationDbContextModelSnapshot.cs' | wc -l | tr -d '[:space:]')"
-          actual_migrations="$(docker compose -f infrastructure/compose/compose.dev.yml exec -T postgres psql -tAc 'SELECT count(*) FROM "__EFMigrationsHistory"' -U kitchenflow_dev -d kitchenflow_idempotent | tr -d '[:space:]')"
+          bash scripts/backend/generate-migration-script.sh artifacts/cocinaris-migrations.sql
+          docker compose -f infrastructure/compose/compose.dev.yml exec -T postgres psql -U cocinaris_dev -d postgres -c 'DROP DATABASE IF EXISTS cocinaris_idempotent WITH (FORCE)'
+          docker compose -f infrastructure/compose/compose.dev.yml exec -T postgres psql -U cocinaris_dev -d postgres -c 'CREATE DATABASE cocinaris_idempotent'
+          docker compose -f infrastructure/compose/compose.dev.yml exec -T postgres psql -v ON_ERROR_STOP=1 -U cocinaris_dev -d cocinaris_idempotent < artifacts/cocinaris-migrations.sql
+          docker compose -f infrastructure/compose/compose.dev.yml exec -T postgres psql -v ON_ERROR_STOP=1 -U cocinaris_dev -d cocinaris_idempotent < artifacts/cocinaris-migrations.sql
+          expected_migrations="$(find apps/backend/src/Cocinaris.Infrastructure/Persistence/Migrations -maxdepth 1 -type f -name '*.cs' ! -name '*Designer.cs' ! -name 'ApplicationDbContextModelSnapshot.cs' | wc -l | tr -d '[:space:]')"
+          actual_migrations="$(docker compose -f infrastructure/compose/compose.dev.yml exec -T postgres psql -tAc 'SELECT count(*) FROM "__EFMigrationsHistory"' -U cocinaris_dev -d cocinaris_idempotent | tr -d '[:space:]')"
           test "$actual_migrations" -eq "$expected_migrations"
       - name: Export and verify OpenAPI drift
         working-directory: .
         env:
-          KITCHENFLOW_DB_CONNECTION: Host=127.0.0.1;Port=5432;Database=kitchenflow;Username=kitchenflow_dev;Password=development-only-change-me
-          KITCHENFLOW_OPENAPI_URL: http://127.0.0.1:7080/openapi/v1.json
+          COCINARIS_DB_CONNECTION: Host=127.0.0.1;Port=5432;Database=cocinaris;Username=cocinaris_dev;Password=development-only-change-me
+          COCINARIS_OPENAPI_URL: http://127.0.0.1:7080/openapi/v1.json
         run: |
-          dotnet run --project apps/backend/src/KitchenFlow.Api/KitchenFlow.Api.csproj --configuration Release --no-build --urls http://127.0.0.1:7080 >/tmp/kitchenflow-api.log 2>&1 &
+          dotnet run --project apps/backend/src/Cocinaris.Api/Cocinaris.Api.csproj --configuration Release --no-build --urls http://127.0.0.1:7080 >/tmp/cocinaris-api.log 2>&1 &
           timeout 120 bash -c 'until curl --fail --silent http://127.0.0.1:7080/health/ready >/dev/null; do sleep 2; done'
           bash scripts/backend/export-openapi.sh
-          git diff --exit-code -- packages/contracts/openapi/kitchenflow-v1.json
+          git diff --exit-code -- packages/contracts/openapi/cocinaris-v1.json
           bash scripts/backend/check-openapi.sh
           bash scripts/backend/lint-openapi.sh
       - name: Upload backend candidate evidence
@@ -90,7 +90,7 @@ jobs:
           name: backend-evidence-${{ github.event.pull_request.head.sha || github.sha }}
           path: |
             artifacts/dotnet-vulnerabilities.json
-            artifacts/kitchenflow-migrations.sql
+            artifacts/cocinaris-migrations.sql
             artifacts/test-results/*.trx
           if-no-files-found: error
           retention-days: 30

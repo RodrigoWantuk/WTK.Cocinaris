@@ -16,18 +16,18 @@ const root = join(__dirname, "../..");
 const evidenceDir = process.env.PLAN0005_EVIDENCE_DIR ?? join(root, "docs/evidence/plan-0005");
 const reportPath = join(evidenceDir, "reports", "keycloak-p0-auth.json");
 
-const apiUrl = process.env.KITCHENFLOW_SMOKE_API_URL ?? "https://localhost:7443";
-const browserPath = process.env.KITCHENFLOW_SMOKE_BROWSER ?? "google-chrome";
-const allowUntrustedLocalCertificate = process.env.KITCHENFLOW_SMOKE_ALLOW_UNTRUSTED_LOCAL_CERTIFICATE === "1";
+const apiUrl = process.env.COCINARIS_SMOKE_API_URL ?? "https://localhost:7443";
+const browserPath = process.env.COCINARIS_SMOKE_BROWSER ?? "google-chrome";
+const allowUntrustedLocalCertificate = process.env.COCINARIS_SMOKE_ALLOW_UNTRUSTED_LOCAL_CERTIFICATE === "1";
 const browserSandboxArguments = process.getuid?.() === 0 ? ["--no-sandbox"] : [];
 const browserTrustStoreArguments = process.platform === "linux" ? ["--disable-features=ChromeRootStoreUsed"] : [];
 const users = [
-  { username: process.env.KITCHENFLOW_SMOKE_USER_A ?? "inventory-user-a", password: process.env.KITCHENFLOW_SMOKE_PASSWORD_A },
-  { username: process.env.KITCHENFLOW_SMOKE_USER_B ?? "inventory-user-b", password: process.env.KITCHENFLOW_SMOKE_PASSWORD_B }
+  { username: process.env.COCINARIS_SMOKE_USER_A ?? "inventory-user-a", password: process.env.COCINARIS_SMOKE_PASSWORD_A },
+  { username: process.env.COCINARIS_SMOKE_USER_B ?? "inventory-user-b", password: process.env.COCINARIS_SMOKE_PASSWORD_B }
 ];
 
 if (users.some((user) => !user.password)) {
-  process.stderr.write("KITCHENFLOW_SMOKE_PASSWORD_A and KITCHENFLOW_SMOKE_PASSWORD_B are required.\n");
+  process.stderr.write("COCINARIS_SMOKE_PASSWORD_A and COCINARIS_SMOKE_PASSWORD_B are required.\n");
   process.exit(2);
 }
 
@@ -120,7 +120,7 @@ class DevToolsConnection {
 }
 
 async function startBrowser(port) {
-  const profile = await mkdtemp(join(tmpdir(), "kitchenflow-plan0005-auth-"));
+  const profile = await mkdtemp(join(tmpdir(), "cocinaris-plan0005-auth-"));
   const child = spawn(browserPath, [
     "--headless=new",
     "--no-first-run",
@@ -145,7 +145,7 @@ async function startBrowser(port) {
       await connection.send("Security.setIgnoreCertificateErrors", { ignore: true });
     }
     await connection.send("Page.navigate", { url: `${apiUrl}/health/live` });
-    await waitFor(async () => (await connection.evaluate("location.href")).startsWith(apiUrl), "KitchenFlow HTTPS endpoint");
+    await waitFor(async () => (await connection.evaluate("location.href")).startsWith(apiUrl), "Cocinaris HTTPS endpoint");
     return { child, connection, profile };
   } catch (error) {
     await terminateBrowserProcess(child);
@@ -194,7 +194,7 @@ async function login(browser, user, returnUrl = "/health/live") {
   }, "OIDC callback completion", 20000);
 
   await browser.connection.send("Page.navigate", { url: `${apiUrl}/health/live` });
-  await waitFor(async () => (await currentUrl(browser)).startsWith(apiUrl), "KitchenFlow session probe");
+  await waitFor(async () => (await currentUrl(browser)).startsWith(apiUrl), "Cocinaris session probe");
 
   const session = await browser.connection.evaluate(
     "fetch('/api/v1/session', { credentials: 'include' }).then(async response => ({ status: response.status, body: await response.json() }))"
@@ -249,7 +249,7 @@ async function probeTokenAbsence(browser) {
 async function inspectSessionCookie(browser) {
   // Chrome DevTools Network.getCookies returns HttpOnly cookies without values in our summary.
   const cookies = await browser.connection.send("Network.getCookies", { urls: [apiUrl] });
-  const sessionCookies = (cookies.cookies ?? []).filter((c) => /kitchenflow|session/i.test(c.name));
+  const sessionCookies = (cookies.cookies ?? []).filter((c) => /cocinaris|session/i.test(c.name));
   return sessionCookies.map((c) => ({
     name: c.name,
     httpOnly: Boolean(c.httpOnly),

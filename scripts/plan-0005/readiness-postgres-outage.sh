@@ -39,7 +39,7 @@ health_live || LIVE_DURING_OUTAGE=Failed
 
 echo "Restoring PostgreSQL"
 "${COMPOSE[@]}" start postgres
-timeout 120 bash -c 'until docker compose -f infrastructure/compose/compose.dev.yml exec -T postgres pg_isready -U kitchenflow_dev -d kitchenflow >/dev/null 2>&1; do sleep 2; done'
+timeout 120 bash -c 'until docker compose -f infrastructure/compose/compose.dev.yml exec -T postgres pg_isready -U cocinaris_dev -d cocinaris >/dev/null 2>&1; do sleep 2; done'
 RECOVERY=Failed
 for _ in $(seq 1 60); do
   if health_ready; then

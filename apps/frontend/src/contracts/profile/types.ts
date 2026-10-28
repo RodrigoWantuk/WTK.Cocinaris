@@ -2,7 +2,7 @@
  * Application-owned profile, household, preferences, and equipment presentation models.
  *
  * These types are isolated from the generated OpenAPI DTO shapes consumed by the wire
- * client (`@kitchenflow/api-client`). Nothing in the component tree may import generated
+ * client (`@cocinaris/api-client`). Nothing in the component tree may import generated
  * `components["schemas"][...]` types directly for profile data; adapters in
  * `src/adapters/live/profile` translate between the two boundaries.
  */

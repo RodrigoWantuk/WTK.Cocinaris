@@ -1,4 +1,4 @@
-# KitchenFlow Development Environment
+# Cocinaris Development Environment
 
 - **Status:** Accepted
 - **Last updated:** 2026-07-29
@@ -8,22 +8,49 @@
 
 ## Purpose
 
-This document is the canonical list of software and resources required to develop KitchenFlow. It separates tools installed on the host from services that run in containers so Windows and Linux agents use the same dependency topology.
+This document is the canonical list of software and resources required to develop Cocinaris. It separates tools installed on the host from services that run in containers so Windows and Linux agents use the same dependency topology.
 
 A new agent must read this document before claiming an implementation or testing plan. Do not guess missing tools, install infrastructure services natively by habit, or replace version lines without updating the active plan.
 
 ## Supported host modes
 
-KitchenFlow supports three local host modes.
+Cocinaris supports three local host modes.
 
 ### Linux host
 
-Recommended for autonomous agents, CI parity, and the Texas VPS.
+Recommended for autonomous agents, CI parity, and the owner Linux host (see below).
 
 - Use a Docker-supported 64-bit Linux distribution.
 - Debian and Ubuntu are preferred because Docker and .NET publish direct installation guidance.
 - Run repository commands from a normal user account.
 - Docker Engine may run rootful or rootless according to host policy.
+
+### Owner Linux host
+
+Since 2026-10-28 the owner's Debian 13 host (the host that serves the current deployment) is the canonical development, test, build and deployment environment. Everything in this guide, including integration tests, the OIDC development fixture, browser checks and deployment, must work there. Deployment is described in the [Linux host deployment runbook](../operations/linux-host-deployment-runbook.md).
+
+Host specifics, verified 2026-10-28:
+
+| Concern | Setup |
+|---|---|
+| .NET | SDK 10.0.302 at `/opt/dotnet`, not on the default `PATH`: `export PATH=/opt/dotnet:$PATH DOTNET_ROOT=/opt/dotnet` |
+| Node.js | 24.x at `/opt/node24` with Yarn 1.22.22 through Corepack. The system Node.js 20 stays for other services: `export PATH=/opt/node24/bin:$PATH` |
+| Docker | Debian `docker.io` and `docker-compose` (Compose v2). The daemon runs with `"iptables": false` and `"ip6tables": false` in `/etc/docker/daemon.json`, so the host firewall, forwarding and VPN routing are never modified. Containers publish ports through the userland proxy on `127.0.0.1` only and do not need outbound access. |
+| PostgreSQL clash | The host runs PostgreSQL on 5432 for the deployment. Start the development stack with `COCINARIS_DEV_POSTGRES_PORT=55432` and point `COCINARIS_DB_CONNECTION` at port 55432. |
+| Browsers | Playwright Chromium for the pinned Playwright version (`npx playwright install chromium`) plus its system libraries |
+| Memory | 3.8 GiB total. The OIDC fixture (Keycloak) and Testcontainers fit, but stop the compose stack after use (`docker compose -f infrastructure/compose/compose.dev.yml down`) |
+| Working copies | `/svr/www/wtk-cocinaris` is the development checkout. Deployments build from a temporary worktree and never change its branch or files. |
+
+Complete local validation (the same steps as CI):
+
+```sh
+export PATH=/opt/dotnet:/opt/node24/bin:$PATH DOTNET_ROOT=/opt/dotnet COCINARIS_DEV_POSTGRES_PORT=55432
+docker compose -f infrastructure/compose/compose.dev.yml up -d postgres keycloak
+(cd apps/backend && dotnet restore Cocinaris.slnx --locked-mode && dotnet format Cocinaris.slnx --verify-no-changes --no-restore \
+  && dotnet build Cocinaris.slnx -c Release --no-restore && dotnet test Cocinaris.slnx -c Release --no-build)
+(cd apps/frontend && yarn install --frozen-lockfile && yarn typecheck && yarn lint && yarn format:check && yarn test \
+  && yarn build:production && yarn guard:build-mode && yarn guard:production-isolation && yarn inspect:production-bundle && yarn audit:policy)
+```
 
 ### Windows native tools with Docker Desktop
 
@@ -33,7 +60,7 @@ Recommended when the developer uses Windows-native IDEs and shells.
 - Install .NET SDK, Node.js, Git, and optional IDE tools on Windows.
 - Use Docker Desktop with the WSL2 backend and **Linux containers**.
 - Run repository commands from PowerShell 7 or another documented Windows shell.
-- Do not switch Docker to Windows-container mode for KitchenFlow.
+- Do not switch Docker to Windows-container mode for Cocinaris.
 
 ### Windows with WSL2 development
 
@@ -42,7 +69,7 @@ Recommended when the agent should behave like Linux while the host remains Windo
 - Install a supported Linux distribution under WSL2.
 - Enable Docker Desktop integration for that distribution, or run a supported Docker Engine entirely inside WSL2.
 - Install .NET SDK, Node.js, Git, and CLI utilities inside WSL2.
-- Clone the repository under the Linux filesystem, for example `~/src/WTK.KitchenFlow`, not under `/mnt/c`, to avoid filesystem performance and permission problems.
+- Clone the repository under the Linux filesystem, for example `~/src/WTK.Cocinaris`, not under `/mnt/c`, to avoid filesystem performance and permission problems.
 - Run all install, build, test, and package-manager commands inside WSL2.
 - Never share `node_modules`, `.pnpm-store`, `bin`, `obj`, NuGet caches, Playwright browsers, or generated build output between Windows-native and WSL2 toolchains.
 
@@ -134,8 +161,8 @@ If someone intentionally runs Keycloak outside a container, current official Key
 
 | Service | Initial pinned target | Required by | Default host port | Notes |
 |---|---|---|---:|---|
-| PostgreSQL | `postgres:18.4` | PLAN-0003, PLAN-0005 | 5432 | One server may host separate `kitchenflow` and `keycloak` development databases |
-| Keycloak | `quay.io/keycloak/keycloak:26.7.0` | PLAN-0003, PLAN-0004, PLAN-0005 | 8080 | Development mode only locally; import versioned KitchenFlow realm |
+| PostgreSQL | `postgres:18.4` | PLAN-0003, PLAN-0005 | 5432 | One server may host separate `cocinaris` and `keycloak` development databases |
+| Keycloak | `quay.io/keycloak/keycloak:26.7.0` | PLAN-0003, PLAN-0004, PLAN-0005 | 8080 | Development mode only locally; import versioned Cocinaris realm |
 
 ### Recommended development observability
 
@@ -192,6 +219,8 @@ Requirements:
 - no preview SDK is selected by default;
 - once PLAN-0003 creates `apps/backend/global.json`, `dotnet --version` from that directory resolves the pinned SDK/roll-forward policy.
 
+When the SDK is installed outside the default search path (for example a tarball install under `/opt/dotnet`, as on the [owner Linux host](#owner-linux-host)), add that directory to `PATH` and set `DOTNET_ROOT` to it before running backend commands. Without it, `dotnet` is not found even though the SDK is present.
+
 Do not globally install `dotnet-ef`. PLAN-0003 must create a local .NET tool manifest, and agents run:
 
 ```text
@@ -219,6 +248,8 @@ Requirements:
 - do not create multiple lockfiles;
 - do not install frontend build tools globally;
 - use project scripts through the chosen package manager.
+
+The frontend and `packages/api-client` pin Yarn Classic through `packageManager` (`yarn@1.22.22`). Enable it with Corepack (`corepack enable`) rather than a global npm install. Several gates, including `yarn audit:policy`, spawn `yarn` directly and fail with `spawnSync yarn ENOENT` when it is missing. Every workflow and the owner Linux host run Node.js 24.
 
 PLAN-0004 must inspect whether Lovable generated TanStack Start or React/Vite and preserve that supported runtime. New Lovable projects created after May 13, 2026 commonly use TanStack Start with SSR except where the Lovable plan/runtime says otherwise.
 
@@ -295,18 +326,18 @@ Keycloak may use HTTP `start-dev` on loopback for local development only. Produc
 The actual names are finalized by PLAN-0003, but local configuration will include categories such as:
 
 ```text
-KITCHENFLOW_DB_HOST
-KITCHENFLOW_DB_PORT
-KITCHENFLOW_DB_NAME
-KITCHENFLOW_DB_USER
-KITCHENFLOW_DB_PASSWORD
+COCINARIS_DB_HOST
+COCINARIS_DB_PORT
+COCINARIS_DB_NAME
+COCINARIS_DB_USER
+COCINARIS_DB_PASSWORD
 KEYCLOAK_DB_NAME
 KEYCLOAK_DB_USER
 KEYCLOAK_DB_PASSWORD
-KITCHENFLOW_OIDC_AUTHORITY
-KITCHENFLOW_OIDC_CLIENT_ID
-KITCHENFLOW_OIDC_CLIENT_SECRET
-KITCHENFLOW_SESSION_KEYRING_PATH
+COCINARIS_OIDC_AUTHORITY
+COCINARIS_OIDC_CLIENT_ID
+COCINARIS_OIDC_CLIENT_SECRET
+COCINARIS_SESSION_KEYRING_PATH
 OTEL_EXPORTER_OTLP_ENDPOINT
 ASPNETCORE_ENVIRONMENT
 ASPNETCORE_URLS
@@ -360,7 +391,7 @@ Expected sequence:
 
 ```text
 git clone <repository-url>
-cd WTK.KitchenFlow
+cd WTK.Cocinaris
 git fetch --all --prune
 # create the plan-specific branch from current main
 git status
@@ -380,7 +411,7 @@ docker compose -f infrastructure/compose/compose.dev.yml config
 docker compose -f infrastructure/compose/compose.dev.yml up -d postgres keycloak otel-collector
 
 dotnet tool restore
-dotnet restore apps/backend/KitchenFlow.slnx --locked-mode
+dotnet restore apps/backend/Cocinaris.slnx --locked-mode
 <repository migration command>
 <repository backend run command>
 
@@ -456,14 +487,14 @@ A future Windows CI lane may be added when implementation volume justifies it. L
 After starting the default Compose topology, applying the backend migrations, and starting the API at `https://localhost:7443`, run the headless two-user browser smoke from the repository root:
 
 ```text
-KITCHENFLOW_SMOKE_PASSWORD_A=<development-fixture-password> \
-KITCHENFLOW_SMOKE_PASSWORD_B=<development-fixture-password> \
+COCINARIS_SMOKE_PASSWORD_A=<development-fixture-password> \
+COCINARIS_SMOKE_PASSWORD_B=<development-fixture-password> \
 node scripts/backend/smoke-keycloak.mjs
 ```
 
 The passwords are deliberately not reproduced in this document or shell history. Obtain the nonproduction fixture values from the versioned local realm import only when performing this local test; they are never production credentials. The script opens isolated Chromium profiles and proves the standard OIDC Authorization Code plus PKCE redirect, backend-managed Secure/HttpOnly session, CSRF-protected create request, and `404` ownership isolation. It emits no cookies, tokens, headers, request bodies, credentials, or private lot values.
 
-The local ASP.NET Core development certificate must be trusted by the browser. The diagnostic-only `KITCHENFLOW_SMOKE_ALLOW_UNTRUSTED_LOCAL_CERTIFICATE=1` option is not accepted validation evidence, must not be used in CI, and must not be added to application configuration. Fix certificate trust before recording a passing smoke result.
+The local ASP.NET Core development certificate must be trusted by the browser. The diagnostic-only `COCINARIS_SMOKE_ALLOW_UNTRUSTED_LOCAL_CERTIFICATE=1` option is not accepted validation evidence, must not be used in CI, and must not be added to application configuration. Fix certificate trust before recording a passing smoke result.
 
 ### Cross-platform dependency corruption
 

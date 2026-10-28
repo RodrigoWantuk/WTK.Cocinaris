@@ -27,7 +27,7 @@ The plan must produce an executable acquisition system, not a generic marketing 
 
 ## Context
 
-KitchenFlow is a consumer web product for adults who want to cook more often, reduce delivery dependence, use food they already have, waste less, and reduce the cognitive burden of planning meals.
+Cocinaris is a consumer web product for adults who want to cook more often, reduce delivery dependence, use food they already have, waste less, and reduce the cognitive burden of planning meals.
 
 The earliest growth problem is not mass reach. It is finding a small number of representative users who will actually onboard, enter inventory, request help, cook, return, and explain where the product fails. Buying broad traffic before those behaviors are understood can create registrations without learning, retention, or sustainable unit economics.
 
@@ -43,7 +43,7 @@ AI cost is also not determined by registered-account count alone. It depends on:
 - platform fees and taxes;
 - abuse and accidental loops.
 
-KitchenFlow therefore needs acquisition and AI cost controls before public scale.
+Cocinaris therefore needs acquisition and AI cost controls before public scale.
 
 ## Guiding decisions
 
@@ -74,7 +74,7 @@ KitchenFlow therefore needs acquisition and AI cost controls before public scale
 - Product Hunt preparation for a sufficiently open international launch;
 - channel attribution and experiment records;
 - AI operation inventory and deterministic/AI split;
-- multi-provider AI routing through the KitchenFlow AI Gateway;
+- multi-provider AI routing through the Cocinaris AI Gateway;
 - OpenRouter as an optional provider aggregator;
 - ultra-light candidate models such as Qwen and Ministral families;
 - quality, structured-output, localization, privacy, latency, uptime, and cost evaluation;
@@ -134,7 +134,7 @@ Do not target sensitive health traits, diagnoses, body-image concerns, or medica
 
 Lead with the outcome rather than the technology:
 
-> KitchenFlow helps you decide what to cook using what you already have, what still needs attention, and how much effort you want to spend.
+> Cocinaris helps you decide what to cook using what you already have, what still needs attention, and how much effort you want to spend.
 
 Avoid generic positioning such as “AI recipe generator.”
 
@@ -230,7 +230,7 @@ Create short, repeatable content around actual user problems:
 - “Three products needed attention; here is how the plan changed.”
 - “The planned recipe was missing one ingredient; here are the alternatives.”
 - “The same pantry produced a quick meal and a weekend meal.”
-- “What KitchenFlow does differently from a recipe catalog.”
+- “What Cocinaris does differently from a recipe catalog.”
 
 Each asset must use a single call to action: join the waitlist, request an alpha invitation, or start a qualified conversation.
 
@@ -242,7 +242,7 @@ After a user reaches activation, invite one relevant adult.
 
 Initial hypothesis:
 
-- inviter receives 10 KitchenFlow credits after the invitee activates;
+- inviter receives 10 Cocinaris credits after the invitee activates;
 - invitee receives 10 bonus credits after activation;
 - no reward for raw email submission;
 - cap rewards and detect self-referral and abuse;
@@ -577,7 +577,7 @@ The cheapest model wins only when all minimum quality and policy thresholds pass
 
 When OpenRouter is used:
 
-- call it only through the KitchenFlow AI Gateway;
+- call it only through the Cocinaris AI Gateway;
 - keep model slugs, provider allowlists, fallbacks, and price ceilings in versioned policy/configuration;
 - pin model versions where available;
 - require provider compatibility with required parameters and structured output;
@@ -647,7 +647,7 @@ At the observed candidate prices before taxes and payment/currency overhead:
 | Qwen3.5 Flash | USD 0.0351 | USD 3.51 | USD 7.02 |
 | Ministral 3 3B | USD 0.036 | USD 3.60 | USD 7.20 |
 
-After an illustrative 5.5% platform fee, these remain well below the earlier all-frontier-model scenarios. Actual KitchenFlow cost will be higher because some operations will escalate, fail, retry, process images, or use stronger models.
+After an illustrative 5.5% platform fee, these remain well below the earlier all-frontier-model scenarios. Actual Cocinaris cost will be higher because some operations will escalate, fail, retry, process images, or use stronger models.
 
 The goal is not to force all work through a tiny model. The goal is to keep the majority of low-risk tokens at Tier 0 or Tier 1 while reserving expensive models for operations where they measurably improve user outcomes.
 
@@ -670,7 +670,7 @@ Initial test, not final pricing:
 
 - BRL 14.90 per month or BRL 149 per year;
 - limited to the first 100 paying members or another explicit capacity;
-- 80–120 monthly KitchenFlow credits, calibrated after alpha usage;
+- 80–120 monthly Cocinaris credits, calibrated after alpha usage;
 - no ads;
 - early access to selected features;
 - priority feedback channel;
@@ -705,7 +705,7 @@ Offer the paid plan only after meaningful value, such as:
 - repeated recipe adaptation;
 - activation plus a positive feedback signal.
 
-Do not place a hard paywall before the user can understand KitchenFlow.
+Do not place a hard paywall before the user can understand Cocinaris.
 
 ## Required analytics and experiment ledger
 
@@ -989,7 +989,7 @@ OpenRouter must remain behind the AI Gateway and must not appear in frontend con
 ### AI behavior and cost
 
 - Cost is controlled before calls, not merely reported afterward.
-- Users see KitchenFlow credits and operation value, not provider token jargon.
+- Users see Cocinaris credits and operation value, not provider token jargon.
 - Models are replaceable by policy and adapter.
 - Fallbacks are bounded and observable.
 - Free users always have useful deterministic behavior after credits are exhausted.

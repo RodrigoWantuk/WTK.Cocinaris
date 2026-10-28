@@ -28,7 +28,7 @@ The reference persona is evidence for product decisions, not a universal rule. P
 - Shopping every day to avoid leftovers feels excessively burdensome.
 - The user wants a pantry that keeps spontaneous cooking possible without requiring constant shopping.
 - Purchase input may come from any source. The user accepts manual entry, a manual list, receipt photography, package scanning, barcode scanning, post-cooking confirmation, and checklist review when the workflow is not repetitive.
-- Real package size and the useful destination of the remainder are considered a central KitchenFlow differentiator.
+- Real package size and the useful destination of the remainder are considered a central Cocinaris differentiator.
 
 ## Cooking and effort evidence
 
@@ -54,7 +54,7 @@ The reference persona is evidence for product decisions, not a universal rule. P
 - Reheating tolerance depends on the food and the day.
 - Frozen food is easily forgotten.
 - Freezing acceptance must be configurable by the user rather than encoded as one universal list.
-- KitchenFlow should bring forgotten refrigerator and freezer information into a simple attention interface.
+- Cocinaris should bring forgotten refrigerator and freezer information into a simple attention interface.
 - The system may suggest preservation, freezing, or use, but it must not force the action.
 
 ## Reference priority order
@@ -76,7 +76,7 @@ Other users must be able to assign a different order.
 
 ## Reference success criteria
 
-A successful KitchenFlow experience would:
+A successful Cocinaris experience would:
 
 - maintain useful ingredients at home so cooking remains an available option;
 - materially reduce delivery orders;
@@ -112,9 +112,9 @@ A release that only generates recipes does not satisfy the discovery.
 - Quantifiable products should use grams, milliliters, or countable units as appropriate.
 - Inventory entry should not permit an item with no quantity representation.
 - Hard-to-measure staples may use a general availability state.
-- The user may enter personal shelf-life knowledge, but KitchenFlow should minimize the need by combining printed dates, user information, curated knowledge, regional references, and AI-assisted extraction.
+- The user may enter personal shelf-life knowledge, but Cocinaris should minimize the need by combining printed dates, user information, curated knowledge, regional references, and AI-assisted extraction.
 - The user expects partial transitions such as taking 500 g from a 2 kg frozen lot and thawing it before a planned meal.
-- KitchenFlow may remind the user one day before preparation to move the required quantity to the refrigerator.
+- Cocinaris may remind the user one day before preparation to move the required quantity to the refrigerator.
 - Attention may appear in the dashboard, web push, and email and may support a reminder such as “notify me again in 24 hours.”
 
 ## Product flexibility evidence

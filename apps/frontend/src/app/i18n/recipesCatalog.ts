@@ -83,7 +83,7 @@ const en: Record<(typeof REQUIRED_RECIPES_I18N_KEYS)[number], string> = {
   "recipes.generate.subtitle":
     "Use current inventory and profile constraints to suggest three recipes.",
   "recipes.generate.confirmDetail":
-    "KitchenFlow will read your on-hand pantry and preferences, then ask the AI gateway for exactly three validated candidates. Nothing is saved until you select one.",
+    "Cocinaris will read your on-hand pantry and preferences, then ask the AI gateway for exactly three validated candidates. Nothing is saved until you select one.",
   "recipes.generate.requesting": "Requesting candidates…",
   "recipes.generate.selecting": "Expanding and saving the selected recipe…",
   "recipes.generate.waitingSession": "Waiting for generation to finish…",
@@ -140,7 +140,7 @@ const ptBR: Record<(typeof REQUIRED_RECIPES_I18N_KEYS)[number], string> = {
   "recipes.generate.subtitle":
     "Use a despensa e as preferências atuais para sugerir três receitas.",
   "recipes.generate.confirmDetail":
-    "O KitchenFlow lerá a despensa e as preferências e pedirá ao gateway de IA exatamente três candidatos validados. Nada é salvo até você selecionar um.",
+    "O Cocinaris lerá a despensa e as preferências e pedirá ao gateway de IA exatamente três candidatos validados. Nada é salvo até você selecionar um.",
   "recipes.generate.requesting": "Solicitando candidatos…",
   "recipes.generate.selecting": "Expandindo e salvando a receita selecionada…",
   "recipes.generate.waitingSession": "Aguardando a geração terminar…",
@@ -199,7 +199,7 @@ const es: Record<(typeof REQUIRED_RECIPES_I18N_KEYS)[number], string> = {
   "recipes.generate.subtitle":
     "Usa la despensa y las preferencias actuales para sugerir tres recetas.",
   "recipes.generate.confirmDetail":
-    "KitchenFlow leerá tu despensa y preferencias y pedirá al gateway de IA exactamente tres candidatos validados. Nada se guarda hasta que selecciones uno.",
+    "Cocinaris leerá tu despensa y preferencias y pedirá al gateway de IA exactamente tres candidatos validados. Nada se guarda hasta que selecciones uno.",
   "recipes.generate.requesting": "Solicitando candidatos…",
   "recipes.generate.selecting":
     "Expandiendo y guardando la receta seleccionada…",

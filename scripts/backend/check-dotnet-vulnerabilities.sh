@@ -4,7 +4,7 @@ set -euo pipefail
 output_file="${1:-artifacts/dotnet-vulnerabilities.json}"
 mkdir -p "$(dirname "$output_file")"
 
-dotnet list apps/backend/KitchenFlow.slnx package \
+dotnet list apps/backend/Cocinaris.slnx package \
   --vulnerable \
   --include-transitive \
   --format json > "$output_file"

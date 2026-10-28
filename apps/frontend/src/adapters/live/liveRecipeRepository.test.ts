@@ -43,7 +43,7 @@ const candidate = (id: string) => ({
 
 describe("createLiveRecipeRepository", () => {
   it("lists recipes and maps camelCase projections", async () => {
-    const fetchImpl = jest.fn(async () =>
+    const fetchImpl = vi.fn(async () =>
       jsonResponse([
         {
           recipeId: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
@@ -68,7 +68,7 @@ describe("createLiveRecipeRepository", () => {
   });
 
   it("posts generation sessions with CSRF and Idempotency-Key", async () => {
-    const fetchImpl = jest.fn(async () =>
+    const fetchImpl = vi.fn(async () =>
       jsonResponse({
         sessionId: "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
         status: "CandidatesReady",
@@ -96,7 +96,7 @@ describe("createLiveRecipeRepository", () => {
   });
 
   it("maps ai_output_invalid problem details", async () => {
-    const fetchImpl = jest.fn(async () =>
+    const fetchImpl = vi.fn(async () =>
       problemResponse("ai_output_invalid", 422, "Invalid"),
     );
     const repo = createLiveRecipeRepository({ fetchImpl });
@@ -112,7 +112,7 @@ describe("createLiveRecipeRepository", () => {
   });
 
   it("maps budget unavailable", async () => {
-    const fetchImpl = jest.fn(async () =>
+    const fetchImpl = vi.fn(async () =>
       problemResponse("ai_budget_exhausted", 503),
     );
     const repo = createLiveRecipeRepository({ fetchImpl });

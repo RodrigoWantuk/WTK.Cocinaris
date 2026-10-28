@@ -12,7 +12,7 @@ import { recipesCatalogs } from "./recipesCatalog";
 export const PRODUCTION_LOCALES = ["pt-BR", "en", "es"] as const;
 export type ProductionLocale = (typeof PRODUCTION_LOCALES)[number];
 
-export const PRODUCTION_LOCALE_STORAGE_KEY = "kitchenflow_production_locale";
+export const PRODUCTION_LOCALE_STORAGE_KEY = "cocinaris_production_locale";
 
 type Catalog = Record<string, string>;
 
@@ -21,16 +21,16 @@ const sharedShell: Record<ProductionLocale, Catalog> = {
     "brand.name": "Cocinaris",
     "landing.enter": "Entrar",
     "landing.tagline":
-      "O KitchenFlow ajuda a transformar alimentos disponíveis em refeições úteis.",
+      "O Cocinaris ajuda a transformar alimentos disponíveis em refeições úteis.",
     "landing.subtitle":
       "As superfícies autenticadas do produto exigem sessão e adapters gerenciados pelo backend.",
     "access.title.unavailable": "Serviço indisponível",
     "access.title.pending": "Integração pendente",
     "access.detail":
-      "Builds de produção não aceitam credenciais locais. É necessário login gerenciado pelo backend.",
+      "Não foi possível verificar sua sessão agora. Tente novamente em instantes.",
     "access.loginTitle": "Entrar",
     "access.loginDetail":
-      "O login usa o desafio gerenciado pelo backend no navegador. Credenciais do provedor de identidade não são coletadas nesta página.",
+      "Você será levado à página de login do seu provedor de identidade. O Cocinaris nunca vê nem guarda sua senha.",
     "access.loginAction": "Continuar para o login",
     "access.expired": "Sua sessão expirou. Entre novamente para continuar.",
     "access.signedIn": "Sessão ativa",
@@ -39,25 +39,40 @@ const sharedShell: Record<ProductionLocale, Catalog> = {
     "feature.integrationPending": "Integração pendente",
     "feature.serviceUnavailable": "Serviço indisponível",
     "app.unavailable.detail":
-      "Esta área ainda não está conectada. A produção não faz fallback para dados mock de receitas, planejamento, compras ou cozinha.",
+      "Receitas, planejamento, compras e cozinha guiada ainda estão em construção e chegam nas próximas versões.",
     "lang.label": "Idioma",
     "nav.home": "Início",
     "nav.primary": "Navegação principal",
+    "nav.skipToContent": "Pular para o conteúdo",
+    "app.loading": "Carregando sua sessão…",
+    "app.unavailable.backHome": "Voltar ao início",
+    "page.title.entry": "Cocinaris",
+    "page.title.access": "Entrar",
+    "page.title.home": "Início",
+    "page.title.inventory": "Despensa",
+    "page.title.inventoryNew": "Adicionar lote",
+    "page.title.inventoryDetail": "Lote",
+    "page.title.inventoryEdit": "Editar lote",
+    "page.title.profile": "Perfil",
+    "page.title.unavailable": "Em breve",
+    "page.title.recipes": "Receitas",
+    "page.title.recipeGenerate": "Gerar receita",
+    "page.title.recipeDetail": "Receita",
   },
   en: {
     "brand.name": "Cocinaris",
     "landing.enter": "Enter",
     "landing.tagline":
-      "KitchenFlow helps transform available food into useful meals.",
+      "Cocinaris helps transform available food into useful meals.",
     "landing.subtitle":
       "Authenticated product surfaces require backend-managed session and adapters.",
     "access.title.unavailable": "Service unavailable",
     "access.title.pending": "Integration pending",
     "access.detail":
-      "Production builds do not accept local credentials. Backend-managed login is required.",
+      "We could not check your session right now. Please try again in a moment.",
     "access.loginTitle": "Sign in",
     "access.loginDetail":
-      "Sign-in uses the backend-managed browser challenge. Identity-provider credentials are not collected on this page.",
+      "You will continue to your identity provider's sign-in page. Cocinaris never sees or stores your password.",
     "access.loginAction": "Continue to sign in",
     "access.expired": "Your session expired. Sign in again to continue.",
     "access.signedIn": "Signed in",
@@ -66,25 +81,40 @@ const sharedShell: Record<ProductionLocale, Catalog> = {
     "feature.integrationPending": "Integration pending",
     "feature.serviceUnavailable": "Service unavailable",
     "app.unavailable.detail":
-      "This area is not wired yet. Production does not fall back to mock recipes, planning, shopping, or cook data.",
+      "Recipes, planning, shopping, and guided cooking are still being built and arrive in upcoming releases.",
     "lang.label": "Language",
     "nav.home": "Home",
     "nav.primary": "Primary navigation",
+    "nav.skipToContent": "Skip to content",
+    "app.loading": "Loading your session…",
+    "app.unavailable.backHome": "Back to home",
+    "page.title.entry": "Cocinaris",
+    "page.title.access": "Sign in",
+    "page.title.home": "Home",
+    "page.title.inventory": "Pantry",
+    "page.title.inventoryNew": "Add lot",
+    "page.title.inventoryDetail": "Lot",
+    "page.title.inventoryEdit": "Edit lot",
+    "page.title.profile": "Profile",
+    "page.title.unavailable": "Coming soon",
+    "page.title.recipes": "Recipes",
+    "page.title.recipeGenerate": "Generate a recipe",
+    "page.title.recipeDetail": "Recipe",
   },
   es: {
     "brand.name": "Cocinaris",
     "landing.enter": "Entrar",
     "landing.tagline":
-      "KitchenFlow ayuda a transformar alimentos disponibles en comidas útiles.",
+      "Cocinaris ayuda a transformar alimentos disponibles en comidas útiles.",
     "landing.subtitle":
       "Las superficies autenticadas del producto requieren sesión y adapters gestionados por el backend.",
     "access.title.unavailable": "Servicio no disponible",
     "access.title.pending": "Integración pendiente",
     "access.detail":
-      "Las builds de producción no aceptan credenciales locales. Se requiere inicio de sesión gestionado por el backend.",
+      "No pudimos verificar tu sesión ahora. Inténtalo de nuevo en un momento.",
     "access.loginTitle": "Iniciar sesión",
     "access.loginDetail":
-      "El inicio de sesión usa el desafío gestionado por el backend en el navegador. Las credenciales del proveedor de identidad no se recopilan en esta página.",
+      "Continuarás a la página de inicio de sesión de tu proveedor de identidad. Cocinaris nunca ve ni guarda tu contraseña.",
     "access.loginAction": "Continuar al inicio de sesión",
     "access.expired":
       "Tu sesión expiró. Inicia sesión de nuevo para continuar.",
@@ -94,10 +124,25 @@ const sharedShell: Record<ProductionLocale, Catalog> = {
     "feature.integrationPending": "Integración pendiente",
     "feature.serviceUnavailable": "Servicio no disponible",
     "app.unavailable.detail":
-      "Esta área aún no está conectada. La producción no usa datos mock de recetas, planificación, compras o cocina.",
+      "Recetas, planificación, compras y cocina guiada aún están en construcción y llegan en próximas versiones.",
     "lang.label": "Idioma",
     "nav.home": "Inicio",
     "nav.primary": "Navegación principal",
+    "nav.skipToContent": "Saltar al contenido",
+    "app.loading": "Cargando tu sesión…",
+    "app.unavailable.backHome": "Volver al inicio",
+    "page.title.entry": "Cocinaris",
+    "page.title.access": "Iniciar sesión",
+    "page.title.home": "Inicio",
+    "page.title.inventory": "Despensa",
+    "page.title.inventoryNew": "Agregar lote",
+    "page.title.inventoryDetail": "Lote",
+    "page.title.inventoryEdit": "Editar lote",
+    "page.title.profile": "Perfil",
+    "page.title.unavailable": "Próximamente",
+    "page.title.recipes": "Recetas",
+    "page.title.recipeGenerate": "Generar receta",
+    "page.title.recipeDetail": "Receta",
   },
 };
 

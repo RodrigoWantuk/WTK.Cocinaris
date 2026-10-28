@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://kitchenflow.local/contracts/ai/recipe/expand-selected.response.v0.3.json",
+  "$id": "https://cocinaris.local/contracts/ai/recipe/expand-selected.response.v0.3.json",
   "title": "recipe.expand_selected.v1 response",
   "description": "Strict closed response schema for selected-recipe expansion including thumbnailVisual (protocol 0.3).",
   "type": "object",

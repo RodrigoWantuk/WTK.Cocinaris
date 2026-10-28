@@ -1,7 +1,7 @@
 using System.Text.Json;
-using KitchenFlow.Modules.Ai.Abstractions;
-using KitchenFlow.Modules.Ai.Providers;
-using KitchenFlow.Modules.Recipes.Ai;
+using Cocinaris.Modules.Ai.Abstractions;
+using Cocinaris.Modules.Ai.Providers;
+using Cocinaris.Modules.Recipes.Ai;
 
 /// <summary>
 /// Bounded PLAN-0028 live DeepSeek smoke outside CI. Exercises production envelope builders,

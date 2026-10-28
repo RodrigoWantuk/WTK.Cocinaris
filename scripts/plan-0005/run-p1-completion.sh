@@ -27,8 +27,8 @@ set -a
 # shellcheck disable=SC1091
 source .env
 set +a
-export KITCHENFLOW_SMOKE_PASSWORD_A="${KITCHENFLOW_SMOKE_PASSWORD_A:-development-only-user-a}"
-export KITCHENFLOW_SMOKE_PASSWORD_B="${KITCHENFLOW_SMOKE_PASSWORD_B:-development-only-user-b}"
+export COCINARIS_SMOKE_PASSWORD_A="${COCINARIS_SMOKE_PASSWORD_A:-development-only-user-a}"
+export COCINARIS_SMOKE_PASSWORD_B="${COCINARIS_SMOKE_PASSWORD_B:-development-only-user-b}"
 
 OVERALL=0
 RUN_START="$(date +%s)"
@@ -52,7 +52,7 @@ chmod +x scripts/plan-0005/*.sh || true
 run_group environment bash scripts/plan-0005/prove-environment.sh
 
 run_group pagination-http bash -c '
-  dotnet test apps/backend/KitchenFlow.slnx -c Release --no-build \
+  dotnet test apps/backend/Cocinaris.slnx -c Release --no-build \
     --filter "FullyQualifiedName~Plan0005P1PaginationTests" \
     --logger "trx;LogFilePrefix=plan0005-p1-page-" \
     --results-directory "'"${REPORT_DIR}"'/trx-p1"
@@ -66,7 +66,8 @@ run_group observability-performance bash scripts/plan-0005/observability-perform
 # Frontend unit/i18n tests already in package
 run_group frontend-unit bash -c '
   cd apps/frontend
-  yarn test --watchAll=false --testPathPattern="i18n|productionIsolation|productionCatalog" --passWithNoTests
+  # Vitest filters by positional path substrings (Jest used --testPathPattern).
+  yarn test --passWithNoTests i18n productionIsolation productionCatalog
 '
 
 kill "${CONTAINER_SAMPLER_PID}" 2>/dev/null || true

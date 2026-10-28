@@ -1,7 +1,7 @@
-# @kitchenflow/api-client
+# @cocinaris/api-client
 
 Reproducible TypeScript client generated from
-`packages/contracts/openapi/kitchenflow-v1.json`.
+`packages/contracts/openapi/cocinaris-v1.json`.
 
 ## Generator policy
 
@@ -24,9 +24,9 @@ yarn typecheck
 
 CI must fail when the committed OpenAPI snapshot and generated client drift.
 
-## CRA mirror
+## Frontend mirror
 
-Create React App cannot compile packages outside `apps/frontend/src`.
+The frontend compiles the client from inside `apps/frontend/src` (a historical Create React App constraint kept under Vite so the frontend stays self-contained).
 `yarn generate` therefore syncs `src/` into
 `apps/frontend/src/generated/api-client` (committed mirror; do not edit by hand).
 

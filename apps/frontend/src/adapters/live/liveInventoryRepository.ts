@@ -1,9 +1,9 @@
 import {
-  createKitchenFlowClient,
+  createCocinarisClient,
   readEtag,
   readProblemDetails,
   type components,
-} from "@kitchenflow/api-client";
+} from "@cocinaris/api-client";
 import {
   InventoryApiError,
   type AdjustLotInput,
@@ -124,6 +124,8 @@ function assertData<T>(
 async function throwForFailure(
   response: Response,
   fallback: string,
+  /** The generated client's parsed `error` body; the response body is already consumed. */
+  parsedBody?: unknown,
 ): Promise<never> {
   if (response.status === 401) {
     throw new InventoryApiError("authentication_required", fallback, 401);
@@ -155,7 +157,7 @@ async function throwForFailure(
       response.status || 503,
     );
   }
-  const problem = await readProblemDetails(response);
+  const problem = await readProblemDetails(response, parsedBody);
   const fieldErrors: Record<string, string[]> = {};
   if (problem?.errors) {
     for (const [key, value] of Object.entries(problem.errors)) {
@@ -182,7 +184,7 @@ export function createLiveInventoryRepository(options?: {
     options?.fetchImpl ??
     ((input: RequestInfo | URL, init?: RequestInit) =>
       globalThis.fetch(input, init));
-  const client = createKitchenFlowClient({
+  const client = createCocinarisClient({
     baseUrl: options?.baseUrl ?? "",
     fetch: (request) => fetchImpl(request),
   });
@@ -190,21 +192,28 @@ export function createLiveInventoryRepository(options?: {
   return {
     async listLots(params = {}) {
       try {
-        const { data, response } = await client.GET("/api/v1/inventory/lots", {
-          params: {
-            query: {
-              search: params.search,
-              status: params.status,
-              storageLocation: params.storageLocation,
-              cursor: params.cursor,
-              pageSize: params.pageSize,
+        const { data, error, response } = await client.GET(
+          "/api/v1/inventory/lots",
+          {
+            params: {
+              query: {
+                search: params.search,
+                status: params.status,
+                storageLocation: params.storageLocation,
+                cursor: params.cursor,
+                pageSize: params.pageSize,
+              },
             },
+            signal: params.signal,
+            credentials: "include",
           },
-          signal: params.signal,
-          credentials: "include",
-        });
+        );
         if (!response.ok || !data) {
-          await throwForFailure(response, "Unable to list inventory lots.");
+          await throwForFailure(
+            response,
+            "Unable to list inventory lots.",
+            error,
+          );
         }
         assertData(data, response);
         return {
@@ -225,7 +234,7 @@ export function createLiveInventoryRepository(options?: {
     },
 
     async getLot(lotId, signal) {
-      const { data, response } = await client.GET(
+      const { data, error, response } = await client.GET(
         "/api/v1/inventory/lots/{lotId}",
         {
           params: { path: { lotId } },
@@ -234,7 +243,7 @@ export function createLiveInventoryRepository(options?: {
         },
       );
       if (!response.ok || !data) {
-        await throwForFailure(response, "Unable to load lot.");
+        await throwForFailure(response, "Unable to load lot.", error);
       }
       assertData(data, response);
       return mapLot(data, readEtag(response) ?? data.version);
@@ -250,19 +259,22 @@ export function createLiveInventoryRepository(options?: {
         printedExpirationDate: input.printedExpirationDate ?? null,
         notes: input.notes ?? null,
       };
-      const { data, response } = await client.POST("/api/v1/inventory/lots", {
-        params: {
-          header: {
-            "X-CSRF-TOKEN": csrfToken,
-            "Idempotency-Key": idempotencyKey,
+      const { data, error, response } = await client.POST(
+        "/api/v1/inventory/lots",
+        {
+          params: {
+            header: {
+              "X-CSRF-TOKEN": csrfToken,
+              "Idempotency-Key": idempotencyKey,
+            },
           },
+          body,
+          signal,
+          credentials: "include",
         },
-        body,
-        signal,
-        credentials: "include",
-      });
+      );
       if (!response.ok || !data) {
-        await throwForFailure(response, "Unable to create lot.");
+        await throwForFailure(response, "Unable to create lot.", error);
       }
       assertData(data, response);
       return mapLot(data, readEtag(response) ?? data.version);
@@ -284,7 +296,7 @@ export function createLiveInventoryRepository(options?: {
         printedExpirationDate: input.printedExpirationDate ?? null,
         notes: input.notes ?? null,
       };
-      const { data, response } = await client.PATCH(
+      const { data, error, response } = await client.PATCH(
         "/api/v1/inventory/lots/{lotId}",
         {
           params: {
@@ -300,7 +312,7 @@ export function createLiveInventoryRepository(options?: {
         },
       );
       if (!response.ok || !data) {
-        await throwForFailure(response, "Unable to update lot.");
+        await throwForFailure(response, "Unable to update lot.", error);
       }
       assertData(data, response);
       return mapLot(data, readEtag(response) ?? data.version);
@@ -318,7 +330,7 @@ export function createLiveInventoryRepository(options?: {
         reasonCode: input.reasonCode ?? null,
         note: input.note ?? null,
       };
-      const { data, response } = await client.POST(
+      const { data, error, response } = await client.POST(
         "/api/v1/inventory/lots/{lotId}/adjustments",
         {
           params: {
@@ -335,14 +347,14 @@ export function createLiveInventoryRepository(options?: {
         },
       );
       if (!response.ok || !data) {
-        await throwForFailure(response, "Unable to adjust lot.");
+        await throwForFailure(response, "Unable to adjust lot.", error);
       }
       assertData(data, response);
       return mapLot(data, readEtag(response) ?? data.version);
     },
 
     async deleteLot(lotId, { csrfToken, etag, signal }) {
-      const { response } = await client.DELETE(
+      const { error, response } = await client.DELETE(
         "/api/v1/inventory/lots/{lotId}",
         {
           params: {
@@ -357,12 +369,12 @@ export function createLiveInventoryRepository(options?: {
         },
       );
       if (!response.ok && response.status !== 204) {
-        await throwForFailure(response, "Unable to delete lot.");
+        await throwForFailure(response, "Unable to delete lot.", error);
       }
     },
 
     async getHistory(lotId, signal) {
-      const { data, response } = await client.GET(
+      const { data, error, response } = await client.GET(
         "/api/v1/inventory/lots/{lotId}/history",
         {
           params: { path: { lotId } },
@@ -371,7 +383,7 @@ export function createLiveInventoryRepository(options?: {
         },
       );
       if (!response.ok || !data) {
-        await throwForFailure(response, "Unable to load history.");
+        await throwForFailure(response, "Unable to load history.", error);
       }
       assertData(data, response);
       return data.map(

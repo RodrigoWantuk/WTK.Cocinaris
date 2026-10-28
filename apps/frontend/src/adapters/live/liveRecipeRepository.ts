@@ -1,8 +1,8 @@
 import {
-  createKitchenFlowClient,
+  createCocinarisClient,
   readProblemDetails,
   type components,
-} from "@kitchenflow/api-client";
+} from "@cocinaris/api-client";
 import {
   RecipeApiError,
   type RecipeApiErrorCode,
@@ -146,8 +146,10 @@ function assertData<T>(
 async function throwForFailure(
   response: Response,
   fallback: string,
+  // openapi-fetch has already consumed the error body; pass its parsed value.
+  parsedBody?: unknown,
 ): Promise<never> {
-  const problem = await readProblemDetails(response);
+  const problem = await readProblemDetails(response, parsedBody);
   const fieldErrors: Record<string, string[]> = {};
   if (problem?.errors) {
     for (const [key, value] of Object.entries(problem.errors)) {
@@ -231,7 +233,7 @@ export function createLiveRecipeRepository(options?: {
     options?.fetchImpl ??
     ((input: RequestInfo | URL, init?: RequestInit) =>
       globalThis.fetch(input, init));
-  const client = createKitchenFlowClient({
+  const client = createCocinarisClient({
     baseUrl: options?.baseUrl ?? "",
     fetch: (request) => fetchImpl(request),
   });
@@ -239,12 +241,12 @@ export function createLiveRecipeRepository(options?: {
   return {
     async listRecipes(signal) {
       try {
-        const { data, response } = await client.GET("/api/v1/recipes", {
+        const { data, error, response } = await client.GET("/api/v1/recipes", {
           signal,
           credentials: "include",
         });
         if (!response.ok || !data) {
-          await throwForFailure(response, "Unable to list recipes.");
+          await throwForFailure(response, "Unable to list recipes.", error);
         }
         assertData(data, response);
         if (!Array.isArray(data)) {
@@ -262,7 +264,7 @@ export function createLiveRecipeRepository(options?: {
 
     async getRecipe(recipeId, signal) {
       try {
-        const { data, response } = await client.GET(
+        const { data, error, response } = await client.GET(
           "/api/v1/recipes/{recipeId}",
           {
             params: { path: { recipeId } },
@@ -271,7 +273,7 @@ export function createLiveRecipeRepository(options?: {
           },
         );
         if (!response.ok || !data) {
-          await throwForFailure(response, "Unable to load recipe.");
+          await throwForFailure(response, "Unable to load recipe.", error);
         }
         assertData(data, response);
         return mapDetail(data);
@@ -282,7 +284,7 @@ export function createLiveRecipeRepository(options?: {
 
     async requestCandidates({ csrfToken, idempotencyKey, signal }) {
       try {
-        const { data, response } = await client.POST(
+        const { data, error, response } = await client.POST(
           "/api/v1/recipes/generation-sessions",
           {
             params: {
@@ -299,6 +301,7 @@ export function createLiveRecipeRepository(options?: {
           await throwForFailure(
             response,
             "Unable to request recipe candidates.",
+            error,
           );
         }
         assertData(data, response);
@@ -310,7 +313,7 @@ export function createLiveRecipeRepository(options?: {
 
     async getGenerationSession(sessionId, signal) {
       try {
-        const { data, response } = await client.GET(
+        const { data, error, response } = await client.GET(
           "/api/v1/recipes/generation-sessions/{sessionId}",
           {
             params: { path: { sessionId } },
@@ -319,7 +322,11 @@ export function createLiveRecipeRepository(options?: {
           },
         );
         if (!response.ok || !data) {
-          await throwForFailure(response, "Unable to load generation session.");
+          await throwForFailure(
+            response,
+            "Unable to load generation session.",
+            error,
+          );
         }
         assertData(data, response);
         return mapSession(data);
@@ -337,7 +344,7 @@ export function createLiveRecipeRepository(options?: {
         const body: components["schemas"]["SelectCandidateRequest"] = {
           candidateId,
         };
-        const { data, response } = await client.POST(
+        const { data, error, response } = await client.POST(
           "/api/v1/recipes/generation-sessions/{sessionId}/selection",
           {
             params: {
@@ -353,7 +360,11 @@ export function createLiveRecipeRepository(options?: {
           },
         );
         if (!response.ok || !data) {
-          await throwForFailure(response, "Unable to select recipe candidate.");
+          await throwForFailure(
+            response,
+            "Unable to select recipe candidate.",
+            error,
+          );
         }
         assertData(data, response);
         return mapDetail(data);

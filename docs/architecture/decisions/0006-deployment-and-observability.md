@@ -35,6 +35,12 @@ The project will test on an owner-operated VPS in Texas and initially deploy pro
 - International transfer and data-residency analysis is required before global production use.
 - Migration to an orchestrator remains possible because components use containers, health checks, and externalized configuration.
 
+## Amendment — 2026-10-28 (owner decision, PLAN-0034)
+
+- The owner-operated Linux host is the canonical **development, test, build and deployment** environment for the current stage. The Virginia cloud region remains the accepted future production target.
+- On that host the API runs as a hardened systemd service and the frontend as static files behind the host reverse proxy, with PostgreSQL on the host. Docker Compose provides development dependencies and test fixtures. The procedure is versioned in `docs/operations/linux-host-deployment-runbook.md` and `scripts/deploy/deploy-linux-host.sh`.
+- The "one manually updated VPS as production architecture" rejection still stands for public launch. The scripted, release-based host deployment is the pre-launch operating mode, and PLAN-0052 (release readiness) owns the production move.
+
 ## References
 
 - OpenTelemetry .NET: https://opentelemetry.io/docs/languages/dotnet/

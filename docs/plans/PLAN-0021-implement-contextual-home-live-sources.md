@@ -40,7 +40,7 @@ The backend may aggregate projections, but each source retains explicit status, 
 - PLAN-0022 finalizes recipe candidate/expansion contract decisions needed by AI-backed suggestion work.
 - A planning implementation publishes the accepted-menu read contract before Tier 1 can be claimed live.
 
-Until all prerequisites exist, this plan remains `Blocked`. Do not fake missing tiers with production mock data.
+Each tier stays blocked until its own prerequisite exists: the deterministic inventory-attention and confirmed-profile tiers may be delivered first, Tier 1 waits for the accepted-menu contract (PLAN-0034 in the PLAN-0028 roadmap), and AI-backed chooser behavior waits for the AI Gateway (PLAN-0033). Do not fake missing tiers with production mock data.
 
 ## Included scope
 
@@ -101,6 +101,12 @@ Represent:
 
 ## Execution state
 
-- **Current checkpoint:** PLAN-0011, PLAN-0020, and PLAN-0022 are complete. PLAN-0028 delivers recipe revisions. PLAN-0021 remains blocked on the accepted menu/planning read contract.
-- **Blockers:** Accepted menu/planning read contract from the future sequential-planning slice (PLAN-0029).
-- **Exact next action:** Keep blocked until PLAN-0029 publishes the accepted-menu read contract; then claim `agent/plan-0021-contextual-home-live-sources`.
+- **Current checkpoint:** PLAN-0011, PLAN-0020, and PLAN-0022 are complete. PLAN-0028 delivers recipe revisions. Full live home sources remain blocked on the accepted menu/planning read contract; deterministic inventory/profile tiers may go first.
+- **Blockers:** Accepted menu/planning read contract from the sequential-planning slice (PLAN-0029) for the menu tier only.
+- **Exact next action:** Implement the deterministic inventory/profile tiers after the inventory attention engine (PLAN-0037); add the menu tier once PLAN-0029 publishes the accepted-menu read contract. Branch `agent/plan-0021-contextual-home-live-sources`.
+
+## Progress log
+
+### 2026-10-28T15:00:00Z — Claude Code (PLAN-0032 drift reconciliation; numbered PLAN-0029 before the PR #44 renumbering)
+
+- Clarified per-tier gating so the prerequisite paragraph agrees with the `Ready` status and the existing exact next action (deterministic inventory/profile tiers first). No scope or acceptance criterion changed.

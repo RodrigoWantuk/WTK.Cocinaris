@@ -92,7 +92,10 @@ export function CodeListEditor({
       <div className="flex flex-wrap items-center gap-2">
         <select
           data-testid={`code-list-${id}-select`}
-          className="flex h-9 rounded-md border border-input bg-transparent px-3 text-sm"
+          aria-label={`${label}: ${t("profile.data.addListItem")}`}
+          aria-describedby={errorMessage ? `code-list-${id}-error` : undefined}
+          // Long catalog labels must not widen the page on narrow screens.
+          className="flex h-9 w-full min-w-0 max-w-full rounded-md border border-input bg-transparent px-3 text-sm sm:w-auto"
           value={pendingCode}
           disabled={disabled}
           onChange={(event) => setPendingCode(event.target.value)}

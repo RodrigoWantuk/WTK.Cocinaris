@@ -66,7 +66,7 @@ describe("PublicEntryPage", () => {
   });
 
   it("explains the product without SessionProvider or authenticated API calls", async () => {
-    const fetchSpy = jest.spyOn(globalThis, "fetch");
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
     const { events } = renderEntry();
     expect(
       await screen.findByTestId("production-landing-title"),
@@ -74,7 +74,9 @@ describe("PublicEntryPage", () => {
     expect(screen.getByTestId("production-landing-subtitle")).toHaveTextContent(
       /not just a recipe generator/i,
     );
-    expect(screen.getByTestId("entry-media-placeholder")).toBeInTheDocument();
+    // Media is optional enhancement; with none, the page shows no "reserved space" box.
+    expect(screen.queryByTestId("entry-media-placeholder")).toBeNull();
+    expect(screen.getByTestId("entry-demo-step-0")).toBeInTheDocument();
     expect(screen.getByTestId("entry-legal-terms").tagName.toLowerCase()).toBe(
       "a",
     );
@@ -97,19 +99,19 @@ describe("PublicEntryPage", () => {
 
   it("uses smooth scrolling by default and auto when reduced motion is preferred", async () => {
     const user = userEvent.setup();
-    const scrollSpy = jest.fn();
+    const scrollSpy = vi.fn();
     Element.prototype.scrollIntoView = scrollSpy;
     const originalMatchMedia = window.matchMedia;
 
-    window.matchMedia = jest.fn().mockImplementation(() => ({
+    window.matchMedia = vi.fn().mockImplementation(() => ({
       matches: false,
       media: "(prefers-reduced-motion: reduce)",
       onchange: null,
-      addListener: jest.fn(),
-      removeListener: jest.fn(),
-      addEventListener: jest.fn(),
-      removeEventListener: jest.fn(),
-      dispatchEvent: jest.fn(),
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
     })) as unknown as typeof window.matchMedia;
 
     renderEntry();
@@ -117,15 +119,15 @@ describe("PublicEntryPage", () => {
     expect(scrollSpy).toHaveBeenCalledWith({ behavior: "smooth" });
 
     scrollSpy.mockClear();
-    window.matchMedia = jest.fn().mockImplementation((query: string) => ({
+    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
       matches: query.includes("prefers-reduced-motion: reduce"),
       media: query,
       onchange: null,
-      addListener: jest.fn(),
-      removeListener: jest.fn(),
-      addEventListener: jest.fn(),
-      removeEventListener: jest.fn(),
-      dispatchEvent: jest.fn(),
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
     })) as unknown as typeof window.matchMedia;
     await user.click(screen.getByTestId("entry-cta-demo"));
     expect(scrollSpy).toHaveBeenCalledWith({ behavior: "auto" });
@@ -134,7 +136,7 @@ describe("PublicEntryPage", () => {
 
   it("falls back to auto scrolling when matchMedia is unavailable", async () => {
     const user = userEvent.setup();
-    const scrollSpy = jest.fn();
+    const scrollSpy = vi.fn();
     Element.prototype.scrollIntoView = scrollSpy;
     const original = window.matchMedia;
     // @ts-expect-error intentional unsupported environment
@@ -147,10 +149,10 @@ describe("PublicEntryPage", () => {
 
   it("falls back to auto scrolling when matchMedia throws", async () => {
     const user = userEvent.setup();
-    const scrollSpy = jest.fn();
+    const scrollSpy = vi.fn();
     Element.prototype.scrollIntoView = scrollSpy;
     const original = window.matchMedia;
-    window.matchMedia = jest.fn(() => {
+    window.matchMedia = vi.fn(() => {
       throw new Error("matchMedia unavailable");
     }) as unknown as typeof window.matchMedia;
     renderEntry();

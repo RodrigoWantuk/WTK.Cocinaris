@@ -45,31 +45,31 @@ log "Starting shared postgres + keycloak"
 UP_END="$(date +%s)"
 
 log "Waiting for PostgreSQL readiness"
-timeout 120 bash -c 'until docker compose -f infrastructure/compose/compose.dev.yml exec -T postgres pg_isready -U kitchenflow_dev -d kitchenflow >/dev/null 2>&1; do sleep 2; done'
+timeout 120 bash -c 'until docker compose -f infrastructure/compose/compose.dev.yml exec -T postgres pg_isready -U cocinaris_dev -d cocinaris >/dev/null 2>&1; do sleep 2; done'
 
 log "Waiting for Keycloak readiness"
-timeout 180 bash -c 'until curl --fail --silent http://127.0.0.1:8080/realms/kitchenflow/.well-known/openid-configuration >/dev/null; do sleep 2; done'
+timeout 180 bash -c 'until curl --fail --silent http://127.0.0.1:8080/realms/cocinaris/.well-known/openid-configuration >/dev/null; do sleep 2; done'
 
 CONTAINER_COUNT="$("${COMPOSE[@]}" ps --status running --services | wc -l | tr -d ' ')"
 
 MIG_START="$(date +%s)"
 log "Restoring tools and applying migrations"
 dotnet tool restore >/dev/null
-dotnet restore apps/backend/KitchenFlow.slnx --locked-mode
-dotnet build apps/backend/KitchenFlow.slnx -c Release --no-restore
+dotnet restore apps/backend/Cocinaris.slnx --locked-mode
+dotnet build apps/backend/Cocinaris.slnx -c Release --no-restore
 dotnet ef database update \
-  --project apps/backend/src/KitchenFlow.Infrastructure/KitchenFlow.Infrastructure.csproj \
-  --startup-project apps/backend/src/KitchenFlow.Api/KitchenFlow.Api.csproj \
+  --project apps/backend/src/Cocinaris.Infrastructure/Cocinaris.Infrastructure.csproj \
+  --startup-project apps/backend/src/Cocinaris.Api/Cocinaris.Api.csproj \
   --configuration Release \
   --no-build
 MIG_END="$(date +%s)"
 
-mkdir -p .local-data/kitchenflow/session-keys
-export KITCHENFLOW_DB_CONNECTION
-export KITCHENFLOW_OIDC_AUTHORITY
-export KITCHENFLOW_OIDC_CLIENT_ID
-export KITCHENFLOW_OIDC_CLIENT_SECRET
-export KITCHENFLOW_SESSION_KEYRING_PATH="${KITCHENFLOW_SESSION_KEYRING_PATH:-.local-data/kitchenflow/session-keys}"
+mkdir -p .local-data/cocinaris/session-keys
+export COCINARIS_DB_CONNECTION
+export COCINARIS_OIDC_AUTHORITY
+export COCINARIS_OIDC_CLIENT_ID
+export COCINARIS_OIDC_CLIENT_SECRET
+export COCINARIS_SESSION_KEYRING_PATH="${COCINARIS_SESSION_KEYRING_PATH:-.local-data/cocinaris/session-keys}"
 
 API_LOG="${REPORT_DIR}/api-release.log"
 API_START="$(date +%s)"
@@ -97,7 +97,7 @@ else
   ASPNETCORE_ENVIRONMENT="${ASPNETCORE_ENVIRONMENT:-Development}" \
   ASPNETCORE_URLS="https://localhost:7443;http://127.0.0.1:7080" \
   nohup dotnet run \
-    --project apps/backend/src/KitchenFlow.Api/KitchenFlow.Api.csproj \
+    --project apps/backend/src/Cocinaris.Api/Cocinaris.Api.csproj \
     --configuration Release \
     --no-build \
     --no-launch-profile \

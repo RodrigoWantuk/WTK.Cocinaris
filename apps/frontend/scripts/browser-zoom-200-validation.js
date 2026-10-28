@@ -359,7 +359,7 @@ async function runLanguageSelector(page, meta, base) {
     const after = (await tagline.innerText()).trim();
     const changed =
       after !== mid &&
-      /kitchenflow helps|transform available food|turn available food|decide what to prepare/i.test(
+      /cocinaris helps|transform available food|turn available food|decide what to prepare/i.test(
         after,
       );
     await mobile.selectOption("pt-BR");
@@ -407,7 +407,7 @@ async function runLanguageSelector(page, meta, base) {
     await desktopEn.evaluate((el) => el.click());
     await wait(400);
     const after = (await tagline.innerText()).trim();
-    const changed = after !== mid && /kitchenflow helps|transform available food/i.test(after);
+    const changed = after !== mid && /cocinaris helps|transform available food/i.test(after);
     await page.getByTestId("production-lang-pt-BR").evaluate((el) => el.click());
     await wait(300);
     const restored = (await tagline.innerText()).trim();

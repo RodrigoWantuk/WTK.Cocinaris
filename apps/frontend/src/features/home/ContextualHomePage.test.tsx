@@ -187,18 +187,30 @@ describe("ContextualHomePage", () => {
     );
   });
 
-  it("does not offer retry for permanent unavailable production sources", async () => {
+  it("replaces permanently unavailable sources with one notice and next steps", async () => {
     renderHome({ unavailable: true });
-    expect(
-      await screen.findByTestId("home-live-unavailable"),
-    ).toBeInTheDocument();
-    expect(screen.getByTestId("home-source-menu")).toHaveAttribute(
-      "data-retryable",
-      "false",
+    const notice = await screen.findByTestId("home-live-unavailable");
+    expect(notice).toBeInTheDocument();
+    // No repeated per-source "unavailable" sections, retries, or empty-state message.
+    for (const tier of ["menu", "inventory", "profile"]) {
+      expect(
+        screen.queryByTestId(`home-source-${tier}`),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId(`home-source-retry-${tier}`),
+      ).not.toBeInTheDocument();
+    }
+    expect(screen.queryByTestId("home-no-suggestions")).not.toBeInTheDocument();
+    // The notice must not leak plan IDs or route paths into user copy.
+    expect(notice.textContent).not.toMatch(/PLAN-\d+|\/app\//);
+    expect(screen.getByTestId("home-unavailable-pantry-link")).toHaveAttribute(
+      "href",
+      "/app/despensa",
     );
-    expect(
-      screen.queryByTestId("home-source-retry-menu"),
-    ).not.toBeInTheDocument();
+    expect(screen.getByTestId("home-unavailable-profile-link")).toHaveAttribute(
+      "href",
+      "/app/perfil",
+    );
   });
 
   it("ignores stale menu responses after context change", async () => {

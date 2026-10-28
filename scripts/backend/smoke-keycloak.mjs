@@ -5,21 +5,21 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawn } from "node:child_process";
 
-const apiUrl = process.env.KITCHENFLOW_SMOKE_API_URL ?? "https://localhost:7443";
-const browserPath = process.env.KITCHENFLOW_SMOKE_BROWSER ?? "google-chrome";
-const allowUntrustedLocalCertificate = process.env.KITCHENFLOW_SMOKE_ALLOW_UNTRUSTED_LOCAL_CERTIFICATE === "1";
+const apiUrl = process.env.COCINARIS_SMOKE_API_URL ?? "https://localhost:7443";
+const browserPath = process.env.COCINARIS_SMOKE_BROWSER ?? "google-chrome";
+const allowUntrustedLocalCertificate = process.env.COCINARIS_SMOKE_ALLOW_UNTRUSTED_LOCAL_CERTIFICATE === "1";
 const browserSandboxArguments = process.getuid?.() === 0 ? ["--no-sandbox"] : [];
 // Linux validation trusts the ASP.NET development certificate through the operating-system store.
 // Selecting that store is not a certificate-validation bypass and avoids Chrome's separate built-in
 // root list ignoring the explicitly installed local development trust anchor.
 const browserTrustStoreArguments = process.platform === "linux" ? ["--disable-features=ChromeRootStoreUsed"] : [];
 const users = [
-  { username: process.env.KITCHENFLOW_SMOKE_USER_A ?? "inventory-user-a", password: process.env.KITCHENFLOW_SMOKE_PASSWORD_A },
-  { username: process.env.KITCHENFLOW_SMOKE_USER_B ?? "inventory-user-b", password: process.env.KITCHENFLOW_SMOKE_PASSWORD_B }
+  { username: process.env.COCINARIS_SMOKE_USER_A ?? "inventory-user-a", password: process.env.COCINARIS_SMOKE_PASSWORD_A },
+  { username: process.env.COCINARIS_SMOKE_USER_B ?? "inventory-user-b", password: process.env.COCINARIS_SMOKE_PASSWORD_B }
 ];
 
 if (users.some((user) => !user.password)) {
-  process.stderr.write("KITCHENFLOW_SMOKE_PASSWORD_A and KITCHENFLOW_SMOKE_PASSWORD_B are required.\n");
+  process.stderr.write("COCINARIS_SMOKE_PASSWORD_A and COCINARIS_SMOKE_PASSWORD_B are required.\n");
   process.exit(2);
 }
 
@@ -127,7 +127,7 @@ class DevToolsConnection {
 }
 
 async function startBrowser(port) {
-  const profile = await mkdtemp(join(tmpdir(), "kitchenflow-keycloak-smoke-"));
+  const profile = await mkdtemp(join(tmpdir(), "cocinaris-keycloak-smoke-"));
   const child = spawn(browserPath, [
     "--headless=new",
     "--no-first-run",
@@ -152,7 +152,7 @@ async function startBrowser(port) {
       await connection.send("Security.setIgnoreCertificateErrors", { ignore: true });
     }
     await connection.send("Page.navigate", { url: `${apiUrl}/health/live` });
-    await waitFor(async () => (await connection.evaluate("location.href")).startsWith(apiUrl), "KitchenFlow HTTPS endpoint");
+    await waitFor(async () => (await connection.evaluate("location.href")).startsWith(apiUrl), "Cocinaris HTTPS endpoint");
     return { child, connection, profile };
   } catch (error) {
     await terminateBrowserProcess(child);
@@ -176,7 +176,7 @@ async function currentLocationDescription(browser) {
 }
 
 async function login(browser, user) {
-  await browser.connection.evaluate(`document.body.innerHTML = '<form id="kitchenflow-login" method="post" action="/api/v1/auth/login"><input name="returnUrl" value="/health/live"></form>'; document.getElementById("kitchenflow-login").submit();`, false);
+  await browser.connection.evaluate(`document.body.innerHTML = '<form id="cocinaris-login" method="post" action="/api/v1/auth/login"><input name="returnUrl" value="/health/live"></form>'; document.getElementById("cocinaris-login").submit();`, false);
   try {
     await waitFor(async () => {
       const url = await currentUrl(browser);
@@ -200,7 +200,7 @@ async function login(browser, user) {
   }
 
   await browser.connection.send("Page.navigate", { url: `${apiUrl}/health/live` });
-  await waitFor(async () => (await currentUrl(browser)).startsWith(apiUrl), "KitchenFlow session probe");
+  await waitFor(async () => (await currentUrl(browser)).startsWith(apiUrl), "Cocinaris session probe");
 
   const session = await browser.connection.evaluate("fetch('/api/v1/session', { credentials: 'include' }).then(async response => ({ status: response.status, body: await response.json() }))");
   if (session.status !== 200 || !session.body?.userId || !session.body?.csrfToken || Object.hasOwn(session.body, "accessToken") || Object.hasOwn(session.body, "refreshToken")) {
@@ -238,12 +238,12 @@ try {
   browsers.push(await startBrowser(9223));
   const readyStatuses = await Promise.all(browsers.map((browser) => fetchStatus(browser, "/health/ready")));
   if (readyStatuses.some((status) => status !== 200)) {
-    throw new Error(`KitchenFlow API is not ready at ${apiUrl}. Start Compose, apply migrations, and start the HTTPS API first.`);
+    throw new Error(`Cocinaris API is not ready at ${apiUrl}. Start Compose, apply migrations, and start the HTTPS API first.`);
   }
   const sessionA = await login(browsers[0], users[0]);
   const sessionB = await login(browsers[1], users[1]);
   if (sessionA.userId === sessionB.userId) {
-    throw new Error("Deterministic Keycloak users resolved to the same internal KitchenFlow user.");
+    throw new Error("Deterministic Keycloak users resolved to the same internal Cocinaris user.");
   }
 
   const lotId = await createLot(browsers[0], sessionA.csrfToken);

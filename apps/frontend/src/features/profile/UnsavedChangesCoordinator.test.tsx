@@ -237,7 +237,7 @@ describe("describeProfileMutationError", () => {
 
 describe("ProfileProvider post-save and session refresh UX", () => {
   it("keeps saveRefreshFailed visible across a failed reload retry", async () => {
-    const getProfile = jest
+    const getProfile = vi
       .fn()
       .mockResolvedValueOnce(createConfirmedProfileSnapshot())
       .mockRejectedValueOnce(
@@ -247,7 +247,7 @@ describe("ProfileProvider post-save and session refresh UX", () => {
         new ProfileApiError("unavailable", "still down", 503),
       )
       .mockResolvedValue(createConfirmedProfileSnapshot());
-    const patchProfile = jest.fn(async () => createConfirmedProfileSnapshot());
+    const patchProfile = vi.fn(async () => createConfirmedProfileSnapshot());
     const repo = createMockProfileRepo({ getProfile, patchProfile });
 
     let captured: ReturnType<typeof useProfileWorkspace> | null = null;
@@ -293,7 +293,7 @@ describe("ProfileProvider post-save and session refresh UX", () => {
   });
 
   it("surfaces sessionRefreshWarning when session refresh fails after a successful save", async () => {
-    const getSession = jest
+    const getSession = vi
       .fn()
       .mockResolvedValueOnce({
         status: "authenticated",

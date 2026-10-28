@@ -160,14 +160,14 @@ export function createMockProfileRepo(
   overrides: Partial<ProfileRepository> = {},
 ): ProfileRepository {
   return {
-    getProfile: jest.fn(async () => createConfirmedProfileSnapshot()),
-    patchProfile: jest.fn(async () => createConfirmedProfileSnapshot()),
-    replaceProfile: jest.fn(async () => createConfirmedProfileSnapshot()),
-    getPreferences: jest.fn(async () => createEmptyPreferenceSnapshot()),
-    mutatePreferences: jest.fn(async () => createEmptyPreferenceSnapshot()),
-    getEquipment: jest.fn(async () => createEmptyEquipmentSnapshot()),
-    replaceEquipment: jest.fn(async () => createEmptyEquipmentSnapshot()),
-    getCompleteness: jest.fn(async () => createCompleteness()),
+    getProfile: vi.fn(async () => createConfirmedProfileSnapshot()),
+    patchProfile: vi.fn(async () => createConfirmedProfileSnapshot()),
+    replaceProfile: vi.fn(async () => createConfirmedProfileSnapshot()),
+    getPreferences: vi.fn(async () => createEmptyPreferenceSnapshot()),
+    mutatePreferences: vi.fn(async () => createEmptyPreferenceSnapshot()),
+    getEquipment: vi.fn(async () => createEmptyEquipmentSnapshot()),
+    replaceEquipment: vi.fn(async () => createEmptyEquipmentSnapshot()),
+    getCompleteness: vi.fn(async () => createCompleteness()),
     ...overrides,
   };
 }
@@ -183,9 +183,9 @@ export function createSessionAdapter(
   },
 ): SessionAdapter {
   return {
-    getSession: jest.fn(async () => state),
-    beginLogin: jest.fn(),
-    logout: jest.fn(async () => undefined),
+    getSession: vi.fn(async () => state),
+    beginLogin: vi.fn(),
+    logout: vi.fn(async () => undefined),
   };
 }
 

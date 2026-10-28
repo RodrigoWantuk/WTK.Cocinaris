@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="theme-color" content="#FAF9F5" />
+        <meta
+            name="description"
+            content="Cocinaris turns the food you have into useful meals, with less effort, waste, and delivery."
+        />
+        <!--
+          Everything this page loads must come from the same origin. Third-party scripts or styles here
+          (analytics, session recording, font CDNs) would run on every authenticated page and see pantry,
+          profile, and restriction data. Enforced by `yarn guard:third-party-html` and the deploy script. The module entry above is same-origin.
+        -->
+        <title>Cocinaris</title>
+    </head>
+    <body>
+        <noscript>Cocinaris needs JavaScript to run.</noscript>
+        <div id="root"></div>
+        <script type="module" src="/src/index.tsx"></script>
+    </body>
+</html>

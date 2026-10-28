@@ -1,8 +1,8 @@
 import {
-  createKitchenFlowClient,
+  createCocinarisClient,
   readEtag,
   readProblemDetails,
-} from "@kitchenflow/api-client";
+} from "@cocinaris/api-client";
 import {
   ProfileApiError,
   type ProfileApiErrorCode,
@@ -55,8 +55,10 @@ function assertData<T>(
 async function throwForFailure(
   response: Response,
   fallback: string,
+  /** The generated client's parsed `error` body; the response body is already consumed. */
+  parsedBody?: unknown,
 ): Promise<never> {
-  const problem = await readProblemDetails(response);
+  const problem = await readProblemDetails(response, parsedBody);
   const fieldErrors: Record<string, string[]> = {};
   if (problem?.errors) {
     for (const [key, value] of Object.entries(problem.errors)) {
@@ -132,7 +134,7 @@ export function createLiveProfileRepository(options?: {
     options?.fetchImpl ??
     ((input: RequestInfo | URL, init?: RequestInit) =>
       globalThis.fetch(input, init));
-  const client = createKitchenFlowClient({
+  const client = createCocinarisClient({
     baseUrl: options?.baseUrl ?? "",
     fetch: (request) => fetchImpl(request),
   });
@@ -174,12 +176,12 @@ export function createLiveProfileRepository(options?: {
   return {
     async getProfile(signal) {
       return guarded(signal, async () => {
-        const { data, response } = await client.GET("/api/v1/profile", {
+        const { data, error, response } = await client.GET("/api/v1/profile", {
           signal,
           credentials: "include",
         });
         if (!response.ok || !data) {
-          await throwForFailure(response, "Unable to load profile.");
+          await throwForFailure(response, "Unable to load profile.", error);
         }
         assertData(data, response);
         const etag = data.profileExists ? readEtag(response) : null;
@@ -189,19 +191,22 @@ export function createLiveProfileRepository(options?: {
 
     async patchProfile(patch, { csrfToken, etag, signal }) {
       return guarded(signal, async () => {
-        const { data, response } = await client.PATCH("/api/v1/profile", {
-          params: {
-            header: {
-              "X-CSRF-TOKEN": csrfToken,
-              "If-Match": etag ?? undefined,
+        const { data, error, response } = await client.PATCH(
+          "/api/v1/profile",
+          {
+            params: {
+              header: {
+                "X-CSRF-TOKEN": csrfToken,
+                "If-Match": etag ?? undefined,
+              },
             },
+            body: mapProfilePatchToRequest(patch),
+            signal,
+            credentials: "include",
           },
-          body: mapProfilePatchToRequest(patch),
-          signal,
-          credentials: "include",
-        });
+        );
         if (!response.ok || !data) {
-          await throwForFailure(response, "Unable to update profile.");
+          await throwForFailure(response, "Unable to update profile.", error);
         }
         assertData(data, response);
         return mapProfileResponse(data, readEtag(response));
@@ -210,7 +215,7 @@ export function createLiveProfileRepository(options?: {
 
     async replaceProfile(patch, { csrfToken, etag, signal }) {
       return guarded(signal, async () => {
-        const { data, response } = await client.PUT("/api/v1/profile", {
+        const { data, error, response } = await client.PUT("/api/v1/profile", {
           params: {
             header: {
               "X-CSRF-TOKEN": csrfToken,
@@ -222,7 +227,7 @@ export function createLiveProfileRepository(options?: {
           credentials: "include",
         });
         if (!response.ok || !data) {
-          await throwForFailure(response, "Unable to replace profile.");
+          await throwForFailure(response, "Unable to replace profile.", error);
         }
         assertData(data, response);
         return mapProfileResponse(data, readEtag(response));
@@ -231,12 +236,12 @@ export function createLiveProfileRepository(options?: {
 
     async getPreferences(signal) {
       return guarded(signal, async () => {
-        const { data, response } = await client.GET(
+        const { data, error, response } = await client.GET(
           "/api/v1/profile/preferences",
           { signal, credentials: "include" },
         );
         if (!response.ok || !data) {
-          await throwForFailure(response, "Unable to load preferences.");
+          await throwForFailure(response, "Unable to load preferences.", error);
         }
         assertData(data, response);
         return mapPreferencesCollection(data, readEtag(response));
@@ -245,7 +250,7 @@ export function createLiveProfileRepository(options?: {
 
     async mutatePreferences(commands, { csrfToken, etag, signal }) {
       return guarded(signal, async () => {
-        const { data, response } = await client.PUT(
+        const { data, error, response } = await client.PUT(
           "/api/v1/profile/preferences",
           {
             params: {
@@ -260,7 +265,11 @@ export function createLiveProfileRepository(options?: {
           },
         );
         if (!response.ok || !data) {
-          await throwForFailure(response, "Unable to update preferences.");
+          await throwForFailure(
+            response,
+            "Unable to update preferences.",
+            error,
+          );
         }
         assertData(data, response);
         return mapPreferencesCollection(data, readEtag(response));
@@ -269,7 +278,7 @@ export function createLiveProfileRepository(options?: {
 
     async getEquipment(signal) {
       return guarded(signal, async () => {
-        const { data, response } = await client.GET(
+        const { data, error, response } = await client.GET(
           "/api/v1/profile/equipment",
           {
             signal,
@@ -277,7 +286,7 @@ export function createLiveProfileRepository(options?: {
           },
         );
         if (!response.ok || !data) {
-          await throwForFailure(response, "Unable to load equipment.");
+          await throwForFailure(response, "Unable to load equipment.", error);
         }
         assertData(data, response);
         return mapEquipmentCollection(data, readEtag(response));
@@ -286,7 +295,7 @@ export function createLiveProfileRepository(options?: {
 
     async replaceEquipment(entries, { csrfToken, etag, signal }) {
       return guarded(signal, async () => {
-        const { data, response } = await client.PUT(
+        const { data, error, response } = await client.PUT(
           "/api/v1/profile/equipment",
           {
             params: {
@@ -301,7 +310,11 @@ export function createLiveProfileRepository(options?: {
           },
         );
         if (!response.ok || !data) {
-          await throwForFailure(response, "Unable to replace equipment.");
+          await throwForFailure(
+            response,
+            "Unable to replace equipment.",
+            error,
+          );
         }
         assertData(data, response);
         return mapEquipmentCollection(data, readEtag(response));
@@ -310,7 +323,7 @@ export function createLiveProfileRepository(options?: {
 
     async getCompleteness(signal) {
       return guarded(signal, async () => {
-        const { data, response } = await client.GET(
+        const { data, error, response } = await client.GET(
           "/api/v1/profile/completeness",
           { signal, credentials: "include" },
         );
@@ -318,6 +331,7 @@ export function createLiveProfileRepository(options?: {
           await throwForFailure(
             response,
             "Unable to load profile completeness.",
+            error,
           );
         }
         assertData(data, response);

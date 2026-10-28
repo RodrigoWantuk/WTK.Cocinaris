@@ -1,6 +1,6 @@
-# KitchenFlow Backend
+# Cocinaris Backend
 
-This directory contains the independently deployable KitchenFlow backend API and worker solution.
+This directory contains the independently deployable Cocinaris backend API and worker solution.
 
 ## Accepted platform
 
@@ -21,7 +21,7 @@ See [`ADR-0002`](../../docs/architecture/decisions/0002-backend-platform-and-mod
 
 Start PostgreSQL and Keycloak with `docker compose -f infrastructure/compose/compose.dev.yml up -d`. The API launch profile uses `https://localhost:7443`, which is the Keycloak redirect origin and must use a trusted ASP.NET Core development certificate. Cookie-authenticated development must use HTTPS because the session and antiforgery cookies deliberately use the `Secure` and `__Host-` constraints. Verify the certificate with `dotnet dev-certs https --check --trust` where the host supports trust installation.
 
-Configure `KITCHENFLOW_DB_CONNECTION`, `KITCHENFLOW_OIDC_AUTHORITY`, `KITCHENFLOW_OIDC_CLIENT_ID`, `KITCHENFLOW_OIDC_CLIENT_SECRET`, and `KITCHENFLOW_SESSION_KEYRING_PATH` through an ignored local environment file or secret store. The session key-ring path is development-local only; production deployments must provide a shared protected key ring. Do not place OIDC tokens or client secrets in browser configuration.
+Configure `COCINARIS_DB_CONNECTION`, `COCINARIS_OIDC_AUTHORITY`, `COCINARIS_OIDC_CLIENT_ID`, `COCINARIS_OIDC_CLIENT_SECRET`, and `COCINARIS_SESSION_KEYRING_PATH` through an ignored local environment file or secret store. The session key-ring path is development-local only; production deployments must provide a shared protected key ring. Do not place OIDC tokens or client secrets in browser configuration.
 
 The API binds and validates database, OIDC, Data Protection, secure-session, and idempotency options
 at startup. Production-like environments require a non-placeholder database connection, HTTPS OIDC
@@ -57,11 +57,11 @@ The project-owned metric surface is intentionally bounded:
 
 | Metric | Unit | Labels | Interpretation |
 |---|---|---|---|
-| `kitchenflow.inventory.mutations` | `operations` | `operation`, `outcome` | Final create, metadata-update, adjustment, or delete outcome |
-| `kitchenflow.inventory.rejections` | `operations` | `category` | Stable validation or domain-rule rejection |
-| `kitchenflow.inventory.concurrency_failures` | `operations` | `operation` | Stale optimistic-concurrency mutation |
-| `kitchenflow.inventory.idempotency` | `operations` | `operation`, `outcome` | First completion, replay, reused key, or defensive in-progress response |
-| `kitchenflow.security.access_failures` | `failures` | `category` | Authentication, authorization, CSRF, or rate-limit rejection |
+| `cocinaris.inventory.mutations` | `operations` | `operation`, `outcome` | Final create, metadata-update, adjustment, or delete outcome |
+| `cocinaris.inventory.rejections` | `operations` | `category` | Stable validation or domain-rule rejection |
+| `cocinaris.inventory.concurrency_failures` | `operations` | `operation` | Stale optimistic-concurrency mutation |
+| `cocinaris.inventory.idempotency` | `operations` | `operation`, `outcome` | First completion, replay, reused key, or defensive in-progress response |
+| `cocinaris.security.access_failures` | `failures` | `category` | Authentication, authorization, CSRF, or rate-limit rejection |
 
 Allowed labels never include internal user IDs, issuer/subject, addresses, product names, notes,
 headers, request bodies, cookies, authorization values, or tokens. ASP.NET Core instrumentation owns

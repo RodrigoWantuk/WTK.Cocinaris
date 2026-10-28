@@ -1,0 +1,17 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Cocinaris.Api/Cocinaris.Api.csproj" />
+    <Project Path="src/Cocinaris.Infrastructure/Cocinaris.Infrastructure.csproj" />
+    <Project Path="src/Cocinaris.Modules.Ai/Cocinaris.Modules.Ai.csproj" />
+    <Project Path="src/Cocinaris.Modules.Identity/Cocinaris.Modules.Identity.csproj" />
+    <Project Path="src/Cocinaris.Modules.Inventory/Cocinaris.Modules.Inventory.csproj" />
+    <Project Path="src/Cocinaris.Modules.Profiles/Cocinaris.Modules.Profiles.csproj" />
+    <Project Path="src/Cocinaris.Modules.Recipes/Cocinaris.Modules.Recipes.csproj" />
+    <Project Path="src/Cocinaris.SharedKernel/Cocinaris.SharedKernel.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Cocinaris.ArchitectureTests/Cocinaris.ArchitectureTests.csproj" />
+    <Project Path="tests/Cocinaris.IntegrationTests/Cocinaris.IntegrationTests.csproj" />
+    <Project Path="tests/Cocinaris.UnitTests/Cocinaris.UnitTests.csproj" />
+  </Folder>
+</Solution>

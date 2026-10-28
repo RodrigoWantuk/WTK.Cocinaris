@@ -5,7 +5,7 @@
 
 ## Context
 
-KitchenFlow uses AI for generation, parsing, adaptation, and troubleshooting. Provider cost, variable latency, privacy, prompt injection, model quality, and token limits can threaten the product and business. Direct provider calls from multiple modules or the frontend would prevent consistent control.
+Cocinaris uses AI for generation, parsing, adaptation, and troubleshooting. Provider cost, variable latency, privacy, prompt injection, model quality, and token limits can threaten the product and business. Direct provider calls from multiple modules or the frontend would prevent consistent control.
 
 ## Decision
 

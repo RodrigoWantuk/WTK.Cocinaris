@@ -16,7 +16,7 @@ The project owner requires a React frontend generated and evolved through Lovabl
 - Preserve the actual runtime, router, and build system produced by the accepted Lovable project unless a later ADR changes it.
 - Keep the frontend independently buildable, testable, deployable, and observable.
 - Consume the backend through generated OpenAPI TypeScript clients or contracts.
-- Do not use Lovable-hosted database, authentication, AI calls, or backend features as authoritative KitchenFlow infrastructure unless a later ADR explicitly accepts them.
+- Do not use Lovable-hosted database, authentication, AI calls, or backend features as authoritative Cocinaris infrastructure unless a later ADR explicitly accepts them.
 - Do not place provider secrets, long-lived identity tokens, authoritative quota, or domain rules in frontend code.
 - Require localization readiness, accessibility, responsive behavior, and explicit uncertainty presentation from the first implementation.
 

@@ -14,9 +14,10 @@ import {
 } from "./testUtils";
 
 function mockReplaceEquipment() {
-  return jest.fn<
-    Promise<EquipmentSnapshot>,
-    [EquipmentInput[], ProfileMutationContext]
+  return vi.fn<
+    (
+      ...args: [EquipmentInput[], ProfileMutationContext]
+    ) => Promise<EquipmentSnapshot>
   >(async () => createEmptyEquipmentSnapshot());
 }
 
@@ -51,7 +52,7 @@ describe("ProfileEquipmentPage", () => {
   it("moves an entry up and submits the whole reordered collection with the workspace etag", async () => {
     const replaceEquipment = mockReplaceEquipment();
     const repo = createMockProfileRepo({
-      getEquipment: jest.fn(async () => seededEquipment()),
+      getEquipment: vi.fn(async () => seededEquipment()),
       replaceEquipment,
     });
     const user = userEvent.setup();
@@ -99,7 +100,7 @@ describe("ProfileEquipmentPage", () => {
   it("adds a custom equipment entry with an opaque stable code and the typed name", async () => {
     const replaceEquipment = mockReplaceEquipment();
     const repo = createMockProfileRepo({
-      getEquipment: jest.fn(async () => createEmptyEquipmentSnapshot()),
+      getEquipment: vi.fn(async () => createEmptyEquipmentSnapshot()),
       replaceEquipment,
     });
     const user = userEvent.setup();
@@ -129,7 +130,7 @@ describe("ProfileEquipmentPage", () => {
   it("save is disabled until the draft is dirty, and cancel restores the last-loaded snapshot", async () => {
     const replaceEquipment = mockReplaceEquipment();
     const repo = createMockProfileRepo({
-      getEquipment: jest.fn(async () => seededEquipment()),
+      getEquipment: vi.fn(async () => seededEquipment()),
       replaceEquipment,
     });
     const user = userEvent.setup();
@@ -155,7 +156,7 @@ describe("ProfileEquipmentPage", () => {
 
   it("requires a name before a custom entry can be added", async () => {
     const repo = createMockProfileRepo({
-      getEquipment: jest.fn(async () => createEmptyEquipmentSnapshot()),
+      getEquipment: vi.fn(async () => createEmptyEquipmentSnapshot()),
     });
     render(
       renderProfileTree({
@@ -172,7 +173,7 @@ describe("ProfileEquipmentPage", () => {
   it("rejects a negative capacity locally and never submits it to the backend", async () => {
     const replaceEquipment = mockReplaceEquipment();
     const repo = createMockProfileRepo({
-      getEquipment: jest.fn(async () => seededEquipment()),
+      getEquipment: vi.fn(async () => seededEquipment()),
       replaceEquipment,
     });
     const user = userEvent.setup();
@@ -206,7 +207,7 @@ describe("ProfileEquipmentPage", () => {
   it("rejects a capacity value with no unit as an incoherent pair", async () => {
     const replaceEquipment = mockReplaceEquipment();
     const repo = createMockProfileRepo({
-      getEquipment: jest.fn(async () => seededEquipment()),
+      getEquipment: vi.fn(async () => seededEquipment()),
       replaceEquipment,
     });
     const user = userEvent.setup();
@@ -235,7 +236,7 @@ describe("ProfileEquipmentPage", () => {
 
   it("announces the new position of a moved entry through a live region", async () => {
     const repo = createMockProfileRepo({
-      getEquipment: jest.fn(async () => seededEquipment()),
+      getEquipment: vi.fn(async () => seededEquipment()),
     });
     const user = userEvent.setup();
 
@@ -261,7 +262,7 @@ describe("ProfileEquipmentPage", () => {
 
   it("moves focus to the add-from-catalog control after removing an entry", async () => {
     const repo = createMockProfileRepo({
-      getEquipment: jest.fn(async () => seededEquipment()),
+      getEquipment: vi.fn(async () => seededEquipment()),
     });
     const user = userEvent.setup();
 
@@ -283,9 +284,10 @@ describe("ProfileEquipmentPage", () => {
   });
 
   it("maps stable-code validation errors to the equipment entry and retains the draft without retrying", async () => {
-    const replaceEquipment = jest.fn<
-      Promise<EquipmentSnapshot>,
-      [EquipmentInput[], ProfileMutationContext]
+    const replaceEquipment = vi.fn<
+      (
+        ...args: [EquipmentInput[], ProfileMutationContext]
+      ) => Promise<EquipmentSnapshot>
     >(async () => {
       throw new ProfileApiError(
         "validation_failed",
@@ -299,7 +301,7 @@ describe("ProfileEquipmentPage", () => {
       );
     });
     const repo = createMockProfileRepo({
-      getEquipment: jest.fn(async () => seededEquipment()),
+      getEquipment: vi.fn(async () => seededEquipment()),
       replaceEquipment,
     });
     const user = userEvent.setup();
@@ -337,7 +339,7 @@ describe("ProfileEquipmentPage", () => {
 
   it("provides visible, contextual names for equipment controls", async () => {
     const repo = createMockProfileRepo({
-      getEquipment: jest.fn(async () => seededEquipment()),
+      getEquipment: vi.fn(async () => seededEquipment()),
     });
 
     render(

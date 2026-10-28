@@ -18,15 +18,15 @@ Cocinaris has completed its initial product and architecture discovery and now h
 - backend-managed OIDC browser session and internal user ownership;
 - owner-isolated PostgreSQL inventory with concurrency, idempotency, history, migrations, OpenAPI, and operational tests;
 - profile, household context, preferences/restrictions, equipment, and completeness backend plus production profile UI;
-- public entry and mock-backed contextual home presentation;
-- prepared components and derived inventory lots;
+- prepared components recorded as derived inventory lots with parent consumption (backend);
 - generated TypeScript API client;
-- production session and authenticated inventory frontend routes;
+- production session, authenticated inventory, and profile/household/preferences/equipment frontend routes;
+- public entry page and a contextual home rendered from mock source adapters;
 - recipe AI protocol `0.3` (Revised) with deterministic validators;
 - AI Gateway cook-now recipe generation (suggest three candidates → select → expand → persist user-owned revision) with production Recipes UI;
 - prototype/production isolation and blocking frontend/backend CI gates.
 
-The full initial release is **not** implemented. Sequential planning/menus/shopping, guided cooking, reconciliation, thumbnail generation, persistent jobs, notifications, privacy workflows, billing, and launch operations remain plan-driven future work.
+The full initial release is **not** implemented. Inventory lifecycle and shelf-life attention, the recipe library, sequential planning/menus/shopping, guided cooking, reconciliation, live contextual-home sources, thumbnail generation, persistent jobs, notifications, privacy workflows, billing, and launch operations remain plan-driven future work. The ordered roadmap is in the [`PLAN-0031` coverage review](docs/plans/PLAN-0031-amendment-2026-10-28-coverage-review.md).
 
 Do not interpret accepted architecture or prototype surfaces as completed production capability.
 

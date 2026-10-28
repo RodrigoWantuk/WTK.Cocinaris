@@ -49,7 +49,7 @@ function renderForm(
 describe("ProductionInventoryForm", () => {
   it("creates measured lots with locale decimals and idempotency key", async () => {
     const user = userEvent.setup();
-    const createLot = jest.fn(async (_input, options) => {
+    const createLot = vi.fn(async (_input, options) => {
       expect(options.idempotencyKey).toMatch(/^[0-9a-f-]{36}$/i);
       return sampleLot;
     });
@@ -73,7 +73,7 @@ describe("ProductionInventoryForm", () => {
 
   it("requires custom location for Other and sends it on create", async () => {
     const user = userEvent.setup();
-    const createLot = jest.fn(async () => sampleLot);
+    const createLot = vi.fn(async () => sampleLot);
     const repo = createMockInventoryRepo({ createLot });
     renderForm("create", repo);
 
@@ -103,13 +103,13 @@ describe("ProductionInventoryForm", () => {
 
   it("edits metadata with ETag and surfaces 412 without silent retry", async () => {
     const user = userEvent.setup();
-    const updateLot = jest
+    const updateLot = vi
       .fn()
       .mockRejectedValueOnce(
         new InventoryApiError("precondition_failed", "stale", 412),
       );
     const repo = createMockInventoryRepo({
-      getLot: jest.fn(async () => sampleLot),
+      getLot: vi.fn(async () => sampleLot),
       updateLot,
     });
     renderForm("edit", repo);
@@ -130,7 +130,7 @@ describe("ProductionInventoryForm", () => {
 
   it("maps customLocation field errors from the backend", async () => {
     const user = userEvent.setup();
-    const createLot = jest.fn(async () => {
+    const createLot = vi.fn(async () => {
       throw new InventoryApiError("validation_failed", "invalid", 400, {
         customLocation: ["Custom location is invalid."],
       });
@@ -153,7 +153,7 @@ describe("ProductionInventoryForm", () => {
 
   it("reuses the same create idempotency key after transport failure", async () => {
     const user = userEvent.setup();
-    const createLot = jest
+    const createLot = vi
       .fn()
       .mockRejectedValueOnce(new InventoryApiError("unavailable", "down", 503))
       .mockResolvedValueOnce(sampleLot);
@@ -179,7 +179,7 @@ describe("ProductionInventoryForm", () => {
 
   it("reuses create key for equivalent pt-BR decimal text after ambiguous failure", async () => {
     const user = userEvent.setup();
-    const createLot = jest
+    const createLot = vi
       .fn()
       .mockRejectedValueOnce(new InventoryApiError("unavailable", "down", 503))
       .mockRejectedValueOnce(new InventoryApiError("unavailable", "down", 503));
@@ -212,7 +212,7 @@ describe("ProductionInventoryForm", () => {
 
   it("reuses create key for equivalent en decimal text after ambiguous failure", async () => {
     const user = userEvent.setup();
-    const createLot = jest
+    const createLot = vi
       .fn()
       .mockRejectedValueOnce(new InventoryApiError("unavailable", "down", 503))
       .mockRejectedValueOnce(new InventoryApiError("unavailable", "down", 503));
@@ -235,7 +235,7 @@ describe("ProductionInventoryForm", () => {
 
   it("ignores inactive measured fields while qualitative create attempt is open", async () => {
     const user = userEvent.setup();
-    const createLot = jest
+    const createLot = vi
       .fn()
       .mockRejectedValueOnce(new InventoryApiError("unavailable", "down", 503))
       .mockRejectedValueOnce(new InventoryApiError("unavailable", "down", 503));
@@ -269,7 +269,7 @@ describe("ProductionInventoryForm", () => {
 
   it("ignores inactive availability while measured create attempt is open", async () => {
     const user = userEvent.setup();
-    const createLot = jest
+    const createLot = vi
       .fn()
       .mockRejectedValueOnce(new InventoryApiError("unavailable", "down", 503))
       .mockRejectedValueOnce(new InventoryApiError("unavailable", "down", 503));
@@ -310,7 +310,7 @@ describe("ProductionInventoryForm", () => {
 
   it("issues a new create idempotency key after material form changes", async () => {
     const user = userEvent.setup();
-    const createLot = jest
+    const createLot = vi
       .fn()
       .mockRejectedValueOnce(new InventoryApiError("unavailable", "down", 503))
       .mockRejectedValueOnce(new InventoryApiError("unavailable", "down", 503));
@@ -333,7 +333,7 @@ describe("ProductionInventoryForm", () => {
 
   it("does not rotate create key for trim-equivalent optional fields", async () => {
     const user = userEvent.setup();
-    const createLot = jest
+    const createLot = vi
       .fn()
       .mockRejectedValueOnce(new InventoryApiError("unavailable", "down", 503))
       .mockRejectedValueOnce(new InventoryApiError("unavailable", "down", 503));
@@ -356,7 +356,7 @@ describe("ProductionInventoryForm", () => {
 
   it("does not reuse create idempotency key after confirmed success", async () => {
     const user = userEvent.setup();
-    const createLot = jest
+    const createLot = vi
       .fn()
       .mockResolvedValueOnce({ ...sampleLot, lotId: "lot-a" })
       .mockResolvedValueOnce({ ...sampleLot, lotId: "lot-b" });
@@ -380,13 +380,13 @@ describe("ProductionInventoryForm", () => {
 
   it("loads edit mode successfully and blocks submit before ready", async () => {
     let resolveLot!: (lot: typeof sampleLot) => void;
-    const getLot = jest.fn(
+    const getLot = vi.fn(
       () =>
         new Promise<typeof sampleLot>((resolve) => {
           resolveLot = resolve;
         }),
     );
-    const updateLot = jest.fn(async () => sampleLot);
+    const updateLot = vi.fn(async () => sampleLot);
     const repo = createMockInventoryRepo({ getLot, updateLot });
     renderForm("edit", repo);
 
@@ -400,7 +400,7 @@ describe("ProductionInventoryForm", () => {
 
   it("shows not-found state for edit 404", async () => {
     const repo = createMockInventoryRepo({
-      getLot: jest.fn(async () => {
+      getLot: vi.fn(async () => {
         throw new InventoryApiError("not_found", "missing", 404);
       }),
     });
@@ -415,7 +415,7 @@ describe("ProductionInventoryForm", () => {
 
   it("shows unavailable edit error and retries successfully", async () => {
     const user = userEvent.setup();
-    const getLot = jest
+    const getLot = vi
       .fn()
       .mockRejectedValueOnce(new InventoryApiError("unavailable", "down", 503))
       .mockResolvedValueOnce(sampleLot);

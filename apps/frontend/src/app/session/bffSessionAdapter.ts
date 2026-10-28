@@ -1,7 +1,7 @@
 import {
-  createKitchenFlowClient,
+  createCocinarisClient,
   readProblemDetails,
-} from "@kitchenflow/api-client";
+} from "@cocinaris/api-client";
 import { normalizeSafeReturnUrl } from "@/lib/safeReturnUrl";
 import type { SessionAdapter, SessionState } from "./types";
 
@@ -18,7 +18,7 @@ export function createBffSessionAdapter(options?: {
     options?.fetchImpl ??
     ((input: RequestInfo | URL, init?: RequestInit) =>
       globalThis.fetch(input, init));
-  const client = createKitchenFlowClient({
+  const client = createCocinarisClient({
     fetch: (request) => fetchImpl(request),
   });
   let lastCsrf: string | null = null;

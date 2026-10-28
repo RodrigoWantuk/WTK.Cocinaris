@@ -1,0 +1,23 @@
+# Cocinaris site block for Caddy. The application assumes it is served at the root of its own host.
+cocinaris.example.com {
+	encode zstd gzip
+	header {
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		X-Frame-Options "DENY"
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		X-Robots-Tag "noindex, nofollow"
+		# Optional hardening; verify sign-in end to end before enabling. form-action must allow the
+		# OIDC provider origin because sign-in submits a form that redirects there.
+		# Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self' https://<oidc-provider>"
+	}
+	@backend path /api/* /signin-oidc /signout-callback-oidc /health/*
+	handle @backend {
+		reverse_proxy 127.0.0.1:8004
+	}
+	handle {
+		root * /srv/wtk-cocinaris/web
+		try_files {path} /index.html
+		file_server
+	}
+}

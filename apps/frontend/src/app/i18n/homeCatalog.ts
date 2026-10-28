@@ -110,7 +110,10 @@ export const REQUIRED_HOME_I18N_KEYS = [
   "home.fixture.profile.roastTray",
   "home.fixture.chooser.simpleSoup",
   "home.scenario.label",
+  "home.unavailable.title",
   "home.unavailable.detail",
+  "home.unavailable.pantryAction",
+  "home.unavailable.profileAction",
 ] as const;
 
 type Catalog = Record<string, string>;
@@ -243,8 +246,11 @@ export const homeCatalogs: Record<ProductionLocale, Catalog> = {
     "home.fixture.inventory.uncertainStew":
       "Ensopado com estoque incerto (sintético)",
     "home.fixture.profile.roastTray": "Assado na travessa (sintético)",
+    "home.unavailable.title": "Sugestões personalizadas chegam em breve",
     "home.unavailable.detail":
-      "Fontes live da home contextual ainda não estão conectadas (PLAN-0021). A despensa autenticada permanece em /app/despensa.",
+      "As sugestões vão combinar o que você tem em casa, seu menu e seu perfil. Enquanto isso, registre sua despensa e complete seu perfil: é com eles que as sugestões vão funcionar.",
+    "home.unavailable.pantryAction": "Ir para a despensa",
+    "home.unavailable.profileAction": "Completar perfil",
   },
   en: {
     "home.primaryQuestion": "What shall we cook today?",
@@ -370,8 +376,11 @@ export const homeCatalogs: Record<ProductionLocale, Catalog> = {
     "home.fixture.inventory.uncertainStew":
       "Stew with uncertain stock (synthetic)",
     "home.fixture.profile.roastTray": "Tray roast (synthetic)",
+    "home.unavailable.title": "Personalized suggestions are coming soon",
     "home.unavailable.detail":
-      "Live contextual-home sources are not connected yet (PLAN-0021). Authenticated pantry remains at /app/despensa.",
+      "Suggestions will combine what you have at home, your menu, and your profile. Meanwhile, record your pantry and complete your profile: they are what suggestions will work from.",
+    "home.unavailable.pantryAction": "Go to pantry",
+    "home.unavailable.profileAction": "Complete profile",
   },
   es: {
     "home.primaryQuestion": "¿Qué cocinamos hoy?",
@@ -502,7 +511,10 @@ export const homeCatalogs: Record<ProductionLocale, Catalog> = {
     "home.fixture.inventory.uncertainStew":
       "Guiso con stock incierto (sintético)",
     "home.fixture.profile.roastTray": "Asado en bandeja (sintético)",
+    "home.unavailable.title": "Las sugerencias personalizadas llegan pronto",
     "home.unavailable.detail":
-      "Las fuentes live de la home contextual aún no están conectadas (PLAN-0021). La despensa autenticada permanece en /app/despensa.",
+      "Las sugerencias combinarán lo que tienes en casa, tu menú y tu perfil. Mientras tanto, registra tu despensa y completa tu perfil: con ellos funcionarán las sugerencias.",
+    "home.unavailable.pantryAction": "Ir a la despensa",
+    "home.unavailable.profileAction": "Completar perfil",
   },
 };

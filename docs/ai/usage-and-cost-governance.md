@@ -5,19 +5,19 @@
 
 ## Objective
 
-AI cost is one of KitchenFlow's largest variable operational risks. Usage governance is a first-class product and architecture capability.
+AI cost is one of Cocinaris's largest variable operational risks. Usage governance is a first-class product and architecture capability.
 
-## Normalized KitchenFlow units versus provider tokens
+## Normalized Cocinaris units versus provider tokens
 
 The PLAN-0028 cook-now ledger distinguishes three related but separate concepts:
 
 | Concept | Fields | Role |
 |---|---|---|
-| **KitchenFlow usage units** | `ReservedUnits`, `SettledUnits` | Normalized operation credits enforced by the usage governor (defaults: suggest = 3, expand = 5). Daily ceilings and concurrency limits apply only to these units. |
+| **Cocinaris usage units** | `ReservedUnits`, `SettledUnits` | Normalized operation credits enforced by the usage governor (defaults: suggest = 3, expand = 5). Daily ceilings and concurrency limits apply only to these units. |
 | **Provider-reported tokens** | `PromptTokens`, `CompletionTokens` | Optional observability metadata returned by the model provider. Nullable when the provider does not report usage. Never used as budget units. |
 | **Future monetary cost** | not implemented in PLAN-0028 | Estimated USD cost may be derived later from provider tokens and published price tables. Billing, subscriptions, and paid credits remain out of scope. |
 
-Do not describe settled KitchenFlow units as provider token usage.
+Do not describe settled Cocinaris units as provider token usage.
 
 ## Central ledger
 
@@ -27,7 +27,7 @@ The authoritative PostgreSQL ledger records:
 - operation type;
 - provider and model;
 - prompt or workflow version;
-- reserved and settled KitchenFlow usage units;
+- reserved and settled Cocinaris usage units;
 - provider-reported prompt and completion tokens when available;
 - reserved allowance;
 - settled allowance;
@@ -54,11 +54,11 @@ The application governor must not perform separate read/check/insert calls aroun
 
 ```text
 Authorize user and operation
-→ estimate maximum permitted KitchenFlow units
+→ estimate maximum permitted Cocinaris units
 → atomically reserve units
 → execute model operation
 → record optional provider token metadata
-→ settle KitchenFlow units (and release unused reservation)
+→ settle Cocinaris units (and release unused reservation)
 → refund according to failure policy
 ```
 
@@ -66,7 +66,7 @@ The operation must not start if the maximum permitted budget cannot be reserved,
 
 ## User-visible allowance
 
-Raw model tokens are not necessarily comparable across providers or models. The UI may present normalized KitchenFlow usage units / `AI credits`, operation allowances, or another understandable unit while still exposing enough detail for transparency.
+Raw model tokens are not necessarily comparable across providers or models. The UI may present normalized Cocinaris usage units / `AI credits`, operation allowances, or another understandable unit while still exposing enough detail for transparency.
 
 The user can see:
 

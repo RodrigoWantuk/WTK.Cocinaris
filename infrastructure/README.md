@@ -1,6 +1,6 @@
 # Infrastructure
 
-This directory contains versioned infrastructure and deployment assets for KitchenFlow.
+This directory contains versioned infrastructure and deployment assets for Cocinaris.
 
 ## Accepted direction
 

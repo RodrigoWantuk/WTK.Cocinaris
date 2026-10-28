@@ -1,6 +1,6 @@
 # Shared Contracts
 
-This directory contains versioned contracts shared across KitchenFlow boundaries.
+This directory contains versioned contracts shared across Cocinaris boundaries.
 
 ## Accepted contract direction
 
@@ -28,7 +28,7 @@ Live provider evaluation is intentionally separate: `scripts/ai/recipe-live-eval
 
 ## Inventory v1 snapshot
 
-`openapi/kitchenflow-v1.json` is generated from the running ASP.NET Core API. Run
+`openapi/cocinaris-v1.json` is generated from the running ASP.NET Core API. Run
 `scripts/backend/export-openapi.sh`, `scripts/backend/check-openapi.sh`, and
 `scripts/backend/lint-openapi.sh` from the repository root. The linter configuration intentionally
 disables generic 2xx/4xx-presence style rules because OIDC login/logout are redirect-only and health
@@ -47,7 +47,7 @@ note contents, complete request bodies, credentials, or tokens.
 
 The production TypeScript client is generated from this snapshot by PLAN-0016 into
 `packages/api-client` (pinned `openapi-typescript` 7.9.1) and mirrored into
-`apps/frontend/src/generated/api-client` for CRA compilation. Regenerate with
+`apps/frontend/src/generated/api-client` for frontend compilation. Regenerate with
 `cd packages/api-client && yarn generate`. Drift is enforced by
 `yarn check:drift` / frontend `yarn check:api-client-drift`.
 

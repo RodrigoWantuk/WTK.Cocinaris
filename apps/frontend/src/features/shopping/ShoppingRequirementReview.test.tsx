@@ -14,7 +14,7 @@ function tr(key: string): string {
 describe("ShoppingRequirementReview", () => {
   it("does not send covered rows and only sends shortfallQuantity", async () => {
     const user = userEvent.setup();
-    const onSend = jest.fn();
+    const onSend = vi.fn();
     render(
       <ShoppingRequirementReview
         tr={tr}

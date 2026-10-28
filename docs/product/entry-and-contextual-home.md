@@ -224,6 +224,7 @@ Each source tier degrades independently:
 - No useful candidate: offer the quick chooser, saved recipes, favorites, manual search, or a clear empty state.
 - API failure: preserve navigation and show recoverable, source-specific failure states.
 - Stale or conflicting data: do not merge or overwrite silently; load the latest state and let the user review or retry.
+- Capability not yet available for every personalized source (menu, inventory, and profile all report a permanent unavailable status, as in production before live sources exist): show one notice instead of three empty source sections. The notice says personalized suggestions are coming and links to the pantry and profile, which feed them. Partial unavailability keeps the per-source presentation above. User-facing copy never names internal plans, routes, or implementation terms.
 
 ## AI-unavailable behavior
 

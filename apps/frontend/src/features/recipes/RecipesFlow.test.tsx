@@ -138,7 +138,7 @@ function renderGenerateTree(
 describe("Recipes generate flow", () => {
   it("renders three candidates and navigates after selection", async () => {
     const user = userEvent.setup();
-    const selectCandidate = jest.fn(async () => ({
+    const selectCandidate = vi.fn(async () => ({
       recipeId: "cccccccc-cccc-cccc-cccc-cccccccccccc",
       revisionNumber: 1,
       name: "Tomato Pasta",
@@ -219,7 +219,7 @@ describe("Recipes generate flow", () => {
   it("shows provider unavailable and allows retry", async () => {
     const user = userEvent.setup();
     let failOnce = true;
-    const requestCandidates = jest.fn(async () => {
+    const requestCandidates = vi.fn(async () => {
       if (failOnce) {
         failOnce = false;
         throw new RecipeApiError("ai_provider_unavailable", "down", 503);
@@ -339,7 +339,7 @@ describe("Production recipes routes and nav", () => {
   beforeEach(() => {
     localStorage.removeItem(PRODUCTION_LOCALE_STORAGE_KEY);
     window.history.pushState({}, "", "/app/receitas");
-    jest.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
       const url =
         typeof input === "string"
           ? input
@@ -380,7 +380,7 @@ describe("Production recipes routes and nav", () => {
   });
 
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   it("renders recipes list and primary nav recipes link", async () => {

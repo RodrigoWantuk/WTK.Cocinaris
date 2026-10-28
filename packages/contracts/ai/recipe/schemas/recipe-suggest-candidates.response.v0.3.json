@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://kitchenflow.local/contracts/ai/recipe/suggest-candidates.response.v0.3.json",
+  "$id": "https://cocinaris.local/contracts/ai/recipe/suggest-candidates.response.v0.3.json",
   "title": "recipe.suggest_candidates.v1 response",
   "description": "Strict closed response schema for three compact recipe candidates (protocol 0.3).",
   "type": "object",

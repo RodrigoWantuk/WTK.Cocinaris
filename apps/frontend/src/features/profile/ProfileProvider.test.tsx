@@ -1,3 +1,4 @@
+import type { Mock } from "vitest";
 import { act, render, screen, waitFor } from "@testing-library/react";
 import {
   isWorkspaceConsistent,
@@ -166,7 +167,7 @@ describe("ProfileProvider workspace coordination", () => {
   });
 
   it("retries once on a version mismatch across collections and reports ready once consistent", async () => {
-    const getPreferences = jest
+    const getPreferences = vi
       .fn()
       .mockResolvedValueOnce(
         createEmptyPreferenceSnapshot({ version: "stale", etag: '"stale"' }),
@@ -183,7 +184,7 @@ describe("ProfileProvider workspace coordination", () => {
   });
 
   it("reports version_conflict and blocks reads from stale data when still inconsistent after one retry", async () => {
-    const getPreferences = jest
+    const getPreferences = vi
       .fn()
       .mockResolvedValue(
         createEmptyPreferenceSnapshot({ version: "stale", etag: '"stale"' }),
@@ -206,19 +207,19 @@ describe("ProfileProvider workspace coordination", () => {
 
   it("treats an absent profile (all null versions) as consistent without retrying", async () => {
     const repo = createMockProfileRepo({
-      getProfile: jest.fn(async () => ({
+      getProfile: vi.fn(async () => ({
         ...createConfirmedProfileSnapshot(),
         profileExists: false,
         version: null,
         etag: null,
       })),
-      getPreferences: jest.fn(async () =>
+      getPreferences: vi.fn(async () =>
         createEmptyPreferenceSnapshot({ version: null, etag: null }),
       ),
-      getEquipment: jest.fn(async () =>
+      getEquipment: vi.fn(async () =>
         createEmptyEquipmentSnapshot({ version: null, etag: null }),
       ),
-      getCompleteness: jest.fn(async () =>
+      getCompleteness: vi.fn(async () =>
         createCompleteness({ profileExists: false, percentComplete: 0 }),
       ),
     });
@@ -232,9 +233,10 @@ describe("ProfileProvider workspace coordination", () => {
   });
 
   it("sends the session CSRF token and current etag on patchProfile, then reloads and refreshes the session", async () => {
-    const patchProfile = jest.fn<
-      Promise<ProfileSnapshot>,
-      [ProfilePatch, ProfileMutationContext]
+    const patchProfile = vi.fn<
+      (
+        ...args: [ProfilePatch, ProfileMutationContext]
+      ) => Promise<ProfileSnapshot>
     >(async () => createConfirmedProfileSnapshot());
     const repo = createMockProfileRepo({ patchProfile });
     const sessionAdapter = createSessionAdapter();
@@ -268,8 +270,8 @@ describe("ProfileProvider workspace coordination", () => {
       expect(screen.getByTestId("status")).toHaveTextContent("ready"),
     );
 
-    const initialSessionCalls = (sessionAdapter.getSession as jest.Mock).mock
-      .calls.length;
+    const initialSessionCalls = (sessionAdapter.getSession as Mock).mock.calls
+      .length;
     screen.getByTestId("save").click();
 
     await waitFor(() => expect(patchProfile).toHaveBeenCalledTimes(1));
@@ -279,7 +281,7 @@ describe("ProfileProvider workspace coordination", () => {
     });
     await waitFor(() =>
       expect(
-        (sessionAdapter.getSession as jest.Mock).mock.calls.length,
+        (sessionAdapter.getSession as Mock).mock.calls.length,
       ).toBeGreaterThan(initialSessionCalls),
     );
     // Reload after a successful mutation re-fetches all four resources again.
@@ -289,9 +291,10 @@ describe("ProfileProvider workspace coordination", () => {
   it("serializes concurrent mutations so only one is in flight at a time", async () => {
     let active = 0;
     let maxActive = 0;
-    const patchProfile = jest.fn<
-      Promise<ProfileSnapshot>,
-      [ProfilePatch, ProfileMutationContext]
+    const patchProfile = vi.fn<
+      (
+        ...args: [ProfilePatch, ProfileMutationContext]
+      ) => Promise<ProfileSnapshot>
     >(async () => {
       active += 1;
       maxActive = Math.max(maxActive, active);
@@ -341,9 +344,10 @@ describe("ProfileProvider workspace coordination", () => {
   });
 
   it("on precondition_failed (412), re-syncs the workspace and exposes the error code without retrying the mutation", async () => {
-    const patchProfile = jest.fn<
-      Promise<ProfileSnapshot>,
-      [ProfilePatch, ProfileMutationContext]
+    const patchProfile = vi.fn<
+      (
+        ...args: [ProfilePatch, ProfileMutationContext]
+      ) => Promise<ProfileSnapshot>
     >(async () => {
       throw new ProfileApiError("precondition_failed", "stale version", 412);
     });
@@ -401,12 +405,13 @@ describe("ProfileProvider workspace coordination", () => {
     const pendingProfile = new Promise<ProfileSnapshot>(() => {
       // Never resolves: keeps the provider stuck in `loading` for this test.
     });
-    const patchProfile = jest.fn<
-      Promise<ProfileSnapshot>,
-      [ProfilePatch, ProfileMutationContext]
+    const patchProfile = vi.fn<
+      (
+        ...args: [ProfilePatch, ProfileMutationContext]
+      ) => Promise<ProfileSnapshot>
     >(async () => createConfirmedProfileSnapshot());
     const repo = createMockProfileRepo({
-      getProfile: jest.fn(() => pendingProfile),
+      getProfile: vi.fn(() => pendingProfile),
       patchProfile,
     });
 
@@ -433,14 +438,15 @@ describe("ProfileProvider workspace coordination", () => {
   });
 
   it("rejects a mutation while status is version_conflict, without calling the repository", async () => {
-    const getPreferences = jest
+    const getPreferences = vi
       .fn()
       .mockResolvedValue(
         createEmptyPreferenceSnapshot({ version: "stale", etag: '"stale"' }),
       );
-    const patchProfile = jest.fn<
-      Promise<ProfileSnapshot>,
-      [ProfilePatch, ProfileMutationContext]
+    const patchProfile = vi.fn<
+      (
+        ...args: [ProfilePatch, ProfileMutationContext]
+      ) => Promise<ProfileSnapshot>
     >(async () => createConfirmedProfileSnapshot());
     const repo = createMockProfileRepo({ getPreferences, patchProfile });
 
@@ -474,16 +480,17 @@ describe("ProfileProvider workspace coordination", () => {
       "fails, exposes saveRefreshFailed, blocks further mutations, and clears the " +
       "flag on an explicit reload",
     async () => {
-      const getProfile = jest
+      const getProfile = vi
         .fn()
         .mockResolvedValueOnce(createConfirmedProfileSnapshot()) // initial load
         .mockRejectedValueOnce(
           new ProfileApiError("unavailable", "backend hiccup", 503),
         ) // resync after the mutation
         .mockResolvedValue(createConfirmedProfileSnapshot()); // explicit reload
-      const patchProfile = jest.fn<
-        Promise<ProfileSnapshot>,
-        [ProfilePatch, ProfileMutationContext]
+      const patchProfile = vi.fn<
+        (
+          ...args: [ProfilePatch, ProfileMutationContext]
+        ) => Promise<ProfileSnapshot>
       >(async () => createConfirmedProfileSnapshot());
       const repo = createMockProfileRepo({ getProfile, patchProfile });
 

@@ -1,19 +1,4 @@
 {
   "$schema_comment": "Versioned temporary exceptions for yarn audit:policy. Each entry must include id, module, severity, rationale, residual_risk, and remove_by or follow_up_plan.",
-  "exceptions": [
-    {
-      "id": "1124282",
-      "module": "react-router",
-      "severity": "high",
-      "title": "React Router: RSC Mode CSRF Bypass Allows Action Execution Before 400 Response",
-      "patched_versions": ">=8.3.0",
-      "installed_path": "react-router-dom > react-router@7.18.0",
-      "runtime_or_build": "runtime (SPA)",
-      "exploitability": "Requires React Router RSC mode. KitchenFlow CRA SPA does not enable RSC data routes or server action deserialization.",
-      "action": "Allowlisted temporarily; stay on react-router 7.18.x compatible with CRA until a planned bundler/router migration.",
-      "residual_risk": "Low for current CRA SPA surface; would become material if RSC mode were enabled without upgrading.",
-      "follow_up_plan": "Remove when migrating off CRA to a stack that can adopt react-router 8.x (or Vite + RR8). Track under subsequent frontend platform plan / ADR.",
-      "remove_by": "2026-12-31"
-    }
-  ]
+  "exceptions": []
 }

@@ -1,7 +1,7 @@
 # Backend Inventory Slice Runbook
 
 - **Status:** Accepted for PLAN-0003
-- **Applies to:** KitchenFlow API, PostgreSQL 18, Keycloak 26, and the inventory v1 contract
+- **Applies to:** Cocinaris API, PostgreSQL 18, Keycloak 26, and the inventory v1 contract
 - **Last updated:** 2026-07-31
 - **Related plans:** PLAN-0002, PLAN-0003, PLAN-0005
 
@@ -56,8 +56,8 @@ cp .env.example .env
 docker compose -f infrastructure/compose/compose.dev.yml config --quiet
 docker compose -f infrastructure/compose/compose.dev.yml up -d postgres keycloak
 docker compose -f infrastructure/compose/compose.dev.yml ps
-docker compose -f infrastructure/compose/compose.dev.yml exec -T postgres pg_isready -U kitchenflow_dev -d kitchenflow
-curl --fail --silent http://127.0.0.1:8080/realms/kitchenflow/.well-known/openid-configuration > /dev/null
+docker compose -f infrastructure/compose/compose.dev.yml exec -T postgres pg_isready -U cocinaris_dev -d cocinaris
+curl --fail --silent http://127.0.0.1:8080/realms/cocinaris/.well-known/openid-configuration > /dev/null
 ```
 
 `.env` is ignored. Replace its synthetic values for any shared environment and inject production
@@ -67,11 +67,11 @@ The API reads:
 
 | Setting | Purpose | Production rule |
 |---|---|---|
-| `KITCHENFLOW_DB_CONNECTION` | PostgreSQL connection | Required, non-placeholder secret |
-| `KITCHENFLOW_OIDC_AUTHORITY` | Standard OIDC issuer | Required HTTPS authority |
-| `KITCHENFLOW_OIDC_CLIENT_ID` | Confidential backend client | Required, non-placeholder |
-| `KITCHENFLOW_OIDC_CLIENT_SECRET` | OIDC client authentication | Required secret |
-| `KITCHENFLOW_SESSION_KEYRING_PATH` | persistent Data Protection key ring | Required absolute, protected, shared path |
+| `COCINARIS_DB_CONNECTION` | PostgreSQL connection | Required, non-placeholder secret |
+| `COCINARIS_OIDC_AUTHORITY` | Standard OIDC issuer | Required HTTPS authority |
+| `COCINARIS_OIDC_CLIENT_ID` | Confidential backend client | Required, non-placeholder |
+| `COCINARIS_OIDC_CLIENT_SECRET` | OIDC client authentication | Required secret |
+| `COCINARIS_SESSION_KEYRING_PATH` | persistent Data Protection key ring | Required absolute, protected, shared path |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | optional standard telemetry export | Valid absolute OTLP endpoint when set |
 
 Source those values from an ignored local environment file or secret store before starting the API.
@@ -82,11 +82,11 @@ non-secret local authority/client metadata. No production credential has a commi
 
 ```text
 dotnet tool restore
-dotnet restore apps/backend/KitchenFlow.slnx --locked-mode
-dotnet format apps/backend/KitchenFlow.slnx --verify-no-changes --no-restore
-dotnet build apps/backend/KitchenFlow.slnx -c Release --no-restore
-dotnet test apps/backend/KitchenFlow.slnx -c Release --no-build
-bash scripts/backend/check-dotnet-vulnerabilities.sh /tmp/kitchenflow-vulnerabilities.json
+dotnet restore apps/backend/Cocinaris.slnx --locked-mode
+dotnet format apps/backend/Cocinaris.slnx --verify-no-changes --no-restore
+dotnet build apps/backend/Cocinaris.slnx -c Release --no-restore
+dotnet test apps/backend/Cocinaris.slnx -c Release --no-build
+bash scripts/backend/check-dotnet-vulnerabilities.sh /tmp/cocinaris-vulnerabilities.json
 ```
 
 The vulnerability policy is fail-closed for every direct or transitive package vulnerability
@@ -106,9 +106,9 @@ Create a migration only for an approved model change:
 ```text
 dotnet tool restore
 dotnet ef migrations add <EnglishMigrationName> \
-  --project apps/backend/src/KitchenFlow.Infrastructure/KitchenFlow.Infrastructure.csproj \
-  --startup-project apps/backend/src/KitchenFlow.Api/KitchenFlow.Api.csproj
-git diff -- apps/backend/src/KitchenFlow.Infrastructure/Persistence/Migrations
+  --project apps/backend/src/Cocinaris.Infrastructure/Cocinaris.Infrastructure.csproj \
+  --startup-project apps/backend/src/Cocinaris.Api/Cocinaris.Api.csproj
+git diff -- apps/backend/src/Cocinaris.Infrastructure/Persistence/Migrations
 ```
 
 Review generated SQL semantics, owner-consistency constraints, history immutability, locks, data
@@ -120,8 +120,8 @@ With the local environment values loaded and PostgreSQL ready:
 
 ```text
 dotnet ef database update \
-  --project apps/backend/src/KitchenFlow.Infrastructure/KitchenFlow.Infrastructure.csproj \
-  --startup-project apps/backend/src/KitchenFlow.Api/KitchenFlow.Api.csproj \
+  --project apps/backend/src/Cocinaris.Infrastructure/Cocinaris.Infrastructure.csproj \
+  --startup-project apps/backend/src/Cocinaris.Api/Cocinaris.Api.csproj \
   --configuration Release
 ```
 
@@ -132,8 +132,8 @@ resulting constraints and append-only history behavior.
 ### Generate and verify the deployment artifact
 
 ```text
-bash scripts/backend/generate-migration-script.sh /tmp/kitchenflow-migrations.sql
-test -s /tmp/kitchenflow-migrations.sql
+bash scripts/backend/generate-migration-script.sh /tmp/cocinaris-migrations.sql
+test -s /tmp/cocinaris-migrations.sql
 ```
 
 The script is idempotent SQL generated by the repository-pinned EF tool. CI applies the exact
@@ -178,7 +178,7 @@ CSRF testing therefore require trusted HTTPS:
 
 ```text
 dotnet dev-certs https --check --trust
-dotnet run --project apps/backend/src/KitchenFlow.Api/KitchenFlow.Api.csproj \
+dotnet run --project apps/backend/src/Cocinaris.Api/Cocinaris.Api.csproj \
   --configuration Release --no-build --launch-profile https
 ```
 
@@ -203,7 +203,7 @@ make issued cursors/ETags unusable; it does not alter authoritative inventory da
 ```text
 curl --fail --silent https://localhost:7443/health/live
 curl --fail --silent https://localhost:7443/health/ready
-curl --fail --silent http://127.0.0.1:8080/realms/kitchenflow/.well-known/openid-configuration > /dev/null
+curl --fail --silent http://127.0.0.1:8080/realms/cocinaris/.well-known/openid-configuration > /dev/null
 ```
 
 - `/health/live` proves the request pipeline is alive.
@@ -223,7 +223,7 @@ Start the API, then run:
 bash scripts/backend/export-openapi.sh
 bash scripts/backend/check-openapi.sh
 bash scripts/backend/lint-openapi.sh
-git diff --exit-code -- packages/contracts/openapi/kitchenflow-v1.json
+git diff --exit-code -- packages/contracts/openapi/cocinaris-v1.json
 ```
 
 Export intentionally rewrites the checked-in snapshot from the running API. Review the diff before

@@ -12,8 +12,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="../../../apps/backend/src/KitchenFlow.Modules.Ai/KitchenFlow.Modules.Ai.csproj" />
-    <ProjectReference Include="../../../apps/backend/src/KitchenFlow.Modules.Recipes/KitchenFlow.Modules.Recipes.csproj" />
+    <ProjectReference Include="../../../apps/backend/src/Cocinaris.Modules.Ai/Cocinaris.Modules.Ai.csproj" />
+    <ProjectReference Include="../../../apps/backend/src/Cocinaris.Modules.Recipes/Cocinaris.Modules.Recipes.csproj" />
   </ItemGroup>
 
 </Project>

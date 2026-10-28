@@ -1,0 +1,20 @@
+{
+  "realm": "cocinaris",
+  "enabled": true,
+  "users": [
+    { "username": "inventory-user-a", "email": "inventory-user-a@example.invalid", "firstName": "Inventory", "lastName": "User A", "enabled": true, "emailVerified": true, "requiredActions": [], "credentials": [{ "type": "password", "value": "development-only-user-a", "temporary": false }] },
+    { "username": "inventory-user-b", "email": "inventory-user-b@example.invalid", "firstName": "Inventory", "lastName": "User B", "enabled": true, "emailVerified": true, "requiredActions": [], "credentials": [{ "type": "password", "value": "development-only-user-b", "temporary": false }] }
+  ],
+  "clients": [
+    {
+      "clientId": "cocinaris-backend",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "development-only-change-me",
+      "redirectUris": ["https://localhost:7443/signin-oidc"],
+      "webOrigins": ["https://localhost:7443"],
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false
+    }
+  ]
+}

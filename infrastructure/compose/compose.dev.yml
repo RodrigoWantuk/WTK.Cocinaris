@@ -2,15 +2,16 @@ services:
   postgres:
     image: postgres:18.4
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-kitchenflow_dev}
+      POSTGRES_USER: ${POSTGRES_USER:-cocinaris_dev}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-development-only-change-me}
-      POSTGRES_DB: ${POSTGRES_KITCHENFLOW_DB:-kitchenflow}
+      POSTGRES_DB: ${POSTGRES_COCINARIS_DB:-cocinaris}
     ports:
-      - "127.0.0.1:5432:5432"
+      # Override when the host already runs PostgreSQL on 5432 (see docs/development/environment.md).
+      - "127.0.0.1:${COCINARIS_DEV_POSTGRES_PORT:-5432}:5432"
     volumes:
       # PostgreSQL 18 images store clusters beneath a major-version directory. Mounting the
       # parent keeps a fresh named volume compatible with the image's startup contract.
-      - kitchenflow-postgres:/var/lib/postgresql
+      - cocinaris-postgres:/var/lib/postgresql
       - ../keycloak/init-keycloak-db.sql:/docker-entrypoint-initdb.d/init-keycloak-db.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
@@ -26,12 +27,12 @@ services:
       KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-development-only-change-me}
       KC_DB: postgres
       KC_DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_KEYCLOAK_DB:-keycloak}
-      KC_DB_USERNAME: ${POSTGRES_USER:-kitchenflow_dev}
+      KC_DB_USERNAME: ${POSTGRES_USER:-cocinaris_dev}
       KC_DB_PASSWORD: ${POSTGRES_PASSWORD:-development-only-change-me}
     ports:
       - "127.0.0.1:8080:8080"
     volumes:
-      - ../keycloak/kitchenflow-realm.json:/opt/keycloak/data/import/kitchenflow-realm.json:ro
+      - ../keycloak/cocinaris-realm.json:/opt/keycloak/data/import/cocinaris-realm.json:ro
     depends_on:
       postgres:
         condition: service_healthy
@@ -42,4 +43,4 @@ services:
       retries: 20
 
 volumes:
-  kitchenflow-postgres:
+  cocinaris-postgres:

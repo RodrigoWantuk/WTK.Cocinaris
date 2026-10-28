@@ -7,7 +7,7 @@
 
 ## Purpose
 
-This document preserves the complete material outcome of the 2026-07-28 KitchenFlow product and architecture discovery. It is a structured decision record rather than a verbatim transcript.
+This document preserves the complete material outcome of the 2026-07-28 Cocinaris product and architecture discovery. It is a structured decision record rather than a verbatim transcript.
 
 Canonical requirements are organized into the product, domain, architecture, AI, security, and operations documents linked throughout this record. When a later document intentionally changes one of these decisions, it must reference the superseded requirement and explain the migration.
 
@@ -15,11 +15,11 @@ Future agents must not rely on the original conversation. This record and the li
 
 ## Central product question
 
-KitchenFlow exists to answer:
+Cocinaris exists to answer:
 
 > Considering what food exists, how much exists, how long it remains usable, and what the user is willing to do, what is the best way to transform that food into useful meals?
 
-Inventory, shopping, planning, equipment, preferences, history, recipes, and AI are supporting contexts or actions around this question. KitchenFlow is not primarily a recipe catalog.
+Inventory, shopping, planning, equipment, preferences, history, recipes, and AI are supporting contexts or actions around this question. Cocinaris is not primarily a recipe catalog.
 
 ## Problem observed in real life
 
@@ -51,7 +51,7 @@ Couples, small households, larger families, and experienced cooks may use the pr
 
 ## Value directions
 
-KitchenFlow must support three compatible value directions:
+Cocinaris must support three compatible value directions:
 
 - eat better and with more everyday quality;
 - spend less and waste less while still eating adequately;
@@ -59,7 +59,7 @@ KitchenFlow must support three compatible value directions:
 
 The accepted value proposition is:
 
-> KitchenFlow helps people with limited time or cooking experience plan, shop, and cook better at home, with less effort, waste, and dependence on delivery.
+> Cocinaris helps people with limited time or cooking experience plan, shop, and cook better at home, with less effort, waste, and dependence on delivery.
 
 ## Product outcomes
 
@@ -152,14 +152,14 @@ The information hierarchy is:
 
 1. explicit manufacturer information;
 2. explicit user information or override;
-3. curated KitchenFlow product and food-safety rules;
+3. curated Cocinaris product and food-safety rules;
 4. curated regional references;
 5. AI-assisted estimate;
 6. unknown.
 
 AI may extract or suggest information, but it is not the authoritative safety database. Source, confidence, and estimation basis must remain inspectable.
 
-When a source is absent, uncertain, or close to its estimated limit, KitchenFlow raises attention and requests action. It does not silently invent facts and does not force an inventory block.
+When a source is absent, uncertain, or close to its estimated limit, Cocinaris raises attention and requests action. It does not silently invent facts and does not force an inventory block.
 
 ### Advisory behavior
 
@@ -193,7 +193,7 @@ Important values record their origin, such as:
 - receipt extraction;
 - barcode or product database;
 - package image;
-- KitchenFlow rule;
+- Cocinaris rule;
 - AI estimate;
 - recipe execution;
 - system calculation.
@@ -229,7 +229,7 @@ Recommendations consider, when available:
 - freezing and preservation preferences;
 - recent executions and user feedback.
 
-Urgent products may be highlighted and alternatives proposed, but the user can choose something else. KitchenFlow explains relevant trade-offs rather than rewriting accepted decisions silently.
+Urgent products may be highlighted and alternatives proposed, but the user can choose something else. Cocinaris explains relevant trade-offs rather than rewriting accepted decisions silently.
 
 ## Planning and shopping decisions
 
@@ -249,9 +249,9 @@ An accepted menu entry may contain:
 
 Approaching the planned time, the system may warn about missing required or optional products, uncertain inventory, or required advance preparation.
 
-Shopping is part of the core value. KitchenFlow must help decide what to buy based on selected meals, current lots, reservations, package sizes, expected remainder, future uses, and time until the next purchase.
+Shopping is part of the core value. Cocinaris must help decide what to buy based on selected meals, current lots, reservations, package sizes, expected remainder, future uses, and time until the next purchase.
 
-Shopping lists distinguish required, recommended, optional, already available, expected-to-run-out, and operational items. A real purchase may differ from the plan. KitchenFlow proposes localized adaptations while preserving accepted meals whenever possible.
+Shopping lists distinguish required, recommended, optional, already available, expected-to-run-out, and operational items. A real purchase may differ from the plan. Cocinaris proposes localized adaptations while preserving accepted meals whenever possible.
 
 Planning supports `Simulation`, `Draft`, and `Accepted` states so the user can explore without mutating inventory reservations or the active plan.
 
@@ -265,7 +265,7 @@ Each user-owned recipe is an independent database object with a UUID. Supported 
 
 The parser produces a normalized structured recipe and warns about ambiguity, missing ingredients, unused ingredients, inconsistent quantities, absent time or temperature, contradictory steps, preparation prerequisites, and potential safety problems.
 
-After import, KitchenFlow stores only the normalized recipe and internal processing metadata. It does not retain the source image, source URL, or original page content.
+After import, Cocinaris stores only the normalized recipe and internal processing metadata. It does not retain the source image, source URL, or original page content.
 
 Recipes accept manual edits and AI-assisted customizations whether they are saved, favorited, or scheduled.
 
@@ -278,7 +278,7 @@ A favorite follows the current revision by default. A scheduled entry may follow
 A recipe object is never jointly mutable across users. Sharing creates an independent copy with a new UUID and provenance pointing to an immutable shared snapshot. Initial sharing priority is:
 
 1. private share link;
-2. direct share to another KitchenFlow user;
+2. direct share to another Cocinaris user;
 3. unlisted public link;
 4. searchable public catalog in a later release.
 
@@ -392,7 +392,7 @@ Generation, adaptation, parsing, contextual troubleshooting, and new AI recommen
 - PostgreSQL is the authoritative relational database.
 - Important asynchronous work uses persistent jobs, RabbitMQ, a transactional outbox, at-least-once delivery, and idempotent consumers.
 - Redis is optional auxiliary infrastructure for cache, distributed limits, short-lived coordination, and progress; it is never the sole source of authoritative data.
-- Keycloak is the initial identity provider through standard OpenID Connect. KitchenFlow keeps its own user UUID and owns domain authorization.
+- Keycloak is the initial identity provider through standard OpenID Connect. Cocinaris keeps its own user UUID and owns domain authorization.
 - Browser authentication uses a backend-managed secure session and avoids placing long-lived provider tokens in frontend storage.
 - S3-compatible object storage handles permanent user photos and temporary upload processing.
 - OpenTelemetry is the instrumentation standard.
@@ -421,7 +421,7 @@ The initial recovery objectives are directional:
 
 ## Privacy and data protection decisions
 
-KitchenFlow must implement privacy by design for LGPD and GDPR-oriented operation. Before launch, professional legal review is required for terms, privacy notice, lawful bases, sensitive-data processing, international transfers, retention, advertising, and country availability.
+Cocinaris must implement privacy by design for LGPD and GDPR-oriented operation. Before launch, professional legal review is required for terms, privacy notice, lawful bases, sensitive-data processing, international transfers, retention, advertising, and country availability.
 
 The first release includes:
 

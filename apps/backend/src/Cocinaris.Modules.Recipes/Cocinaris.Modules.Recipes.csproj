@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <AssemblyName>Cocinaris.Modules.Recipes</AssemblyName>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <WarningsAsErrors>$(WarningsAsErrors);CS1591</WarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Cocinaris.Modules.Ai/Cocinaris.Modules.Ai.csproj" />
+    <ProjectReference Include="../Cocinaris.Modules.Identity/Cocinaris.Modules.Identity.csproj" />
+    <ProjectReference Include="../Cocinaris.Modules.Inventory/Cocinaris.Modules.Inventory.csproj" />
+    <ProjectReference Include="../Cocinaris.Modules.Profiles/Cocinaris.Modules.Profiles.csproj" />
+    <ProjectReference Include="../Cocinaris.SharedKernel/Cocinaris.SharedKernel.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="..\..\..\..\packages\contracts\ai\recipe\schemas\recipe-suggest-candidates.response.v0.3.json" Link="Contracts\recipe-suggest-candidates.response.v0.3.json" LogicalName="Cocinaris.Modules.Recipes.Contracts.recipe-suggest-candidates.response.v0.3.json" />
+    <EmbeddedResource Include="..\..\..\..\packages\contracts\ai\recipe\schemas\recipe-expand-selected.response.v0.3.json" Link="Contracts\recipe-expand-selected.response.v0.3.json" LogicalName="Cocinaris.Modules.Recipes.Contracts.recipe-expand-selected.response.v0.3.json" />
+  </ItemGroup>
+
+</Project>

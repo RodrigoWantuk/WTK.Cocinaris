@@ -14,9 +14,10 @@ import {
 } from "./testUtils";
 
 function mockPatchProfile() {
-  return jest.fn<
-    Promise<ProfileSnapshot>,
-    [ProfilePatch, ProfileMutationContext]
+  return vi.fn<
+    (
+      ...args: [ProfilePatch, ProfileMutationContext]
+    ) => Promise<ProfileSnapshot>
   >(async () => createConfirmedProfileSnapshot());
 }
 
@@ -192,9 +193,10 @@ describe("ProfileDataPage", () => {
   });
 
   it("maps backend field errors onto the matching field and summarizes unmatched ones", async () => {
-    const patchProfile = jest.fn<
-      Promise<ProfileSnapshot>,
-      [ProfilePatch, ProfileMutationContext]
+    const patchProfile = vi.fn<
+      (
+        ...args: [ProfilePatch, ProfileMutationContext]
+      ) => Promise<ProfileSnapshot>
     >(async () => {
       throw new ProfileApiError(
         "validation_failed",

@@ -16,22 +16,22 @@ set -a
 source .env
 set +a
 
-dotnet build apps/backend/KitchenFlow.slnx -c Release
+dotnet build apps/backend/Cocinaris.slnx -c Release
 
 echo "==> Telemetry redaction + migration integration suite"
-dotnet test apps/backend/KitchenFlow.slnx -c Release --no-build \
+dotnet test apps/backend/Cocinaris.slnx -c Release --no-build \
   --filter "FullyQualifiedName~TelemetryRedactionTests|FullyQualifiedName~PostgreSqlMigrationTests" \
   --logger "trx;LogFilePrefix=plan0005-obs-" \
   --results-directory "${REPORT_DIR}/trx-obs"
 
 echo "==> Outage mutation integrity (TEST-0005-132)"
-dotnet test apps/backend/KitchenFlow.slnx -c Release --no-build \
+dotnet test apps/backend/Cocinaris.slnx -c Release --no-build \
   --filter "FullyQualifiedName~Plan0005OutageMutationTests" \
   --logger "trx;LogFilePrefix=plan0005-outage-" \
   --results-directory "${REPORT_DIR}/trx-outage"
 
 echo "==> Performance smoke 135/136/137"
-dotnet test apps/backend/KitchenFlow.slnx -c Release --no-build \
+dotnet test apps/backend/Cocinaris.slnx -c Release --no-build \
   --filter "FullyQualifiedName~Plan0005PerformanceSmokeTests" \
   --logger "trx;LogFilePrefix=plan0005-perf-" \
   --results-directory "${REPORT_DIR}/trx-perf"

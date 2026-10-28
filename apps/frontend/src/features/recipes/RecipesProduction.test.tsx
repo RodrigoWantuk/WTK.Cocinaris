@@ -252,7 +252,7 @@ describe("production recipes vertical slice", () => {
 
   it("renders exactly three candidates and navigates after selection", async () => {
     const user = userEvent.setup();
-    const selectCandidate = jest.fn(async () => ({
+    const selectCandidate = vi.fn(async () => ({
       recipeId: "recipe-1",
       revisionNumber: 1,
       name: "Tomato Skillet",

@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <AssemblyName>Cocinaris.Modules.Profiles</AssemblyName>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <WarningsAsErrors>$(WarningsAsErrors);CS1591</WarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Cocinaris.Modules.Identity/Cocinaris.Modules.Identity.csproj" />
+    <ProjectReference Include="../Cocinaris.SharedKernel/Cocinaris.SharedKernel.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -135,8 +135,8 @@ Because the plan affects inventory consumption, derived lots, concurrency, and m
 - **Main baseline:** `f166ce21020f6704d3fcd99b4b6d195b33638155`
 - **Current checkpoint:** Replacement immutable candidate `9bff2e130afb4a0f31ea0b84925362f546d1179e` passed exact-head Backend, Frontend, and PLAN-0005 gates after remediation of F-0026-01, F-0026-02, and F-0026-03.
 - **Run target:** Deliver the complete owner-scoped preparation transaction vertical slice: domain/application contract, atomic PostgreSQL persistence and migration, HTTP/OpenAPI/client contract, tests, operations documentation, implementation evidence, and an independently testable candidate.
-- **Blockers:** Independent PLAN-0027 retest remains required. Existing untracked frontend build and smoke artifacts are preserved and excluded from this plan.
-- **Exact next action:** An independent testing agent must claim PLAN-0027, test the pinned candidate from an isolated worktree, and publish Pass, Conditional Pass, or Fail.
+- **Blockers:** None. PLAN-0027 retest completed with **Pass**; merged through PR #39 at `7912d4676ffc1f06ac193b7d6788c3a910ed2bd1`.
+- **Exact next action:** None for PLAN-0023. Production prepared-component UI is owned by PLAN-0039 in the PLAN-0031 roadmap.
 
 ## Progress log
 
@@ -288,3 +288,7 @@ Because the plan affects inventory consumption, derived lots, concurrency, and m
 - **Checkpoint:** PLAN-0023 is merged through PR #39 at `7912d4676ffc1f06ac193b7d6788c3a910ed2bd1`. Functional SUT remains `9bff2e130afb4a0f31ea0b84925362f546d1179e`. PLAN-0026 remains Completed — Fail with PR #40 closed without merge. PLAN-0027 remains Completed — Pass and was incorporated through PR #39 via PR #42. Issue #41 is closed.
 - **Note:** Historical assessment evidence is not rewritten. Stale statements that PR #39 still awaited owner review or final documentation-head checks are superseded by this merge record.
 - **Next action:** None for PLAN-0023; active work continues under PLAN-0022.
+
+### 2026-10-28T15:00:00Z — Claude Code (PLAN-0032 drift reconciliation)
+
+- Execution state reconciled with the 2026-08-05 post-merge record; the stale PLAN-0027 retest blocker and next action were replaced.

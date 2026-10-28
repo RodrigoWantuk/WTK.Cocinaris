@@ -1,0 +1,731 @@
+{
+  "label": "after",
+  "generatedAt": "2026-10-28T18:09:04.472Z",
+  "routes": [
+    {
+      "route": "entry",
+      "path": "/",
+      "viewport": "360",
+      "screenshot": "entry-360.png",
+      "title": "Cocinaris",
+      "lang": "pt-BR",
+      "finalPath": "/",
+      "h1": [
+        "Transforme alimentos disponíveis em refeições úteis"
+      ],
+      "horizontalOverflow": false,
+      "overflowCulprits": [],
+      "hasMainLandmark": true,
+      "hasSkipLink": false,
+      "sessionFetches": 0,
+      "consoleErrors": [],
+      "externalHosts": []
+    },
+    {
+      "route": "access",
+      "path": "/acesso",
+      "viewport": "360",
+      "screenshot": "access-360.png",
+      "title": "Entrar · Cocinaris",
+      "lang": "pt-BR",
+      "finalPath": "/acesso",
+      "h1": [
+        "Entrar"
+      ],
+      "horizontalOverflow": false,
+      "overflowCulprits": [],
+      "hasMainLandmark": true,
+      "hasSkipLink": false,
+      "sessionFetches": 1,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+      ],
+      "externalHosts": []
+    },
+    {
+      "route": "home",
+      "path": "/app/hoje",
+      "viewport": "360",
+      "screenshot": "home-360.png",
+      "title": "Início · Cocinaris",
+      "lang": "pt-BR",
+      "finalPath": "/app/hoje",
+      "h1": [
+        "O que cozinhamos hoje?"
+      ],
+      "horizontalOverflow": false,
+      "overflowCulprits": [],
+      "hasMainLandmark": true,
+      "hasSkipLink": true,
+      "sessionFetches": 1,
+      "consoleErrors": [],
+      "externalHosts": []
+    },
+    {
+      "route": "inventory",
+      "path": "/app/despensa",
+      "viewport": "360",
+      "screenshot": "inventory-360.png",
+      "title": "Despensa · Cocinaris",
+      "lang": "pt-BR",
+      "finalPath": "/app/despensa",
+      "h1": [
+        "Despensa"
+      ],
+      "horizontalOverflow": false,
+      "overflowCulprits": [],
+      "hasMainLandmark": true,
+      "hasSkipLink": true,
+      "sessionFetches": 1,
+      "consoleErrors": [],
+      "externalHosts": []
+    },
+    {
+      "route": "inventory-new",
+      "path": "/app/despensa/novo",
+      "viewport": "360",
+      "screenshot": "inventory-new-360.png",
+      "title": "Adicionar lote · Cocinaris",
+      "lang": "pt-BR",
+      "finalPath": "/app/despensa/novo",
+      "h1": [
+        "Adicionar lote"
+      ],
+      "horizontalOverflow": false,
+      "overflowCulprits": [],
+      "hasMainLandmark": true,
+      "hasSkipLink": true,
+      "sessionFetches": 1,
+      "consoleErrors": [],
+      "externalHosts": []
+    },
+    {
+      "route": "inventory-detail",
+      "path": "/app/despensa/33333333-3333-3333-3333-333333333331",
+      "viewport": "360",
+      "screenshot": "inventory-detail-360.png",
+      "title": "Lote · Cocinaris",
+      "lang": "pt-BR",
+      "finalPath": "/app/despensa/33333333-3333-3333-3333-333333333331",
+      "h1": [
+        "Leite integral"
+      ],
+      "horizontalOverflow": false,
+      "overflowCulprits": [],
+      "hasMainLandmark": true,
+      "hasSkipLink": true,
+      "sessionFetches": 1,
+      "consoleErrors": [],
+      "externalHosts": []
+    },
+    {
+      "route": "inventory-edit",
+      "path": "/app/despensa/33333333-3333-3333-3333-333333333331/editar",
+      "viewport": "360",
+      "screenshot": "inventory-edit-360.png",
+      "title": "Editar lote · Cocinaris",
+      "lang": "pt-BR",
+      "finalPath": "/app/despensa/33333333-3333-3333-3333-333333333331/editar",
+      "h1": [
+        "Editar lote"
+      ],
+      "horizontalOverflow": false,
+      "overflowCulprits": [],
+      "hasMainLandmark": true,
+      "hasSkipLink": true,
+      "sessionFetches": 1,
+      "consoleErrors": [],
+      "externalHosts": []
+    },
+    {
+      "route": "profile",
+      "path": "/app/perfil",
+      "viewport": "360",
+      "screenshot": "profile-360.png",
+      "title": "Perfil · Cocinaris",
+      "lang": "pt-BR",
+      "finalPath": "/app/perfil",
+      "h1": [
+        "Seu perfil"
+      ],
+      "horizontalOverflow": false,
+      "overflowCulprits": [],
+      "hasMainLandmark": true,
+      "hasSkipLink": true,
+      "sessionFetches": 1,
+      "consoleErrors": [],
+      "externalHosts": []
+    },
+    {
+      "route": "profile-data",
+      "path": "/app/perfil/dados",
+      "viewport": "360",
+      "screenshot": "profile-data-360.png",
+      "title": "Perfil · Cocinaris",
+      "lang": "pt-BR",
+      "finalPath": "/app/perfil/dados",
+      "h1": [
+        "Dados de família e culinária"
+      ],
+      "horizontalOverflow": false,
+      "overflowCulprits": [],
+      "hasMainLandmark": true,
+      "hasSkipLink": true,
+      "sessionFetches": 1,
+      "consoleErrors": [],
+      "externalHosts": []
+    },
+    {
+      "route": "profile-preferences",
+      "path": "/app/perfil/preferencias",
+      "viewport": "360",
+      "screenshot": "profile-preferences-360.png",
+      "title": "Perfil · Cocinaris",
+      "lang": "pt-BR",
+      "finalPath": "/app/perfil/preferencias",
+      "h1": [
+        "Preferências e restrições"
+      ],
+      "horizontalOverflow": false,
+      "overflowCulprits": [],
+      "hasMainLandmark": true,
+      "hasSkipLink": true,
+      "sessionFetches": 1,
+      "consoleErrors": [],
+      "externalHosts": []
+    },
+    {
+      "route": "profile-equipment",
+      "path": "/app/perfil/equipamentos",
+      "viewport": "360",
+      "screenshot": "profile-equipment-360.png",
+      "title": "Perfil · Cocinaris",
+      "lang": "pt-BR",
+      "finalPath": "/app/perfil/equipamentos",
+      "h1": [
+        "Equipamentos"
+      ],
+      "horizontalOverflow": false,
+      "overflowCulprits": [],
+      "hasMainLandmark": true,
+      "hasSkipLink": true,
+      "sessionFetches": 1,
+      "consoleErrors": [],
+      "externalHosts": []
+    },
+    {
+      "route": "unknown-app-route",
+      "path": "/app/receitas",
+      "viewport": "360",
+      "screenshot": "unknown-app-route-360.png",
+      "title": "Em breve · Cocinaris",
+      "lang": "pt-BR",
+      "finalPath": "/app/receitas",
+      "h1": [
+        "Em breve"
+      ],
+      "horizontalOverflow": false,
+      "overflowCulprits": [],
+      "hasMainLandmark": true,
+      "hasSkipLink": true,
+      "sessionFetches": 1,
+      "consoleErrors": [],
+      "externalHosts": []
+    },
+    {
+      "route": "entry",
+      "path": "/",
+      "viewport": "768",
+      "screenshot": null,
+      "title": "Cocinaris",
+      "lang": "pt-BR",
+      "finalPath": "/",
+      "h1": [
+        "Transforme alimentos disponíveis em refeições úteis"
+      ],
+      "horizontalOverflow": false,
+      "overflowCulprits": [],
+      "hasMainLandmark": true,
+      "hasSkipLink": false,
+      "sessionFetches": 0,
+      "consoleErrors": [],
+      "externalHosts": []
+    },
+    {
+      "route": "access",
+      "path": "/acesso",
+      "viewport": "768",
+      "screenshot": null,
+      "title": "Entrar · Cocinaris",
+      "lang": "pt-BR",
+      "finalPath": "/acesso",
+      "h1": [
+        "Entrar"
+      ],
+      "horizontalOverflow": false,
+      "overflowCulprits": [],
+      "hasMainLandmark": true,
+      "hasSkipLink": false,
+      "sessionFetches": 1,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+      ],
+      "externalHosts": []
+    },
+    {
+      "route": "home",
+      "path": "/app/hoje",
+      "viewport": "768",
+      "screenshot": null,
+      "title": "Início · Cocinaris",
+      "lang": "pt-BR",
+      "finalPath": "/app/hoje",
+      "h1": [
+        "O que cozinhamos hoje?"
+      ],
+      "horizontalOverflow": false,
+      "overflowCulprits": [],
+      "hasMainLandmark": true,
+      "hasSkipLink": true,
+      "sessionFetches": 1,
+      "consoleErrors": [],
+      "externalHosts": []
+    },
+    {
+      "route": "inventory",
+      "path": "/app/despensa",
+      "viewport": "768",
+      "screenshot": null,
+      "title": "Despensa · Cocinaris",
+      "lang": "pt-BR",
+      "finalPath": "/app/despensa",
+      "h1": [
+        "Despensa"
+      ],
+      "horizontalOverflow": false,
+      "overflowCulprits": [],
+      "hasMainLandmark": true,
+      "hasSkipLink": true,
+      "sessionFetches": 1,
+      "consoleErrors": [],
+      "externalHosts": []
+    },
+    {
+      "route": "inventory-new",
+      "path": "/app/despensa/novo",
+      "viewport": "768",
+      "screenshot": null,
+      "title": "Adicionar lote · Cocinaris",
+      "lang": "pt-BR",
+      "finalPath": "/app/despensa/novo",
+      "h1": [
+        "Adicionar lote"
+      ],
+      "horizontalOverflow": false,
+      "overflowCulprits": [],
+      "hasMainLandmark": true,
+      "hasSkipLink": true,
+      "sessionFetches": 1,
+      "consoleErrors": [],
+      "externalHosts": []
+    },
+    {
+      "route": "inventory-detail",
+      "path": "/app/despensa/33333333-3333-3333-3333-333333333331",
+      "viewport": "768",
+      "screenshot": null,
+      "title": "Lote · Cocinaris",
+      "lang": "pt-BR",
+      "finalPath": "/app/despensa/33333333-3333-3333-3333-333333333331",
+      "h1": [
+        "Leite integral"
+      ],
+      "horizontalOverflow": false,
+      "overflowCulprits": [],
+      "hasMainLandmark": true,
+      "hasSkipLink": true,
+      "sessionFetches": 1,
+      "consoleErrors": [],
+      "externalHosts": []
+    },
+    {
+      "route": "inventory-edit",
+      "path": "/app/despensa/33333333-3333-3333-3333-333333333331/editar",
+      "viewport": "768",
+      "screenshot": null,
+      "title": "Editar lote · Cocinaris",
+      "lang": "pt-BR",
+      "finalPath": "/app/despensa/33333333-3333-3333-3333-333333333331/editar",
+      "h1": [
+        "Editar lote"
+      ],
+      "horizontalOverflow": false,
+      "overflowCulprits": [],
+      "hasMainLandmark": true,
+      "hasSkipLink": true,
+      "sessionFetches": 1,
+      "consoleErrors": [],
+      "externalHosts": []
+    },
+    {
+      "route": "profile",
+      "path": "/app/perfil",
+      "viewport": "768",
+      "screenshot": null,
+      "title": "Perfil · Cocinaris",
+      "lang": "pt-BR",
+      "finalPath": "/app/perfil",
+      "h1": [
+        "Seu perfil"
+      ],
+      "horizontalOverflow": false,
+      "overflowCulprits": [],
+      "hasMainLandmark": true,
+      "hasSkipLink": true,
+      "sessionFetches": 1,
+      "consoleErrors": [],
+      "externalHosts": []
+    },
+    {
+      "route": "profile-data",
+      "path": "/app/perfil/dados",
+      "viewport": "768",
+      "screenshot": null,
+      "title": "Perfil · Cocinaris",
+      "lang": "pt-BR",
+      "finalPath": "/app/perfil/dados",
+      "h1": [
+        "Dados de família e culinária"
+      ],
+      "horizontalOverflow": false,
+      "overflowCulprits": [],
+      "hasMainLandmark": true,
+      "hasSkipLink": true,
+      "sessionFetches": 1,
+      "consoleErrors": [],
+      "externalHosts": []
+    },
+    {
+      "route": "profile-preferences",
+      "path": "/app/perfil/preferencias",
+      "viewport": "768",
+      "screenshot": null,
+      "title": "Perfil · Cocinaris",
+      "lang": "pt-BR",
+      "finalPath": "/app/perfil/preferencias",
+      "h1": [
+        "Preferências e restrições"
+      ],
+      "horizontalOverflow": false,
+      "overflowCulprits": [],
+      "hasMainLandmark": true,
+      "hasSkipLink": true,
+      "sessionFetches": 1,
+      "consoleErrors": [],
+      "externalHosts": []
+    },
+    {
+      "route": "profile-equipment",
+      "path": "/app/perfil/equipamentos",
+      "viewport": "768",
+      "screenshot": null,
+      "title": "Perfil · Cocinaris",
+      "lang": "pt-BR",
+      "finalPath": "/app/perfil/equipamentos",
+      "h1": [
+        "Equipamentos"
+      ],
+      "horizontalOverflow": false,
+      "overflowCulprits": [],
+      "hasMainLandmark": true,
+      "hasSkipLink": true,
+      "sessionFetches": 1,
+      "consoleErrors": [],
+      "externalHosts": []
+    },
+    {
+      "route": "unknown-app-route",
+      "path": "/app/receitas",
+      "viewport": "768",
+      "screenshot": null,
+      "title": "Em breve · Cocinaris",
+      "lang": "pt-BR",
+      "finalPath": "/app/receitas",
+      "h1": [
+        "Em breve"
+      ],
+      "horizontalOverflow": false,
+      "overflowCulprits": [],
+      "hasMainLandmark": true,
+      "hasSkipLink": true,
+      "sessionFetches": 1,
+      "consoleErrors": [],
+      "externalHosts": []
+    },
+    {
+      "route": "entry",
+      "path": "/",
+      "viewport": "1280",
+      "screenshot": null,
+      "title": "Cocinaris",
+      "lang": "pt-BR",
+      "finalPath": "/",
+      "h1": [
+        "Transforme alimentos disponíveis em refeições úteis"
+      ],
+      "horizontalOverflow": false,
+      "overflowCulprits": [],
+      "hasMainLandmark": true,
+      "hasSkipLink": false,
+      "sessionFetches": 0,
+      "consoleErrors": [],
+      "externalHosts": [],
+      "axeViolations": []
+    },
+    {
+      "route": "access",
+      "path": "/acesso",
+      "viewport": "1280",
+      "screenshot": null,
+      "title": "Entrar · Cocinaris",
+      "lang": "pt-BR",
+      "finalPath": "/acesso",
+      "h1": [
+        "Entrar"
+      ],
+      "horizontalOverflow": false,
+      "overflowCulprits": [],
+      "hasMainLandmark": true,
+      "hasSkipLink": false,
+      "sessionFetches": 1,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+      ],
+      "externalHosts": [],
+      "axeViolations": []
+    },
+    {
+      "route": "home",
+      "path": "/app/hoje",
+      "viewport": "1280",
+      "screenshot": null,
+      "title": "Início · Cocinaris",
+      "lang": "pt-BR",
+      "finalPath": "/app/hoje",
+      "h1": [
+        "O que cozinhamos hoje?"
+      ],
+      "horizontalOverflow": false,
+      "overflowCulprits": [],
+      "hasMainLandmark": true,
+      "hasSkipLink": true,
+      "sessionFetches": 1,
+      "consoleErrors": [],
+      "externalHosts": [],
+      "axeViolations": []
+    },
+    {
+      "route": "inventory",
+      "path": "/app/despensa",
+      "viewport": "1280",
+      "screenshot": null,
+      "title": "Despensa · Cocinaris",
+      "lang": "pt-BR",
+      "finalPath": "/app/despensa",
+      "h1": [
+        "Despensa"
+      ],
+      "horizontalOverflow": false,
+      "overflowCulprits": [],
+      "hasMainLandmark": true,
+      "hasSkipLink": true,
+      "sessionFetches": 1,
+      "consoleErrors": [],
+      "externalHosts": [],
+      "axeViolations": []
+    },
+    {
+      "route": "inventory-new",
+      "path": "/app/despensa/novo",
+      "viewport": "1280",
+      "screenshot": null,
+      "title": "Adicionar lote · Cocinaris",
+      "lang": "pt-BR",
+      "finalPath": "/app/despensa/novo",
+      "h1": [
+        "Adicionar lote"
+      ],
+      "horizontalOverflow": false,
+      "overflowCulprits": [],
+      "hasMainLandmark": true,
+      "hasSkipLink": true,
+      "sessionFetches": 1,
+      "consoleErrors": [],
+      "externalHosts": [],
+      "axeViolations": []
+    },
+    {
+      "route": "inventory-detail",
+      "path": "/app/despensa/33333333-3333-3333-3333-333333333331",
+      "viewport": "1280",
+      "screenshot": null,
+      "title": "Lote · Cocinaris",
+      "lang": "pt-BR",
+      "finalPath": "/app/despensa/33333333-3333-3333-3333-333333333331",
+      "h1": [
+        "Leite integral"
+      ],
+      "horizontalOverflow": false,
+      "overflowCulprits": [],
+      "hasMainLandmark": true,
+      "hasSkipLink": true,
+      "sessionFetches": 1,
+      "consoleErrors": [],
+      "externalHosts": [],
+      "axeViolations": []
+    },
+    {
+      "route": "inventory-edit",
+      "path": "/app/despensa/33333333-3333-3333-3333-333333333331/editar",
+      "viewport": "1280",
+      "screenshot": null,
+      "title": "Editar lote · Cocinaris",
+      "lang": "pt-BR",
+      "finalPath": "/app/despensa/33333333-3333-3333-3333-333333333331/editar",
+      "h1": [
+        "Editar lote"
+      ],
+      "horizontalOverflow": false,
+      "overflowCulprits": [],
+      "hasMainLandmark": true,
+      "hasSkipLink": true,
+      "sessionFetches": 1,
+      "consoleErrors": [],
+      "externalHosts": [],
+      "axeViolations": []
+    },
+    {
+      "route": "profile",
+      "path": "/app/perfil",
+      "viewport": "1280",
+      "screenshot": null,
+      "title": "Perfil · Cocinaris",
+      "lang": "pt-BR",
+      "finalPath": "/app/perfil",
+      "h1": [
+        "Seu perfil"
+      ],
+      "horizontalOverflow": false,
+      "overflowCulprits": [],
+      "hasMainLandmark": true,
+      "hasSkipLink": true,
+      "sessionFetches": 1,
+      "consoleErrors": [],
+      "externalHosts": [],
+      "axeViolations": []
+    },
+    {
+      "route": "profile-data",
+      "path": "/app/perfil/dados",
+      "viewport": "1280",
+      "screenshot": null,
+      "title": "Perfil · Cocinaris",
+      "lang": "pt-BR",
+      "finalPath": "/app/perfil/dados",
+      "h1": [
+        "Dados de família e culinária"
+      ],
+      "horizontalOverflow": false,
+      "overflowCulprits": [],
+      "hasMainLandmark": true,
+      "hasSkipLink": true,
+      "sessionFetches": 1,
+      "consoleErrors": [],
+      "externalHosts": [],
+      "axeViolations": []
+    },
+    {
+      "route": "profile-preferences",
+      "path": "/app/perfil/preferencias",
+      "viewport": "1280",
+      "screenshot": null,
+      "title": "Perfil · Cocinaris",
+      "lang": "pt-BR",
+      "finalPath": "/app/perfil/preferencias",
+      "h1": [
+        "Preferências e restrições"
+      ],
+      "horizontalOverflow": false,
+      "overflowCulprits": [],
+      "hasMainLandmark": true,
+      "hasSkipLink": true,
+      "sessionFetches": 1,
+      "consoleErrors": [],
+      "externalHosts": [],
+      "axeViolations": []
+    },
+    {
+      "route": "profile-equipment",
+      "path": "/app/perfil/equipamentos",
+      "viewport": "1280",
+      "screenshot": null,
+      "title": "Perfil · Cocinaris",
+      "lang": "pt-BR",
+      "finalPath": "/app/perfil/equipamentos",
+      "h1": [
+        "Equipamentos"
+      ],
+      "horizontalOverflow": false,
+      "overflowCulprits": [],
+      "hasMainLandmark": true,
+      "hasSkipLink": true,
+      "sessionFetches": 1,
+      "consoleErrors": [],
+      "externalHosts": [],
+      "axeViolations": []
+    },
+    {
+      "route": "unknown-app-route",
+      "path": "/app/receitas",
+      "viewport": "1280",
+      "screenshot": null,
+      "title": "Em breve · Cocinaris",
+      "lang": "pt-BR",
+      "finalPath": "/app/receitas",
+      "h1": [
+        "Em breve"
+      ],
+      "horizontalOverflow": false,
+      "overflowCulprits": [],
+      "hasMainLandmark": true,
+      "hasSkipLink": true,
+      "sessionFetches": 1,
+      "consoleErrors": [],
+      "externalHosts": [],
+      "axeViolations": []
+    }
+  ],
+  "navigation": [
+    {
+      "clicked": "production-nav-despensa",
+      "path": "/app/despensa",
+      "sessionFetches": 0
+    },
+    {
+      "clicked": "production-nav-perfil",
+      "path": "/app/perfil",
+      "sessionFetches": 0
+    },
+    {
+      "clicked": "production-nav-home",
+      "path": "/app/hoje",
+      "sessionFetches": 0
+    },
+    {
+      "clicked": "production-nav-despensa",
+      "path": "/app/despensa",
+      "sessionFetches": 0
+    }
+  ],
+  "note": "Screenshots kept at 360 px only; regenerate all viewports with apps/frontend/scripts/capture-production-review.js."
+}

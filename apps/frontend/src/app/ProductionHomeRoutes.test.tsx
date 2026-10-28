@@ -6,7 +6,7 @@ describe("Production home route profile isolation", () => {
   beforeEach(() => {
     localStorage.removeItem(PRODUCTION_LOCALE_STORAGE_KEY);
     window.history.pushState({}, "", "/app/hoje");
-    jest.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
       const url =
         typeof input === "string"
           ? input
@@ -35,11 +35,11 @@ describe("Production home route profile isolation", () => {
   });
 
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   it("renders /app/hoje without ever calling the profile endpoints", async () => {
-    const fetchSpy = jest.spyOn(globalThis, "fetch");
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
     render(<ProductionApp />);
     await waitFor(() =>
       expect(screen.getByTestId("contextual-home")).toBeInTheDocument(),

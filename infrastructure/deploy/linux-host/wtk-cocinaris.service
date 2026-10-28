@@ -1,0 +1,37 @@
+[Unit]
+Description=Cocinaris API
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=wtk-cocinaris
+Group=wtk-cocinaris
+# The deploy script points this symlink at the active release.
+WorkingDirectory=/srv/wtk-cocinaris/api
+# Database connection, OIDC client secret and paths (root:wtk-cocinaris 0640, never in git).
+EnvironmentFile=/etc/wtk-cocinaris/api.env
+Environment=DOTNET_ROOT=/opt/dotnet
+Environment=DOTNET_NOLOGO=1
+ExecStart=/opt/dotnet/dotnet /srv/wtk-cocinaris/api/Cocinaris.Api.dll
+Restart=on-failure
+RestartSec=5
+# Session key ring (ASP.NET Core Data Protection) survives restarts and deploys here.
+StateDirectory=wtk-cocinaris
+StateDirectoryMode=0700
+MemoryMax=700M
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+CapabilityBoundingSet=
+
+[Install]
+WantedBy=multi-user.target

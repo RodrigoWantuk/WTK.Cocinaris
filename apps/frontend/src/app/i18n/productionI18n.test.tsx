@@ -47,10 +47,10 @@ describe("production i18n", () => {
       "Feature unavailable",
     );
     expect(translateProduction("en", "access.detail")).toMatch(
-      /Backend-managed login/,
+      /could not check your session/i,
     );
     expect(translateProduction("en", "app.unavailable.detail")).toMatch(
-      /not wired yet|does not fall back/i,
+      /still being built/i,
     );
     expect(translateProduction("en", "inventory.title")).toBe("Pantry");
     expect(translateProduction("pt-BR", "inventory.title")).toBe("Despensa");
