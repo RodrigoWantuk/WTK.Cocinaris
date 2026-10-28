@@ -1,0 +1,27 @@
+{
+  "$comment": "Example schema only — not evidence for any commit. Real reports are CI artifacts.",
+  "kind": "automated-browser-smoke",
+  "evidenceNote": "CI artifact only — not a versioned source-of-truth report in git",
+  "testedCodeSha": "0000000000000000000000000000000000000000",
+  "prHeadSha": null,
+  "syntheticMergeSha": null,
+  "gitHeadSha": null,
+  "githubRunId": "0",
+  "githubRunAttempt": "1",
+  "githubEventName": "push",
+  "workflowName": "Frontend",
+  "prototypeBaseUrl": "http://127.0.0.1:3000",
+  "productionBaseUrl": "http://127.0.0.1:3001",
+  "testedModes": ["prototype", "production"],
+  "nodeVersion": "v20.x.x",
+  "yarnVersion": "1.22.x",
+  "playwrightVersion": "1.55.1",
+  "chromiumVersion": "resolved-by-playwright",
+  "timestamp": "2026-08-01T00:00:00.000Z",
+  "headless": true,
+  "operatingSystem": "linux",
+  "results": [
+    { "check": "example", "result": "Passed", "notes": "" }
+  ],
+  "failedArtifacts": []
+}
