@@ -485,6 +485,13 @@ export function ContextualHomePage({
     );
   }, [menu, inventory, profile]);
 
+  // Every personalized source reports a permanent capability gap (production until the
+  // live sources exist). Three identical "unavailable" sections would read as an error,
+  // so the page shows one honest notice that points at what feeds future suggestions.
+  const allSourcesUnavailable =
+    menu?.status === "unavailable" &&
+    inventory?.status === "unavailable" &&
+    profile?.status === "unavailable";
   const hasAnyCandidate = orderedSources.some(
     (s) =>
       s && (s.status === "ready" || s.status === "stale") && s.items.length,
@@ -596,7 +603,43 @@ export function ContextualHomePage({
       ) : null}
 
       <div data-testid="home-sources" className="flex flex-col gap-10">
+        {allSourcesUnavailable ? (
+          <section
+            data-testid="home-live-unavailable"
+            aria-labelledby="home-live-unavailable-heading"
+            className="space-y-3 rounded-2xl border border-border bg-secondary/40 p-6"
+          >
+            <h2
+              id="home-live-unavailable-heading"
+              className="font-display text-2xl"
+            >
+              {t("home.unavailable.title")}
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              {t("home.unavailable.detail")}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <Button asChild size="sm">
+                <Link
+                  to="/app/despensa"
+                  data-testid="home-unavailable-pantry-link"
+                >
+                  {t("home.unavailable.pantryAction")}
+                </Link>
+              </Button>
+              <Button asChild size="sm" variant="secondary">
+                <Link
+                  to="/app/perfil"
+                  data-testid="home-unavailable-profile-link"
+                >
+                  {t("home.unavailable.profileAction")}
+                </Link>
+              </Button>
+            </div>
+          </section>
+        ) : null}
         {orderedSources.map((result, index) => {
+          if (allSourcesUnavailable) return null;
           const tier = HOME_SOURCE_TIERS[index];
           if (!result) {
             return (
@@ -625,56 +668,51 @@ export function ContextualHomePage({
           );
         })}
 
-        <section
-          data-testid="home-source-quickChooser"
-          aria-labelledby="home-source-heading-quickChooser"
-          className="space-y-3"
-        >
-          <h2
-            id="home-source-heading-quickChooser"
-            className="font-display text-2xl"
+        {!allSourcesUnavailable || chooserResult ? (
+          <section
+            data-testid="home-source-quickChooser"
+            aria-labelledby="home-source-heading-quickChooser"
+            className="space-y-3"
           >
-            {t("home.source.heading.quickChooser")}
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            {t("home.source.label.quickChooser")}
-          </p>
-          {chooserResult ? (
-            chooserResult.status === "ready" &&
-            chooserResult.items.length > 0 ? (
-              <div className="grid gap-3" data-testid="chooser-results">
-                <p className="text-sm font-medium">
-                  {t("home.chooser.results")}
+            <h2
+              id="home-source-heading-quickChooser"
+              className="font-display text-2xl"
+            >
+              {t("home.source.heading.quickChooser")}
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              {t("home.source.label.quickChooser")}
+            </p>
+            {chooserResult ? (
+              chooserResult.status === "ready" &&
+              chooserResult.items.length > 0 ? (
+                <div className="grid gap-3" data-testid="chooser-results">
+                  <p className="text-sm font-medium">
+                    {t("home.chooser.results")}
+                  </p>
+                  {chooserResult.items.map((item) => (
+                    <CandidateCard key={item.id} item={item} t={t} />
+                  ))}
+                </div>
+              ) : (
+                <p role="status">
+                  {chooserResult.statusReasonKey
+                    ? t(chooserResult.statusReasonKey)
+                    : t("home.chooser.empty")}
                 </p>
-                {chooserResult.items.map((item) => (
-                  <CandidateCard key={item.id} item={item} t={t} />
-                ))}
-              </div>
-            ) : (
-              <p role="status">
-                {chooserResult.statusReasonKey
-                  ? t(chooserResult.statusReasonKey)
-                  : t("home.chooser.empty")}
-              </p>
-            )
-          ) : null}
-        </section>
-
-        {!hasAnyCandidate && !chooserResult && menu && inventory && profile ? (
-          <p role="status" data-testid="home-no-suggestions">
-            {t("home.noSuggestions")}
-          </p>
+              )
+            ) : null}
+          </section>
         ) : null}
 
-        {menu?.status === "unavailable" &&
-        inventory?.status === "unavailable" &&
-        profile?.status === "unavailable" ? (
-          <p
-            role="status"
-            data-testid="home-live-unavailable"
-            className="text-sm text-muted-foreground"
-          >
-            {t("home.unavailable.detail")}
+        {!allSourcesUnavailable &&
+        !hasAnyCandidate &&
+        !chooserResult &&
+        menu &&
+        inventory &&
+        profile ? (
+          <p role="status" data-testid="home-no-suggestions">
+            {t("home.noSuggestions")}
           </p>
         ) : null}
       </div>

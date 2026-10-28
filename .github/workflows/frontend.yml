@@ -79,6 +79,8 @@ jobs:
         run: yarn build:production
       - name: Inspect production bundle (explicit)
         run: yarn inspect:production-bundle
+      - name: Third-party HTML/CSS guard (source and production build)
+        run: yarn guard:third-party-html
       - name: PLAN-0015 zoom evidence syntax + fail-closed validator
         run: |
           node --check scripts/browser-zoom-200-validation.js

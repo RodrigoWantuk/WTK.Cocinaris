@@ -13,7 +13,7 @@ import {
 } from "@/contracts/profile";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -291,270 +291,280 @@ export function ProfilePreferencesPage() {
             </TabsTrigger>
           ))}
         </TabsList>
+
+        <AlertDialog
+          open={pendingAdd !== null}
+          onOpenChange={(open) => {
+            if (!open) setPendingAdd(null);
+          }}
+        >
+          <AlertDialogContent data-testid="profile-preferences-sensitive-confirm">
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                {t("profile.preferences.sensitive.title")}
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                {t("profile.preferences.sensitive.detail")}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <p className="text-sm font-medium">
+              {t("profile.preferences.sensitive.noMedicalAdvice")}
+            </p>
+            <AlertDialogFooter>
+              <AlertDialogCancel
+                data-testid="profile-preferences-sensitive-cancel"
+                disabled={isMutating}
+                onClick={() => setPendingAdd(null)}
+              >
+                {t("profile.preferences.sensitive.cancel")}
+              </AlertDialogCancel>
+              <AlertDialogAction
+                data-testid="profile-preferences-sensitive-confirm-add"
+                disabled={!canMutate}
+                onClick={(event) => {
+                  event.preventDefault();
+                  void confirmPendingAdd();
+                }}
+              >
+                {isMutating
+                  ? t("profile.preferences.sensitive.submitting")
+                  : t("profile.preferences.sensitive.confirmAdd")}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/*
+        The tab triggers select the category shown here; this panel gives them the
+        tabpanel their aria-controls must reference.
+      */}
+        <TabsContent value={category} className="mt-0 space-y-6">
+          <ul className="space-y-2" data-testid="profile-preferences-entries">
+            {entries.length === 0 && (
+              <li className="text-sm text-muted-foreground">
+                {t("profile.preferences.empty")}
+              </li>
+            )}
+            {entries.map((entry) => {
+              const isCustom = isCustomStableCode(entry.stableCode);
+              const primaryLabel =
+                isCustom && entry.note
+                  ? entry.note
+                  : resolveLabel(locale, category, entry.stableCode);
+              return (
+                <li
+                  key={entry.entryId}
+                  data-testid={`profile-preferences-entry-${entry.entryId}`}
+                  className="space-y-2 rounded-lg border border-border p-3"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="font-medium">{primaryLabel}</span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      disabled={!canMutate}
+                      data-testid={`profile-preferences-remove-${entry.entryId}`}
+                      onClick={() => void removeEntry(entry)}
+                    >
+                      {t("profile.preferences.removeEntry")}
+                    </Button>
+                  </div>
+                  {isCustom && !entry.note && (
+                    <p className="text-xs text-muted-foreground">
+                      {t("profile.preferences.unknownCode")}
+                    </p>
+                  )}
+                  {isCustom && (
+                    <p className="text-xs text-muted-foreground">
+                      {t("profile.preferences.customEntryHint")}
+                    </p>
+                  )}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <div className="space-y-1">
+                      <label
+                        htmlFor={`profile-preferences-note-${entry.entryId}`}
+                        className="block text-xs"
+                      >
+                        {t(
+                          isCustom
+                            ? "profile.preferences.entryCustomName"
+                            : "profile.preferences.entryNote",
+                          { name: primaryLabel },
+                        )}
+                      </label>
+                      <Input
+                        id={`profile-preferences-note-${entry.entryId}`}
+                        data-testid={`profile-preferences-note-${entry.entryId}`}
+                        className="max-w-xs"
+                        maxLength={NOTE_MAX_LENGTH}
+                        placeholder={
+                          isCustom
+                            ? t("profile.preferences.customPlaceholder")
+                            : t("profile.preferences.notePlaceholder")
+                        }
+                        value={noteDrafts[entry.entryId] ?? entry.note ?? ""}
+                        disabled={!canMutate}
+                        onChange={(event) =>
+                          setNoteDrafts((prev) => ({
+                            ...prev,
+                            [entry.entryId]: event.target.value,
+                          }))
+                        }
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      disabled={!canMutate}
+                      data-testid={`profile-preferences-update-note-${entry.entryId}`}
+                      onClick={() => void updateNote(entry)}
+                    >
+                      {isCustom
+                        ? t("profile.preferences.renameCustom")
+                        : t("profile.preferences.updateNote")}
+                    </Button>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+
+          <div
+            className="space-y-3 rounded-xl border border-border p-4"
+            data-testid="profile-preferences-add-catalog"
+          >
+            <h2 className="font-medium">
+              {t("profile.preferences.addFromCatalog")}
+            </h2>
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="space-y-1">
+                <label
+                  htmlFor="profile-preferences-catalog-select"
+                  className="block text-xs"
+                >
+                  {t("profile.preferences.catalogSelect")}
+                </label>
+                <select
+                  id="profile-preferences-catalog-select"
+                  data-testid="profile-preferences-catalog-select"
+                  className="flex h-9 rounded-md border border-input bg-transparent px-3 text-sm"
+                  value={catalogCode}
+                  disabled={!canMutate}
+                  onChange={(event) => setCatalogCode(event.target.value)}
+                >
+                  <option value="">{t("profile.actions.add")}</option>
+                  {catalogOptions.map((code) => (
+                    <option key={code} value={code}>
+                      {resolveLabel(locale, category, code)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-1">
+                <label
+                  htmlFor="profile-preferences-catalog-note"
+                  className="block text-xs"
+                >
+                  {t("profile.preferences.catalogNote")}
+                </label>
+                <Input
+                  id="profile-preferences-catalog-note"
+                  data-testid="profile-preferences-catalog-note"
+                  className="max-w-xs"
+                  maxLength={NOTE_MAX_LENGTH}
+                  placeholder={t("profile.preferences.notePlaceholder")}
+                  value={catalogNote}
+                  disabled={!canMutate}
+                  onChange={(event) => setCatalogNote(event.target.value)}
+                />
+              </div>
+              <Button
+                type="button"
+                disabled={
+                  !canMutate ||
+                  !catalogCode ||
+                  catalogNote.length > NOTE_MAX_LENGTH
+                }
+                data-testid="profile-preferences-catalog-submit"
+                onClick={() => requestAdd("catalog", catalogCode, catalogNote)}
+              >
+                {t("profile.actions.add")}
+              </Button>
+            </div>
+          </div>
+
+          <div
+            className="space-y-3 rounded-xl border border-border p-4"
+            data-testid="profile-preferences-add-custom"
+          >
+            <h2 className="font-medium">
+              {t("profile.preferences.addCustom")}
+            </h2>
+            <p className="text-xs text-muted-foreground">
+              {t("profile.preferences.customEntryHint")}
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="space-y-1">
+                <label
+                  htmlFor="profile-preferences-custom-label"
+                  className="block text-xs"
+                >
+                  {t("profile.preferences.customLabel")}
+                </label>
+                <Input
+                  id="profile-preferences-custom-label"
+                  data-testid="profile-preferences-custom-label"
+                  className="max-w-xs"
+                  maxLength={NOTE_MAX_LENGTH}
+                  placeholder={t("profile.preferences.customPlaceholder")}
+                  value={customLabel}
+                  disabled={!canMutate}
+                  aria-invalid={
+                    customLabel.length > NOTE_MAX_LENGTH ? true : undefined
+                  }
+                  aria-describedby={
+                    customLabel.length > NOTE_MAX_LENGTH
+                      ? "profile-preferences-custom-label-error"
+                      : undefined
+                  }
+                  onChange={(event) => setCustomLabel(event.target.value)}
+                />
+              </div>
+              <Button
+                type="button"
+                disabled={
+                  !canMutate ||
+                  !customLabel.trim() ||
+                  customLabel.length > NOTE_MAX_LENGTH
+                }
+                data-testid="profile-preferences-custom-submit"
+                onClick={() => {
+                  const code = createCustomStableCode();
+                  // The free-text the user typed is this custom entry's only piece of
+                  // user text: it becomes both the note and (see the primaryLabel
+                  // computation above) the display label. The stable code stays opaque
+                  // and never embeds user text.
+                  requestAdd("custom", code, customLabel.trim());
+                }}
+              >
+                {t("profile.preferences.customSubmit")}
+              </Button>
+            </div>
+            {customLabel.length > NOTE_MAX_LENGTH && (
+              <p
+                role="alert"
+                id="profile-preferences-custom-label-error"
+                data-testid="profile-preferences-custom-label-error"
+                className="text-xs text-destructive"
+              >
+                {t("profile.preferences.error.noteTooLong")}
+              </p>
+            )}
+          </div>
+        </TabsContent>
       </Tabs>
-
-      <AlertDialog
-        open={pendingAdd !== null}
-        onOpenChange={(open) => {
-          if (!open) setPendingAdd(null);
-        }}
-      >
-        <AlertDialogContent data-testid="profile-preferences-sensitive-confirm">
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {t("profile.preferences.sensitive.title")}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {t("profile.preferences.sensitive.detail")}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <p className="text-sm font-medium">
-            {t("profile.preferences.sensitive.noMedicalAdvice")}
-          </p>
-          <AlertDialogFooter>
-            <AlertDialogCancel
-              data-testid="profile-preferences-sensitive-cancel"
-              disabled={isMutating}
-              onClick={() => setPendingAdd(null)}
-            >
-              {t("profile.preferences.sensitive.cancel")}
-            </AlertDialogCancel>
-            <AlertDialogAction
-              data-testid="profile-preferences-sensitive-confirm-add"
-              disabled={!canMutate}
-              onClick={(event) => {
-                event.preventDefault();
-                void confirmPendingAdd();
-              }}
-            >
-              {isMutating
-                ? t("profile.preferences.sensitive.submitting")
-                : t("profile.preferences.sensitive.confirmAdd")}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <ul className="space-y-2" data-testid="profile-preferences-entries">
-        {entries.length === 0 && (
-          <li className="text-sm text-muted-foreground">
-            {t("profile.preferences.empty")}
-          </li>
-        )}
-        {entries.map((entry) => {
-          const isCustom = isCustomStableCode(entry.stableCode);
-          const primaryLabel =
-            isCustom && entry.note
-              ? entry.note
-              : resolveLabel(locale, category, entry.stableCode);
-          return (
-            <li
-              key={entry.entryId}
-              data-testid={`profile-preferences-entry-${entry.entryId}`}
-              className="space-y-2 rounded-lg border border-border p-3"
-            >
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className="font-medium">{primaryLabel}</span>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  disabled={!canMutate}
-                  data-testid={`profile-preferences-remove-${entry.entryId}`}
-                  onClick={() => void removeEntry(entry)}
-                >
-                  {t("profile.preferences.removeEntry")}
-                </Button>
-              </div>
-              {isCustom && !entry.note && (
-                <p className="text-xs text-muted-foreground">
-                  {t("profile.preferences.unknownCode")}
-                </p>
-              )}
-              {isCustom && (
-                <p className="text-xs text-muted-foreground">
-                  {t("profile.preferences.customEntryHint")}
-                </p>
-              )}
-              <div className="flex flex-wrap items-center gap-2">
-                <div className="space-y-1">
-                  <label
-                    htmlFor={`profile-preferences-note-${entry.entryId}`}
-                    className="block text-xs"
-                  >
-                    {t(
-                      isCustom
-                        ? "profile.preferences.entryCustomName"
-                        : "profile.preferences.entryNote",
-                      { name: primaryLabel },
-                    )}
-                  </label>
-                  <Input
-                    id={`profile-preferences-note-${entry.entryId}`}
-                    data-testid={`profile-preferences-note-${entry.entryId}`}
-                    className="max-w-xs"
-                    maxLength={NOTE_MAX_LENGTH}
-                    placeholder={
-                      isCustom
-                        ? t("profile.preferences.customPlaceholder")
-                        : t("profile.preferences.notePlaceholder")
-                    }
-                    value={noteDrafts[entry.entryId] ?? entry.note ?? ""}
-                    disabled={!canMutate}
-                    onChange={(event) =>
-                      setNoteDrafts((prev) => ({
-                        ...prev,
-                        [entry.entryId]: event.target.value,
-                      }))
-                    }
-                  />
-                </div>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  disabled={!canMutate}
-                  data-testid={`profile-preferences-update-note-${entry.entryId}`}
-                  onClick={() => void updateNote(entry)}
-                >
-                  {isCustom
-                    ? t("profile.preferences.renameCustom")
-                    : t("profile.preferences.updateNote")}
-                </Button>
-              </div>
-            </li>
-          );
-        })}
-      </ul>
-
-      <div
-        className="space-y-3 rounded-xl border border-border p-4"
-        data-testid="profile-preferences-add-catalog"
-      >
-        <h2 className="font-medium">
-          {t("profile.preferences.addFromCatalog")}
-        </h2>
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="space-y-1">
-            <label
-              htmlFor="profile-preferences-catalog-select"
-              className="block text-xs"
-            >
-              {t("profile.preferences.catalogSelect")}
-            </label>
-            <select
-              id="profile-preferences-catalog-select"
-              data-testid="profile-preferences-catalog-select"
-              className="flex h-9 rounded-md border border-input bg-transparent px-3 text-sm"
-              value={catalogCode}
-              disabled={!canMutate}
-              onChange={(event) => setCatalogCode(event.target.value)}
-            >
-              <option value="">{t("profile.actions.add")}</option>
-              {catalogOptions.map((code) => (
-                <option key={code} value={code}>
-                  {resolveLabel(locale, category, code)}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="space-y-1">
-            <label
-              htmlFor="profile-preferences-catalog-note"
-              className="block text-xs"
-            >
-              {t("profile.preferences.catalogNote")}
-            </label>
-            <Input
-              id="profile-preferences-catalog-note"
-              data-testid="profile-preferences-catalog-note"
-              className="max-w-xs"
-              maxLength={NOTE_MAX_LENGTH}
-              placeholder={t("profile.preferences.notePlaceholder")}
-              value={catalogNote}
-              disabled={!canMutate}
-              onChange={(event) => setCatalogNote(event.target.value)}
-            />
-          </div>
-          <Button
-            type="button"
-            disabled={
-              !canMutate || !catalogCode || catalogNote.length > NOTE_MAX_LENGTH
-            }
-            data-testid="profile-preferences-catalog-submit"
-            onClick={() => requestAdd("catalog", catalogCode, catalogNote)}
-          >
-            {t("profile.actions.add")}
-          </Button>
-        </div>
-      </div>
-
-      <div
-        className="space-y-3 rounded-xl border border-border p-4"
-        data-testid="profile-preferences-add-custom"
-      >
-        <h2 className="font-medium">{t("profile.preferences.addCustom")}</h2>
-        <p className="text-xs text-muted-foreground">
-          {t("profile.preferences.customEntryHint")}
-        </p>
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="space-y-1">
-            <label
-              htmlFor="profile-preferences-custom-label"
-              className="block text-xs"
-            >
-              {t("profile.preferences.customLabel")}
-            </label>
-            <Input
-              id="profile-preferences-custom-label"
-              data-testid="profile-preferences-custom-label"
-              className="max-w-xs"
-              maxLength={NOTE_MAX_LENGTH}
-              placeholder={t("profile.preferences.customPlaceholder")}
-              value={customLabel}
-              disabled={!canMutate}
-              aria-invalid={
-                customLabel.length > NOTE_MAX_LENGTH ? true : undefined
-              }
-              aria-describedby={
-                customLabel.length > NOTE_MAX_LENGTH
-                  ? "profile-preferences-custom-label-error"
-                  : undefined
-              }
-              onChange={(event) => setCustomLabel(event.target.value)}
-            />
-          </div>
-          <Button
-            type="button"
-            disabled={
-              !canMutate ||
-              !customLabel.trim() ||
-              customLabel.length > NOTE_MAX_LENGTH
-            }
-            data-testid="profile-preferences-custom-submit"
-            onClick={() => {
-              const code = createCustomStableCode();
-              // The free-text the user typed is this custom entry's only piece of
-              // user text: it becomes both the note and (see the primaryLabel
-              // computation above) the display label. The stable code stays opaque
-              // and never embeds user text.
-              requestAdd("custom", code, customLabel.trim());
-            }}
-          >
-            {t("profile.preferences.customSubmit")}
-          </Button>
-        </div>
-        {customLabel.length > NOTE_MAX_LENGTH && (
-          <p
-            role="alert"
-            id="profile-preferences-custom-label-error"
-            data-testid="profile-preferences-custom-label-error"
-            className="text-xs text-destructive"
-          >
-            {t("profile.preferences.error.noteTooLong")}
-          </p>
-        )}
-      </div>
       {catalogNote.length > NOTE_MAX_LENGTH && (
         <p
           role="alert"

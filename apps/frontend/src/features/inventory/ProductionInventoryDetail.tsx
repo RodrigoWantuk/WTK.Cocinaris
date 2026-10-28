@@ -384,10 +384,11 @@ export function ProductionInventoryDetail() {
           </dt>
           <dd>{lot.notes || t("inventory.fields.none")}</dd>
         </div>
-        <div className="sm:col-span-2 text-xs text-muted-foreground">
-          {t("inventory.printedDateDisclaimer")}
-        </div>
       </dl>
+      {/* Outside the <dl>: a definition list may only contain term/description groups. */}
+      <p className="text-xs text-muted-foreground">
+        {t("inventory.printedDateDisclaimer")}
+      </p>
 
       {!session.csrfToken && (
         <p role="alert" data-testid="inventory-missing-csrf">

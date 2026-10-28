@@ -103,7 +103,7 @@ export function PublicEntryPage({
       data-testid="production-landing"
       className="min-h-screen bg-background text-foreground"
     >
-      <header className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-6 py-6 md:px-10">
+      <header className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-6 sm:px-6 md:px-10">
         <div className="flex items-center gap-2">
           <span
             className="grid h-10 w-10 place-items-center rounded-xl bg-primary text-primary-foreground font-display text-lg"
@@ -126,7 +126,11 @@ export function PublicEntryPage({
                 })
               }
             >
-              {t("entry.cta.login")} <ArrowRight className="ml-1 h-4 w-4" />
+              {t("entry.cta.login")}{" "}
+              <ArrowRight
+                className="ml-1 hidden h-4 w-4 sm:inline"
+                aria-hidden
+              />
             </Link>
           </Button>
         </div>
@@ -224,21 +228,6 @@ export function PublicEntryPage({
                 </li>
               ))}
             </ol>
-            <figure
-              className="mt-10 rounded-2xl border border-dashed border-border bg-background/80 p-6"
-              data-testid="entry-media-placeholder"
-            >
-              <div
-                className="flex min-h-[12rem] items-center justify-center rounded-xl bg-muted/40 px-4 text-center text-sm text-muted-foreground motion-safe:transition-opacity"
-                role="img"
-                aria-label={t("entry.demo.mediaPlaceholder")}
-              >
-                {t("entry.demo.mediaPlaceholder")}
-              </div>
-              <figcaption className="mt-3 text-xs text-muted-foreground">
-                {t("entry.demo.mediaCaption")}
-              </figcaption>
-            </figure>
           </div>
         </section>
 
@@ -313,7 +302,6 @@ export function PublicEntryPage({
             </a>
           </p>
           <p>{t("entry.legal.placeholderNote")}</p>
-          <p>{t("entry.footer")}</p>
         </div>
       </footer>
     </div>

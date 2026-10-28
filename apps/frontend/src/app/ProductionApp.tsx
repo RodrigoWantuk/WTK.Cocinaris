@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, type ReactNode } from "react";
 import {
   createBrowserRouter,
   RouterProvider,
@@ -90,9 +90,9 @@ function ProductionAccess() {
 
   if (session.status === "loading") {
     return (
-      <div className="mx-auto flex min-h-screen max-w-lg items-center p-8">
+      <main className="mx-auto flex min-h-screen max-w-lg items-center p-8">
         <p role="status">{t("inventory.loading")}</p>
-      </div>
+      </main>
     );
   }
 
@@ -102,18 +102,18 @@ function ProductionAccess() {
 
   if (session.status === "unavailable") {
     return (
-      <div className="mx-auto flex min-h-screen max-w-lg items-center p-8">
+      <main className="mx-auto flex min-h-screen max-w-lg items-center p-8">
         <FeatureUnavailable
           feature="access"
           title={t("feature.serviceUnavailable")}
           detail={t("access.detail")}
         />
-      </div>
+      </main>
     );
   }
 
   return (
-    <div
+    <main
       data-testid="production-access"
       className="mx-auto flex min-h-screen max-w-lg flex-col justify-center gap-4 p-8"
     >
@@ -131,7 +131,7 @@ function ProductionAccess() {
       >
         {t("access.loginAction")}
       </Button>
-    </div>
+    </main>
   );
 }
 
@@ -177,6 +177,38 @@ function PrimaryNav() {
   );
 }
 
+/**
+ * Maps a production pathname to the catalog key of its page name, used for the
+ * document title so browser tabs, history, and screen readers identify the page.
+ */
+export function pageTitleKeyFor(pathname: string): string {
+  if (pathname === "/") return "page.title.entry";
+  if (pathname === "/acesso") return "page.title.access";
+  if (pathname.startsWith("/app/hoje")) return "page.title.home";
+  if (pathname === "/app/despensa/novo") return "page.title.inventoryNew";
+  if (/^\/app\/despensa\/[^/]+\/editar$/.test(pathname)) {
+    return "page.title.inventoryEdit";
+  }
+  if (/^\/app\/despensa\/[^/]+$/.test(pathname)) {
+    return "page.title.inventoryDetail";
+  }
+  if (pathname.startsWith("/app/despensa")) return "page.title.inventory";
+  if (pathname.startsWith("/app/perfil")) return "page.title.profile";
+  return "page.title.unavailable";
+}
+
+/** Keeps `document.title` in sync with the current route and locale. */
+function DocumentTitle() {
+  const { t } = useProductionI18n();
+  const { pathname } = useLocation();
+  const page = t(pageTitleKeyFor(pathname));
+  const brand = t("brand.name");
+  useEffect(() => {
+    document.title = pathname === "/" ? brand : `${page} · ${brand}`;
+  }, [brand, page, pathname]);
+  return null;
+}
+
 function ProductionAppShell({ children }: { children: ReactNode }) {
   const { t } = useProductionI18n();
   const { session, logout, isAuthenticated } = useSession();
@@ -201,29 +233,42 @@ function ProductionAppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <header className="sticky top-0 z-40 border-b border-border bg-background/95 px-6 py-4 backdrop-blur">
-        <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-4">
-            {/*
-              Brand and primary nav use ordinary React Router Links. While a profile
-              editor is dirty, UnsavedChangesCoordinatorProvider's useBlocker intercepts
-              same-tab navigations (including these). Modified clicks open a new context
-              and leave the draft in the original tab.
-            */}
-            <Link
-              to="/app/hoje"
-              data-testid="production-brand-link"
-              className="font-display text-xl"
-            >
-              {t("brand.name")}
-            </Link>
-            {isAuthenticated && <PrimaryNav />}
-          </div>
-          <div className="flex items-center gap-2">
+      <a
+        href="#main-content"
+        data-testid="production-skip-link"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-background focus:px-4 focus:py-2 focus:ring-2 focus:ring-ring"
+      >
+        {t("nav.skipToContent")}
+      </a>
+      <header className="sticky top-0 z-40 border-b border-border bg-background/95 px-4 py-3 backdrop-blur sm:px-6 sm:py-4">
+        {/*
+          On narrow screens the brand and account controls share the first row and the
+          primary navigation takes a full second row; from `sm` up everything is one row.
+        */}
+        <div className="mx-auto flex max-w-3xl flex-wrap items-center gap-x-4 gap-y-2">
+          {/*
+            Brand and primary nav use ordinary React Router Links. While a profile
+            editor is dirty, UnsavedChangesCoordinatorProvider's useBlocker intercepts
+            same-tab navigations (including these). Modified clicks open a new context
+            and leave the draft in the original tab.
+          */}
+          <Link
+            to="/app/hoje"
+            data-testid="production-brand-link"
+            className="order-1 font-display text-xl"
+          >
+            {t("brand.name")}
+          </Link>
+          {isAuthenticated && (
+            <div className="order-3 w-full sm:order-2 sm:w-auto">
+              <PrimaryNav />
+            </div>
+          )}
+          <div className="order-2 ml-auto flex items-center gap-2 sm:order-3">
             <LocaleSwitcher />
             {isAuthenticated && (
               <>
-                <span className="hidden text-sm text-muted-foreground sm:inline">
+                <span className="hidden text-sm text-muted-foreground md:inline">
                   {session.displayName || t("access.signedIn")}
                 </span>
                 <Button
@@ -240,16 +285,31 @@ function ProductionAppShell({ children }: { children: ReactNode }) {
           </div>
         </div>
       </header>
-      <main className="mx-auto max-w-3xl p-8">{children}</main>
+      <main
+        id="main-content"
+        tabIndex={-1}
+        className="mx-auto max-w-3xl px-4 py-6 focus:outline-none sm:p-8"
+      >
+        {children}
+      </main>
     </div>
   );
 }
 
 function RequireAuth({ children }: { children: ReactNode }) {
   const { session } = useSession();
+  const { t } = useProductionI18n();
   const location = useLocation();
   if (session.status === "loading") {
-    return <p role="status">…</p>;
+    return (
+      <p
+        role="status"
+        data-testid="production-session-loading"
+        className="p-8 text-sm text-muted-foreground"
+      >
+        {t("app.loading")}
+      </p>
+    );
   }
   if (session.status !== "authenticated") {
     return (
@@ -273,13 +333,6 @@ function HomeRoute() {
 /**
  * Session and inventory providers mount only for access and authenticated
  * subtrees so the public `/` route never bootstraps `getSession()`.
- *
- * `ProfileProvider` is intentionally NOT mounted here: it fetches profile,
- * preferences, equipment, and completeness as soon as the session becomes
- * authenticated, so mounting it for every session-scoped route would make
- * `/app/hoje` and `/app/despensa` call the profile endpoints even though
- * they never read profile data. See `ProfileScopedRoutes` below, which wraps
- * only the `/app/perfil*` subtree.
  */
 function SessionScopedRoutes({ children }: { children: ReactNode }) {
   const runtime = useRuntime();
@@ -293,54 +346,73 @@ function SessionScopedRoutes({ children }: { children: ReactNode }) {
 }
 
 /**
- * Adds `ProfileProvider` on top of `SessionScopedRoutes`, scoped to the
- * `/app/perfil*` subtree only. Keeping this separate from
- * `SessionScopedRoutes` is what keeps `/app/hoje` and `/app/despensa` from
- * ever calling `getProfile`/`getPreferences`/`getEquipment`/`getCompleteness`.
+ * Layout for every `/app/*` route. Session, inventory, the auth guard, the
+ * unsaved-changes coordinator, and the shell mount once here, so moving between
+ * destinations keeps the header in place and does not refetch the session or
+ * reset inventory state. (Before PLAN-0032 each destination mounted its own
+ * providers, which re-requested the session and blanked the shell on every
+ * navigation.)
  */
-function ProfileScopedRoutes({ children }: { children: ReactNode }) {
-  const runtime = useRuntime();
+function AuthenticatedAppLayout() {
   return (
     <SessionScopedRoutes>
-      <ProfileProvider
-        repository={runtime.profileRepository}
-        adultPolicy={runtime.adultDeclarationPolicy}
-      >
-        {children}
-      </ProfileProvider>
-    </SessionScopedRoutes>
-  );
-}
-
-function ProfileLayout() {
-  return (
-    <ProfileScopedRoutes>
       <RequireAuth>
         <UnsavedChangesCoordinatorProvider>
           <ProductionAppShell>
-            <ProfileWorkspaceStatusBanner />
             <Outlet />
           </ProductionAppShell>
         </UnsavedChangesCoordinatorProvider>
       </RequireAuth>
-    </ProfileScopedRoutes>
+    </SessionScopedRoutes>
+  );
+}
+
+/**
+ * Profile subtree. `ProfileProvider` fetches profile, preferences, equipment,
+ * and completeness as soon as it mounts, so it is scoped to `/app/perfil*` and
+ * `/app/hoje` and `/app/despensa` never call the profile endpoints.
+ */
+function ProfileLayout() {
+  const runtime = useRuntime();
+  return (
+    <ProfileProvider
+      repository={runtime.profileRepository}
+      adultPolicy={runtime.adultDeclarationPolicy}
+    >
+      <ProfileWorkspaceStatusBanner />
+      <Outlet />
+    </ProfileProvider>
   );
 }
 
 function AppUnavailable() {
   const { t } = useProductionI18n();
   return (
-    <SessionScopedRoutes>
-      <RequireAuth>
-        <ProductionAppShell>
-          <FeatureUnavailable
-            feature="app"
-            title={t("feature.unavailable")}
-            detail={t("app.unavailable.detail")}
-          />
-        </ProductionAppShell>
-      </RequireAuth>
-    </SessionScopedRoutes>
+    <div className="space-y-6">
+      <h1 className="font-display text-3xl">{t("page.title.unavailable")}</h1>
+      <FeatureUnavailable
+        feature="app"
+        title={t("feature.unavailable")}
+        detail={t("app.unavailable.detail")}
+      />
+      <Link
+        to="/app/hoje"
+        data-testid="production-unavailable-home-link"
+        className="inline-block text-sm underline underline-offset-4"
+      >
+        {t("app.unavailable.backHome")}
+      </Link>
+    </div>
+  );
+}
+
+/** Renders the route element and keeps the document title in sync with it. */
+function Titled({ children }: { children: ReactNode }) {
+  return (
+    <>
+      <DocumentTitle />
+      {children}
+    </>
   );
 }
 
@@ -350,96 +422,57 @@ function AppUnavailable() {
  */
 function createProductionRouter() {
   return createBrowserRouter([
-    { path: "/", element: <PublicEntryPage /> },
     {
-      path: "/acesso",
+      path: "/",
       element: (
-        <SessionScopedRoutes>
-          <ProductionAccess />
-        </SessionScopedRoutes>
+        <Titled>
+          <PublicEntryPage />
+        </Titled>
       ),
     },
     {
-      path: "/app/hoje",
+      path: "/acesso",
       element: (
-        <SessionScopedRoutes>
-          <RequireAuth>
-            <ProductionAppShell>
-              <HomeRoute />
-            </ProductionAppShell>
-          </RequireAuth>
-        </SessionScopedRoutes>
+        <Titled>
+          <SessionScopedRoutes>
+            <ProductionAccess />
+          </SessionScopedRoutes>
+        </Titled>
       ),
     },
     {
       path: "/app",
       element: (
-        <SessionScopedRoutes>
-          <RequireAuth>
-            <Navigate to="/app/hoje" replace />
-          </RequireAuth>
-        </SessionScopedRoutes>
+        <Titled>
+          <AuthenticatedAppLayout />
+        </Titled>
       ),
-    },
-    {
-      path: "/app/despensa",
-      element: (
-        <SessionScopedRoutes>
-          <RequireAuth>
-            <ProductionAppShell>
-              <ProductionInventoryList />
-            </ProductionAppShell>
-          </RequireAuth>
-        </SessionScopedRoutes>
-      ),
-    },
-    {
-      path: "/app/despensa/novo",
-      element: (
-        <SessionScopedRoutes>
-          <RequireAuth>
-            <ProductionAppShell>
-              <ProductionInventoryForm mode="create" />
-            </ProductionAppShell>
-          </RequireAuth>
-        </SessionScopedRoutes>
-      ),
-    },
-    {
-      path: "/app/despensa/:lotId/editar",
-      element: (
-        <SessionScopedRoutes>
-          <RequireAuth>
-            <ProductionAppShell>
-              <ProductionInventoryForm mode="edit" />
-            </ProductionAppShell>
-          </RequireAuth>
-        </SessionScopedRoutes>
-      ),
-    },
-    {
-      path: "/app/despensa/:lotId",
-      element: (
-        <SessionScopedRoutes>
-          <RequireAuth>
-            <ProductionAppShell>
-              <ProductionInventoryDetail />
-            </ProductionAppShell>
-          </RequireAuth>
-        </SessionScopedRoutes>
-      ),
-    },
-    {
-      path: "/app/perfil",
-      element: <ProfileLayout />,
       children: [
-        { index: true, element: <ProfileOverviewPage /> },
-        { path: "dados", element: <ProfileDataPage /> },
-        { path: "preferencias", element: <ProfilePreferencesPage /> },
-        { path: "equipamentos", element: <ProfileEquipmentPage /> },
+        { index: true, element: <Navigate to="/app/hoje" replace /> },
+        { path: "hoje", element: <HomeRoute /> },
+        { path: "despensa", element: <ProductionInventoryList /> },
+        {
+          path: "despensa/novo",
+          element: <ProductionInventoryForm mode="create" />,
+        },
+        {
+          path: "despensa/:lotId/editar",
+          element: <ProductionInventoryForm mode="edit" />,
+        },
+        { path: "despensa/:lotId", element: <ProductionInventoryDetail /> },
+        {
+          path: "perfil",
+          element: <ProfileLayout />,
+          children: [
+            { index: true, element: <ProfileOverviewPage /> },
+            { path: "dados", element: <ProfileDataPage /> },
+            { path: "preferencias", element: <ProfilePreferencesPage /> },
+            { path: "equipamentos", element: <ProfileEquipmentPage /> },
+          ],
+        },
+        { path: "*", element: <AppUnavailable /> },
       ],
     },
-    { path: "/app/*", element: <AppUnavailable /> },
     { path: "*", element: <Navigate to="/" replace /> },
   ]);
 }

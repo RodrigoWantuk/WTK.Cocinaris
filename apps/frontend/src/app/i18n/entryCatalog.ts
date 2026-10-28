@@ -14,8 +14,6 @@ export const REQUIRED_ENTRY_I18N_KEYS = [
   "entry.demo.step3",
   "entry.demo.step4",
   "entry.demo.step5",
-  "entry.demo.mediaPlaceholder",
-  "entry.demo.mediaCaption",
   "entry.why.title",
   "entry.why.account",
   "entry.outcomes.title",
@@ -28,7 +26,6 @@ export const REQUIRED_ENTRY_I18N_KEYS = [
   "entry.legal.terms",
   "entry.legal.privacy",
   "entry.legal.placeholderNote",
-  "entry.footer",
 ] as const;
 
 type Catalog = Record<string, string>;
@@ -50,10 +47,6 @@ export const entryCatalogs: Record<ProductionLocale, Catalog> = {
     "entry.demo.step4": "Escolhe, prepara e cozinha no seu ritmo",
     "entry.demo.step5":
       "Ao concluir, consumo, sobras, congelamento e desperdício são reconciliados",
-    "entry.demo.mediaPlaceholder":
-      "Espaço reservado para vídeo ou animação futura. A explicação estática acima já cobre o ciclo completo.",
-    "entry.demo.mediaCaption":
-      "Demonstração ilustrativa com dados sintéticos — sem dados pessoais.",
     "entry.why.title": "Por que criar uma conta?",
     "entry.why.account":
       "Com uma conta, o produto pode lembrar inventário, preferências confirmadas e planos aceitos para responder “o que cozinhar hoje?” com contexto real — sem exigir que você conte a cozinha do zero a cada visita.",
@@ -71,8 +64,6 @@ export const entryCatalogs: Record<ProductionLocale, Catalog> = {
     "entry.legal.privacy": "Privacidade (texto jurídico em preparação)",
     "entry.legal.placeholderNote":
       "Links jurídicos são placeholders até a revisão legal definitiva.",
-    "entry.footer":
-      "Cocinaris · experiência pública sem sessão autenticada · sem dados pessoais nesta página",
   },
   en: {
     "entry.hero.eyebrow": "For adults who want to cook with what they have",
@@ -90,10 +81,6 @@ export const entryCatalogs: Record<ProductionLocale, Catalog> = {
     "entry.demo.step4": "You choose, prepare, and cook at your pace",
     "entry.demo.step5":
       "On completion, consumption, leftovers, freezing, and waste are reconciled",
-    "entry.demo.mediaPlaceholder":
-      "Reserved space for a future video or animation. The static explanation above already covers the full cycle.",
-    "entry.demo.mediaCaption":
-      "Illustrative demonstration with synthetic data — no personal data.",
     "entry.why.title": "Why create an account?",
     "entry.why.account":
       "With an account, the product can remember inventory, confirmed preferences, and accepted plans to answer “what shall we cook today?” with real context — without starting from scratch every visit.",
@@ -111,8 +98,6 @@ export const entryCatalogs: Record<ProductionLocale, Catalog> = {
     "entry.legal.privacy": "Privacy (legal text forthcoming)",
     "entry.legal.placeholderNote":
       "Legal links are placeholders until definitive legal review.",
-    "entry.footer":
-      "Cocinaris · public experience without an authenticated session · no personal data on this page",
   },
   es: {
     "entry.hero.eyebrow": "Para adultos que quieren cocinar con lo que tienen",
@@ -130,10 +115,6 @@ export const entryCatalogs: Record<ProductionLocale, Catalog> = {
     "entry.demo.step4": "Eliges, preparas y cocinas a tu ritmo",
     "entry.demo.step5":
       "Al terminar, consumo, sobras, congelación y desperdicio se reconcilian",
-    "entry.demo.mediaPlaceholder":
-      "Espacio reservado para un vídeo o animación futura. La explicación estática de arriba ya cubre el ciclo completo.",
-    "entry.demo.mediaCaption":
-      "Demostración ilustrativa con datos sintéticos — sin datos personales.",
     "entry.why.title": "¿Por qué crear una cuenta?",
     "entry.why.account":
       "Con una cuenta, el producto puede recordar inventario, preferencias confirmadas y planes aceptados para responder “¿qué cocinamos hoy?” con contexto real — sin empezar de cero en cada visita.",
@@ -151,7 +132,5 @@ export const entryCatalogs: Record<ProductionLocale, Catalog> = {
     "entry.legal.privacy": "Privacidad (texto jurídico en preparación)",
     "entry.legal.placeholderNote":
       "Los enlaces jurídicos son marcadores de posición hasta la revisión legal definitiva.",
-    "entry.footer":
-      "Cocinaris · experiencia pública sin sesión autenticada · sin datos personales en esta página",
   },
 };

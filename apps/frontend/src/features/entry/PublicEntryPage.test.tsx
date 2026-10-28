@@ -71,7 +71,9 @@ describe("PublicEntryPage", () => {
     expect(screen.getByTestId("production-landing-subtitle")).toHaveTextContent(
       /not just a recipe generator/i,
     );
-    expect(screen.getByTestId("entry-media-placeholder")).toBeInTheDocument();
+    // Media is optional enhancement; with none, the page shows no "reserved space" box.
+    expect(screen.queryByTestId("entry-media-placeholder")).toBeNull();
+    expect(screen.getByTestId("entry-demo-step-0")).toBeInTheDocument();
     expect(screen.getByTestId("entry-legal-terms").tagName.toLowerCase()).toBe(
       "a",
     );

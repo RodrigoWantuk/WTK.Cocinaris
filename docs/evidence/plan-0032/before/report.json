@@ -1,0 +1,971 @@
+{
+  "label": "before",
+  "generatedAt": "2026-10-28T15:30:39.464Z",
+  "routes": [
+    {
+      "route": "entry",
+      "path": "/",
+      "viewport": "360",
+      "screenshot": "entry-360.png",
+      "title": "Emergent | Fullstack App",
+      "lang": "pt-BR",
+      "finalPath": "/",
+      "h1": [
+        "Transforme alimentos disponíveis em refeições úteis"
+      ],
+      "horizontalOverflow": true,
+      "hasMainLandmark": true,
+      "hasSkipLink": false,
+      "sessionFetches": 0,
+      "consoleErrors": [],
+      "externalHosts": [
+        "fonts.googleapis.com",
+        "assets.emergent.sh",
+        "ap.emergent.sh",
+        "fonts.gstatic.com"
+      ]
+    },
+    {
+      "route": "access",
+      "path": "/acesso",
+      "viewport": "360",
+      "screenshot": "access-360.png",
+      "title": "Emergent | Fullstack App",
+      "lang": "pt-BR",
+      "finalPath": "/acesso",
+      "h1": [
+        "Entrar"
+      ],
+      "horizontalOverflow": false,
+      "hasMainLandmark": false,
+      "hasSkipLink": false,
+      "sessionFetches": 1,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+      ],
+      "externalHosts": [
+        "fonts.googleapis.com",
+        "assets.emergent.sh",
+        "ap.emergent.sh",
+        "fonts.gstatic.com"
+      ]
+    },
+    {
+      "route": "home",
+      "path": "/app/hoje",
+      "viewport": "360",
+      "screenshot": "home-360.png",
+      "title": "Emergent | Fullstack App",
+      "lang": "pt-BR",
+      "finalPath": "/app/hoje",
+      "h1": [
+        "O que cozinhamos hoje?"
+      ],
+      "horizontalOverflow": false,
+      "hasMainLandmark": true,
+      "hasSkipLink": false,
+      "sessionFetches": 1,
+      "consoleErrors": [],
+      "externalHosts": [
+        "fonts.googleapis.com",
+        "assets.emergent.sh",
+        "ap.emergent.sh",
+        "fonts.gstatic.com"
+      ]
+    },
+    {
+      "route": "inventory",
+      "path": "/app/despensa",
+      "viewport": "360",
+      "screenshot": "inventory-360.png",
+      "title": "Emergent | Fullstack App",
+      "lang": "pt-BR",
+      "finalPath": "/app/despensa",
+      "h1": [
+        "Despensa"
+      ],
+      "horizontalOverflow": false,
+      "hasMainLandmark": true,
+      "hasSkipLink": false,
+      "sessionFetches": 1,
+      "consoleErrors": [],
+      "externalHosts": [
+        "fonts.googleapis.com",
+        "assets.emergent.sh",
+        "ap.emergent.sh",
+        "fonts.gstatic.com"
+      ]
+    },
+    {
+      "route": "inventory-new",
+      "path": "/app/despensa/novo",
+      "viewport": "360",
+      "screenshot": "inventory-new-360.png",
+      "title": "Emergent | Fullstack App",
+      "lang": "pt-BR",
+      "finalPath": "/app/despensa/novo",
+      "h1": [
+        "Adicionar lote"
+      ],
+      "horizontalOverflow": false,
+      "hasMainLandmark": true,
+      "hasSkipLink": false,
+      "sessionFetches": 1,
+      "consoleErrors": [],
+      "externalHosts": [
+        "fonts.googleapis.com",
+        "assets.emergent.sh",
+        "ap.emergent.sh",
+        "fonts.gstatic.com"
+      ]
+    },
+    {
+      "route": "inventory-detail",
+      "path": "/app/despensa/33333333-3333-3333-3333-333333333331",
+      "viewport": "360",
+      "screenshot": "inventory-detail-360.png",
+      "title": "Emergent | Fullstack App",
+      "lang": "pt-BR",
+      "finalPath": "/app/despensa/33333333-3333-3333-3333-333333333331",
+      "h1": [
+        "Leite integral"
+      ],
+      "horizontalOverflow": false,
+      "hasMainLandmark": true,
+      "hasSkipLink": false,
+      "sessionFetches": 1,
+      "consoleErrors": [],
+      "externalHosts": [
+        "fonts.googleapis.com",
+        "assets.emergent.sh",
+        "ap.emergent.sh",
+        "fonts.gstatic.com"
+      ]
+    },
+    {
+      "route": "inventory-edit",
+      "path": "/app/despensa/33333333-3333-3333-3333-333333333331/editar",
+      "viewport": "360",
+      "screenshot": "inventory-edit-360.png",
+      "title": "Emergent | Fullstack App",
+      "lang": "pt-BR",
+      "finalPath": "/app/despensa/33333333-3333-3333-3333-333333333331/editar",
+      "h1": [
+        "Editar lote"
+      ],
+      "horizontalOverflow": false,
+      "hasMainLandmark": true,
+      "hasSkipLink": false,
+      "sessionFetches": 1,
+      "consoleErrors": [],
+      "externalHosts": [
+        "fonts.googleapis.com",
+        "assets.emergent.sh",
+        "ap.emergent.sh",
+        "fonts.gstatic.com"
+      ]
+    },
+    {
+      "route": "profile",
+      "path": "/app/perfil",
+      "viewport": "360",
+      "screenshot": "profile-360.png",
+      "title": "Emergent | Fullstack App",
+      "lang": "pt-BR",
+      "finalPath": "/app/perfil",
+      "h1": [
+        "Seu perfil"
+      ],
+      "horizontalOverflow": false,
+      "hasMainLandmark": true,
+      "hasSkipLink": false,
+      "sessionFetches": 1,
+      "consoleErrors": [
+        "Failed to load resource: net::ERR_NETWORK_CHANGED",
+        "Failed to load resource: net::ERR_NETWORK_CHANGED"
+      ],
+      "externalHosts": [
+        "fonts.googleapis.com",
+        "assets.emergent.sh",
+        "ap.emergent.sh",
+        "fonts.gstatic.com"
+      ]
+    },
+    {
+      "route": "profile-data",
+      "path": "/app/perfil/dados",
+      "viewport": "360",
+      "screenshot": "profile-data-360.png",
+      "title": "Emergent | Fullstack App",
+      "lang": "pt-BR",
+      "finalPath": "/app/perfil/dados",
+      "h1": [
+        "Dados de família e culinária"
+      ],
+      "horizontalOverflow": true,
+      "hasMainLandmark": true,
+      "hasSkipLink": false,
+      "sessionFetches": 1,
+      "consoleErrors": [],
+      "externalHosts": [
+        "fonts.googleapis.com",
+        "assets.emergent.sh",
+        "ap.emergent.sh",
+        "fonts.gstatic.com"
+      ]
+    },
+    {
+      "route": "profile-preferences",
+      "path": "/app/perfil/preferencias",
+      "viewport": "360",
+      "screenshot": "profile-preferences-360.png",
+      "title": "Emergent | Fullstack App",
+      "lang": "pt-BR",
+      "finalPath": "/app/perfil/preferencias",
+      "h1": [
+        "Preferências e restrições"
+      ],
+      "horizontalOverflow": false,
+      "hasMainLandmark": true,
+      "hasSkipLink": false,
+      "sessionFetches": 1,
+      "consoleErrors": [],
+      "externalHosts": [
+        "fonts.googleapis.com",
+        "assets.emergent.sh",
+        "ap.emergent.sh",
+        "fonts.gstatic.com"
+      ]
+    },
+    {
+      "route": "profile-equipment",
+      "path": "/app/perfil/equipamentos",
+      "viewport": "360",
+      "screenshot": "profile-equipment-360.png",
+      "title": "Emergent | Fullstack App",
+      "lang": "pt-BR",
+      "finalPath": "/app/perfil/equipamentos",
+      "h1": [
+        "Equipamentos"
+      ],
+      "horizontalOverflow": true,
+      "hasMainLandmark": true,
+      "hasSkipLink": false,
+      "sessionFetches": 1,
+      "consoleErrors": [],
+      "externalHosts": [
+        "fonts.googleapis.com",
+        "assets.emergent.sh",
+        "ap.emergent.sh",
+        "fonts.gstatic.com"
+      ]
+    },
+    {
+      "route": "unknown-app-route",
+      "path": "/app/receitas",
+      "viewport": "360",
+      "screenshot": "unknown-app-route-360.png",
+      "title": "Emergent | Fullstack App",
+      "lang": "pt-BR",
+      "finalPath": "/app/receitas",
+      "h1": [],
+      "horizontalOverflow": false,
+      "hasMainLandmark": true,
+      "hasSkipLink": false,
+      "sessionFetches": 1,
+      "consoleErrors": [
+        "Failed to load resource: net::ERR_NETWORK_CHANGED",
+        "Failed to load resource: net::ERR_NETWORK_CHANGED"
+      ],
+      "externalHosts": [
+        "fonts.googleapis.com",
+        "assets.emergent.sh",
+        "ap.emergent.sh"
+      ]
+    },
+    {
+      "route": "entry",
+      "path": "/",
+      "viewport": "768",
+      "screenshot": null,
+      "title": "Emergent | Fullstack App",
+      "lang": "pt-BR",
+      "finalPath": "/",
+      "h1": [
+        "Transforme alimentos disponíveis em refeições úteis"
+      ],
+      "horizontalOverflow": false,
+      "hasMainLandmark": true,
+      "hasSkipLink": false,
+      "sessionFetches": 0,
+      "consoleErrors": [],
+      "externalHosts": [
+        "fonts.googleapis.com",
+        "assets.emergent.sh",
+        "ap.emergent.sh",
+        "fonts.gstatic.com"
+      ]
+    },
+    {
+      "route": "access",
+      "path": "/acesso",
+      "viewport": "768",
+      "screenshot": null,
+      "title": "Emergent | Fullstack App",
+      "lang": "pt-BR",
+      "finalPath": "/acesso",
+      "h1": [
+        "Entrar"
+      ],
+      "horizontalOverflow": false,
+      "hasMainLandmark": false,
+      "hasSkipLink": false,
+      "sessionFetches": 1,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "Failed to load resource: net::ERR_NETWORK_CHANGED",
+        "Failed to load resource: net::ERR_NETWORK_CHANGED"
+      ],
+      "externalHosts": [
+        "fonts.googleapis.com",
+        "assets.emergent.sh",
+        "ap.emergent.sh",
+        "fonts.gstatic.com"
+      ]
+    },
+    {
+      "route": "home",
+      "path": "/app/hoje",
+      "viewport": "768",
+      "screenshot": null,
+      "title": "Emergent | Fullstack App",
+      "lang": "pt-BR",
+      "finalPath": "/app/hoje",
+      "h1": [
+        "O que cozinhamos hoje?"
+      ],
+      "horizontalOverflow": false,
+      "hasMainLandmark": true,
+      "hasSkipLink": false,
+      "sessionFetches": 1,
+      "consoleErrors": [
+        "Failed to load resource: net::ERR_NETWORK_CHANGED"
+      ],
+      "externalHosts": [
+        "fonts.googleapis.com",
+        "assets.emergent.sh",
+        "ap.emergent.sh",
+        "fonts.gstatic.com"
+      ]
+    },
+    {
+      "route": "inventory",
+      "path": "/app/despensa",
+      "viewport": "768",
+      "screenshot": null,
+      "title": "Emergent | Fullstack App",
+      "lang": "pt-BR",
+      "finalPath": "/app/despensa",
+      "h1": [
+        "Despensa"
+      ],
+      "horizontalOverflow": false,
+      "hasMainLandmark": true,
+      "hasSkipLink": false,
+      "sessionFetches": 1,
+      "consoleErrors": [],
+      "externalHosts": [
+        "fonts.googleapis.com",
+        "assets.emergent.sh",
+        "ap.emergent.sh",
+        "fonts.gstatic.com"
+      ]
+    },
+    {
+      "route": "inventory-new",
+      "path": "/app/despensa/novo",
+      "viewport": "768",
+      "screenshot": null,
+      "title": "Emergent | Fullstack App",
+      "lang": "pt-BR",
+      "finalPath": "/app/despensa/novo",
+      "h1": [
+        "Adicionar lote"
+      ],
+      "horizontalOverflow": false,
+      "hasMainLandmark": true,
+      "hasSkipLink": false,
+      "sessionFetches": 1,
+      "consoleErrors": [],
+      "externalHosts": [
+        "fonts.googleapis.com",
+        "assets.emergent.sh",
+        "ap.emergent.sh",
+        "fonts.gstatic.com"
+      ]
+    },
+    {
+      "route": "inventory-detail",
+      "path": "/app/despensa/33333333-3333-3333-3333-333333333331",
+      "viewport": "768",
+      "screenshot": null,
+      "title": "Emergent | Fullstack App",
+      "lang": "pt-BR",
+      "finalPath": "/app/despensa/33333333-3333-3333-3333-333333333331",
+      "h1": [
+        "Leite integral"
+      ],
+      "horizontalOverflow": false,
+      "hasMainLandmark": true,
+      "hasSkipLink": false,
+      "sessionFetches": 1,
+      "consoleErrors": [],
+      "externalHosts": [
+        "fonts.googleapis.com",
+        "assets.emergent.sh",
+        "ap.emergent.sh",
+        "fonts.gstatic.com"
+      ]
+    },
+    {
+      "route": "inventory-edit",
+      "path": "/app/despensa/33333333-3333-3333-3333-333333333331/editar",
+      "viewport": "768",
+      "screenshot": null,
+      "title": "Emergent | Fullstack App",
+      "lang": "pt-BR",
+      "finalPath": "/app/despensa/33333333-3333-3333-3333-333333333331/editar",
+      "h1": [
+        "Editar lote"
+      ],
+      "horizontalOverflow": false,
+      "hasMainLandmark": true,
+      "hasSkipLink": false,
+      "sessionFetches": 1,
+      "consoleErrors": [],
+      "externalHosts": [
+        "fonts.googleapis.com",
+        "assets.emergent.sh",
+        "ap.emergent.sh",
+        "fonts.gstatic.com"
+      ]
+    },
+    {
+      "route": "profile",
+      "path": "/app/perfil",
+      "viewport": "768",
+      "screenshot": null,
+      "title": "Emergent | Fullstack App",
+      "lang": "pt-BR",
+      "finalPath": "/app/perfil",
+      "h1": [
+        "Seu perfil"
+      ],
+      "horizontalOverflow": false,
+      "hasMainLandmark": true,
+      "hasSkipLink": false,
+      "sessionFetches": 1,
+      "consoleErrors": [],
+      "externalHosts": [
+        "fonts.googleapis.com",
+        "assets.emergent.sh",
+        "ap.emergent.sh",
+        "fonts.gstatic.com"
+      ]
+    },
+    {
+      "route": "profile-data",
+      "path": "/app/perfil/dados",
+      "viewport": "768",
+      "screenshot": null,
+      "title": "Emergent | Fullstack App",
+      "lang": "pt-BR",
+      "finalPath": "/app/perfil/dados",
+      "h1": [
+        "Dados de família e culinária"
+      ],
+      "horizontalOverflow": false,
+      "hasMainLandmark": true,
+      "hasSkipLink": false,
+      "sessionFetches": 1,
+      "consoleErrors": [],
+      "externalHosts": [
+        "fonts.googleapis.com",
+        "assets.emergent.sh",
+        "ap.emergent.sh",
+        "fonts.gstatic.com"
+      ]
+    },
+    {
+      "route": "profile-preferences",
+      "path": "/app/perfil/preferencias",
+      "viewport": "768",
+      "screenshot": null,
+      "title": "Emergent | Fullstack App",
+      "lang": "pt-BR",
+      "finalPath": "/app/perfil/preferencias",
+      "h1": [
+        "Preferências e restrições"
+      ],
+      "horizontalOverflow": false,
+      "hasMainLandmark": true,
+      "hasSkipLink": false,
+      "sessionFetches": 1,
+      "consoleErrors": [],
+      "externalHosts": [
+        "fonts.googleapis.com",
+        "assets.emergent.sh",
+        "ap.emergent.sh",
+        "fonts.gstatic.com"
+      ]
+    },
+    {
+      "route": "profile-equipment",
+      "path": "/app/perfil/equipamentos",
+      "viewport": "768",
+      "screenshot": null,
+      "title": "Emergent | Fullstack App",
+      "lang": "pt-BR",
+      "finalPath": "/app/perfil/equipamentos",
+      "h1": [
+        "Equipamentos"
+      ],
+      "horizontalOverflow": false,
+      "hasMainLandmark": true,
+      "hasSkipLink": false,
+      "sessionFetches": 1,
+      "consoleErrors": [],
+      "externalHosts": [
+        "fonts.googleapis.com",
+        "assets.emergent.sh",
+        "ap.emergent.sh",
+        "fonts.gstatic.com"
+      ]
+    },
+    {
+      "route": "unknown-app-route",
+      "path": "/app/receitas",
+      "viewport": "768",
+      "screenshot": null,
+      "title": "Emergent | Fullstack App",
+      "lang": "pt-BR",
+      "finalPath": "/app/receitas",
+      "h1": [],
+      "horizontalOverflow": false,
+      "hasMainLandmark": true,
+      "hasSkipLink": false,
+      "sessionFetches": 1,
+      "consoleErrors": [],
+      "externalHosts": [
+        "fonts.googleapis.com",
+        "assets.emergent.sh",
+        "ap.emergent.sh",
+        "fonts.gstatic.com"
+      ]
+    },
+    {
+      "route": "entry",
+      "path": "/",
+      "viewport": "1280",
+      "screenshot": null,
+      "title": "Emergent | Fullstack App",
+      "lang": "pt-BR",
+      "finalPath": "/",
+      "h1": [
+        "Transforme alimentos disponíveis em refeições úteis"
+      ],
+      "horizontalOverflow": false,
+      "hasMainLandmark": true,
+      "hasSkipLink": false,
+      "sessionFetches": 0,
+      "consoleErrors": [],
+      "externalHosts": [
+        "fonts.googleapis.com",
+        "assets.emergent.sh",
+        "ap.emergent.sh",
+        "fonts.gstatic.com"
+      ],
+      "axeViolations": []
+    },
+    {
+      "route": "access",
+      "path": "/acesso",
+      "viewport": "1280",
+      "screenshot": null,
+      "title": "Emergent | Fullstack App",
+      "lang": "pt-BR",
+      "finalPath": "/acesso",
+      "h1": [
+        "Entrar"
+      ],
+      "horizontalOverflow": false,
+      "hasMainLandmark": false,
+      "hasSkipLink": false,
+      "sessionFetches": 1,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+        "Failed to load resource: net::ERR_NETWORK_CHANGED",
+        "Failed to load resource: net::ERR_NETWORK_CHANGED",
+        "Failed to load resource: net::ERR_NETWORK_CHANGED",
+        "Failed to load resource: net::ERR_NETWORK_CHANGED",
+        "Failed to load resource: net::ERR_NETWORK_CHANGED"
+      ],
+      "externalHosts": [
+        "fonts.googleapis.com",
+        "assets.emergent.sh",
+        "ap.emergent.sh",
+        "fonts.gstatic.com"
+      ],
+      "axeViolations": [
+        {
+          "id": "landmark-one-main",
+          "impact": "moderate",
+          "nodes": 1,
+          "help": "Document should have one main landmark",
+          "targets": [
+            "html"
+          ]
+        },
+        {
+          "id": "region",
+          "impact": "moderate",
+          "nodes": 2,
+          "help": "All page content should be contained by landmarks",
+          "targets": [
+            "h1",
+            "p"
+          ]
+        }
+      ]
+    },
+    {
+      "route": "home",
+      "path": "/app/hoje",
+      "viewport": "1280",
+      "screenshot": null,
+      "title": "Emergent | Fullstack App",
+      "lang": "pt-BR",
+      "finalPath": "/app/hoje",
+      "h1": [
+        "O que cozinhamos hoje?"
+      ],
+      "horizontalOverflow": false,
+      "hasMainLandmark": true,
+      "hasSkipLink": false,
+      "sessionFetches": 1,
+      "consoleErrors": [
+        "Failed to load resource: net::ERR_NETWORK_CHANGED"
+      ],
+      "externalHosts": [
+        "fonts.googleapis.com",
+        "assets.emergent.sh",
+        "ap.emergent.sh",
+        "fonts.gstatic.com"
+      ],
+      "axeViolations": []
+    },
+    {
+      "route": "inventory",
+      "path": "/app/despensa",
+      "viewport": "1280",
+      "screenshot": null,
+      "title": "Emergent | Fullstack App",
+      "lang": "pt-BR",
+      "finalPath": "/app/despensa",
+      "h1": [
+        "Despensa"
+      ],
+      "horizontalOverflow": false,
+      "hasMainLandmark": true,
+      "hasSkipLink": false,
+      "sessionFetches": 1,
+      "consoleErrors": [
+        "Failed to load resource: net::ERR_NETWORK_CHANGED",
+        "Failed to load resource: net::ERR_NETWORK_CHANGED",
+        "Failed to load resource: net::ERR_NETWORK_CHANGED",
+        "Failed to load resource: net::ERR_NETWORK_CHANGED",
+        "Failed to load resource: net::ERR_NETWORK_CHANGED",
+        "Failed to load resource: net::ERR_NETWORK_CHANGED"
+      ],
+      "externalHosts": [
+        "fonts.googleapis.com",
+        "assets.emergent.sh",
+        "ap.emergent.sh",
+        "fonts.gstatic.com"
+      ],
+      "axeViolations": []
+    },
+    {
+      "route": "inventory-new",
+      "path": "/app/despensa/novo",
+      "viewport": "1280",
+      "screenshot": null,
+      "title": "Emergent | Fullstack App",
+      "lang": "pt-BR",
+      "finalPath": "/app/despensa/novo",
+      "h1": [
+        "Adicionar lote"
+      ],
+      "horizontalOverflow": false,
+      "hasMainLandmark": true,
+      "hasSkipLink": false,
+      "sessionFetches": 1,
+      "consoleErrors": [],
+      "externalHosts": [
+        "fonts.googleapis.com",
+        "assets.emergent.sh",
+        "ap.emergent.sh",
+        "fonts.gstatic.com"
+      ],
+      "axeViolations": []
+    },
+    {
+      "route": "inventory-detail",
+      "path": "/app/despensa/33333333-3333-3333-3333-333333333331",
+      "viewport": "1280",
+      "screenshot": null,
+      "title": "Emergent | Fullstack App",
+      "lang": "pt-BR",
+      "finalPath": "/app/despensa/33333333-3333-3333-3333-333333333331",
+      "h1": [
+        "Leite integral"
+      ],
+      "horizontalOverflow": false,
+      "hasMainLandmark": true,
+      "hasSkipLink": false,
+      "sessionFetches": 1,
+      "consoleErrors": [],
+      "externalHosts": [
+        "fonts.googleapis.com",
+        "assets.emergent.sh",
+        "ap.emergent.sh",
+        "fonts.gstatic.com"
+      ],
+      "axeViolations": [
+        {
+          "id": "definition-list",
+          "impact": "serious",
+          "nodes": 1,
+          "help": "<dl> elements must only directly contain properly-ordered <dt> and <dd> groups, <script>, <template> or <div> elements",
+          "targets": [
+            "dl"
+          ]
+        }
+      ]
+    },
+    {
+      "route": "inventory-edit",
+      "path": "/app/despensa/33333333-3333-3333-3333-333333333331/editar",
+      "viewport": "1280",
+      "screenshot": null,
+      "title": "Emergent | Fullstack App",
+      "lang": "pt-BR",
+      "finalPath": "/app/despensa/33333333-3333-3333-3333-333333333331/editar",
+      "h1": [
+        "Editar lote"
+      ],
+      "horizontalOverflow": false,
+      "hasMainLandmark": true,
+      "hasSkipLink": false,
+      "sessionFetches": 1,
+      "consoleErrors": [
+        "Failed to load resource: net::ERR_NETWORK_CHANGED"
+      ],
+      "externalHosts": [
+        "fonts.googleapis.com",
+        "assets.emergent.sh",
+        "ap.emergent.sh",
+        "fonts.gstatic.com"
+      ],
+      "axeViolations": []
+    },
+    {
+      "route": "profile",
+      "path": "/app/perfil",
+      "viewport": "1280",
+      "screenshot": null,
+      "title": "Emergent | Fullstack App",
+      "lang": "pt-BR",
+      "finalPath": "/app/perfil",
+      "h1": [
+        "Seu perfil"
+      ],
+      "horizontalOverflow": false,
+      "hasMainLandmark": true,
+      "hasSkipLink": false,
+      "sessionFetches": 1,
+      "consoleErrors": [],
+      "externalHosts": [
+        "fonts.googleapis.com",
+        "assets.emergent.sh",
+        "ap.emergent.sh",
+        "fonts.gstatic.com"
+      ],
+      "axeViolations": []
+    },
+    {
+      "route": "profile-data",
+      "path": "/app/perfil/dados",
+      "viewport": "1280",
+      "screenshot": null,
+      "title": "Emergent | Fullstack App",
+      "lang": "pt-BR",
+      "finalPath": "/app/perfil/dados",
+      "h1": [
+        "Dados de família e culinária"
+      ],
+      "horizontalOverflow": false,
+      "hasMainLandmark": true,
+      "hasSkipLink": false,
+      "sessionFetches": 1,
+      "consoleErrors": [
+        "Failed to load resource: net::ERR_NETWORK_CHANGED",
+        "Failed to load resource: net::ERR_NETWORK_CHANGED",
+        "Failed to load resource: net::ERR_NETWORK_CHANGED"
+      ],
+      "externalHosts": [
+        "fonts.googleapis.com",
+        "assets.emergent.sh",
+        "ap.emergent.sh",
+        "fonts.gstatic.com"
+      ],
+      "axeViolations": [
+        {
+          "id": "select-name",
+          "impact": "critical",
+          "nodes": 4,
+          "help": "Select element must have an accessible name",
+          "targets": [
+            "div[data-testid=\"code-list-known-techniques\"] > .flex-wrap.items-center.flex > select",
+            "div[data-testid=\"code-list-techniques-to-learn\"] > .flex-wrap.items-center.flex > select",
+            "select[data-testid=\"code-list-goals-select\"]"
+          ]
+        }
+      ]
+    },
+    {
+      "route": "profile-preferences",
+      "path": "/app/perfil/preferencias",
+      "viewport": "1280",
+      "screenshot": null,
+      "title": "Emergent | Fullstack App",
+      "lang": "pt-BR",
+      "finalPath": "/app/perfil/preferencias",
+      "h1": [
+        "Preferências e restrições"
+      ],
+      "horizontalOverflow": false,
+      "hasMainLandmark": true,
+      "hasSkipLink": false,
+      "sessionFetches": 1,
+      "consoleErrors": [],
+      "externalHosts": [
+        "fonts.googleapis.com",
+        "assets.emergent.sh",
+        "ap.emergent.sh",
+        "fonts.gstatic.com"
+      ],
+      "axeViolations": [
+        {
+          "id": "aria-valid-attr-value",
+          "impact": "critical",
+          "nodes": 1,
+          "help": "ARIA attributes must conform to valid values",
+          "targets": [
+            "#radix-\\:r3\\:-trigger-Preference"
+          ]
+        },
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "nodes": 7,
+          "help": "Elements must meet minimum color contrast ratio thresholds",
+          "targets": [
+            "#radix-\\:r3\\:-trigger-Dislike",
+            "#radix-\\:r3\\:-trigger-DietaryPattern",
+            "#radix-\\:r3\\:-trigger-Intolerance"
+          ]
+        }
+      ]
+    },
+    {
+      "route": "profile-equipment",
+      "path": "/app/perfil/equipamentos",
+      "viewport": "1280",
+      "screenshot": null,
+      "title": "Emergent | Fullstack App",
+      "lang": "pt-BR",
+      "finalPath": "/app/perfil/equipamentos",
+      "h1": [
+        "Equipamentos"
+      ],
+      "horizontalOverflow": false,
+      "hasMainLandmark": true,
+      "hasSkipLink": false,
+      "sessionFetches": 1,
+      "consoleErrors": [],
+      "externalHosts": [
+        "fonts.googleapis.com",
+        "assets.emergent.sh",
+        "ap.emergent.sh",
+        "fonts.gstatic.com"
+      ],
+      "axeViolations": []
+    },
+    {
+      "route": "unknown-app-route",
+      "path": "/app/receitas",
+      "viewport": "1280",
+      "screenshot": null,
+      "title": "Emergent | Fullstack App",
+      "lang": "pt-BR",
+      "finalPath": "/app/receitas",
+      "h1": [],
+      "horizontalOverflow": false,
+      "hasMainLandmark": true,
+      "hasSkipLink": false,
+      "sessionFetches": 1,
+      "consoleErrors": [],
+      "externalHosts": [
+        "fonts.googleapis.com",
+        "assets.emergent.sh",
+        "ap.emergent.sh",
+        "fonts.gstatic.com"
+      ],
+      "axeViolations": [
+        {
+          "id": "page-has-heading-one",
+          "impact": "moderate",
+          "nodes": 1,
+          "help": "Page should contain a level-one heading",
+          "targets": [
+            "html"
+          ]
+        }
+      ]
+    }
+  ],
+  "navigation": [
+    {
+      "clicked": "production-nav-despensa",
+      "path": "/app/despensa",
+      "sessionFetches": 0
+    },
+    {
+      "clicked": "production-nav-perfil",
+      "path": "/app/perfil",
+      "sessionFetches": 1
+    },
+    {
+      "clicked": "production-nav-home",
+      "path": "/app/hoje",
+      "sessionFetches": 1
+    },
+    {
+      "clicked": "production-nav-despensa",
+      "path": "/app/despensa",
+      "sessionFetches": 0
+    }
+  ],
+  "note": "Screenshots kept at 360 px only; regenerate all viewports with apps/frontend/scripts/capture-production-review.js."
+}
