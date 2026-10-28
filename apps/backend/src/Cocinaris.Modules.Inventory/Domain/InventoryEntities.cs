@@ -71,7 +71,8 @@ public sealed class InventoryLot
         PackageState? packageState,
         PrintedExpiration? printedExpiration,
         PrivateNotes? notes,
-        DateTimeOffset now)
+        DateTimeOffset now,
+        LotLifecycle lifecycle)
     {
         Id = id;
         OwnerUserId = ownerUserId;
@@ -81,6 +82,7 @@ public sealed class InventoryLot
         PackageState = packageState;
         PrintedExpiration = printedExpiration;
         Notes = notes;
+        Lifecycle = lifecycle;
         Version = 1;
         ConcurrencyToken = Guid.NewGuid();
         CreatedAt = now;
@@ -111,6 +113,9 @@ public sealed class InventoryLot
     /// <summary>Gets optional private notes.</summary>
     public PrivateNotes? Notes { get; private set; }
 
+    /// <summary>Gets the current lifecycle state, transition timestamps, and parent lot.</summary>
+    public LotLifecycle Lifecycle { get; private set; }
+
     /// <summary>Gets the internal monotonically increasing concurrency version.</summary>
     public long Version { get; private set; }
 
@@ -129,7 +134,7 @@ public sealed class InventoryLot
     /// <summary>Gets whether the lot is soft-deleted.</summary>
     public bool IsDeleted => DeletedAt is not null;
 
-    /// <summary>Creates an active lot with initial version one.</summary>
+    /// <summary>Creates an active lot with initial version one and, unless supplied, the <see cref="LotLifecycle.AsAcquired"/> lifecycle.</summary>
     public static InventoryLot Create(
         Guid ownerUserId,
         Guid productId,
@@ -138,8 +143,9 @@ public sealed class InventoryLot
         PackageState? packageState,
         PrintedExpiration? printedExpiration,
         PrivateNotes? notes,
-        DateTimeOffset now) =>
-        new(Guid.NewGuid(), ownerUserId, productId, quantity, storage, packageState, printedExpiration, notes, now);
+        DateTimeOffset now,
+        LotLifecycle? lifecycle = null) =>
+        new(Guid.NewGuid(), ownerUserId, productId, quantity, storage, packageState, printedExpiration, notes, now, lifecycle ?? LotLifecycle.AsAcquired);
 
     /// <summary>Restores a lot for an application command while preserving its concurrency and deletion state.</summary>
     public static InventoryLot Restore(
@@ -155,14 +161,15 @@ public sealed class InventoryLot
         Guid concurrencyToken,
         DateTimeOffset createdAt,
         DateTimeOffset updatedAt,
-        DateTimeOffset? deletedAt)
+        DateTimeOffset? deletedAt,
+        LotLifecycle? lifecycle = null)
     {
         if (id == Guid.Empty || ownerUserId == Guid.Empty || productId == Guid.Empty || version < 1 || concurrencyToken == Guid.Empty || updatedAt < createdAt || deletedAt < createdAt)
         {
             throw new ArgumentException("Persisted inventory lot identity, version, or timestamps are invalid.");
         }
 
-        var lot = new InventoryLot(id, ownerUserId, productId, quantity, storage, packageState, printedExpiration, notes, createdAt)
+        var lot = new InventoryLot(id, ownerUserId, productId, quantity, storage, packageState, printedExpiration, notes, createdAt, lifecycle ?? LotLifecycle.AsAcquired)
         {
             Version = version,
             ConcurrencyToken = concurrencyToken,
@@ -253,6 +260,129 @@ public sealed class InventoryLot
         return InventoryTransaction.Create(Id, OwnerUserId, InventoryTransactionType.Deleted, Quantity, Quantity, reasonCode, note, null, now);
     }
 
+    /// <summary>Applies a lifecycle transition to the whole lot and records it.</summary>
+    /// <param name="kind">Requested transition.</param>
+    /// <param name="targetStorage">Destination storage; required for <see cref="LotTransitionKind.Move"/>, optional otherwise.</param>
+    /// <param name="idempotencyKey">Client command key retained in immutable history.</param>
+    /// <param name="now">UTC transition instant.</param>
+    /// <returns>The immutable <see cref="InventoryTransactionType.LifecycleTransition"/> transaction; quantity is unchanged.</returns>
+    /// <exception cref="InvalidOperationException">Thrown when the transition is not allowed for the lot's current state.</exception>
+    public InventoryTransaction Transition(LotTransitionKind kind, LotStorage? targetStorage, Guid? idempotencyKey, DateTimeOffset now)
+    {
+        EnsureActive();
+        var (storage, lifecycle, packageState) = PlanTransition(kind, targetStorage, now);
+        var detail = new LotTransitionDetail(kind, Lifecycle.State, lifecycle.State, Storage.Location, storage.Location, null);
+        Storage = storage;
+        Lifecycle = lifecycle;
+        PackageState = packageState;
+        Touch(now);
+        return InventoryTransaction.Create(Id, OwnerUserId, InventoryTransactionType.LifecycleTransition, Quantity, Quantity, null, null, idempotencyKey, now, detail);
+    }
+
+    /// <summary>
+    /// Moves part of a measured lot into a new derived lot that takes the transition's resulting
+    /// state. The source keeps the exact remainder and its own state, so quantity is conserved.
+    /// </summary>
+    /// <param name="kind"><see cref="LotTransitionKind.Move"/>, <see cref="LotTransitionKind.Freeze"/>, or <see cref="LotTransitionKind.StartThaw"/>.</param>
+    /// <param name="quantity">Quantity to split off, in the lot's unit; positive, below the current quantity, at most three decimals.</param>
+    /// <param name="targetStorage">Destination storage, with the same rules as <see cref="Transition"/>.</param>
+    /// <param name="idempotencyKey">Client command key retained in both immutable histories.</param>
+    /// <param name="now">UTC transition instant.</param>
+    /// <returns>The derived lot and the source and derived transactions.</returns>
+    /// <exception cref="InvalidOperationException">Thrown when the lot is not measured, the quantity is invalid, or the transition is not allowed.</exception>
+    public (InventoryLot Derived, InventoryTransaction SourceTransaction, InventoryTransaction DerivedTransaction) SplitTransition(LotTransitionKind kind, decimal quantity, LotStorage? targetStorage, Guid? idempotencyKey, DateTimeOffset now)
+    {
+        EnsureActive();
+        if (kind is not (LotTransitionKind.Move or LotTransitionKind.Freeze or LotTransitionKind.StartThaw))
+        {
+            throw new InvalidOperationException("Only move, freeze, and start-thaw transitions can apply to part of a lot.");
+        }
+
+        if (Quantity is not LotQuantity.Measured previous)
+        {
+            throw new InvalidOperationException("A partial transition requires a measured quantity.");
+        }
+
+        if (quantity <= 0m || quantity >= previous.Value || decimal.Round(quantity, 3) != quantity)
+        {
+            throw new InvalidOperationException("A partial quantity must be positive, below the current quantity, and have at most three decimal places.");
+        }
+
+        var (storage, lifecycle, packageState) = PlanTransition(kind, targetStorage, now);
+        var remaining = new LotQuantity.Measured(previous.Value - quantity, previous.Unit);
+        var derived = Create(OwnerUserId, ProductId, new LotQuantity.Measured(quantity, previous.Unit), storage, packageState, PrintedExpiration, Notes, now, lifecycle with { ParentLotId = Id });
+        Quantity = remaining;
+        Touch(now);
+        var sourceTransaction = InventoryTransaction.Create(Id, OwnerUserId, InventoryTransactionType.TransitionSplit, previous, remaining, null, null, idempotencyKey, now, new LotTransitionDetail(kind, Lifecycle.State, Lifecycle.State, Storage.Location, Storage.Location, derived.Id));
+        var derivedTransaction = InventoryTransaction.Create(derived.Id, OwnerUserId, InventoryTransactionType.TransitionDerived, null, derived.Quantity, null, null, idempotencyKey, now, new LotTransitionDetail(kind, Lifecycle.State, lifecycle.State, Storage.Location, storage.Location, Id));
+        return (derived, sourceTransaction, derivedTransaction);
+    }
+
+    // Shared by whole and partial transitions so both enforce identical rules. These rules check
+    // physical consistency only (a frozen lot leaves the freezer by thawing); food-safety advice,
+    // such as about refreezing, is advisory and is not enforced here.
+    private (LotStorage Storage, LotLifecycle Lifecycle, PackageState? PackageState) PlanTransition(LotTransitionKind kind, LotStorage? target, DateTimeOffset now)
+    {
+        var inFreezer = Storage.Location == StorageLocation.Freezer;
+        if (target?.Location == StorageLocation.Freezer && kind != LotTransitionKind.Freeze)
+        {
+            throw new InvalidOperationException("Use the freeze transition to put a lot in the freezer.");
+        }
+
+        switch (kind)
+        {
+            case LotTransitionKind.Open:
+                if (PackageState == Domain.PackageState.Opened)
+                {
+                    throw new InvalidOperationException("The package is already open.");
+                }
+
+                if (inFreezer && target is not null)
+                {
+                    throw new InvalidOperationException("Use the start-thaw transition to take a lot out of the freezer.");
+                }
+
+                return (target ?? Storage, Lifecycle with { OpenedAt = now }, Domain.PackageState.Opened);
+            case LotTransitionKind.Move:
+                if (target is null || target == Storage)
+                {
+                    throw new InvalidOperationException("A move requires a different storage location.");
+                }
+
+                if (inFreezer)
+                {
+                    throw new InvalidOperationException("Use the start-thaw transition to take a lot out of the freezer.");
+                }
+
+                return (target, Lifecycle, PackageState);
+            case LotTransitionKind.Freeze:
+                if (inFreezer)
+                {
+                    throw new InvalidOperationException("The lot is already in the freezer.");
+                }
+
+                LotStorage.TryCreate(StorageLocation.Freezer, null, out var freezer);
+                return (freezer!, Lifecycle with { State = LotLifecycleState.Frozen, FrozenAt = now, ThawStartedAt = null, ThawedAt = null }, PackageState);
+            case LotTransitionKind.StartThaw:
+                if (!inFreezer)
+                {
+                    throw new InvalidOperationException("Only a lot in the freezer can start thawing.");
+                }
+
+                LotStorage.TryCreate(StorageLocation.Refrigerator, null, out var refrigerator);
+                return (target ?? refrigerator!, Lifecycle with { State = LotLifecycleState.Thawing, ThawStartedAt = now, ThawedAt = null }, PackageState);
+            case LotTransitionKind.CompleteThaw:
+                if (Lifecycle.State != LotLifecycleState.Thawing)
+                {
+                    throw new InvalidOperationException("Only a thawing lot can finish thawing.");
+                }
+
+                return (target ?? Storage, Lifecycle with { State = LotLifecycleState.Thawed, ThawedAt = now }, PackageState);
+            default:
+                throw new InvalidOperationException("The transition is not supported.");
+        }
+    }
+
     private void Touch(DateTimeOffset now)
     {
         UpdatedAt = now;
@@ -282,7 +412,8 @@ public sealed class InventoryTransaction
         string? reasonCode,
         string? note,
         Guid? idempotencyKey,
-        DateTimeOffset occurredAt)
+        DateTimeOffset occurredAt,
+        LotTransitionDetail? transition)
     {
         Id = id;
         LotId = lotId;
@@ -294,6 +425,7 @@ public sealed class InventoryTransaction
         Note = note;
         IdempotencyKey = idempotencyKey;
         OccurredAt = occurredAt;
+        Transition = transition;
     }
 
     /// <summary>Gets the transaction identifier.</summary>
@@ -326,7 +458,10 @@ public sealed class InventoryTransaction
     /// <summary>Gets the UTC transition instant.</summary>
     public DateTimeOffset OccurredAt { get; private set; }
 
-    /// <summary>Creates an immutable lifecycle transaction.</summary>
+    /// <summary>Gets the lifecycle facts of a transition transaction; <see langword="null"/> for quantity-only transactions.</summary>
+    public LotTransitionDetail? Transition { get; private set; }
+
+    /// <summary>Creates an immutable lifecycle transaction; transition types also carry their lifecycle facts.</summary>
     public static InventoryTransaction Create(
         Guid lotId,
         Guid ownerUserId,
@@ -336,6 +471,7 @@ public sealed class InventoryTransaction
         string? reasonCode,
         string? note,
         Guid? idempotencyKey,
-        DateTimeOffset occurredAt) =>
-        new(Guid.NewGuid(), lotId, ownerUserId, type, previousQuantity, resultingQuantity, reasonCode, note, idempotencyKey, occurredAt);
+        DateTimeOffset occurredAt,
+        LotTransitionDetail? transition = null) =>
+        new(Guid.NewGuid(), lotId, ownerUserId, type, previousQuantity, resultingQuantity, reasonCode, note, idempotencyKey, occurredAt, transition);
 }

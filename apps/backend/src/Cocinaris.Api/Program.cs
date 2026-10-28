@@ -67,6 +67,7 @@ builder.Services.AddScoped<IListInventoryLotsUseCase, ListInventoryLotsHandler>(
 builder.Services.AddScoped<IGetInventoryLotUseCase, GetInventoryLotHandler>();
 builder.Services.AddScoped<IUpdateInventoryLotUseCase, UpdateInventoryLotHandler>();
 builder.Services.AddScoped<IAdjustInventoryLotUseCase, AdjustInventoryLotHandler>();
+builder.Services.AddScoped<ITransitionInventoryLotUseCase, TransitionInventoryLotHandler>();
 builder.Services.AddScoped<IDeleteInventoryLotUseCase, DeleteInventoryLotHandler>();
 builder.Services.AddScoped<IGetInventoryLotHistoryUseCase, GetInventoryLotHistoryHandler>();
 builder.Services.AddScoped<PreparedComponentApplicationWorkflow>();

@@ -23,6 +23,7 @@ function renderDetail(
         reasonCode: "ui_consume",
         changedFields: null,
         occurredAt: "2026-08-01T12:00:00Z",
+        transition: null,
       },
     ]),
     adjustLot: vi.fn(async () => ({
@@ -90,6 +91,7 @@ describe("ProductionInventoryDetail", () => {
           reasonCode: "ui_consume",
           changedFields: null,
           occurredAt: "2026-08-01T13:00:00Z",
+          transition: null,
         },
       ]);
     const repo = createMockInventoryRepo({
@@ -259,6 +261,7 @@ describe("ProductionInventoryDetail", () => {
           reasonCode: "ui_consume",
           changedFields: null,
           occurredAt: "2026-08-01T12:00:00Z",
+          transition: null,
         },
       ])
       .mockRejectedValueOnce(new InventoryApiError("unavailable", "down", 503));
@@ -358,6 +361,7 @@ describe("ProductionInventoryDetail", () => {
         reasonCode: "ui_consume",
         changedFields: null,
         occurredAt: "2026-08-01T12:00:00Z",
+        transition: null,
       },
     ];
     const adjustLot = vi.fn(async () => ({
@@ -431,6 +435,7 @@ describe("ProductionInventoryDetail", () => {
         reasonCode: "ui_consume",
         changedFields: null,
         occurredAt: "2026-08-01T12:00:00Z",
+        transition: null,
       },
     ];
     const refreshedHistory = [
@@ -441,6 +446,7 @@ describe("ProductionInventoryDetail", () => {
         reasonCode: "ui_discard",
         changedFields: null,
         occurredAt: "2026-08-01T13:00:00Z",
+        transition: null,
       },
     ];
     const adjustLot = vi.fn(async () => ({

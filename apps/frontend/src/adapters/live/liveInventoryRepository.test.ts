@@ -71,6 +71,8 @@ describe("createLiveInventoryRepository", () => {
       unit: "Gram",
     });
     expect(page.items[0].printedExpirationDate).toBe("2026-12-31");
+    // This projection predates PLAN-0037 and has no lifecycle.
+    expect(page.items[0].lifecycle.state).toBe("AsAcquired");
   });
 
   it("surfaces 412 without silent retry and requires If-Match", async () => {

@@ -105,6 +105,8 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
                 table.HasCheckConstraint("ck_lots_availability_state", "\"AvailabilityState\" IS NULL OR \"AvailabilityState\" IN ('Available', 'Low', 'Unavailable')");
                 table.HasCheckConstraint("ck_lots_storage", "(\"StorageLocation\" IN ('Pantry', 'Refrigerator', 'Freezer') AND \"CustomLocation\" IS NULL) OR (\"StorageLocation\" = 'Other' AND \"CustomLocation\" IS NOT NULL AND length(btrim(\"CustomLocation\")) > 0)");
                 table.HasCheckConstraint("ck_lots_package_state", "\"PackageState\" IS NULL OR \"PackageState\" IN ('Sealed', 'Opened', 'Unknown')");
+                table.HasCheckConstraint("ck_lots_lifecycle_state", "\"LifecycleState\" IN ('AsAcquired', 'Prepared', 'Frozen', 'Thawing', 'Thawed')");
+                table.HasCheckConstraint("ck_lots_parent_not_self", "\"ParentLotId\" IS NULL OR \"ParentLotId\" <> \"Id\"");
                 table.HasCheckConstraint("ck_lots_expiration_provenance", "(\"PrintedExpirationDate\" IS NULL AND \"ExpirationProvenance\" IS NULL) OR (\"PrintedExpirationDate\" IS NOT NULL AND \"ExpirationProvenance\" IS NOT NULL AND \"ExpirationProvenance\" = 'UserEntered')");
             });
             entity.HasKey(x => x.Id);
@@ -117,21 +119,26 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             entity.Property(x => x.PackageState).HasMaxLength(20);
             entity.Property(x => x.ExpirationProvenance).HasMaxLength(30);
             entity.Property(x => x.Notes).HasMaxLength(1000);
+            entity.Property(x => x.LifecycleState).HasMaxLength(20).IsRequired().HasDefaultValue("AsAcquired");
             entity.Property(x => x.Version).IsConcurrencyToken();
             entity.Property(x => x.ConcurrencyToken).HasDefaultValueSql("gen_random_uuid()");
             entity.HasIndex(x => x.ConcurrencyToken).IsUnique();
             entity.HasOne<InternalUser>().WithMany().HasForeignKey(x => x.OwnerUserId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne<ProductRecord>().WithMany().HasForeignKey(x => new { x.ProductId, x.OwnerUserId }).HasPrincipalKey(x => new { x.Id, x.OwnerUserId }).OnDelete(DeleteBehavior.Restrict);
             entity.HasIndex(x => new { x.OwnerUserId, x.UpdatedAt, x.Id });
+            // A derived lot's parent must belong to the same owner, enforced by the composite key.
+            entity.HasOne<LotRecord>().WithMany().HasForeignKey(x => new { x.ParentLotId, x.OwnerUserId }).HasPrincipalKey(x => new { x.Id, x.OwnerUserId }).OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<TransactionRecord>(entity =>
         {
             entity.ToTable("transactions", "inventory", table =>
             {
-                table.HasCheckConstraint("ck_transactions_type", "\"Type\" IN ('Initial', 'Consume', 'Discard', 'Correct', 'AvailabilityChanged', 'Deleted', 'PreparationInputConsumed', 'PreparationOutputCreated')");
+                table.HasCheckConstraint("ck_transactions_type", "\"Type\" IN ('Initial', 'Consume', 'Discard', 'Correct', 'AvailabilityChanged', 'Deleted', 'PreparationInputConsumed', 'PreparationOutputCreated', 'LifecycleTransition', 'TransitionSplit', 'TransitionDerived')");
                 table.HasCheckConstraint("ck_transactions_previous_quantity", "(\"PreviousMeasuredValue\" IS NULL AND \"PreviousMeasuredUnit\" IS NULL AND \"PreviousAvailabilityState\" IS NULL) OR (\"PreviousMeasuredValue\" IS NOT NULL AND \"PreviousMeasuredValue\" >= 0 AND \"PreviousMeasuredUnit\" IN ('Gram', 'Milliliter', 'Unit') AND \"PreviousAvailabilityState\" IS NULL) OR (\"PreviousMeasuredValue\" IS NULL AND \"PreviousMeasuredUnit\" IS NULL AND \"PreviousAvailabilityState\" IN ('Available', 'Low', 'Unavailable'))");
                 table.HasCheckConstraint("ck_transactions_resulting_quantity", "(\"ResultingMeasuredValue\" IS NOT NULL AND \"ResultingMeasuredValue\" >= 0 AND \"ResultingMeasuredUnit\" IN ('Gram', 'Milliliter', 'Unit') AND \"ResultingAvailabilityState\" IS NULL) OR (\"ResultingMeasuredValue\" IS NULL AND \"ResultingMeasuredUnit\" IS NULL AND \"ResultingAvailabilityState\" IN ('Available', 'Low', 'Unavailable'))");
+                // Transition types carry the complete lifecycle facts; other types carry none.
+                table.HasCheckConstraint("ck_transactions_transition", "(\"Type\" IN ('LifecycleTransition', 'TransitionSplit', 'TransitionDerived') AND \"TransitionKind\" IN ('Open', 'Move', 'Freeze', 'StartThaw', 'CompleteThaw') AND \"PreviousLifecycleState\" IN ('AsAcquired', 'Prepared', 'Frozen', 'Thawing', 'Thawed') AND \"ResultingLifecycleState\" IN ('AsAcquired', 'Prepared', 'Frozen', 'Thawing', 'Thawed') AND \"PreviousStorageLocation\" IN ('Pantry', 'Refrigerator', 'Freezer', 'Other') AND \"ResultingStorageLocation\" IN ('Pantry', 'Refrigerator', 'Freezer', 'Other') AND (\"Type\" = 'LifecycleTransition') = (\"RelatedLotId\" IS NULL)) OR (\"Type\" NOT IN ('LifecycleTransition', 'TransitionSplit', 'TransitionDerived') AND \"TransitionKind\" IS NULL AND \"PreviousLifecycleState\" IS NULL AND \"ResultingLifecycleState\" IS NULL AND \"PreviousStorageLocation\" IS NULL AND \"ResultingStorageLocation\" IS NULL AND \"RelatedLotId\" IS NULL)");
                 table.HasCheckConstraint("ck_transactions_reason_code", "\"ReasonCode\" IS NULL OR length(btrim(\"ReasonCode\")) > 0");
             });
             entity.HasKey(x => x.Id);
@@ -140,6 +147,11 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             entity.Property(x => x.ResultingMeasuredValue).HasColumnType("numeric(18,3)");
             entity.Property(x => x.ReasonCode).HasMaxLength(100);
             entity.Property(x => x.Note).HasMaxLength(1000);
+            entity.Property(x => x.TransitionKind).HasMaxLength(20);
+            entity.Property(x => x.PreviousLifecycleState).HasMaxLength(20);
+            entity.Property(x => x.ResultingLifecycleState).HasMaxLength(20);
+            entity.Property(x => x.PreviousStorageLocation).HasMaxLength(30);
+            entity.Property(x => x.ResultingStorageLocation).HasMaxLength(30);
             entity.HasOne<InternalUser>().WithMany().HasForeignKey(x => x.OwnerUserId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne<LotRecord>().WithMany().HasForeignKey(x => new { x.LotId, x.OwnerUserId }).HasPrincipalKey(x => new { x.Id, x.OwnerUserId }).OnDelete(DeleteBehavior.Restrict);
             entity.HasIndex(x => new { x.OwnerUserId, x.LotId, x.OccurredAt });
@@ -440,6 +452,24 @@ public sealed class LotRecord
     public DateTimeOffset UpdatedAt { get; set; }
     /// <summary>Gets or sets the UTC soft-deletion instant, if deleted.</summary>
     public DateTimeOffset? DeletedAt { get; set; }
+
+    /// <summary>Gets or sets the lifecycle state name; existing lots default to <c>AsAcquired</c>.</summary>
+    public string LifecycleState { get; set; } = "AsAcquired";
+
+    /// <summary>Gets or sets when the package was opened.</summary>
+    public DateTimeOffset? OpenedAt { get; set; }
+
+    /// <summary>Gets or sets when the lot was last frozen.</summary>
+    public DateTimeOffset? FrozenAt { get; set; }
+
+    /// <summary>Gets or sets when the current thaw started.</summary>
+    public DateTimeOffset? ThawStartedAt { get; set; }
+
+    /// <summary>Gets or sets when the current thaw finished.</summary>
+    public DateTimeOffset? ThawedAt { get; set; }
+
+    /// <summary>Gets or sets the same-owner source lot of a partial transition.</summary>
+    public Guid? ParentLotId { get; set; }
 }
 
 /// <summary>Immutable persistence representation of an inventory lifecycle transition.</summary>
@@ -473,6 +503,18 @@ public sealed class TransactionRecord
     public Guid? IdempotencyKey { get; set; }
     /// <summary>Gets or sets the UTC instant at which the transition occurred.</summary>
     public DateTimeOffset OccurredAt { get; set; }
+    /// <summary>Gets or sets the lifecycle transition kind for transition transactions.</summary>
+    public string? TransitionKind { get; set; }
+    /// <summary>Gets or sets the lifecycle state before a transition.</summary>
+    public string? PreviousLifecycleState { get; set; }
+    /// <summary>Gets or sets the lifecycle state after a transition.</summary>
+    public string? ResultingLifecycleState { get; set; }
+    /// <summary>Gets or sets the storage location before a transition.</summary>
+    public string? PreviousStorageLocation { get; set; }
+    /// <summary>Gets or sets the storage location after a transition.</summary>
+    public string? ResultingStorageLocation { get; set; }
+    /// <summary>Gets or sets the derived lot (on a split) or source lot (on a derived lot) of a partial transition.</summary>
+    public Guid? RelatedLotId { get; set; }
 }
 
 /// <summary>Immutable persistence representation of one manual preparation transaction.</summary>

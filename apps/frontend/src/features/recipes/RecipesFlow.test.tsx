@@ -58,6 +58,14 @@ function createInventoryStub(
           etag: "v1",
           createdAt: "2026-08-05T00:00:00Z",
           updatedAt: "2026-08-05T00:00:00Z",
+          lifecycle: {
+            state: "AsAcquired",
+            openedAt: null,
+            frozenAt: null,
+            thawStartedAt: null,
+            thawedAt: null,
+            parentLotId: null,
+          },
         },
       ],
       nextCursor: null,
@@ -72,6 +80,9 @@ function createInventoryStub(
       throw new Error("not used");
     },
     adjustLot: async () => {
+      throw new Error("not used");
+    },
+    transitionLot: async () => {
       throw new Error("not used");
     },
     deleteLot: async () => {

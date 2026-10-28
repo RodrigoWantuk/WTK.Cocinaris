@@ -23,11 +23,11 @@ public sealed record InventoryLotReadCursor(DateTimeOffset UpdatedAt, Guid LotId
 public sealed record InventoryLotReadPage(IReadOnlyList<InventoryLotReadModel> Items, InventoryLotReadCursor? NextCursor);
 
 /// <summary>Persistence-independent representation of one inventory lot for application reads.</summary>
-public sealed record InventoryLotReadModel(Guid LotId, Guid ProductId, string ProductName, decimal? MeasuredValue, string? MeasuredUnit, string? AvailabilityState, string StorageLocation, string? CustomLocation, string? PackageState, DateOnly? PrintedExpirationDate, string? Notes, Guid ConcurrencyToken, DateTimeOffset CreatedAt, DateTimeOffset UpdatedAt, DateTimeOffset? DeletedAt);
+public sealed record InventoryLotReadModel(Guid LotId, Guid ProductId, string ProductName, decimal? MeasuredValue, string? MeasuredUnit, string? AvailabilityState, string StorageLocation, string? CustomLocation, string? PackageState, DateOnly? PrintedExpirationDate, string? Notes, Guid ConcurrencyToken, DateTimeOffset CreatedAt, DateTimeOffset UpdatedAt, DateTimeOffset? DeletedAt, InventoryLifecycleView? Lifecycle = null);
 
 /// <summary>
 /// Persistence-independent history item. A transaction item has an immutable lifecycle type and
 /// quantity snapshots; a metadata-correction item is a safe audit projection with field names
 /// only, never private values or notes.
 /// </summary>
-public sealed record InventoryHistoryReadModel(Guid EntryId, string Kind, string? TransactionType, decimal? PreviousMeasuredValue, string? PreviousMeasuredUnit, string? PreviousAvailabilityState, decimal? ResultingMeasuredValue, string? ResultingMeasuredUnit, string? ResultingAvailabilityState, string? ReasonCode, IReadOnlyList<string>? ChangedFields, DateTimeOffset OccurredAt);
+public sealed record InventoryHistoryReadModel(Guid EntryId, string Kind, string? TransactionType, decimal? PreviousMeasuredValue, string? PreviousMeasuredUnit, string? PreviousAvailabilityState, decimal? ResultingMeasuredValue, string? ResultingMeasuredUnit, string? ResultingAvailabilityState, string? ReasonCode, IReadOnlyList<string>? ChangedFields, DateTimeOffset OccurredAt, InventoryTransitionView? Transition = null);

@@ -30,14 +30,14 @@ public sealed class PostgreSqlInventoryPreparationStore(ApplicationDbContext dat
                              where lot.OwnerUserId == ownerUserId && lot.DeletedAt == null && lotIds.Contains(lot.Id) && !product.IsDeleted
                              orderby lot.Id
                              select new { Lot = lot, Product = product }).ToListAsync(cancellationToken);
-        return records.Select(item => new PreparationInputState(ToDomain(item.Lot), ToDomain(item.Product))).ToList();
+        return records.Select(item => new PreparationInputState(InventoryRecordMapper.ToDomain(item.Lot), InventoryRecordMapper.ToDomain(item.Product))).ToList();
     }
 
     /// <inheritdoc />
     public async Task<Product?> FindActiveProductAsync(Guid ownerUserId, Guid productId, CancellationToken cancellationToken)
     {
         var record = await database.Products.AsNoTracking().SingleOrDefaultAsync(item => item.Id == productId && item.OwnerUserId == ownerUserId && !item.IsDeleted, cancellationToken);
-        return record is null ? null : ToDomain(record);
+        return record is null ? null : InventoryRecordMapper.ToDomain(record);
     }
 
     /// <inheritdoc />
@@ -45,16 +45,16 @@ public sealed class PostgreSqlInventoryPreparationStore(ApplicationDbContext dat
     {
         if (write.NewOutputProduct is not null)
         {
-            database.Products.Add(ToRecord(write.NewOutputProduct));
+            database.Products.Add(InventoryRecordMapper.ToRecord(write.NewOutputProduct));
         }
 
         foreach (var input in write.Inputs.OrderBy(item => item.Lot.Id))
         {
-            var lot = ToRecord(input.Lot);
+            var lot = InventoryRecordMapper.ToRecord(input.Lot);
             database.Lots.Attach(lot);
             database.Entry(lot).State = EntityState.Modified;
             database.Entry(lot).Property(item => item.Version).OriginalValue = input.ExpectedVersion;
-            database.Transactions.Add(ToRecord(input.Transaction));
+            database.Transactions.Add(InventoryRecordMapper.ToRecord(input.Transaction));
         }
 
         database.PreparationBatches.Add(new PreparationBatchRecord
@@ -84,8 +84,8 @@ public sealed class PostgreSqlInventoryPreparationStore(ApplicationDbContext dat
 
         foreach (var output in write.Outputs)
         {
-            database.Lots.Add(ToRecord(output.Lot));
-            database.Transactions.Add(ToRecord(output.Transaction));
+            database.Lots.Add(InventoryRecordMapper.ToRecord(output.Lot));
+            database.Transactions.Add(InventoryRecordMapper.ToRecord(output.Transaction));
             database.PreparationOutputs.Add(new PreparationOutputRecord { BatchId = write.Batch.Id, OwnerUserId = write.OwnerUserId, OutputLotId = output.Lot.Id });
             database.PreparedLots.Add(new PreparedLotRecord
             {
@@ -243,23 +243,8 @@ public sealed class PostgreSqlInventoryPreparationStore(ApplicationDbContext dat
     /// <summary>Contains a direction's stable bounded batch identifiers and completeness signal.</summary>
     private sealed record RelatedBatchIds(IReadOnlyList<Guid> BatchIds, bool IsTruncated);
 
-    private static Product ToDomain(ProductRecord item)
-    {
-        ProductName.TryCreate(item.DisplayName, out var name);
-        return Product.Restore(item.Id, item.OwnerUserId, name!, item.CreatedAt, item.UpdatedAt, item.IsDeleted);
-    }
 
-    private static InventoryLot ToDomain(LotRecord item)
-    {
-        var quantity = item.MeasuredValue is { } value ? new LotQuantity.Measured(value, Enum.Parse<CanonicalUnit>(item.MeasuredUnit!)) : LotQuantity.FromAvailability(Enum.Parse<AvailabilityState>(item.AvailabilityState!));
-        LotStorage.TryCreate(Enum.Parse<StorageLocation>(item.StorageLocation), item.CustomLocation, out var storage);
-        PrivateNotes.TryCreate(item.Notes, out var notes);
-        return InventoryLot.Restore(item.Id, item.OwnerUserId, item.ProductId, quantity, storage!, item.PackageState is null ? null : Enum.Parse<PackageState>(item.PackageState), item.PrintedExpirationDate is null ? null : new PrintedExpiration(item.PrintedExpirationDate.Value, ExpirationProvenance.UserEntered), notes, item.Version, item.ConcurrencyToken, item.CreatedAt, item.UpdatedAt, item.DeletedAt);
-    }
 
-    private static ProductRecord ToRecord(Product item) => new() { Id = item.Id, OwnerUserId = item.OwnerUserId, DisplayName = item.DisplayName, NormalizedSearchName = item.NormalizedSearchName, CreatedAt = item.CreatedAt, UpdatedAt = item.UpdatedAt, IsDeleted = item.IsDeleted };
-    private static LotRecord ToRecord(InventoryLot item) => new() { Id = item.Id, OwnerUserId = item.OwnerUserId, ProductId = item.ProductId, MeasuredValue = item.Quantity is LotQuantity.Measured measured ? measured.Value : null, MeasuredUnit = item.Quantity is LotQuantity.Measured measuredUnit ? measuredUnit.Unit.ToString() : null, AvailabilityState = item.Quantity is LotQuantity.Availability availability ? availability.State.ToString() : null, StorageLocation = item.Storage.Location.ToString(), CustomLocation = item.Storage.CustomLocation, PackageState = item.PackageState?.ToString(), PrintedExpirationDate = item.PrintedExpiration?.Date, ExpirationProvenance = item.PrintedExpiration?.Provenance.ToString(), Notes = item.Notes?.Value, Version = item.Version, ConcurrencyToken = item.ConcurrencyToken, CreatedAt = item.CreatedAt, UpdatedAt = item.UpdatedAt, DeletedAt = item.DeletedAt };
-    private static TransactionRecord ToRecord(InventoryTransaction item) => new() { Id = item.Id, OwnerUserId = item.OwnerUserId, LotId = item.LotId, Type = item.Type.ToString(), PreviousMeasuredValue = item.PreviousQuantity is LotQuantity.Measured previous ? previous.Value : null, PreviousMeasuredUnit = item.PreviousQuantity is LotQuantity.Measured previousUnit ? previousUnit.Unit.ToString() : null, PreviousAvailabilityState = item.PreviousQuantity is LotQuantity.Availability previousAvailability ? previousAvailability.State.ToString() : null, ResultingMeasuredValue = item.ResultingQuantity is LotQuantity.Measured resulting ? resulting.Value : null, ResultingMeasuredUnit = item.ResultingQuantity is LotQuantity.Measured resultingUnit ? resultingUnit.Unit.ToString() : null, ResultingAvailabilityState = item.ResultingQuantity is LotQuantity.Availability resultingAvailability ? resultingAvailability.State.ToString() : null, ReasonCode = item.ReasonCode, Note = item.Note, IdempotencyKey = item.IdempotencyKey, OccurredAt = item.OccurredAt };
     private static PreparationBatchView? Deserialize(string? body) => string.IsNullOrWhiteSpace(body) ? null : JsonSerializer.Deserialize<PreparationBatchView>(body);
     private static bool IsIdempotencyKeyConflict(DbUpdateException exception) => exception.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation, ConstraintName: "IX_idempotency_records_OwnerUserId_Scope_Key" };
 }

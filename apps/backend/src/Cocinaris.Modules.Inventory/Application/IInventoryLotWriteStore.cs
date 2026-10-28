@@ -29,7 +29,9 @@ public sealed record InventoryLotCreationWrite(Guid OwnerUserId, Product Product
 /// privacy-safe, pre-serialized projection containing no request body, private note, credential,
 /// or token value.
 /// </summary>
-public sealed record InventoryLotMutationWrite(Guid OwnerUserId, InventoryLot Lot, Product Product, long ExpectedVersion, InventoryTransaction? Transaction, string AuditEventName, string AuditMetadataJson, string CorrelationId, InventoryIdempotencyWrite? Idempotency);
+/// A partial lifecycle transition also supplies the new derived lot and its creation transaction,
+/// which are inserted in the same database transaction as the source update.
+public sealed record InventoryLotMutationWrite(Guid OwnerUserId, InventoryLot Lot, Product Product, long ExpectedVersion, InventoryTransaction? Transaction, string AuditEventName, string AuditMetadataJson, string CorrelationId, InventoryIdempotencyWrite? Idempotency, InventoryLot? DerivedLot = null, InventoryTransaction? DerivedTransaction = null);
 
 /// <summary>
 /// Completed, typed idempotency response persisted with a mutation. Persistence serialization and

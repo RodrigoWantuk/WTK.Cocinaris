@@ -17,6 +17,7 @@ public sealed class InventoryApplicationService(
     IGetInventoryLotUseCase getLot,
     IUpdateInventoryLotUseCase updateLot,
     IAdjustInventoryLotUseCase adjustLot,
+    ITransitionInventoryLotUseCase transitionLot,
     IDeleteInventoryLotUseCase deleteLot,
     IGetInventoryLotHistoryUseCase getHistory,
     IPrepareComponentsUseCase prepareComponents,
@@ -63,6 +64,14 @@ public sealed class InventoryApplicationService(
         return ToLotResult("adjust", await adjustLot.AdjustAsync(command, cancellationToken), requestContext.HttpContext.TraceIdentifier);
     }
 
+    /// <summary>Maps a transition DTO, idempotency header, and decoded ETag precondition to the application command.</summary>
+    public async Task<IResult> TransitionAsync(Guid lotId, TransitionRequest request, HttpRequest requestContext, CancellationToken cancellationToken)
+    {
+        var key = Guid.TryParse(requestContext.Headers["Idempotency-Key"], out var parsed) ? parsed : (Guid?)null;
+        var command = new TransitionInventoryLotCommand(lotId, request.Kind, request.Quantity?.MeasuredValue, request.Quantity?.Unit, request.TargetStorageLocation, request.TargetCustomLocation, key, ReadPrecondition(lotId, requestContext), requestContext.HttpContext.TraceIdentifier);
+        return ToLotResult("transition", await transitionLot.TransitionAsync(command, cancellationToken), requestContext.HttpContext.TraceIdentifier);
+    }
+
     /// <summary>Maps a delete request and decoded ETag precondition to the application command.</summary>
     public async Task<IResult> DeleteAsync(Guid lotId, HttpRequest requestContext, CancellationToken cancellationToken)
     {
@@ -72,7 +81,7 @@ public sealed class InventoryApplicationService(
 
     /// <summary>Maps immutable lot history to its API DTO.</summary>
     public async Task<IResult> HistoryAsync(Guid lotId, HttpContext context, CancellationToken cancellationToken) =>
-        ToResult(await getHistory.HistoryAsync(lotId, cancellationToken), items => (IReadOnlyList<LotHistoryResponse>)items.Select(item => new LotHistoryResponse(item.EntryId, item.Kind, item.TransactionType, ToQuantity(item.PreviousQuantity), ToQuantity(item.ResultingQuantity), item.ReasonCode, item.ChangedFields, item.OccurredAt)).ToList(), context.TraceIdentifier);
+        ToResult(await getHistory.HistoryAsync(lotId, cancellationToken), items => (IReadOnlyList<LotHistoryResponse>)items.Select(item => new LotHistoryResponse(item.EntryId, item.Kind, item.TransactionType, ToQuantity(item.PreviousQuantity), ToQuantity(item.ResultingQuantity), item.ReasonCode, item.ChangedFields, item.OccurredAt, item.Transition is null ? null : new LotTransitionResponse(item.Transition.Kind, item.Transition.PreviousState, item.Transition.ResultingState, item.Transition.PreviousStorageLocation, item.Transition.ResultingStorageLocation, item.Transition.RelatedLotId))).ToList(), context.TraceIdentifier);
 
     /// <summary>Maps a multi-parent preparation DTO and each resource-bound input version to the application contract.</summary>
     public async Task<IResult> PrepareAsync(PrepareComponentsRequest request, HttpRequest requestContext, CancellationToken cancellationToken)
@@ -111,7 +120,9 @@ public sealed class InventoryApplicationService(
         ToResult(await getProvenance.GetAsync(lotId, cancellationToken), item => new LotProvenanceResponse(item.LotId, item.ConsumedBy.Select(ToPreparationResponse).ToList(), item.ConsumedByTruncated, item.ProducedBy.Select(ToPreparationResponse).ToList(), item.ProducedByTruncated), context.TraceIdentifier);
 
     private LotResponse ToResponse(InventoryLotView item) => ToResponse(item, tokens.WriteVersion(item.LotId, item.ConcurrencyToken));
-    private static LotResponse ToResponse(InventoryLotView item, string version) => new(item.LotId, item.ProductId, item.ProductName, ToQuantity(item.Quantity)!, item.StorageLocation, item.CustomLocation, item.PackageState, item.PrintedExpirationDate, item.Notes, version, item.CreatedAt, item.UpdatedAt);
+    private static LotResponse ToResponse(InventoryLotView item, string version) => new(item.LotId, item.ProductId, item.ProductName, ToQuantity(item.Quantity)!, item.StorageLocation, item.CustomLocation, item.PackageState, item.PrintedExpirationDate, item.Notes, version, item.CreatedAt, item.UpdatedAt, ToLifecycle(item.Lifecycle));
+    // Idempotency replays stored before lifecycle support carry no lifecycle; those lots were AsAcquired.
+    private static LotLifecycleResponse ToLifecycle(InventoryLifecycleView? lifecycle) => lifecycle is null ? new LotLifecycleResponse("AsAcquired", null, null, null, null, null) : new LotLifecycleResponse(lifecycle.State, lifecycle.OpenedAt, lifecycle.FrozenAt, lifecycle.ThawStartedAt, lifecycle.ThawedAt, lifecycle.ParentLotId);
     private static QuantityResponse? ToQuantity(InventoryQuantity? quantity) => quantity is null ? null : new QuantityResponse(quantity.MeasuredValue, quantity.Unit, quantity.AvailabilityState);
     private PreparationResponse ToPreparationResponse(PreparationBatchView item) => new(item.BatchId, item.SourceType, item.OutputProductId, item.OutputProductName, ToQuantity(item.DeclaredYield)!, item.PreparedAt, item.Inputs.Select(input => new PreparationInputResponse(input.LotId, ToQuantity(input.ConsumedQuantity)!)).ToList(), item.Outputs.Select(output => new PreparationOutputResponse(ToResponse(output.Lot), new PreparedLotMetadataResponse(output.PreparedMetadata.BatchId, output.PreparedMetadata.LifecycleState, output.PreparedMetadata.PreparedAt, output.PreparedMetadata.ShelfLifeDate, output.PreparedMetadata.ShelfLifeSource, output.PreparedMetadata.ShelfLifeConfidence, output.PreparedMetadata.ShelfLifeConditions))).ToList(), item.CreatedAt);
 

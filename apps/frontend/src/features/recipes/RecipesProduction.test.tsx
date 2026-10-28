@@ -117,6 +117,14 @@ function inventoryWithLots(count: number): InventoryRepository {
         etag: "v1",
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
+        lifecycle: {
+          state: "AsAcquired",
+          openedAt: null,
+          frozenAt: null,
+          thawStartedAt: null,
+          thawedAt: null,
+          parentLotId: null,
+        },
       })),
       nextCursor: null,
     }),
@@ -130,6 +138,9 @@ function inventoryWithLots(count: number): InventoryRepository {
       throw new Error("unused");
     },
     adjustLot: async () => {
+      throw new Error("unused");
+    },
+    transitionLot: async () => {
       throw new Error("unused");
     },
     deleteLot: async () => undefined,
