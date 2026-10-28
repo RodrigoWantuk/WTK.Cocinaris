@@ -1,13 +1,13 @@
 # PLAN-0034: Establish the Owner Linux Host as the Development and Deployment Environment
 
-- **Status:** Validating
+- **Status:** Completed
 - **Type:** Operations
 - **Priority:** Critical
 - **Owner:** Claude Code
 - **Created:** 2026-10-28
 - **Last updated:** 2026-10-28
 - **Branch:** `agent/plan-0031-0036-foundation-stack` (integrates the former stacked branches with `main` after PR #44)
-- **Pull request:** Draft PR from `agent/plan-0031-0036-foundation-stack` (one consolidated PR for PLAN-0031–PLAN-0036)
+- **Pull request:** [PR #46](https://github.com/RodrigoWantuk/WTK.Cocinaris/pull/46), merged by the owner at `3d45bee`
 - **Numbering:** Created as PLAN-0031. Renumbered to PLAN-0034 on 2026-10-28 because merged PR #44 had already published PLAN-0028–PLAN-0030 ([mapping](PLAN-0031-amendment-2026-10-28-coverage-review.md#renumbering-after-pr-44)).
 - **Related ADRs:** ADR-0004, ADR-0006
 - **Dependencies:** PLAN-0033 (names used in scripts and runbooks)
@@ -88,8 +88,8 @@ do Cocinaris (docs/development/environment.md#owner-linux-host). Neste host:
   - Frontend workflow on Node.js 24.18.0.
   - ADR-0004 and ADR-0006 amendments, environment guide "Owner Linux host" section, deployment runbook, `infrastructure/deploy/linux-host/`, `scripts/deploy/deploy-linux-host.sh`.
 - **Last completed step:** A deploy dry run of `8f74062` (PLAN-0033 head) built, published and generated the migration script, then **refused to publish** because the entry page loads third-party scripts. That is the intended guard behavior; the scripts are removed by PLAN-0035. The failed partial release was left behind, so the script now deletes any release that does not finish building.
-- **Exact next action:** Final CI on the draft PR head; owner merge. Owner may add the AI Gateway key to `api.env` (runbook, first install step 5) and restart the service.
-- **Blockers:** None. Owner merge determines delivery state only.
+- **Exact next action:** None. Follow-up work is tracked in the PLAN-0031 coverage review roadmap.
+- **Blockers:** None.
 - **Validation performed:**
   - On the host: backend unit 52/52, architecture 14/14 and integration 175/175 with the OIDC fixture; format; migrations; OpenAPI (recorded under PLAN-0033).
   - Frontend full gate set on Node.js 24.
@@ -141,3 +141,7 @@ do Cocinaris (docs/development/environment.md#owner-linux-host). Neste host:
 - Verified: the unit starts `Cocinaris.Api.dll`; `/health/ready` 200; public `/` and `/app/receitas` 200; `/api/v1/session` and `/api/v1/recipes` 401 without a session; entry page title "Cocinaris" with no external origins; no warnings in the service journal. Existing sessions ended, as documented for the rename.
 - The AI Gateway is not configured (`Ai__Providers__DeepSeek__*` absent), so recipe generation shows its unavailable state until the owner adds the key.
 - Browser smoke repeated at normal host load: 28/28 passed. The two earlier timeouts were caused by load from another project on the host.
+
+### 2026-10-28T23:05:00Z — Claude Code
+
+- The owner merged PR #46 (`3d45bee`, 2026-10-28T22:41Z). GitHub Actions did not run on it because the owner account is locked for billing; validation is the owner-host run recorded above. Status set to Completed.

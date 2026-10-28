@@ -1,13 +1,13 @@
 # PLAN-0032: Restore the Green Baseline and Reconcile Documentation Drift
 
-- **Status:** Validating
+- **Status:** Completed
 - **Type:** Operations
 - **Priority:** Critical
 - **Owner:** Claude Code (claimed 2026-10-28)
 - **Created:** 2026-10-28
 - **Last updated:** 2026-10-28T15:10:00Z
 - **Branch:** `agent/plan-0031-0036-foundation-stack` (integrates the former stacked branches with `main` after PR #44)
-- **Pull request:** Draft PR from `agent/plan-0031-0036-foundation-stack` (one consolidated PR for PLAN-0031–PLAN-0036)
+- **Pull request:** [PR #46](https://github.com/RodrigoWantuk/WTK.Cocinaris/pull/46), merged by the owner at `3d45bee`
 - **Numbering:** Created as PLAN-0029. Renumbered to PLAN-0032 on 2026-10-28 because merged PR #44 had already published PLAN-0028–PLAN-0030 ([mapping](PLAN-0031-amendment-2026-10-28-coverage-review.md#renumbering-after-pr-44)).
 - **Related issues:** None
 - **Related ADRs:** ADR-0002, ADR-0007
@@ -111,8 +111,8 @@ Apply the F-0028-03 corrections, update the environment guide, then update this 
 - **Current run delivery target:** Phases 1–3 in one run.
 - **Current checkpoint:** All three phases implemented and locally validated, except the product-name portion of Phase 3, which waits for PLAN-0031 decision D-1. Remaining validation is the CI run on the PR head.
 - **Last completed step:** Phase 3. README project status reflects PLAN-0011/0020/0022/0023 delivery and links the PLAN-0031 roadmap. `AGENTS.md` §1 and §6 frontend wording is aligned with ADR-0007. PLAN-0014 and PLAN-0017 header statuses are reconciled with the registry. PLAN-0021 per-tier gating is clarified. PLAN-0023's stale execution state is replaced. `docs/development/environment.md` documents an SDK outside `PATH`, Yarn via Corepack, and the Node.js 20 vs 24 inconsistency.
-- **Exact next action:** Final CI on the draft PR head from `agent/plan-0031-0036-foundation-stack`; owner merge.
-- **Blockers:** None. Owner merge determines delivery state only.
+- **Exact next action:** None. Follow-up work is tracked in the PLAN-0031 coverage review roadmap.
+- **Blockers:** None.
 - **Partially modified areas:** None.
 - **Documentation delivered:** Frontend vulnerability/resolution triage; README; AGENTS.md; environment guide; PLAN-0014/0017/0021/0023 reconciliation entries; PLAN-0031 correction entry.
 - **Validation performed:** Backend Release build with audit (0/0), vulnerable scan clean, architecture 14/14, unit 52/52. Frontend typecheck, lint, Prettier, four guards, Jest 45/369, production build, bundle inspection, `audit:policy` (empty allowlist), frozen-lockfile install. API client audit 0, generate + drift check, typecheck, format.
@@ -160,3 +160,7 @@ Apply the F-0028-03 corrections, update the environment guide, then update this 
 - No change in scope. Renumbered with the rest of the stack, and the PR #44 integration test with Testcontainers now uses the image-argument `PostgreSqlBuilder` constructor (the parameterless one is obsolete in 4.16.0 and fails the warnings-as-errors build).
 - **Validation on the merged tree:** backend format, build with warnings as errors, unit 76/76, architecture 14/14, integration 178/178 (OIDC fixture); migrations applied twice idempotently (10 rows); OpenAPI export matches and lints; API client drift check; frontend lint, typecheck, guards, Vitest 50 files / 410 tests, production build, build-mode guard, audit policy (0 allowlisted).
 - **Not passed locally:** the prototype browser smoke timed out on a page reload after 6 passing journeys, twice, while another project on the host kept the load average near 10 on 2 CPUs. The pre-merge commit `ff5f715` also fails with a navigation timeout under the same load, so this is not a regression of the merge. CI runs the smoke on the PR head.
+
+### 2026-10-28T23:05:00Z — Claude Code
+
+- The owner merged PR #46 (`3d45bee`, 2026-10-28T22:41Z). GitHub Actions did not run on it because the owner account is locked for billing; validation is the owner-host run recorded above. Status set to Completed.
