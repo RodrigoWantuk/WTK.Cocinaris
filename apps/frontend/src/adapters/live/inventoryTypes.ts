@@ -22,6 +22,41 @@ export type InventoryQuantity =
       availability: AvailabilityState;
     };
 
+export type LifecycleState =
+  | "AsAcquired"
+  | "Prepared"
+  | "Frozen"
+  | "Thawing"
+  | "Thawed";
+
+export type TransitionKind =
+  | "Open"
+  | "Move"
+  | "Freeze"
+  | "StartThaw"
+  | "CompleteThaw";
+
+/** Current lifecycle facts; instants are ISO 8601 UTC strings of the latest transition of each kind. */
+export interface LotLifecycle {
+  state: LifecycleState | string;
+  openedAt: string | null;
+  frozenAt: string | null;
+  thawStartedAt: string | null;
+  thawedAt: string | null;
+  /** Source lot when this lot was split off by a partial transition. */
+  parentLotId: string | null;
+}
+
+/** Lifecycle facts of a transition history entry; `relatedLotId` is the other side of a split. */
+export interface LotTransitionFacts {
+  kind: TransitionKind | string;
+  previousState: LifecycleState | string;
+  resultingState: LifecycleState | string;
+  previousStorageLocation: StorageLocation | string;
+  resultingStorageLocation: StorageLocation | string;
+  relatedLotId: string | null;
+}
+
 export interface InventoryLotView {
   lotId: string;
   productId: string;
@@ -37,6 +72,7 @@ export interface InventoryLotView {
   etag: string;
   createdAt: string;
   updatedAt: string;
+  lifecycle: LotLifecycle;
 }
 
 export interface InventoryListPage {
@@ -51,6 +87,7 @@ export interface InventoryHistoryEntry {
   reasonCode: string | null;
   changedFields: string[] | null;
   occurredAt: string;
+  transition: LotTransitionFacts | null;
 }
 
 export type AdjustmentType =
@@ -84,6 +121,18 @@ export interface AdjustLotInput {
   availabilityState?: AvailabilityState | null;
   reasonCode?: string | null;
   note?: string | null;
+}
+
+/**
+ * One lifecycle transition. `partialValue`, in the lot's unit, splits that quantity into a new
+ * derived lot that takes the transition; the source keeps the remainder.
+ */
+export interface TransitionLotInput {
+  kind: TransitionKind;
+  partialValue?: number | null;
+  unit?: MeasuredUnit | null;
+  targetStorageLocation?: StorageLocation | null;
+  targetCustomLocation?: string | null;
 }
 
 export type InventoryApiErrorCode =
@@ -146,6 +195,17 @@ export interface InventoryRepository {
   adjustLot(
     lotId: string,
     input: AdjustLotInput,
+    options: {
+      csrfToken: string;
+      etag: string;
+      idempotencyKey: string;
+      signal?: AbortSignal;
+    },
+  ): Promise<InventoryLotView>;
+  /** Applies a lifecycle transition and returns the source lot. */
+  transitionLot(
+    lotId: string,
+    input: TransitionLotInput,
     options: {
       csrfToken: string;
       etag: string;

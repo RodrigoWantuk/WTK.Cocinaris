@@ -57,7 +57,7 @@ The project-owned metric surface is intentionally bounded:
 
 | Metric | Unit | Labels | Interpretation |
 |---|---|---|---|
-| `cocinaris.inventory.mutations` | `operations` | `operation`, `outcome` | Final create, metadata-update, adjustment, or delete outcome |
+| `cocinaris.inventory.mutations` | `operations` | `operation`, `outcome` | Final create, metadata-update, adjustment, lifecycle-transition, or delete outcome |
 | `cocinaris.inventory.rejections` | `operations` | `category` | Stable validation or domain-rule rejection |
 | `cocinaris.inventory.concurrency_failures` | `operations` | `operation` | Stale optimistic-concurrency mutation |
 | `cocinaris.inventory.idempotency` | `operations` | `operation`, `outcome` | First completion, replay, reused key, or defensive in-progress response |

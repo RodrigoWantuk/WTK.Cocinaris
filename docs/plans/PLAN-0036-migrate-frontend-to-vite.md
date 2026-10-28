@@ -1,13 +1,13 @@
 # PLAN-0036: Migrate the Frontend Toolchain from CRA/CRACO to Vite
 
-- **Status:** Validating
+- **Status:** Completed
 - **Type:** Implementation
 - **Priority:** High
 - **Owner:** Claude Code (claimed 2026-10-28)
 - **Created:** 2026-10-28
 - **Last updated:** 2026-10-28
 - **Branch:** `agent/plan-0031-0036-foundation-stack` (integrates the former stacked branches with `main` after PR #44)
-- **Pull request:** Draft PR from `agent/plan-0031-0036-foundation-stack` (one consolidated PR for PLAN-0031–PLAN-0036)
+- **Pull request:** [PR #46](https://github.com/RodrigoWantuk/WTK.Cocinaris/pull/46), merged by the owner at `3d45bee`
 - **Numbering:** Created as PLAN-0033. Renumbered to PLAN-0036 on 2026-10-28 because merged PR #44 had already published PLAN-0028–PLAN-0030 ([mapping](PLAN-0031-amendment-2026-10-28-coverage-review.md#renumbering-after-pr-44)).
 - **Related ADRs:** ADR-0007; new ADR-0008
 - **Dependencies:** PLAN-0035; owner decision D-2 (approved 2026-10-28)
@@ -57,8 +57,8 @@ Replace Create React App 5 and CRACO, which are deprecated and pull a large unma
   - **Production bug (API errors):** `readProblemDetails` re-read response bodies that openapi-fetch had already consumed. Browsers reject `clone()` on a consumed body, so live inventory and profile errors lost their `errorCode` and field errors: a 409 `profile_already_exists` showed as a generic conflict, and 400 validation errors as messages without fields. CRA's test fetch polyfill allowed the clone, which hid it. The generated client's parsed `error` body is now passed through (`packages/api-client/src/problemDetails.ts`, both live repositories). Existing 409/400 tests now act as regression tests under real `Response` semantics.
   - **Undeclared dependency:** `scripts/guard-interactive-nesting.js` required `@babel/parser`, which was available only through `react-scripts`. Now declared (7.29.9).
   - **Browser smoke orphaned its dev server:** the script killed `yarn` but not its child server, and it accepted any server already on the port, so a later run tested a stale orphan. Fixed with a process group teardown and a fail-fast port check.
-- **Exact next action:** Final CI on the draft PR head from `agent/plan-0031-0036-foundation-stack`; owner merge.
-- **Blockers:** None. Owner merge determines delivery state only.
+- **Exact next action:** None. Follow-up work is tracked in the PLAN-0031 coverage review roadmap.
+- **Blockers:** None.
 - **Known failures or limitations:**
   - Vite warns that the main chunk exceeds 500 KB; code splitting is a later optimization.
   - The Emergent provenance document keeps CRA references as history.
@@ -91,3 +91,7 @@ Replace Create React App 5 and CRACO, which are deprecated and pull a large unma
 - Converted the PR #44 recipe tests from Jest to Vitest (`vi.fn`, `vi.spyOn`, `vi.restoreAllMocks`). One test then failed for a real reason: `liveRecipeRepository` called `readProblemDetails(response)` after openapi-fetch had consumed the body, so in the browser every recipe error lost its `errorCode` (for example `ai_budget_exhausted` became `unavailable`). It now passes the parsed `error`, as the inventory and profile repositories do.
 - **Validation on the merged tree:** backend format, build with warnings as errors, unit 76/76, architecture 14/14, integration 178/178 (OIDC fixture); migrations applied twice idempotently (10 rows); OpenAPI export matches and lints; API client drift check; frontend lint, typecheck, guards, Vitest 50 files / 410 tests, production build, build-mode guard, audit policy (0 allowlisted).
 - **Not passed locally:** the prototype browser smoke timed out on a page reload after 6 passing journeys, twice, while another project on the host kept the load average near 10 on 2 CPUs. The pre-merge commit `ff5f715` also fails with a navigation timeout under the same load, so this is not a regression of the merge. CI runs the smoke on the PR head.
+
+### 2026-10-28T23:05:00Z — Claude Code
+
+- The owner merged PR #46 (`3d45bee`, 2026-10-28T22:41Z). GitHub Actions did not run on it because the owner account is locked for billing; validation is the owner-host run recorded above. Status set to Completed.

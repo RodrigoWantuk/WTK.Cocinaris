@@ -12,8 +12,20 @@ public sealed record UpdateLotRequest(string? ProductName, string StorageLocatio
 /// <summary>Records an explicit immutable inventory adjustment.</summary>
 public sealed record AdjustmentRequest(string Type, decimal? Value, string? AvailabilityState, string? ReasonCode, string? Note);
 
+/// <summary>
+/// Applies one lifecycle transition. A quantity in the lot's unit makes it partial: that quantity
+/// moves into a new derived lot that takes the transition, and the source keeps the remainder.
+/// </summary>
+public sealed record TransitionRequest(string Kind, QuantityRequest? Quantity, string? TargetStorageLocation, string? TargetCustomLocation);
+
 /// <summary>Returns the current representation of an inventory lot.</summary>
-public sealed record LotResponse(Guid LotId, Guid ProductId, string ProductName, QuantityResponse Quantity, string StorageLocation, string? CustomLocation, string? PackageState, DateOnly? PrintedExpirationDate, string? Notes, string Version, DateTimeOffset CreatedAt, DateTimeOffset UpdatedAt);
+public sealed record LotResponse(Guid LotId, Guid ProductId, string ProductName, QuantityResponse Quantity, string StorageLocation, string? CustomLocation, string? PackageState, DateOnly? PrintedExpirationDate, string? Notes, string Version, DateTimeOffset CreatedAt, DateTimeOffset UpdatedAt, LotLifecycleResponse Lifecycle);
+
+/// <summary>Returns the lot's lifecycle state, the most recent instant of each transition, and its source lot when derived.</summary>
+public sealed record LotLifecycleResponse(string State, DateTimeOffset? OpenedAt, DateTimeOffset? FrozenAt, DateTimeOffset? ThawStartedAt, DateTimeOffset? ThawedAt, Guid? ParentLotId);
+
+/// <summary>Returns the lifecycle facts of a transition history entry; the related lot is the other side of a partial transition.</summary>
+public sealed record LotTransitionResponse(string Kind, string PreviousState, string ResultingState, string PreviousStorageLocation, string ResultingStorageLocation, Guid? RelatedLotId);
 
 /// <summary>Returns a measured or qualitative quantity without mixing the two modes.</summary>
 public sealed record QuantityResponse(decimal? MeasuredValue, string? Unit, string? AvailabilityState);
@@ -23,7 +35,7 @@ public sealed record QuantityResponse(decimal? MeasuredValue, string? Unit, stri
 /// Metadata projections expose only changed field names and never values, notes, tokens, or other
 /// private request content.
 /// </summary>
-public sealed record LotHistoryResponse(Guid EntryId, string Kind, string? Type, QuantityResponse? PreviousQuantity, QuantityResponse? ResultingQuantity, string? ReasonCode, IReadOnlyList<string>? ChangedFields, DateTimeOffset OccurredAt);
+public sealed record LotHistoryResponse(Guid EntryId, string Kind, string? Type, QuantityResponse? PreviousQuantity, QuantityResponse? ResultingQuantity, string? ReasonCode, IReadOnlyList<string>? ChangedFields, DateTimeOffset OccurredAt, LotTransitionResponse? Transition);
 
 /// <summary>Returns a cursor-paginated owner-scoped inventory list.</summary>
 public sealed record ListLotsResponse(IReadOnlyList<LotResponse> Items, string? NextCursor);

@@ -126,6 +126,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/inventory/lots/{lotId}/transitions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** POST /api/v1/inventory/lots/{lotId}/transitions */
+        post: operations["postApiV1InventoryLotsLotIdTransitions"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/inventory/preparations": {
         parameters: {
             query?: never;
@@ -501,7 +518,23 @@ export interface components {
             previousQuantity: null | components["schemas"]["QuantityResponse"];
             reasonCode: null | string;
             resultingQuantity: null | components["schemas"]["QuantityResponse"];
+            transition: null | components["schemas"]["LotTransitionResponse"];
             type: null | string;
+        };
+        /** @description Returns the lot's lifecycle state, the most recent instant of each transition, and its source lot when derived. */
+        LotLifecycleResponse: {
+            /** Format: date-time */
+            frozenAt: null | string;
+            /** Format: date-time */
+            openedAt: null | string;
+            /** Format: uuid */
+            parentLotId: null | string;
+            /** @enum {string} */
+            state: "AsAcquired" | "Prepared" | "Frozen" | "Thawing" | "Thawed";
+            /** Format: date-time */
+            thawStartedAt: null | string;
+            /** Format: date-time */
+            thawedAt: null | string;
         };
         /** @description Returns preparation batches that consumed or produced one owned lot. Each direction returns at
          *     most fifty batches; its truncation flag is true when additional older relationships exist. */
@@ -518,6 +551,7 @@ export interface components {
             /** Format: date-time */
             createdAt: string;
             customLocation: null | string;
+            lifecycle: components["schemas"]["LotLifecycleResponse"];
             /** Format: uuid */
             lotId: string;
             notes: null | string;
@@ -532,6 +566,19 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
             version: string;
+        };
+        /** @description Returns the lifecycle facts of a transition history entry; the related lot is the other side of a partial transition. */
+        LotTransitionResponse: {
+            /** @enum {string} */
+            kind: "Open" | "Move" | "Freeze" | "StartThaw" | "CompleteThaw";
+            /** @enum {string} */
+            previousState: "AsAcquired" | "Prepared" | "Frozen" | "Thawing" | "Thawed";
+            previousStorageLocation: string;
+            /** Format: uuid */
+            relatedLotId: null | string;
+            /** @enum {string} */
+            resultingState: "AsAcquired" | "Prepared" | "Frozen" | "Thawing" | "Thawed";
+            resultingStorageLocation: string;
         };
         /**
          * @description Explicit preference or restriction command action.
@@ -858,6 +905,15 @@ export interface components {
             timeZone: null | string;
             /** Format: uuid */
             userId: string;
+        };
+        /** @description Applies one lifecycle transition. A quantity in the lot's unit makes it partial: that quantity
+         *     moves into a new derived lot that takes the transition, and the source keeps the remainder. */
+        TransitionRequest: {
+            /** @enum {string} */
+            kind: "Open" | "Move" | "Freeze" | "StartThaw" | "CompleteThaw";
+            quantity: null | components["schemas"]["QuantityRequest"];
+            targetCustomLocation: null | string;
+            targetStorageLocation: ("Pantry" | "Refrigerator" | "Freezer" | "Other") | null;
         };
         /** @description Corrects mutable lot metadata without accepting any authoritative owner identifier. */
         UpdateLotRequest: {
@@ -1552,6 +1608,131 @@ export interface operations {
             };
             /** @description Not Found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    postApiV1InventoryLotsLotIdTransitions: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Required CSRF token issued by GET /api/v1/session. */
+                "X-CSRF-TOKEN": string;
+                /** @description Required opaque concurrency ETag from the current lot representation. */
+                "If-Match": string;
+                /** @description Required UUID key for semantic create or adjustment replay. */
+                "Idempotency-Key": string;
+            };
+            path: {
+                lotId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TransitionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    /** @description Opaque current version required by If-Match on subsequent mutations. */
+                    ETag?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LotResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description The request content type is not supported. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Precondition Required */
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description The mutation rate limit was exceeded. */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };

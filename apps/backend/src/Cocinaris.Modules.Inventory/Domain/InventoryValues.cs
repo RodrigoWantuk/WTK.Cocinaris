@@ -69,14 +69,79 @@ public enum InventoryTransactionType
     /// <summary>Qualitative availability change.</summary>
     AvailabilityChanged,
     /// <summary>Soft deletion of an erroneously created lot.</summary>
-    Deleted
-
-    ,
+    Deleted,
     /// <summary>Consumes a measured parent quantity as an input to an authoritative preparation batch.</summary>
     PreparationInputConsumed,
     /// <summary>Creates an output lot produced by an authoritative preparation batch.</summary>
-    PreparationOutputCreated
+    PreparationOutputCreated,
+    /// <summary>Changes the lifecycle state, package state, or storage of a whole lot.</summary>
+    LifecycleTransition,
+    /// <summary>Reduces a source lot by the quantity moved into a derived lot by a partial transition.</summary>
+    TransitionSplit,
+    /// <summary>Creates a derived lot holding the quantity taken by a partial transition.</summary>
+    TransitionDerived
 }
+
+/// <summary>
+/// Food lifecycle state of a lot, independent of package state and storage location. A product
+/// bought frozen stays <see cref="AsAcquired"/> in the freezer until the user transitions it.
+/// </summary>
+public enum LotLifecycleState
+{
+    /// <summary>The lot is in the state in which it was acquired or entered.</summary>
+    AsAcquired,
+    /// <summary>The lot was produced by a preparation batch.</summary>
+    Prepared,
+    /// <summary>The user froze the lot.</summary>
+    Frozen,
+    /// <summary>The lot left the freezer and is thawing.</summary>
+    Thawing,
+    /// <summary>The lot finished thawing.</summary>
+    Thawed
+}
+
+/// <summary>User-initiated lifecycle transition kinds.</summary>
+public enum LotTransitionKind
+{
+    /// <summary>Opens the package.</summary>
+    Open,
+    /// <summary>Moves the lot to another non-freezer storage location.</summary>
+    Move,
+    /// <summary>Freezes the lot.</summary>
+    Freeze,
+    /// <summary>Takes the lot out of the freezer to thaw.</summary>
+    StartThaw,
+    /// <summary>Records that thawing finished.</summary>
+    CompleteThaw
+}
+
+/// <summary>
+/// Current lifecycle facts of a lot. Timestamps are UTC instants of the most recent transition of
+/// each kind; full history lives in immutable transactions.
+/// </summary>
+/// <param name="State">Current lifecycle state.</param>
+/// <param name="OpenedAt">When the package was opened, if recorded.</param>
+/// <param name="FrozenAt">When the lot was last frozen, if it is or was frozen.</param>
+/// <param name="ThawStartedAt">When the current thaw started; cleared when the lot is frozen again.</param>
+/// <param name="ThawedAt">When the current thaw finished; cleared when the lot is frozen again.</param>
+/// <param name="ParentLotId">Source lot of a partial transition, for derived lots.</param>
+public sealed record LotLifecycle(LotLifecycleState State, DateTimeOffset? OpenedAt, DateTimeOffset? FrozenAt, DateTimeOffset? ThawStartedAt, DateTimeOffset? ThawedAt, Guid? ParentLotId)
+{
+    /// <summary>Gets the lifecycle of a newly entered lot.</summary>
+    public static LotLifecycle AsAcquired { get; } = new(LotLifecycleState.AsAcquired, null, null, null, null, null);
+
+    /// <summary>Gets the lifecycle of a newly prepared output lot.</summary>
+    public static LotLifecycle Prepared { get; } = new(LotLifecycleState.Prepared, null, null, null, null, null);
+}
+
+/// <summary>Immutable lifecycle facts recorded by a transition transaction.</summary>
+/// <param name="Kind">Requested transition kind.</param>
+/// <param name="PreviousState">Lifecycle state before the transition.</param>
+/// <param name="ResultingState">Lifecycle state after the transition.</param>
+/// <param name="PreviousStorage">Storage location before the transition.</param>
+/// <param name="ResultingStorage">Storage location after the transition.</param>
+/// <param name="RelatedLotId">The derived lot (on a split) or the source lot (on a derived lot).</param>
+public sealed record LotTransitionDetail(LotTransitionKind Kind, LotLifecycleState PreviousState, LotLifecycleState ResultingState, StorageLocation PreviousStorage, StorageLocation ResultingStorage, Guid? RelatedLotId);
 
 /// <summary>Validated product name and normalized search value.</summary>
 public sealed record ProductName

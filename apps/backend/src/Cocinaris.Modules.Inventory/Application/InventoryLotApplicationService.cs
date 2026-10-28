@@ -13,10 +13,20 @@ public sealed record InventoryQuantity(decimal? MeasuredValue, string? Unit, str
 /// Application representation of one owner-scoped inventory lot. <see cref="ConcurrencyToken"/>
 /// is random, resource-owned state; only an outer HTTP adapter may encode it as an ETag.
 /// </summary>
-public sealed record InventoryLotView(Guid LotId, Guid ProductId, string ProductName, InventoryQuantity Quantity, string StorageLocation, string? CustomLocation, string? PackageState, DateOnly? PrintedExpirationDate, string? Notes, Guid ConcurrencyToken, DateTimeOffset CreatedAt, DateTimeOffset UpdatedAt);
+/// <remarks>
+/// <see cref="Lifecycle"/> is optional only so that idempotency replays stored before lifecycle
+/// support still deserialize; current reads and writes always populate it.
+/// </remarks>
+public sealed record InventoryLotView(Guid LotId, Guid ProductId, string ProductName, InventoryQuantity Quantity, string StorageLocation, string? CustomLocation, string? PackageState, DateOnly? PrintedExpirationDate, string? Notes, Guid ConcurrencyToken, DateTimeOffset CreatedAt, DateTimeOffset UpdatedAt, InventoryLifecycleView? Lifecycle = null);
+
+/// <summary>Current lifecycle facts of a lot: state name, most recent transition instants, and parent lot.</summary>
+public sealed record InventoryLifecycleView(string State, DateTimeOffset? OpenedAt, DateTimeOffset? FrozenAt, DateTimeOffset? ThawStartedAt, DateTimeOffset? ThawedAt, Guid? ParentLotId);
+
+/// <summary>Lifecycle facts of a transition history entry, with the related lot of a partial transition.</summary>
+public sealed record InventoryTransitionView(string Kind, string PreviousState, string ResultingState, string PreviousStorageLocation, string ResultingStorageLocation, Guid? RelatedLotId);
 
 /// <summary>Application representation of an immutable inventory history entry.</summary>
-public sealed record InventoryHistoryEntry(Guid EntryId, string Kind, string? TransactionType, InventoryQuantity? PreviousQuantity, InventoryQuantity? ResultingQuantity, string? ReasonCode, IReadOnlyList<string>? ChangedFields, DateTimeOffset OccurredAt);
+public sealed record InventoryHistoryEntry(Guid EntryId, string Kind, string? TransactionType, InventoryQuantity? PreviousQuantity, InventoryQuantity? ResultingQuantity, string? ReasonCode, IReadOnlyList<string>? ChangedFields, DateTimeOffset OccurredAt, InventoryTransitionView? Transition = null);
 
 /// <summary>Cursor-paginated application inventory lot list with a trusted persistence position.</summary>
 public sealed record InventoryLotList(IReadOnlyList<InventoryLotView> Items, InventoryLotReadCursor? NextCursor);
@@ -68,6 +78,12 @@ public sealed record UpdateInventoryLotCommand(Guid LotId, string? ProductName, 
 /// <summary>Transport-neutral immutable inventory adjustment input.</summary>
 public sealed record AdjustInventoryLotCommand(Guid LotId, string? Type, decimal? Value, string? AvailabilityState, string? ReasonCode, string? Note, Guid? IdempotencyKey, InventoryVersionPrecondition Precondition, string CorrelationId);
 
+/// <summary>
+/// Transport-neutral lifecycle transition input. A measured value makes the transition partial; its
+/// unit must match the lot's unit. A target storage location is required for a move.
+/// </summary>
+public sealed record TransitionInventoryLotCommand(Guid LotId, string? Kind, decimal? MeasuredValue, string? Unit, string? TargetStorageLocation, string? TargetCustomLocation, Guid? IdempotencyKey, InventoryVersionPrecondition Precondition, string CorrelationId);
+
 /// <summary>Transport-neutral soft-deletion input.</summary>
 public sealed record DeleteInventoryLotCommand(Guid LotId, InventoryVersionPrecondition Precondition, string CorrelationId);
 
@@ -117,6 +133,13 @@ public interface IAdjustInventoryLotUseCase
 {
     /// <summary>Applies one idempotent inventory adjustment.</summary>
     Task<InventoryApplicationResult<InventoryLotView>> AdjustAsync(AdjustInventoryLotCommand command, CancellationToken cancellationToken);
+}
+
+/// <summary>Executes the owner-scoped lifecycle transition use case.</summary>
+public interface ITransitionInventoryLotUseCase
+{
+    /// <summary>Applies one idempotent whole or partial lifecycle transition under optimistic concurrency.</summary>
+    Task<InventoryApplicationResult<InventoryLotView>> TransitionAsync(TransitionInventoryLotCommand command, CancellationToken cancellationToken);
 }
 
 /// <summary>Executes the owner-scoped soft-delete use case.</summary>
@@ -277,6 +300,74 @@ public sealed class InventoryLotApplicationWorkflow(
         return await MutateAsync(command.LotId, command.Precondition, command.CorrelationId, command.IdempotencyKey, "inventory.lots.adjust", hash, "inventory.lot.adjusted", static (_, _) => "{}", cancellationToken, (lot, _, now) => lifecycleUseCase.ApplyAdjustment(lot, adjustment, command.IdempotencyKey.Value, now));
     }
 
+    /// <summary>
+    /// Applies one idempotent lifecycle transition. A partial transition splits the lot: the source
+    /// keeps the remainder and the derived lot takes the transition, in one atomic write. The
+    /// returned representation is always the source lot.
+    /// </summary>
+    public async Task<InventoryApplicationResult<InventoryLotView>> TransitionAsync(TransitionInventoryLotCommand command, CancellationToken cancellationToken)
+    {
+        if (command.IdempotencyKey is null)
+        {
+            return Failure<InventoryLotView>("validation_failed", "A UUID Idempotency-Key header is required.", FieldErrors("Idempotency-Key", "A UUID Idempotency-Key header is required."));
+        }
+
+        // Owner scope before body validation or precondition evaluation (nondisclosing 404).
+        if (await FailIfNotOwnedActiveAsync(command.LotId, cancellationToken) is { } missing)
+        {
+            return missing;
+        }
+
+        if (!Enum.TryParse<LotTransitionKind>(command.Kind, ignoreCase: false, out var kind) || !Enum.IsDefined(kind) || int.TryParse(command.Kind, out _))
+        {
+            return Failure<InventoryLotView>("domain_rule_violated", "kind must be Open, Move, Freeze, StartThaw, or CompleteThaw.", FieldErrors("kind", "kind must be Open, Move, Freeze, StartThaw, or CompleteThaw."));
+        }
+
+        LotStorage? target = null;
+        if (command.TargetStorageLocation is not null || command.TargetCustomLocation is not null)
+        {
+            if (!ValidateMetadata(command.TargetStorageLocation, command.TargetCustomLocation, null, null, out _))
+            {
+                return Failure<InventoryLotView>("domain_rule_violated", "The target storage location is invalid.", FieldErrors("targetStorageLocation", "The target storage location is invalid."));
+            }
+
+            target = ToStorage(command.TargetStorageLocation!, command.TargetCustomLocation);
+        }
+
+        var partial = command.MeasuredValue is not null || command.Unit is not null;
+        if (partial && (command.MeasuredValue is not > 0m || command.Unit is not ("Gram" or "Milliliter" or "Unit")))
+        {
+            return Failure<InventoryLotView>("domain_rule_violated", "A partial quantity needs a positive value and a canonical unit.", FieldErrors("quantity", "A partial quantity needs a positive value and a canonical unit."));
+        }
+
+        var user = await currentUser.GetCurrentAsync(cancellationToken);
+        var hash = Hash(new { command.LotId, Kind = kind.ToString(), Value = command.MeasuredValue?.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture), command.Unit, Target = target?.Location.ToString(), TargetCustom = target?.CustomLocation });
+        var prior = await writeStore.FindIdempotencyAsync(user.Id, "inventory.lots.transition", command.IdempotencyKey.Value, cancellationToken);
+        if (prior is not null)
+        {
+            return Replay(prior, hash);
+        }
+
+        (InventoryLot Lot, InventoryTransaction Transaction)? derived = null;
+        var audit = JsonSerializer.Serialize(new { kind = kind.ToString(), partial });
+        return await MutateAsync(command.LotId, command.Precondition, command.CorrelationId, command.IdempotencyKey, "inventory.lots.transition", hash, "inventory.lot.transitioned", (_, _) => audit, cancellationToken, (lot, _, now) =>
+        {
+            if (!partial)
+            {
+                return lot.Transition(kind, target, command.IdempotencyKey.Value, now);
+            }
+
+            if (lot.Quantity is not LotQuantity.Measured measured || measured.Unit.ToString() != command.Unit)
+            {
+                throw new InvalidOperationException("A partial quantity must use the lot's measured unit.");
+            }
+
+            var split = lot.SplitTransition(kind, command.MeasuredValue!.Value, target, command.IdempotencyKey.Value, now);
+            derived = (split.Derived, split.DerivedTransaction);
+            return split.SourceTransaction;
+        }, derivedResult: () => derived);
+    }
+
     /// <summary>Soft-deletes one active owner-scoped lot and records its immutable deletion transition.</summary>
     public async Task<InventoryApplicationResult<InventoryLotView>> DeleteAsync(DeleteInventoryLotCommand command, CancellationToken cancellationToken)
     {
@@ -295,7 +386,7 @@ public sealed class InventoryLotApplicationWorkflow(
         var transactions = await readStore.GetHistoryAsync(user.Id, lotId, cancellationToken);
         return transactions is null
             ? Failure<IReadOnlyList<InventoryHistoryEntry>>("resource_not_found", "The inventory lot was not found.")
-            : InventoryApplicationResult<IReadOnlyList<InventoryHistoryEntry>>.Succeeded(transactions.Select(item => new InventoryHistoryEntry(item.EntryId, item.Kind, item.TransactionType, ToQuantity(item.PreviousMeasuredValue, item.PreviousMeasuredUnit, item.PreviousAvailabilityState), ToQuantity(item.ResultingMeasuredValue, item.ResultingMeasuredUnit, item.ResultingAvailabilityState), item.ReasonCode, item.ChangedFields, item.OccurredAt)).ToList());
+            : InventoryApplicationResult<IReadOnlyList<InventoryHistoryEntry>>.Succeeded(transactions.Select(item => new InventoryHistoryEntry(item.EntryId, item.Kind, item.TransactionType, ToQuantity(item.PreviousMeasuredValue, item.PreviousMeasuredUnit, item.PreviousAvailabilityState), ToQuantity(item.ResultingMeasuredValue, item.ResultingMeasuredUnit, item.ResultingAvailabilityState), item.ReasonCode, item.ChangedFields, item.OccurredAt, item.Transition)).ToList());
     }
 
     /// <summary>
@@ -311,7 +402,7 @@ public sealed class InventoryLotApplicationWorkflow(
             : null;
     }
 
-    private async Task<InventoryApplicationResult<InventoryLotView>> MutateAsync(Guid lotId, InventoryVersionPrecondition precondition, string correlationId, Guid? idempotencyKey, string? idempotencyScope, string? idempotencyHash, string auditEventName, Func<InventoryLot, Product, string> auditMetadata, CancellationToken cancellationToken, Func<InventoryLot, Product, DateTimeOffset, InventoryTransaction?> operation, InventoryApplicationSuccess success = InventoryApplicationSuccess.Succeeded)
+    private async Task<InventoryApplicationResult<InventoryLotView>> MutateAsync(Guid lotId, InventoryVersionPrecondition precondition, string correlationId, Guid? idempotencyKey, string? idempotencyScope, string? idempotencyHash, string auditEventName, Func<InventoryLot, Product, string> auditMetadata, CancellationToken cancellationToken, Func<InventoryLot, Product, DateTimeOffset, InventoryTransaction?> operation, InventoryApplicationSuccess success = InventoryApplicationSuccess.Succeeded, Func<(InventoryLot Lot, InventoryTransaction Transaction)?>? derivedResult = null)
     {
         // Ownership-scoped load precedes If-Match evaluation so foreign/missing lots never surface 412/428.
         var user = await currentUser.GetCurrentAsync(cancellationToken);
@@ -349,7 +440,8 @@ public sealed class InventoryLotApplicationWorkflow(
             var transaction = operation(state.Lot, state.Product, now);
             var response = ToView(state.Lot, state.Product);
             var idempotency = idempotencyKey is null ? null : new InventoryIdempotencyWrite(idempotencyKey.Value, idempotencyScope!, idempotencyHash!, success, response, now);
-            var outcome = await writeStore.SaveMutationAsync(new InventoryLotMutationWrite(user.Id, state.Lot, state.Product, expectedVersion, transaction, auditEventName, auditMetadataJson, correlationId, idempotency), cancellationToken);
+            var derived = derivedResult?.Invoke();
+            var outcome = await writeStore.SaveMutationAsync(new InventoryLotMutationWrite(user.Id, state.Lot, state.Product, expectedVersion, transaction, auditEventName, auditMetadataJson, correlationId, idempotency, derived?.Lot, derived?.Transaction), cancellationToken);
             if (outcome == InventoryWriteOutcome.Saved) { return success == InventoryApplicationSuccess.Deleted ? InventoryApplicationResult<InventoryLotView>.Succeeded(null, InventoryApplicationSuccess.Deleted) : InventoryApplicationResult<InventoryLotView>.Succeeded(response, success, idempotencyKey is null ? InventoryIdempotencyDisposition.NotApplicable : InventoryIdempotencyDisposition.Completed); }
             if (outcome == InventoryWriteOutcome.ConcurrencyConflict)
             {
@@ -384,8 +476,8 @@ public sealed class InventoryLotApplicationWorkflow(
     }
 
     private InventoryApplicationResult<InventoryLotView> Success(InventoryLotView view) => InventoryApplicationResult<InventoryLotView>.Succeeded(view);
-    private static InventoryLotView ToView(InventoryLot lot, Product product) => new(lot.Id, lot.ProductId, product.DisplayName, new InventoryQuantity(lot.Quantity is LotQuantity.Measured measured ? measured.Value : null, lot.Quantity is LotQuantity.Measured unit ? unit.Unit.ToString() : null, lot.Quantity is LotQuantity.Availability availability ? availability.State.ToString() : null), lot.Storage.Location.ToString(), lot.Storage.CustomLocation, lot.PackageState?.ToString(), lot.PrintedExpiration?.Date, lot.Notes?.Value, lot.ConcurrencyToken, lot.CreatedAt, lot.UpdatedAt);
-    private static InventoryLotView ToView(InventoryLotReadModel lot) => new(lot.LotId, lot.ProductId, lot.ProductName, new InventoryQuantity(lot.MeasuredValue, lot.MeasuredUnit, lot.AvailabilityState), lot.StorageLocation, lot.CustomLocation, lot.PackageState, lot.PrintedExpirationDate, lot.Notes, lot.ConcurrencyToken, lot.CreatedAt, lot.UpdatedAt);
+    private static InventoryLotView ToView(InventoryLot lot, Product product) => new(lot.Id, lot.ProductId, product.DisplayName, new InventoryQuantity(lot.Quantity is LotQuantity.Measured measured ? measured.Value : null, lot.Quantity is LotQuantity.Measured unit ? unit.Unit.ToString() : null, lot.Quantity is LotQuantity.Availability availability ? availability.State.ToString() : null), lot.Storage.Location.ToString(), lot.Storage.CustomLocation, lot.PackageState?.ToString(), lot.PrintedExpiration?.Date, lot.Notes?.Value, lot.ConcurrencyToken, lot.CreatedAt, lot.UpdatedAt, new InventoryLifecycleView(lot.Lifecycle.State.ToString(), lot.Lifecycle.OpenedAt, lot.Lifecycle.FrozenAt, lot.Lifecycle.ThawStartedAt, lot.Lifecycle.ThawedAt, lot.Lifecycle.ParentLotId));
+    private static InventoryLotView ToView(InventoryLotReadModel lot) => new(lot.LotId, lot.ProductId, lot.ProductName, new InventoryQuantity(lot.MeasuredValue, lot.MeasuredUnit, lot.AvailabilityState), lot.StorageLocation, lot.CustomLocation, lot.PackageState, lot.PrintedExpirationDate, lot.Notes, lot.ConcurrencyToken, lot.CreatedAt, lot.UpdatedAt, lot.Lifecycle);
     private static InventoryQuantity? ToQuantity(decimal? measuredValue, string? unit, string? availabilityState) => measuredValue is null && unit is null && availabilityState is null ? null : new InventoryQuantity(measuredValue, unit, availabilityState);
     private static InventoryApplicationResult<T> Failure<T>(string code, string detail, IReadOnlyDictionary<string, string[]>? errors = null) => InventoryApplicationResult<T>.Failure(code, detail, errors);
     private static InventoryLot CreateDomainLot(Guid ownerUserId, Guid productId, CreateInventoryLotCommand command, DateTimeOffset now)
@@ -466,6 +558,13 @@ public sealed class AdjustInventoryLotHandler(InventoryLotApplicationWorkflow wo
 {
     /// <inheritdoc />
     public Task<InventoryApplicationResult<InventoryLotView>> AdjustAsync(AdjustInventoryLotCommand command, CancellationToken cancellationToken) => workflow.AdjustAsync(command, cancellationToken);
+}
+
+/// <summary>Concrete lifecycle transition application handler.</summary>
+public sealed class TransitionInventoryLotHandler(InventoryLotApplicationWorkflow workflow) : ITransitionInventoryLotUseCase
+{
+    /// <inheritdoc />
+    public Task<InventoryApplicationResult<InventoryLotView>> TransitionAsync(TransitionInventoryLotCommand command, CancellationToken cancellationToken) => workflow.TransitionAsync(command, cancellationToken);
 }
 
 /// <summary>Concrete soft-delete application handler.</summary>

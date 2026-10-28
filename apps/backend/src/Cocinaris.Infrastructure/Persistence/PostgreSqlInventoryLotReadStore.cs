@@ -62,7 +62,7 @@ public sealed class PostgreSqlInventoryLotReadStore(ApplicationDbContext databas
 
         var transactions = await database.Transactions.AsNoTracking()
             .Where(item => item.OwnerUserId == ownerUserId && item.LotId == lotId)
-            .Select(item => new InventoryHistoryReadModel(item.Id, "Transaction", item.Type, item.PreviousMeasuredValue, item.PreviousMeasuredUnit, item.PreviousAvailabilityState, item.ResultingMeasuredValue, item.ResultingMeasuredUnit, item.ResultingAvailabilityState, item.ReasonCode, null, item.OccurredAt))
+            .Select(item => new InventoryHistoryReadModel(item.Id, "Transaction", item.Type, item.PreviousMeasuredValue, item.PreviousMeasuredUnit, item.PreviousAvailabilityState, item.ResultingMeasuredValue, item.ResultingMeasuredUnit, item.ResultingAvailabilityState, item.ReasonCode, null, item.OccurredAt, item.TransitionKind == null ? null : new InventoryTransitionView(item.TransitionKind, item.PreviousLifecycleState!, item.ResultingLifecycleState!, item.PreviousStorageLocation!, item.ResultingStorageLocation!, item.RelatedLotId)))
             .ToListAsync(cancellationToken);
         var corrections = await database.AuditEvents.AsNoTracking()
             .Where(item => item.ActorUserId == ownerUserId && item.TargetType == "inventory_lot" && item.TargetId == lotId && item.EventName == "inventory.lot.metadata_corrected")
@@ -72,7 +72,7 @@ public sealed class PostgreSqlInventoryLotReadStore(ApplicationDbContext databas
         return transactions.Concat(projectedCorrections).OrderByDescending(item => item.OccurredAt).ThenByDescending(item => item.EntryId).ToList();
     }
 
-    private static InventoryLotReadModel ToReadModel(LotRecord lot, string productName) => new(lot.Id, lot.ProductId, productName, lot.MeasuredValue, lot.MeasuredUnit, lot.AvailabilityState, lot.StorageLocation, lot.CustomLocation, lot.PackageState, lot.PrintedExpirationDate, lot.Notes, lot.ConcurrencyToken, lot.CreatedAt, lot.UpdatedAt, lot.DeletedAt);
+    private static InventoryLotReadModel ToReadModel(LotRecord lot, string productName) => new(lot.Id, lot.ProductId, productName, lot.MeasuredValue, lot.MeasuredUnit, lot.AvailabilityState, lot.StorageLocation, lot.CustomLocation, lot.PackageState, lot.PrintedExpirationDate, lot.Notes, lot.ConcurrencyToken, lot.CreatedAt, lot.UpdatedAt, lot.DeletedAt, new InventoryLifecycleView(lot.LifecycleState, lot.OpenedAt, lot.FrozenAt, lot.ThawStartedAt, lot.ThawedAt, lot.ParentLotId));
 
     private static IReadOnlyList<string> ReadChangedFields(string metadataJson)
     {

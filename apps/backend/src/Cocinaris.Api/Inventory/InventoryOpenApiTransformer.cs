@@ -71,6 +71,12 @@ internal static class InventoryOpenApiTransformer
         ConfigureStringEnum(components, "CreateLotRequest", "packageState", true, "Sealed", "Opened", "Unknown");
         ConfigureStringEnum(components, "UpdateLotRequest", "packageState", true, "Sealed", "Opened", "Unknown");
         ConfigureStringEnum(components, "AdjustmentRequest", "type", false, "Consume", "Discard", "Correct", "AvailabilityChanged");
+        ConfigureStringEnum(components, "TransitionRequest", "kind", false, "Open", "Move", "Freeze", "StartThaw", "CompleteThaw");
+        ConfigureStringEnum(components, "TransitionRequest", "targetStorageLocation", true, "Pantry", "Refrigerator", "Freezer", "Other");
+        ConfigureStringEnum(components, "LotLifecycleResponse", "state", false, "AsAcquired", "Prepared", "Frozen", "Thawing", "Thawed");
+        ConfigureStringEnum(components, "LotTransitionResponse", "kind", false, "Open", "Move", "Freeze", "StartThaw", "CompleteThaw");
+        ConfigureStringEnum(components, "LotTransitionResponse", "previousState", false, "AsAcquired", "Prepared", "Frozen", "Thawing", "Thawed");
+        ConfigureStringEnum(components, "LotTransitionResponse", "resultingState", false, "AsAcquired", "Prepared", "Frozen", "Thawing", "Thawed");
         ConfigureQuantityModeSchema(components, "QuantityRequest");
         ConfigureQuantityModeSchema(components, "QuantityResponse");
 
@@ -121,13 +127,13 @@ internal static class InventoryOpenApiTransformer
                     EnsureProblemResponse(document, operation, "429", "The mutation rate limit was exceeded.");
                 }
 
-                if ((path.Contains("/lots", StringComparison.Ordinal) && (method == HttpMethod.Patch || method == HttpMethod.Delete)) || path.EndsWith("/adjustments", StringComparison.Ordinal))
+                if ((path.Contains("/lots", StringComparison.Ordinal) && (method == HttpMethod.Patch || method == HttpMethod.Delete)) || path.EndsWith("/adjustments", StringComparison.Ordinal) || path.EndsWith("/transitions", StringComparison.Ordinal))
                 {
                     operation.Parameters ??= [];
                     operation.Parameters.Add(Header("If-Match", "Required opaque concurrency ETag from the current lot representation."));
                 }
 
-                if ((path.EndsWith("/lots", StringComparison.Ordinal) && method == HttpMethod.Post) || path.EndsWith("/adjustments", StringComparison.Ordinal))
+                if ((path.EndsWith("/lots", StringComparison.Ordinal) && method == HttpMethod.Post) || path.EndsWith("/adjustments", StringComparison.Ordinal) || path.EndsWith("/transitions", StringComparison.Ordinal))
                 {
                     operation.Parameters ??= [];
                     operation.Parameters.Add(Header("Idempotency-Key", "Required UUID key for semantic create or adjustment replay."));
@@ -147,7 +153,7 @@ internal static class InventoryOpenApiTransformer
 
                 var emitsLotEtag = path.EndsWith("/lots", StringComparison.Ordinal) && method == HttpMethod.Post ||
                     path.EndsWith("/lots/{lotId}", StringComparison.Ordinal) && (method == HttpMethod.Get || method == HttpMethod.Patch) ||
-                    path.EndsWith("/adjustments", StringComparison.Ordinal) && method == HttpMethod.Post;
+                    (path.EndsWith("/adjustments", StringComparison.Ordinal) || path.EndsWith("/transitions", StringComparison.Ordinal)) && method == HttpMethod.Post;
                 foreach (var response in emitsLotEtag ? (operation.Responses ?? []).Where(response => response.Key is "200" or "201") : [])
                 {
                     if (response.Value is OpenApiResponse typedResponse)
@@ -261,12 +267,21 @@ internal static class InventoryOpenApiTransformer
             AddProblemExample(operation, "422", "domainRuleFailure", "The adjustment violates an inventory rule.", ProblemExample(422, "domain_rule_violated", "The adjustment exceeds the current quantity.", """{"value":["The adjustment exceeds the current quantity."]}"""));
         }
 
+        if (path.EndsWith("/transitions", StringComparison.Ordinal) && method == HttpMethod.Post)
+        {
+            AddRequestExample(operation, "freezePart", "Freezes 200 g of the lot; a derived frozen lot takes that quantity.", """{"kind":"Freeze","quantity":{"measuredValue":200,"unit":"Gram","availabilityState":null},"targetStorageLocation":null,"targetCustomLocation":null}""");
+            AddRequestExample(operation, "open", "Opens the whole lot's package.", """{"kind":"Open","quantity":null,"targetStorageLocation":null,"targetCustomLocation":null}""");
+            AddResponseExample(operation, "200", "sourceAfterPartialFreeze", "The source lot after a partial freeze keeps the remainder.", LotExample("opaque-transitioned-version", 300));
+            AddProblemExample(operation, "412", "staleEtag", "The supplied opaque ETag is no longer current.", ProblemExample(412, "precondition_failed", "The inventory lot was modified."));
+            AddProblemExample(operation, "422", "transitionNotAllowed", "The transition does not apply to the lot's current state.", ProblemExample(422, "domain_rule_violated", "Only a thawing lot can finish thawing."));
+        }
+
         if (path.EndsWith("/lots", StringComparison.Ordinal) && method == HttpMethod.Get)
         {
             AddProblemExample(operation, "400", "invalidCursor", "The cursor is invalid or has been tampered with.", ProblemExample(400, "invalid_cursor", "The cursor is invalid."));
         }
 
-        if ((method == HttpMethod.Patch || method == HttpMethod.Delete || path.EndsWith("/adjustments", StringComparison.Ordinal)) && path.Contains("/lots/", StringComparison.Ordinal))
+        if ((method == HttpMethod.Patch || method == HttpMethod.Delete || path.EndsWith("/adjustments", StringComparison.Ordinal) || path.EndsWith("/transitions", StringComparison.Ordinal)) && path.Contains("/lots/", StringComparison.Ordinal))
         {
             AddProblemExample(operation, "428", "missingPrecondition", "The mutation requires If-Match.", ProblemExample(428, "precondition_required", "If-Match is required."));
         }
@@ -302,7 +317,7 @@ internal static class InventoryOpenApiTransformer
         $$"""{"type":"about:blank","title":"{{ReasonPhrase(status)}}","status":{{status}},"detail":{{JsonSerializer.Serialize(detail)}},"errorCode":"{{errorCode}}","traceId":"00-00000000000000000000000000000000-0000000000000000-00"{{(errors is null ? string.Empty : $"," + "\"errors\":" + errors)}}}""";
 
     private static string LotExample(string version, decimal measuredValue = 500) =>
-        $$"""{"lotId":"00000000-0000-0000-0000-000000000001","productId":"00000000-0000-0000-0000-000000000002","productName":"Red lentils","quantity":{"measuredValue":{{measuredValue.ToString(System.Globalization.CultureInfo.InvariantCulture)}},"unit":"Gram","availabilityState":null},"storageLocation":"Pantry","customLocation":null,"packageState":"Sealed","printedExpirationDate":"2026-12-31","notes":null,"version":"{{version}}","createdAt":"2026-07-31T00:00:00Z","updatedAt":"2026-07-31T00:00:00Z"}""";
+        $$$"""{"lotId":"00000000-0000-0000-0000-000000000001","productId":"00000000-0000-0000-0000-000000000002","productName":"Red lentils","quantity":{"measuredValue":{{{measuredValue.ToString(System.Globalization.CultureInfo.InvariantCulture)}}},"unit":"Gram","availabilityState":null},"storageLocation":"Pantry","customLocation":null,"packageState":"Sealed","printedExpirationDate":"2026-12-31","notes":null,"version":"{{{version}}}","createdAt":"2026-07-31T00:00:00Z","updatedAt":"2026-07-31T00:00:00Z","lifecycle":{"state":"AsAcquired","openedAt":null,"frozenAt":null,"thawStartedAt":null,"thawedAt":null,"parentLotId":null}}""";
 
     private static string ReasonPhrase(int status) => status switch
     {

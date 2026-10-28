@@ -15,6 +15,7 @@ export function createMockInventoryRepo(
     createLot: vi.fn(),
     updateLot: vi.fn(),
     adjustLot: vi.fn(),
+    transitionLot: vi.fn(),
     deleteLot: vi.fn(),
     getHistory: vi.fn(async () => []),
     ...overrides,
@@ -80,4 +81,12 @@ export const sampleLot = {
   etag: '"v1"',
   createdAt: "2026-08-01T00:00:00Z",
   updatedAt: "2026-08-01T00:00:00Z",
+  lifecycle: {
+    state: "AsAcquired",
+    openedAt: null,
+    frozenAt: null,
+    thawStartedAt: null,
+    thawedAt: null,
+    parentLotId: null,
+  },
 };

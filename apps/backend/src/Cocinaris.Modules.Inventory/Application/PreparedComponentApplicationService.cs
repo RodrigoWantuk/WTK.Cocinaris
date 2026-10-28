@@ -253,7 +253,7 @@ public sealed class PreparedComponentApplicationWorkflow(ICurrentUserAccessor cu
                 return Failure("validation_failed", "An output quantity, storage, package state, or shelf-life evidence is invalid.", "outputs", "An output quantity, storage, package state, or shelf-life evidence is invalid.");
             }
 
-            var lot = InventoryLot.Create(user.Id, outputProduct.Id, quantity!, storage!, packageState, null, null, now);
+            var lot = InventoryLot.Create(user.Id, outputProduct.Id, quantity!, storage!, packageState, null, null, now, LotLifecycle.Prepared);
             var transaction = InventoryTransaction.Create(lot.Id, user.Id, InventoryTransactionType.PreparationOutputCreated, null, lot.Quantity, "preparation", null, command.IdempotencyKey, now);
             outputWrites.Add(new PreparationOutputWrite(lot, transaction, evidence!));
         }

@@ -1,13 +1,13 @@
 # PLAN-0035: Review and Improve Production Interface and Navigation
 
-- **Status:** Validating
+- **Status:** Completed
 - **Type:** Implementation
 - **Priority:** High
 - **Owner:** Claude Code (claimed 2026-10-28)
 - **Created:** 2026-10-28
 - **Last updated:** 2026-10-28
 - **Branch:** `agent/plan-0031-0036-foundation-stack` (integrates the former stacked branches with `main` after PR #44)
-- **Pull request:** Draft PR from `agent/plan-0031-0036-foundation-stack` (one consolidated PR for PLAN-0031–PLAN-0036)
+- **Pull request:** [PR #46](https://github.com/RodrigoWantuk/WTK.Cocinaris/pull/46), merged by the owner at `3d45bee`
 - **Numbering:** Created as PLAN-0032. Renumbered to PLAN-0035 on 2026-10-28 because merged PR #44 had already published PLAN-0028–PLAN-0030 ([mapping](PLAN-0031-amendment-2026-10-28-coverage-review.md#renumbering-after-pr-44)).
 - **Related ADRs:** ADR-0007
 - **Dependencies:** PLAN-0033
@@ -82,8 +82,8 @@ Captured with `apps/frontend/scripts/capture-production-review.js` (production b
   - per-route titles present;
   - session refetches while navigating: **0**.
 - **Last completed step:** Frontend gates on Node.js 24: typecheck, lint, Prettier, five guards, Jest 46 suites / 387 tests, production build, bundle inspection, `audit:policy`.
-- **Exact next action:** Final CI on the draft PR head from `agent/plan-0031-0036-foundation-stack`; owner merge.
-- **Blockers:** None. Owner merge determines delivery state only.
+- **Exact next action:** None. Follow-up work is tracked in the PLAN-0031 coverage review roadmap.
+- **Blockers:** None.
 - **Known failures or limitations:**
   - Manual screen-reader passes (NVDA/VoiceOver) remain owned by PLAN-0052.
   - The live deployment still runs the pre-rename build, with only the entry page hot-fixed. Fonts there still come from Google until this branch is merged and deployed.
@@ -113,3 +113,8 @@ Captured with `apps/frontend/scripts/capture-production-review.js` (production b
 - PR #44 added the recipe routes as separate top-level routes, each with its own session and shell, which is the pattern UI-01 removed. They are now children of the single authenticated layout route, and pages have titles (`page.title.recipes`, `recipeGenerate`, `recipeDetail`) in the three locales. The shell test uses `/app/compras` for the "coming soon" case because `/app/receitas` now exists. Evidence moved to `docs/evidence/plan-0035/`.
 - **Validation on the merged tree:** backend format, build with warnings as errors, unit 76/76, architecture 14/14, integration 178/178 (OIDC fixture); migrations applied twice idempotently (10 rows); OpenAPI export matches and lints; API client drift check; frontend lint, typecheck, guards, Vitest 50 files / 410 tests, production build, build-mode guard, audit policy (0 allowlisted).
 - **Not passed locally:** the prototype browser smoke timed out on a page reload after 6 passing journeys, twice, while another project on the host kept the load average near 10 on 2 CPUs. The pre-merge commit `ff5f715` also fails with a navigation timeout under the same load, so this is not a regression of the merge. CI runs the smoke on the PR head.
+
+### 2026-10-28T23:05:00Z — Claude Code
+
+- The owner merged PR #46 (`3d45bee`, 2026-10-28T22:41Z). GitHub Actions did not run on it because the owner account is locked for billing; validation is the owner-host run recorded above. Status set to Completed.
+- Commit `2d4d14e` restored `apps/frontend/docs/browser-smoke/browser-smoke-report.schema.example.json`, which `1955221` deleted by mistake while cleaning generated smoke reports; that commit carried no plan update, which is recorded here.

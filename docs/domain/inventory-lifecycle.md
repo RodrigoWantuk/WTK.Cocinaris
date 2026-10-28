@@ -1,7 +1,7 @@
 # Inventory and Food Lifecycle
 
 - **Status:** Accepted
-- **Last updated:** 2026-07-28
+- **Last updated:** 2026-10-28 (implemented transition rules, PLAN-0037)
 
 ## Product identity
 
@@ -103,6 +103,20 @@ Acquired
 
 Every transition records actor, time, source, affected quantity, previous state, new state, and relevant evidence.
 
+### Implemented transition rules (PLAN-0037 Phase 1)
+
+The first implementation tracks the lifecycle states `AsAcquired`, `Prepared` (preparation outputs), `Frozen`, `Thawing` and `Thawed`, separately from package state and storage location. A product bought frozen stays `AsAcquired` in the freezer until the user transitions it. The user-initiated transitions are:
+
+| Transition | Allowed when | Effect | Part of a lot |
+|---|---|---|---|
+| Open | package not already opened | package `Opened`, `OpenedAt`; optional move outside the freezer | No |
+| Move | target differs, is not the freezer, and the lot is not in the freezer | storage changes | Yes |
+| Freeze | lot not in the freezer | storage `Freezer`, state `Frozen`, `FrozenAt`; thaw instants cleared | Yes |
+| Start thawing | lot in the freezer | state `Thawing`, `ThawStartedAt`; storage refrigerator by default | Yes |
+| Finish thawing | state `Thawing` | state `Thawed`, `ThawedAt` | No |
+
+These rules check physical consistency only. Refreezing a thawed lot is allowed; advice about it belongs to the advisory attention engine (PLAN-0037 Phase 2). Each lot keeps the latest instant of each transition, and its immutable history keeps every transition with kind, previous and resulting state and storage, and the related lot of a split. Leftover, preserved and recipe-consumption transitions arrive with cooking (PLAN-0042).
+
 ### Derived lots
 
 A partial transition splits the lot.
@@ -116,6 +130,8 @@ A partial transition splits the lot.
 ```
 
 The derived lot retains provenance but gains its own state, timestamps, shelf-life estimate, reservation, and subsequent history.
+
+A partial transition requires a measured lot and a positive quantity below the current quantity, in the lot's unit. The source keeps the exact remainder and its state (history type `TransitionSplit`). The derived lot copies product, printed date, notes and package state, takes the transition's resulting state and storage, references the source as its parent (`TransitionDerived`), and is created in the same atomic, idempotent write.
 
 ## Reservations and locks
 

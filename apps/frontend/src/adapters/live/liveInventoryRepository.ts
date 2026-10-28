@@ -12,6 +12,7 @@ import {
   type InventoryLotView,
   type InventoryQuantity,
   type InventoryRepository,
+  type TransitionLotInput,
   type UpdateLotInput,
 } from "./inventoryTypes";
 
@@ -88,6 +89,16 @@ function mapLot(dto: LotDto, etag: string | null): InventoryLotView {
     etag: etag ?? dto.version,
     createdAt: dto.createdAt,
     updatedAt: dto.updatedAt,
+    // Frontend and backend deploy independently: an API from before PLAN-0037 sends no
+    // lifecycle, and every lot it knows was in the AsAcquired state.
+    lifecycle: {
+      state: dto.lifecycle?.state ?? "AsAcquired",
+      openedAt: dto.lifecycle?.openedAt ?? null,
+      frozenAt: dto.lifecycle?.frozenAt ?? null,
+      thawStartedAt: dto.lifecycle?.thawStartedAt ?? null,
+      thawedAt: dto.lifecycle?.thawedAt ?? null,
+      parentLotId: dto.lifecycle?.parentLotId ?? null,
+    },
   };
 }
 
@@ -353,6 +364,47 @@ export function createLiveInventoryRepository(options?: {
       return mapLot(data, readEtag(response) ?? data.version);
     },
 
+    async transitionLot(
+      lotId,
+      input: TransitionLotInput,
+      { csrfToken, etag, idempotencyKey, signal },
+    ) {
+      const partial = input.partialValue != null;
+      const body: components["schemas"]["TransitionRequest"] = {
+        kind: input.kind,
+        quantity: partial
+          ? {
+              measuredValue: input.partialValue!,
+              unit: input.unit ?? null,
+              availabilityState: null,
+            }
+          : null,
+        targetStorageLocation: input.targetStorageLocation ?? null,
+        targetCustomLocation: input.targetCustomLocation ?? null,
+      };
+      const { data, error, response } = await client.POST(
+        "/api/v1/inventory/lots/{lotId}/transitions",
+        {
+          params: {
+            path: { lotId },
+            header: {
+              "X-CSRF-TOKEN": csrfToken,
+              "If-Match": etag,
+              "Idempotency-Key": idempotencyKey,
+            },
+          },
+          body,
+          signal,
+          credentials: "include",
+        },
+      );
+      if (!response.ok || !data) {
+        await throwForFailure(response, "Unable to change the lot.", error);
+      }
+      assertData(data, response);
+      return mapLot(data, readEtag(response) ?? data.version);
+    },
+
     async deleteLot(lotId, { csrfToken, etag, signal }) {
       const { error, response } = await client.DELETE(
         "/api/v1/inventory/lots/{lotId}",
@@ -394,6 +446,18 @@ export function createLiveInventoryRepository(options?: {
           reasonCode: entry.reasonCode ?? null,
           changedFields: entry.changedFields ?? null,
           occurredAt: entry.occurredAt,
+          transition: entry.transition
+            ? {
+                kind: entry.transition.kind,
+                previousState: entry.transition.previousState,
+                resultingState: entry.transition.resultingState,
+                previousStorageLocation:
+                  entry.transition.previousStorageLocation,
+                resultingStorageLocation:
+                  entry.transition.resultingStorageLocation,
+                relatedLotId: entry.transition.relatedLotId ?? null,
+              }
+            : null,
         }),
       );
     },

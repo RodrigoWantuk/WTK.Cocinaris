@@ -31,6 +31,9 @@ namespace Cocinaris.Infrastructure.Persistence.Migrations
                     b.Property<DateTimeOffset?>("ClosedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<int?>("CompletionTokens")
+                        .HasColumnType("integer");
+
                     b.Property<string>("CorrelationId")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -51,6 +54,9 @@ namespace Cocinaris.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("OwnerUserId")
                         .HasColumnType("uuid");
 
+                    b.Property<int?>("PromptTokens")
+                        .HasColumnType("integer");
+
                     b.Property<string>("Provider")
                         .HasMaxLength(60)
                         .HasColumnType("character varying(60)");
@@ -59,12 +65,6 @@ namespace Cocinaris.Infrastructure.Persistence.Migrations
                         .HasColumnType("integer");
 
                     b.Property<int?>("SettledUnits")
-                        .HasColumnType("integer");
-
-                    b.Property<int?>("CompletionTokens")
-                        .HasColumnType("integer");
-
-                    b.Property<int?>("PromptTokens")
                         .HasColumnType("integer");
 
                     b.Property<string>("Status")
@@ -262,6 +262,16 @@ namespace Cocinaris.Infrastructure.Persistence.Migrations
                         .HasMaxLength(30)
                         .HasColumnType("character varying(30)");
 
+                    b.Property<DateTimeOffset?>("FrozenAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("LifecycleState")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("AsAcquired");
+
                     b.Property<string>("MeasuredUnit")
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
@@ -273,12 +283,18 @@ namespace Cocinaris.Infrastructure.Persistence.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)");
 
+                    b.Property<DateTimeOffset?>("OpenedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<Guid>("OwnerUserId")
                         .HasColumnType("uuid");
 
                     b.Property<string>("PackageState")
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
+
+                    b.Property<Guid?>("ParentLotId")
+                        .HasColumnType("uuid");
 
                     b.Property<DateOnly?>("PrintedExpirationDate")
                         .HasColumnType("date");
@@ -290,6 +306,12 @@ namespace Cocinaris.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasMaxLength(30)
                         .HasColumnType("character varying(30)");
+
+                    b.Property<DateTimeOffset?>("ThawStartedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("ThawedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -303,6 +325,8 @@ namespace Cocinaris.Infrastructure.Persistence.Migrations
                     b.HasIndex("ConcurrencyToken")
                         .IsUnique();
 
+                    b.HasIndex("ParentLotId", "OwnerUserId");
+
                     b.HasIndex("ProductId", "OwnerUserId");
 
                     b.HasIndex("OwnerUserId", "UpdatedAt", "Id");
@@ -313,11 +337,15 @@ namespace Cocinaris.Infrastructure.Persistence.Migrations
 
                             t.HasCheckConstraint("ck_lots_expiration_provenance", "(\"PrintedExpirationDate\" IS NULL AND \"ExpirationProvenance\" IS NULL) OR (\"PrintedExpirationDate\" IS NOT NULL AND \"ExpirationProvenance\" IS NOT NULL AND \"ExpirationProvenance\" = 'UserEntered')");
 
+                            t.HasCheckConstraint("ck_lots_lifecycle_state", "\"LifecycleState\" IN ('AsAcquired', 'Prepared', 'Frozen', 'Thawing', 'Thawed')");
+
                             t.HasCheckConstraint("ck_lots_measured_unit", "\"MeasuredUnit\" IS NULL OR \"MeasuredUnit\" IN ('Gram', 'Milliliter', 'Unit')");
 
                             t.HasCheckConstraint("ck_lots_measured_value", "\"MeasuredValue\" IS NULL OR \"MeasuredValue\" >= 0");
 
                             t.HasCheckConstraint("ck_lots_package_state", "\"PackageState\" IS NULL OR \"PackageState\" IN ('Sealed', 'Opened', 'Unknown')");
+
+                            t.HasCheckConstraint("ck_lots_parent_not_self", "\"ParentLotId\" IS NULL OR \"ParentLotId\" <> \"Id\"");
 
                             t.HasCheckConstraint("ck_lots_quantity_mode", "(\"MeasuredValue\" IS NOT NULL AND \"MeasuredUnit\" IS NOT NULL AND \"AvailabilityState\" IS NULL) OR (\"MeasuredValue\" IS NULL AND \"MeasuredUnit\" IS NULL AND \"AvailabilityState\" IS NOT NULL)");
 
@@ -824,24 +852,47 @@ namespace Cocinaris.Infrastructure.Persistence.Migrations
                     b.Property<string>("PreviousAvailabilityState")
                         .HasColumnType("text");
 
+                    b.Property<string>("PreviousLifecycleState")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
                     b.Property<string>("PreviousMeasuredUnit")
                         .HasColumnType("text");
 
                     b.Property<decimal?>("PreviousMeasuredValue")
                         .HasColumnType("numeric(18,3)");
 
+                    b.Property<string>("PreviousStorageLocation")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
                     b.Property<string>("ReasonCode")
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<Guid?>("RelatedLotId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("ResultingAvailabilityState")
                         .HasColumnType("text");
+
+                    b.Property<string>("ResultingLifecycleState")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
 
                     b.Property<string>("ResultingMeasuredUnit")
                         .HasColumnType("text");
 
                     b.Property<decimal?>("ResultingMeasuredValue")
                         .HasColumnType("numeric(18,3)");
+
+                    b.Property<string>("ResultingStorageLocation")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<string>("TransitionKind")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
 
                     b.Property<string>("Type")
                         .IsRequired()
@@ -862,7 +913,9 @@ namespace Cocinaris.Infrastructure.Persistence.Migrations
 
                             t.HasCheckConstraint("ck_transactions_resulting_quantity", "(\"ResultingMeasuredValue\" IS NOT NULL AND \"ResultingMeasuredValue\" >= 0 AND \"ResultingMeasuredUnit\" IN ('Gram', 'Milliliter', 'Unit') AND \"ResultingAvailabilityState\" IS NULL) OR (\"ResultingMeasuredValue\" IS NULL AND \"ResultingMeasuredUnit\" IS NULL AND \"ResultingAvailabilityState\" IN ('Available', 'Low', 'Unavailable'))");
 
-                            t.HasCheckConstraint("ck_transactions_type", "\"Type\" IN ('Initial', 'Consume', 'Discard', 'Correct', 'AvailabilityChanged', 'Deleted', 'PreparationInputConsumed', 'PreparationOutputCreated')");
+                            t.HasCheckConstraint("ck_transactions_transition", "(\"Type\" IN ('LifecycleTransition', 'TransitionSplit', 'TransitionDerived') AND \"TransitionKind\" IN ('Open', 'Move', 'Freeze', 'StartThaw', 'CompleteThaw') AND \"PreviousLifecycleState\" IN ('AsAcquired', 'Prepared', 'Frozen', 'Thawing', 'Thawed') AND \"ResultingLifecycleState\" IN ('AsAcquired', 'Prepared', 'Frozen', 'Thawing', 'Thawed') AND \"PreviousStorageLocation\" IN ('Pantry', 'Refrigerator', 'Freezer', 'Other') AND \"ResultingStorageLocation\" IN ('Pantry', 'Refrigerator', 'Freezer', 'Other') AND (\"Type\" = 'LifecycleTransition') = (\"RelatedLotId\" IS NULL)) OR (\"Type\" NOT IN ('LifecycleTransition', 'TransitionSplit', 'TransitionDerived') AND \"TransitionKind\" IS NULL AND \"PreviousLifecycleState\" IS NULL AND \"ResultingLifecycleState\" IS NULL AND \"PreviousStorageLocation\" IS NULL AND \"ResultingStorageLocation\" IS NULL AND \"RelatedLotId\" IS NULL)");
+
+                            t.HasCheckConstraint("ck_transactions_type", "\"Type\" IN ('Initial', 'Consume', 'Discard', 'Correct', 'AvailabilityChanged', 'Deleted', 'PreparationInputConsumed', 'PreparationOutputCreated', 'LifecycleTransition', 'TransitionSplit', 'TransitionDerived')");
                         });
                 });
 
@@ -1156,6 +1209,12 @@ namespace Cocinaris.Infrastructure.Persistence.Migrations
                         .HasForeignKey("OwnerUserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.HasOne("Cocinaris.Infrastructure.Persistence.LotRecord", null)
+                        .WithMany()
+                        .HasForeignKey("ParentLotId", "OwnerUserId")
+                        .HasPrincipalKey("Id", "OwnerUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("Cocinaris.Infrastructure.Persistence.ProductRecord", null)
                         .WithMany()

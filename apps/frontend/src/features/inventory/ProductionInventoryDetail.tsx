@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useInventoryRepository } from "./InventoryProvider";
 import { formatQuantityLabel } from "./quantityDisplay";
+import { LotTransitionPanel } from "./LotTransitionPanel";
 import {
   formatHistoryTimestamp,
   localizeInventoryKey,
@@ -12,6 +13,7 @@ import {
   type AvailabilityState,
   type InventoryHistoryEntry,
   type InventoryLotView,
+  type TransitionLotInput,
 } from "@/adapters/live/inventoryTypes";
 import { useSession } from "@/app/session/SessionProvider";
 import {
@@ -26,8 +28,8 @@ import { Input } from "@/components/ui/input";
 type MeasuredAction = "Consume" | "Discard" | "Correct";
 
 /**
- * Lot detail with adjust (consume/discard/correct/availability), history,
- * delete, and stale-version conflict handling.
+ * Lot detail with adjust (consume/discard/correct/availability), lifecycle
+ * transitions (PLAN-0037), history, delete, and stale-version conflict handling.
  */
 export function ProductionInventoryDetail() {
   const { lotId = "" } = useParams();
@@ -51,6 +53,8 @@ export function ProductionInventoryDetail() {
   const [adjustError, setAdjustError] = useState<string | null>(null);
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [transitionNotice, setTransitionNotice] = useState<string | null>(null);
+  const [transitionError, setTransitionError] = useState<string | null>(null);
   const historyTimeZone =
     session.timeZone && session.timeZone.trim() ? session.timeZone : "UTC";
   const lotRef = useRef(lot);
@@ -154,6 +158,48 @@ export function ProductionInventoryDetail() {
       }
     }
     setAdjustError(t(fallbackKey));
+  }
+
+  /** Resolves `true` when the transition committed, so the panel can reset its inputs. */
+  async function runTransition(input: TransitionLotInput): Promise<boolean> {
+    if (!lot) return false;
+    setTransitionError(null);
+    setHistoryError(null);
+    setTransitionNotice(null);
+    setBusy(true);
+    let nextLot: InventoryLotView | null = null;
+    try {
+      nextLot = await repo.transitionLot(lot.lotId, input, {
+        csrfToken: requireCsrf(),
+        etag: lot.etag,
+        idempotencyKey: crypto.randomUUID(),
+      });
+      setLot(nextLot);
+      if (input.partialValue != null) {
+        setTransitionNotice(t("inventory.transition.splitDone"));
+      }
+    } catch (err) {
+      if (
+        err instanceof InventoryApiError &&
+        (err.code === "precondition_failed" ||
+          err.code === "precondition_required")
+      ) {
+        handleMutationError(err, "inventory.error.transition");
+      } else if (
+        err instanceof InventoryApiError &&
+        err.code === "authentication_required"
+      ) {
+        setTransitionError(t("inventory.error.session"));
+      } else {
+        setTransitionError(t("inventory.error.transition"));
+      }
+      return false;
+    } finally {
+      setBusy(false);
+    }
+
+    await reloadHistory(nextLot.lotId);
+    return true;
   }
 
   async function runMeasuredAdjustment() {
@@ -378,6 +424,53 @@ export function ProductionInventoryDetail() {
               : t("inventory.fields.none")}
           </dd>
         </div>
+        <div>
+          <dt className="text-muted-foreground">
+            {t("inventory.fields.lifecycleState")}
+          </dt>
+          <dd data-testid="inventory-lifecycle-state">
+            {localizeInventoryKey(
+              t,
+              "inventory.lifecycle",
+              lot.lifecycle.state,
+            )}
+          </dd>
+        </div>
+        {(
+          [
+            ["openedAt", lot.lifecycle.openedAt],
+            ["frozenAt", lot.lifecycle.frozenAt],
+            ["thawStartedAt", lot.lifecycle.thawStartedAt],
+            ["thawedAt", lot.lifecycle.thawedAt],
+          ] as const
+        )
+          .filter(([, value]) => value)
+          .map(([field, value]) => (
+            <div key={field}>
+              <dt className="text-muted-foreground">
+                {t(`inventory.fields.${field}`)}
+              </dt>
+              <dd data-testid={`inventory-lifecycle-${field}`}>
+                {formatHistoryTimestamp(value!, locale, historyTimeZone)}
+              </dd>
+            </div>
+          ))}
+        {lot.lifecycle.parentLotId && (
+          <div>
+            <dt className="text-muted-foreground">
+              {t("inventory.fields.parentLot")}
+            </dt>
+            <dd>
+              <Link
+                data-testid="inventory-parent-lot"
+                to={`/app/despensa/${lot.lifecycle.parentLotId}`}
+                className="underline"
+              >
+                {t("inventory.actions.openRelated")}
+              </Link>
+            </dd>
+          </div>
+        )}
         <div className="sm:col-span-2">
           <dt className="text-muted-foreground">
             {t("inventory.fields.notes")}
@@ -393,6 +486,30 @@ export function ProductionInventoryDetail() {
       {!session.csrfToken && (
         <p role="alert" data-testid="inventory-missing-csrf">
           {t("inventory.error.session")}
+        </p>
+      )}
+
+      {transitionNotice && (
+        <p role="status" data-testid="inventory-transition-notice">
+          {transitionNotice}
+        </p>
+      )}
+
+      <LotTransitionPanel
+        lot={lot}
+        busy={busy || !session.csrfToken}
+        onSubmit={runTransition}
+        onInvalidQuantity={() =>
+          setTransitionError(t("inventory.error.invalidDecimal"))
+        }
+      />
+      {transitionError && (
+        <p
+          role="alert"
+          data-testid="inventory-transition-error"
+          className="text-sm text-destructive"
+        >
+          {transitionError}
         </p>
       )}
 
@@ -542,9 +659,24 @@ export function ProductionInventoryDetail() {
               {entry.type
                 ? ` · ${localizeInventoryKey(t, "inventory.adjustment", entry.type)}`
                 : ""}
+              {entry.transition
+                ? ` · ${localizeInventoryKey(t, "inventory.transition", entry.transition.kind)}`
+                : ""}
               {entry.reasonCode
                 ? ` · ${localizeInventoryKey(t, "inventory.reason", entry.reasonCode)}`
                 : ""}
+              {entry.transition?.relatedLotId ? (
+                <span className="block text-xs">
+                  {t("inventory.history.relatedLot")}:{" "}
+                  <Link
+                    data-testid="inventory-history-related-lot"
+                    to={`/app/despensa/${entry.transition.relatedLotId}`}
+                    className="underline"
+                  >
+                    {t("inventory.actions.openRelated")}
+                  </Link>
+                </span>
+              ) : null}
               <span className="block text-xs text-muted-foreground">
                 {formatHistoryTimestamp(
                   entry.occurredAt,
