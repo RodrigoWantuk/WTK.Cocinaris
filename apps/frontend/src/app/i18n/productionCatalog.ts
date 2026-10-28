@@ -7,6 +7,7 @@ import { inventoryCatalogs } from "./inventoryCatalog";
 import { entryCatalogs } from "./entryCatalog";
 import { homeCatalogs } from "./homeCatalog";
 import { profileCatalogs } from "./profileUiCatalog";
+import { recipesCatalogs } from "./recipesCatalog";
 
 export const PRODUCTION_LOCALES = ["pt-BR", "en", "es"] as const;
 export type ProductionLocale = (typeof PRODUCTION_LOCALES)[number];
@@ -54,6 +55,9 @@ const sharedShell: Record<ProductionLocale, Catalog> = {
     "page.title.inventoryEdit": "Editar lote",
     "page.title.profile": "Perfil",
     "page.title.unavailable": "Em breve",
+    "page.title.recipes": "Receitas",
+    "page.title.recipeGenerate": "Gerar receita",
+    "page.title.recipeDetail": "Receita",
   },
   en: {
     "brand.name": "Cocinaris",
@@ -93,6 +97,9 @@ const sharedShell: Record<ProductionLocale, Catalog> = {
     "page.title.inventoryEdit": "Edit lot",
     "page.title.profile": "Profile",
     "page.title.unavailable": "Coming soon",
+    "page.title.recipes": "Recipes",
+    "page.title.recipeGenerate": "Generate a recipe",
+    "page.title.recipeDetail": "Recipe",
   },
   es: {
     "brand.name": "Cocinaris",
@@ -133,6 +140,9 @@ const sharedShell: Record<ProductionLocale, Catalog> = {
     "page.title.inventoryEdit": "Editar lote",
     "page.title.profile": "Perfil",
     "page.title.unavailable": "Próximamente",
+    "page.title.recipes": "Recetas",
+    "page.title.recipeGenerate": "Generar receta",
+    "page.title.recipeDetail": "Receta",
   },
 };
 
@@ -143,6 +153,7 @@ const catalogs: Record<ProductionLocale, Catalog> = {
     ...homeCatalogs["pt-BR"],
     ...inventoryCatalogs["pt-BR"],
     ...profileCatalogs["pt-BR"],
+    ...recipesCatalogs["pt-BR"],
   },
   en: {
     ...sharedShell.en,
@@ -150,6 +161,7 @@ const catalogs: Record<ProductionLocale, Catalog> = {
     ...homeCatalogs.en,
     ...inventoryCatalogs.en,
     ...profileCatalogs.en,
+    ...recipesCatalogs.en,
   },
   es: {
     ...sharedShell.es,
@@ -157,6 +169,7 @@ const catalogs: Record<ProductionLocale, Catalog> = {
     ...homeCatalogs.es,
     ...inventoryCatalogs.es,
     ...profileCatalogs.es,
+    ...recipesCatalogs.es,
   },
 };
 

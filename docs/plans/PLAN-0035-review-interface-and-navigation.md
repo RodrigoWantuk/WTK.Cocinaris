@@ -1,4 +1,4 @@
-# PLAN-0032: Review and Improve Production Interface and Navigation
+# PLAN-0035: Review and Improve Production Interface and Navigation
 
 - **Status:** Validating
 - **Type:** Implementation
@@ -6,10 +6,11 @@
 - **Owner:** Claude Code (claimed 2026-10-28)
 - **Created:** 2026-10-28
 - **Last updated:** 2026-10-28
-- **Branch:** `agent/plan-0032-interface-navigation` (stacked on PLAN-0031)
-- **Pull request:** Not opened
+- **Branch:** `agent/plan-0031-0036-foundation-stack` (integrates the former stacked branches with `main` after PR #44)
+- **Pull request:** Draft PR from `agent/plan-0031-0036-foundation-stack` (one consolidated PR for PLAN-0031–PLAN-0036)
+- **Numbering:** Created as PLAN-0032. Renumbered to PLAN-0035 on 2026-10-28 because merged PR #44 had already published PLAN-0028–PLAN-0030 ([mapping](PLAN-0031-amendment-2026-10-28-coverage-review.md#renumbering-after-pr-44)).
 - **Related ADRs:** ADR-0007
-- **Dependencies:** PLAN-0030
+- **Dependencies:** PLAN-0033
 
 ## Objective
 
@@ -35,18 +36,18 @@ Review the production frontend (public entry, contextual home, inventory, profil
 
 - New product capabilities (recipes, planning, shopping, cooking) and production links to prototype-only routes.
 - Visual redesign or design-system replacement.
-- Bundler migration (PLAN-0033).
+- Bundler migration (PLAN-0036).
 
 ## Acceptance criteria
 
 - [x] Review findings recorded in this plan, each with a decision (fixed, deferred with owner plan, or rejected with reason).
 - [x] Every fixed finding has a test: Jest for behavior and copy (UI-02, 04–07, 12, 15–17, guard for UI-01/03); the axe and overflow capture for visual and structural accessibility (UI-08–11, 13, 14).
 - [x] Frontend gates pass; axe reports no serious or critical violations on production routes.
-- [x] Screenshots before and after are stored under `docs/evidence/plan-0032/` (360 px kept; full reports for all viewports).
+- [x] Screenshots before and after are stored under `docs/evidence/plan-0035/` (360 px kept; full reports for all viewports).
 
 ## Findings and decisions
 
-Captured with `apps/frontend/scripts/capture-production-review.js` (production build, synthetic contract-shaped API responses, Chromium, 360/768/1280 px, axe-core at 1280 px). Reports: `docs/evidence/plan-0032/{before,after}/report.json`.
+Captured with `apps/frontend/scripts/capture-production-review.js` (production build, synthetic contract-shaped API responses, Chromium, 360/768/1280 px, axe-core at 1280 px). Reports: `docs/evidence/plan-0035/{before,after}/report.json`.
 
 | ID | Severity | Finding | Decision |
 |---|---|---|---|
@@ -68,7 +69,7 @@ Captured with `apps/frontend/scripts/capture-production-review.js` (production b
 | UI-16 | P3 | Developer copy in access and unavailable messages ("backend-managed challenge", "no fallback to mock data") and in the pantry subtitle ("loaded from the API") | **Fixed.** User-facing copy in three locales |
 | UI-17 | P3 | Public entry showed a "reserved space for future video" box and a technical footer line | **Fixed.** Removed. Media remains optional per spec; the legal placeholder links remain until legal review |
 | UI-18 | P3 | "Help me choose" stays visible on the home although the production chooser source is unavailable | **Deferred** to PLAN-0021, which owns the chooser source and its unavailable state |
-| UI-19 | P3 | Lot list does not show printed date or package state, which would help attention | **Deferred** to PLAN-0034 (attention engine defines what to surface without implying safety) |
+| UI-19 | P3 | Lot list does not show printed date or package state, which would help attention | **Deferred** to PLAN-0037 (attention engine defines what to surface without implying safety) |
 | UI-20 | Info | Cloudflare injects its Web Analytics script at the edge (`static.cloudflareinsights.com`); not part of the repository | **Owner action:** disable Web Analytics for the zone if session privacy requires it (documented in the deployment runbook) |
 
 ## Execution state
@@ -81,12 +82,12 @@ Captured with `apps/frontend/scripts/capture-production-review.js` (production b
   - per-route titles present;
   - session refetches while navigating: **0**.
 - **Last completed step:** Frontend gates on Node.js 24: typecheck, lint, Prettier, five guards, Jest 46 suites / 387 tests, production build, bundle inspection, `audit:policy`.
-- **Exact next action:** CI on the PR head once the owner enables pushes from this host (PLAN-0031 §13 proposal), then owner review and merge.
-- **Blockers:** Remote push/PR from this host awaits the owner's `AGENTS.md` §13 change (see PLAN-0031).
+- **Exact next action:** Final CI on the draft PR head from `agent/plan-0031-0036-foundation-stack`; owner merge.
+- **Blockers:** None. Owner merge determines delivery state only.
 - **Known failures or limitations:**
-  - Manual screen-reader passes (NVDA/VoiceOver) remain owned by PLAN-0051.
+  - Manual screen-reader passes (NVDA/VoiceOver) remain owned by PLAN-0052.
   - The live deployment still runs the pre-rename build, with only the entry page hot-fixed. Fonts there still come from Google until this branch is merged and deployed.
-- **Working tree state:** Committed on `agent/plan-0032-interface-navigation`.
+- **Working tree state:** Committed on `agent/plan-0031-0036-foundation-stack`.
 
 ## Progress log
 
@@ -106,3 +107,9 @@ Captured with `apps/frontend/scripts/capture-production-review.js` (production b
 - Deploy dry run of `4c1cc72` (this plan's implementation head) succeeded: release built with API, web and migration script; the entry page has only same-origin content and the title "Cocinaris". The pre-flight correctly reported the two rename-migration steps a real deploy needs (unit update, `KITCHENFLOW_*` keys). The unactivated dry-run release was removed afterwards; the live deployment was not touched.
 - Corrected the acceptance note: UI-09 is covered by the axe capture, not by a dedicated Jest test.
 
+### 2026-10-28T22:20:00Z — Claude Code (PR #44 integration)
+
+- The owner merged PR #44, which had already published PLAN-0028–PLAN-0030. This plan was renumbered from PLAN-0032 to PLAN-0035; `main` was merged into `agent/plan-0031-0036-foundation-stack`.
+- PR #44 added the recipe routes as separate top-level routes, each with its own session and shell, which is the pattern UI-01 removed. They are now children of the single authenticated layout route, and pages have titles (`page.title.recipes`, `recipeGenerate`, `recipeDetail`) in the three locales. The shell test uses `/app/compras` for the "coming soon" case because `/app/receitas` now exists. Evidence moved to `docs/evidence/plan-0035/`.
+- **Validation on the merged tree:** backend format, build with warnings as errors, unit 76/76, architecture 14/14, integration 178/178 (OIDC fixture); migrations applied twice idempotently (10 rows); OpenAPI export matches and lints; API client drift check; frontend lint, typecheck, guards, Vitest 50 files / 410 tests, production build, build-mode guard, audit policy (0 allowlisted).
+- **Not passed locally:** the prototype browser smoke timed out on a page reload after 6 passing journeys, twice, while another project on the host kept the load average near 10 on 2 CPUs. The pre-merge commit `ff5f715` also fails with a navigation timeout under the same load, so this is not a regression of the merge. CI runs the smoke on the PR head.

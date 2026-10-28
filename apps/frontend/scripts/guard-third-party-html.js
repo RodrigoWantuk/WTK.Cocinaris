@@ -4,7 +4,7 @@
  *
  * The SPA shell wraps every authenticated route, so a third-party script there (analytics, session
  * recording, tag managers) can read pantry, profile, and restriction data. Font and style CDNs
- * disclose every visitor's address to a third party. PLAN-0032 removed such snippets inherited from
+ * disclose every visitor's address to a third party. PLAN-0035 removed such snippets inherited from
  * the Emergent import; this guard keeps them from coming back.
  *
  * Checks the Vite entry `index.html`, `build/index.html` when present, and every CSS file under `src/`.

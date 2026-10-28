@@ -21,6 +21,10 @@ import { InventoryProvider } from "@/features/inventory/InventoryProvider";
 import { ProductionInventoryList } from "@/features/inventory/ProductionInventoryList";
 import { ProductionInventoryDetail } from "@/features/inventory/ProductionInventoryDetail";
 import { ProductionInventoryForm } from "@/features/inventory/ProductionInventoryForm";
+import { RecipeProvider } from "@/features/recipes/RecipeProvider";
+import { RecipesListPage } from "@/features/recipes/RecipesListPage";
+import { RecipeGeneratePage } from "@/features/recipes/RecipeGeneratePage";
+import { RecipeDetailPage } from "@/features/recipes/RecipeDetailPage";
 import { PublicEntryPage } from "@/features/entry/PublicEntryPage";
 import { ContextualHomePage } from "@/features/home/ContextualHomePage";
 import { ContextualHomeProvider } from "@/features/home/ContextualHomeProvider";
@@ -138,6 +142,7 @@ function ProductionAccess() {
 const PRIMARY_NAV_ITEMS = [
   { to: "/app/hoje", key: "home", testId: "production-nav-home" },
   { to: "/app/despensa", key: "inventory", testId: "production-nav-despensa" },
+  { to: "/app/receitas", key: "recipes", testId: "production-nav-receitas" },
   { to: "/app/perfil", key: "profile", testId: "production-nav-perfil" },
 ] as const;
 
@@ -147,6 +152,7 @@ function PrimaryNav() {
   const labels: Record<(typeof PRIMARY_NAV_ITEMS)[number]["key"], string> = {
     home: t("nav.home"),
     inventory: t("inventory.title"),
+    recipes: t("nav.recipes"),
     profile: t("nav.profile"),
   };
   return (
@@ -193,6 +199,9 @@ export function pageTitleKeyFor(pathname: string): string {
     return "page.title.inventoryDetail";
   }
   if (pathname.startsWith("/app/despensa")) return "page.title.inventory";
+  if (pathname === "/app/receitas/gerar") return "page.title.recipeGenerate";
+  if (pathname.startsWith("/app/receitas/")) return "page.title.recipeDetail";
+  if (pathname === "/app/receitas") return "page.title.recipes";
   if (pathname.startsWith("/app/perfil")) return "page.title.profile";
   return "page.title.unavailable";
 }
@@ -339,7 +348,9 @@ function SessionScopedRoutes({ children }: { children: ReactNode }) {
   return (
     <SessionProvider adapter={runtime.sessionAdapter}>
       <InventoryProvider repository={runtime.inventoryRepository}>
-        {children}
+        <RecipeProvider repository={runtime.recipeRepository}>
+          {children}
+        </RecipeProvider>
       </InventoryProvider>
     </SessionProvider>
   );
@@ -349,7 +360,7 @@ function SessionScopedRoutes({ children }: { children: ReactNode }) {
  * Layout for every `/app/*` route. Session, inventory, the auth guard, the
  * unsaved-changes coordinator, and the shell mount once here, so moving between
  * destinations keeps the header in place and does not refetch the session or
- * reset inventory state. (Before PLAN-0032 each destination mounted its own
+ * reset inventory state. (Before PLAN-0035 each destination mounted its own
  * providers, which re-requested the session and blanked the shell on every
  * navigation.)
  */
@@ -460,6 +471,9 @@ function createProductionRouter() {
           element: <ProductionInventoryForm mode="edit" />,
         },
         { path: "despensa/:lotId", element: <ProductionInventoryDetail /> },
+        { path: "receitas", element: <RecipesListPage /> },
+        { path: "receitas/gerar", element: <RecipeGeneratePage /> },
+        { path: "receitas/:recipeId", element: <RecipeDetailPage /> },
         {
           path: "perfil",
           element: <ProfileLayout />,

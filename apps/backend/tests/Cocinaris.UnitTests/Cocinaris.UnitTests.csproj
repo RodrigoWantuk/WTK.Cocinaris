@@ -14,6 +14,13 @@
   <ItemGroup>
     <ProjectReference Include="../../src/Cocinaris.Modules.Inventory/Cocinaris.Modules.Inventory.csproj" />
     <ProjectReference Include="../../src/Cocinaris.Modules.Profiles/Cocinaris.Modules.Profiles.csproj" />
+    <ProjectReference Include="../../src/Cocinaris.Modules.Ai/Cocinaris.Modules.Ai.csproj" />
+    <ProjectReference Include="../../src/Cocinaris.Modules.Recipes/Cocinaris.Modules.Recipes.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="../../../../packages/contracts/ai/recipe/fixtures/**/*.json" LinkBase="ContractFixtures/fixtures" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="../../../../docs/ai/examples/*.json" LinkBase="ContractFixtures/examples" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

@@ -1,6 +1,6 @@
 # PLAN-0021: Implement Contextual Home Live Source Contracts and Adapters
 
-- **Status:** Ready
+- **Status:** Blocked
 - **Type:** Implementation
 - **Priority:** High
 - **Owner:** Unassigned backend/frontend vertical-slice agent
@@ -8,7 +8,7 @@
 - **Last updated:** 2026-08-05
 - **Branch:** `agent/plan-0021-contextual-home-live-sources`
 - **Pull request:** Not opened
-- **Dependencies:** PLAN-0011 presentation boundary; PLAN-0020 production profile UI; PLAN-0022 recipe contract decisions (Completed); accepted menu/planning source contract
+- **Dependencies:** PLAN-0011 presentation boundary; PLAN-0020 production profile UI; PLAN-0022 recipe contract decisions (Completed); accepted menu/planning read contract from PLAN-0029
 - **Related product:** `docs/product/entry-and-contextual-home.md`
 - **Parent implementation plan:** PLAN-0011 Phase 3 and Phase 4 transfer
 
@@ -101,12 +101,12 @@ Represent:
 
 ## Execution state
 
-- **Current checkpoint:** PLAN-0011, PLAN-0020, and PLAN-0022 recipe AI contracts are complete. Remaining prerequisite before full live AI-backed home sources is an accepted menu/planning source contract.
-- **Blockers:** Accepted menu/planning source contract.
-- **Exact next action:** Confirm or create the accepted menu/planning source contract, then claim `agent/plan-0021-contextual-home-live-sources` and implement the deterministic inventory/profile slices first if menu/AI sources remain pending.
+- **Current checkpoint:** PLAN-0011, PLAN-0020, and PLAN-0022 are complete. PLAN-0028 delivers recipe revisions. Full live home sources remain blocked on the accepted menu/planning read contract; deterministic inventory/profile tiers may go first.
+- **Blockers:** Accepted menu/planning read contract from the sequential-planning slice (PLAN-0029) for the menu tier only.
+- **Exact next action:** Implement the deterministic inventory/profile tiers after the inventory attention engine (PLAN-0037); add the menu tier once PLAN-0029 publishes the accepted-menu read contract. Branch `agent/plan-0021-contextual-home-live-sources`.
 
 ## Progress log
 
-### 2026-10-28T15:00:00Z — Claude Code (PLAN-0029 drift reconciliation)
+### 2026-10-28T15:00:00Z — Claude Code (PLAN-0032 drift reconciliation; numbered PLAN-0029 before the PR #44 renumbering)
 
 - Clarified per-tier gating so the prerequisite paragraph agrees with the `Ready` status and the existing exact next action (deterministic inventory/profile tiers first). No scope or acceptance criterion changed.

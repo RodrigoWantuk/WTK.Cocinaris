@@ -40,7 +40,7 @@ ADRs or implementation designs are still required for:
 - object-storage provider and media pipeline;
 - billing and advertising;
 - secret management;
-- deployment pipeline and release gates (owner-host scripted deployment exists since PLAN-0031; production pipeline remains open);
+- deployment pipeline and release gates (owner-host scripted deployment exists since PLAN-0034; production pipeline remains open);
 - retention schedule and legal launch-country matrix.
 
 Use [`0000-adr-template.md`](0000-adr-template.md) for future records.

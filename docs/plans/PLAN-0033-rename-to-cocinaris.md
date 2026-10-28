@@ -1,4 +1,4 @@
-# PLAN-0030: Rename the Product and Technical Identifiers to Cocinaris
+# PLAN-0033: Rename the Product and Technical Identifiers to Cocinaris
 
 - **Status:** Validating
 - **Type:** Operations
@@ -6,10 +6,11 @@
 - **Owner:** Claude Code (claimed 2026-10-28)
 - **Created:** 2026-10-28
 - **Last updated:** 2026-10-28
-- **Branch:** `agent/plan-0030-rename-cocinaris` (stacked on `agent/plan-0029-green-baseline`)
-- **Pull request:** Not opened
+- **Branch:** `agent/plan-0031-0036-foundation-stack` (integrates the former stacked branches with `main` after PR #44)
+- **Pull request:** Draft PR from `agent/plan-0031-0036-foundation-stack` (one consolidated PR for PLAN-0031–PLAN-0036)
+- **Numbering:** Created as PLAN-0030. Renumbered to PLAN-0033 on 2026-10-28 because merged PR #44 had already published PLAN-0028–PLAN-0030 ([mapping](PLAN-0031-amendment-2026-10-28-coverage-review.md#renumbering-after-pr-44)).
 - **Related ADRs:** ADR-0002, ADR-0004, ADR-0006, ADR-0007
-- **Dependencies:** PLAN-0029; owner decision D-1 (resolved 2026-10-28: "Cocinaris in everything")
+- **Dependencies:** PLAN-0032; owner decision D-1 (resolved 2026-10-28: "Cocinaris in everything")
 
 ## Objective
 
@@ -46,7 +47,7 @@ Replace the provisional name KitchenFlow with **Cocinaris** across product copy,
 4. The browser locale preference key changes, so users see the default locale once.
 5. Metric names change, so dashboards or alerts on `kitchenflow.*` must be renamed.
 
-These steps are executed and documented by PLAN-0031 (deployment runbook).
+These steps are executed and documented by PLAN-0034 (deployment runbook).
 
 ## Acceptance criteria
 
@@ -60,14 +61,14 @@ These steps are executed and documented by PLAN-0031 (deployment runbook).
 ## Execution state
 
 - **Current run delivery target:** Complete rename with validation in one run.
-- **Current checkpoint:** Rename implemented and validated on the owner host. The deployment-side steps (environment keys, service entry point) are documented and executed by PLAN-0031 after the owner merges.
+- **Current checkpoint:** Rename implemented and validated on the owner host. The deployment-side steps (environment keys, service entry point) are documented and executed by PLAN-0034 after the owner merges.
 - **Last completed step:** Full CI-equivalent validation on the host: NuGet restore in locked mode; `dotnet format --verify-no-changes`; Release build with 0 warnings and 0 errors; architecture 14/14, unit 52/52 and integration 175/175 tests with the renamed OIDC development fixture; empty-database migration and upgrade; idempotent migration script applied twice (9 history rows); OpenAPI export identical to the snapshot, plus check and Redocly lint. API client generate and drift check pass. Frontend typecheck, lint, Prettier, guards, Jest 45/369, production build, bundle inspection and `audit:policy` pass on Node.js 24.22.1. AI recipe contract tests and drift check pass.
-- **Exact next action:** CI run on the PR head, then owner merge, then the PLAN-0031 deployment runbook rename steps.
-- **Blockers:** Owner merge for deployment.
+- **Exact next action:** Final CI on the draft PR head from `agent/plan-0031-0036-foundation-stack`; owner merge.
+- **Blockers:** None. Owner merge determines delivery state only.
 - **Partially modified areas:** None.
 - **Documentation delivered:** Every living document renamed; naming history note in `docs/README.md`.
-- **Known failures or limitations:** Completed plans PLAN-0001–PLAN-0027, PLAN-0028/0029 narrative and `docs/evidence/` intentionally keep the historical name.
-- **Working tree state:** Committed on `agent/plan-0030-rename-cocinaris`.
+- **Known failures or limitations:** Completed plans PLAN-0001–PLAN-0027, PLAN-0031/0029 narrative and `docs/evidence/` intentionally keep the historical name.
+- **Working tree state:** Committed on `agent/plan-0031-0036-foundation-stack`.
 
 ## Progress log
 
@@ -80,5 +81,11 @@ These steps are executed and documented by PLAN-0031 (deployment runbook).
 - **Checkpoint:** Rename implemented and validated.
 - **Changes:** Project folders, `.csproj`, solution, Keycloak realm file and OpenAPI snapshot renamed. Content of 212 living files rewritten (`KitchenFlow`/`kitchenflow`/`KITCHENFLOW` → `Cocinaris`/`cocinaris`/`COCINARIS`). `packages/api-client/src/index.ts` reformatted (shorter identifier). Naming history note added.
 - **Validation:** See execution state. All gates green on the owner host.
-- **Next action:** PR CI, owner merge, deployment steps in PLAN-0031.
+- **Next action:** PR CI, owner merge, deployment steps in PLAN-0034.
 
+### 2026-10-28T22:20:00Z — Claude Code (PR #44 integration)
+
+- The owner merged PR #44, which had already published PLAN-0028–PLAN-0030. This plan was renumbered from PLAN-0030 to PLAN-0033; `main` was merged into `agent/plan-0031-0036-foundation-stack`.
+- Applied the rename to the code merged through PR #44: `KitchenFlow.Modules.Ai` and `KitchenFlow.Modules.Recipes` became `Cocinaris.Modules.*`; namespaces, the `AddCocinarisRecipeAi` registration, the `cocinaris-deepseek` HTTP client, the OpenAPI security scheme (`cocinarisSession`) and tag, the regenerated clients, the live smoke tool and `docs/ai/usage-and-cost-governance.md`. Removed `KitchenFlow.slnx` (the new projects were added to `Cocinaris.slnx`) and `artifacts/kitchenflow-migrations.sql`, a build output committed by PR #44 although `artifacts/` is ignored. `PLAN-0028` and its evidence are historical and keep the old name.
+- **Validation on the merged tree:** backend format, build with warnings as errors, unit 76/76, architecture 14/14, integration 178/178 (OIDC fixture); migrations applied twice idempotently (10 rows); OpenAPI export matches and lints; API client drift check; frontend lint, typecheck, guards, Vitest 50 files / 410 tests, production build, build-mode guard, audit policy (0 allowlisted).
+- **Not passed locally:** the prototype browser smoke timed out on a page reload after 6 passing journeys, twice, while another project on the host kept the load average near 10 on 2 CPUs. The pre-merge commit `ff5f715` also fails with a navigation timeout under the same load, so this is not a regression of the merge. CI runs the smoke on the PR head.

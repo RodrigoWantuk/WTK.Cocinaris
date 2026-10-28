@@ -4,7 +4,7 @@ import react from "@vitejs/plugin-react";
 import { defineConfig, type Plugin } from "vite";
 
 /**
- * Frontend toolchain (ADR-0008, PLAN-0033). Replaces CRA/CRACO while keeping the
+ * Frontend toolchain (ADR-0008, PLAN-0036). Replaces CRA/CRACO while keeping the
  * external contracts of `apps/frontend`: `REACT_APP_FRONTEND_MODE` selects
  * prototype/production/test, builds fail without an explicit mode, prototype-only
  * modules are swapped out of production bundles, and output keeps the

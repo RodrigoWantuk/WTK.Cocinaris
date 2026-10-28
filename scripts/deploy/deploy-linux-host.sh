@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Builds and deploys Cocinaris on a single Linux host (PLAN-0031).
+# Builds and deploys Cocinaris on a single Linux host (PLAN-0034).
 #
 # The build always runs in a temporary git worktree of the requested ref, never in the
 # development checkout, so agents and developers can keep working while a deploy runs.
@@ -26,6 +26,7 @@ BACKUP_SERVICE="${COCINARIS_BACKUP_SERVICE:-wtk-cocinaris-backup}"
 ENV_FILE="${COCINARIS_ENV_FILE:-/etc/wtk-cocinaris/api.env}"
 DATABASE="${COCINARIS_DATABASE:-cocinaris}"
 OWNER_ROLE="${COCINARIS_SCHEMA_OWNER_ROLE:-cocinaris_owner}"
+APP_ROLE="${COCINARIS_APP_ROLE:-cocinaris_app}"
 HEALTH_URL="${COCINARIS_HEALTH_URL:-http://127.0.0.1:8004/health/ready}"
 DOTNET_DIR="${COCINARIS_DOTNET_DIR:-/opt/dotnet}"
 NODE_DIR="${COCINARIS_NODE_DIR:-/opt/node24}"
@@ -166,6 +167,28 @@ if [[ $INSTALL_UNITS -eq 1 ]]; then
   systemctl enable --quiet "$SERVICE" "$BACKUP_SERVICE.timer"
 fi
 
+# Grants the application role DML on every schema the owner role owns. A migration that creates a
+# schema also creates its tables before any default privilege exists for it, so the grants on
+# existing objects are needed as well as the defaults for later migrations. Idempotent.
+grant_app_role() {
+  log "granting $APP_ROLE access to schemas owned by $OWNER_ROLE"
+  runuser -u postgres -- psql -d "$DATABASE" -v ON_ERROR_STOP=1 -q <<SQL
+SET ROLE $OWNER_ROLE;
+DO \$\$
+DECLARE s text;
+BEGIN
+  FOR s IN SELECT nspname FROM pg_namespace WHERE nspowner = '$OWNER_ROLE'::regrole LOOP
+    EXECUTE format('GRANT USAGE ON SCHEMA %I TO %I', s, '$APP_ROLE');
+    EXECUTE format('GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA %I TO %I', s, '$APP_ROLE');
+    EXECUTE format('GRANT SELECT, USAGE ON ALL SEQUENCES IN SCHEMA %I TO %I', s, '$APP_ROLE');
+    EXECUTE format('ALTER DEFAULT PRIVILEGES FOR ROLE %I IN SCHEMA %I GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO %I', '$OWNER_ROLE', s, '$APP_ROLE');
+    EXECUTE format('ALTER DEFAULT PRIVILEGES FOR ROLE %I IN SCHEMA %I GRANT SELECT, USAGE ON SEQUENCES TO %I', '$OWNER_ROLE', s, '$APP_ROLE');
+  END LOOP;
+END
+\$\$;
+SQL
+}
+
 log "stopping $SERVICE and taking a backup"
 systemctl stop "$SERVICE"
 systemctl start "$BACKUP_SERVICE"
@@ -173,6 +196,7 @@ log "applying migrations as $OWNER_ROLE"
 # EF writes a UTF-8 BOM that psql would treat as part of the first statement.
 { echo "SET ROLE $OWNER_ROLE;"; sed '1s/^\xEF\xBB\xBF//' "$RELEASE/migrations.sql"; } \
   | runuser -u postgres -- psql -d "$DATABASE" -v ON_ERROR_STOP=1 -q
+grant_app_role
 adopt_legacy_layout
 switch_to "$RELEASE"
 systemctl start "$SERVICE"

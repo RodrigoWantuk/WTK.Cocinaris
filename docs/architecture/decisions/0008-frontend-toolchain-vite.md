@@ -2,13 +2,13 @@
 
 - **Status:** Accepted
 - **Date:** 2026-10-28
-- **Decision owner:** Repository owner (decision D-2, recorded in the PLAN-0028 coverage-review amendment)
-- **Plan:** [PLAN-0033](../../plans/PLAN-0033-migrate-frontend-to-vite.md)
+- **Decision owner:** Repository owner (decision D-2, recorded in the PLAN-0031 coverage-review amendment)
+- **Plan:** [PLAN-0036](../../plans/PLAN-0036-migrate-frontend-to-vite.md)
 - **Amends:** ADR-0007, which preserved the imported Create React App + CRACO runtime "unless a later ADR changes it"
 
 ## Context
 
-The frontend imported from Emergent ran on Create React App 5 with CRACO. CRA is deprecated and unmaintained. Its webpack, babel and Jest 27 toolchain accounted for most of the dependency tree (1,454 lockfile entries), more than 40 dependency-audit resolutions, and repeated advisory churn (PLAN-0015, PLAN-0029). It also hid defects:
+The frontend imported from Emergent ran on Create React App 5 with CRACO. CRA is deprecated and unmaintained. Its webpack, babel and Jest 27 toolchain accounted for most of the dependency tree (1,454 lockfile entries), more than 40 dependency-audit resolutions, and repeated advisory churn (PLAN-0015, PLAN-0032). It also hid defects:
 - CRA's jsdom environment shipped a fetch polyfill that allowed `clone()` on consumed bodies, so tests passed while browsers dropped error codes and field errors from failed API calls;
 - a guard script depended on `@babel/parser` only transitively.
 
@@ -23,7 +23,7 @@ The frontend imported from Emergent ran on Create React App 5 with CRACO. CRA is
   - dev server port 3000;
   - production isolation of prototype-only modules (`vite.config.ts` plugin replacing the former webpack `NormalModuleReplacementPlugin`).
 - Application code keeps reading `process.env.REACT_APP_FRONTEND_MODE` and `process.env.NODE_ENV`, which Vite `define` replaces at build time, so no runtime code depends on the bundler.
-- The Vite entry `index.html` lives at the package root and loads only same-origin content (PLAN-0032 guard).
+- The Vite entry `index.html` lives at the package root and loads only same-origin content (PLAN-0035 guard).
 
 ## Alternatives considered
 

@@ -136,7 +136,7 @@ Because the plan affects inventory consumption, derived lots, concurrency, and m
 - **Current checkpoint:** Replacement immutable candidate `9bff2e130afb4a0f31ea0b84925362f546d1179e` passed exact-head Backend, Frontend, and PLAN-0005 gates after remediation of F-0026-01, F-0026-02, and F-0026-03.
 - **Run target:** Deliver the complete owner-scoped preparation transaction vertical slice: domain/application contract, atomic PostgreSQL persistence and migration, HTTP/OpenAPI/client contract, tests, operations documentation, implementation evidence, and an independently testable candidate.
 - **Blockers:** None. PLAN-0027 retest completed with **Pass**; merged through PR #39 at `7912d4676ffc1f06ac193b7d6788c3a910ed2bd1`.
-- **Exact next action:** None for PLAN-0023. Production prepared-component UI is owned by PLAN-0036 in the PLAN-0028 roadmap.
+- **Exact next action:** None for PLAN-0023. Production prepared-component UI is owned by PLAN-0039 in the PLAN-0031 roadmap.
 
 ## Progress log
 
@@ -289,6 +289,6 @@ Because the plan affects inventory consumption, derived lots, concurrency, and m
 - **Note:** Historical assessment evidence is not rewritten. Stale statements that PR #39 still awaited owner review or final documentation-head checks are superseded by this merge record.
 - **Next action:** None for PLAN-0023; active work continues under PLAN-0022.
 
-### 2026-10-28T15:00:00Z — Claude Code (PLAN-0029 drift reconciliation)
+### 2026-10-28T15:00:00Z — Claude Code (PLAN-0032 drift reconciliation)
 
 - Execution state reconciled with the 2026-08-05 post-merge record; the stale PLAN-0027 retest blocker and next action were replaced.

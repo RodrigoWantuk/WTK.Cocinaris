@@ -1,15 +1,16 @@
-# PLAN-0031: Establish the Owner Linux Host as the Development and Deployment Environment
+# PLAN-0034: Establish the Owner Linux Host as the Development and Deployment Environment
 
-- **Status:** In Progress
+- **Status:** Validating
 - **Type:** Operations
 - **Priority:** Critical
 - **Owner:** Claude Code
 - **Created:** 2026-10-28
 - **Last updated:** 2026-10-28
-- **Branch:** `agent/plan-0031-owner-host-environment` (stacked on PLAN-0030)
-- **Pull request:** Not opened
+- **Branch:** `agent/plan-0031-0036-foundation-stack` (integrates the former stacked branches with `main` after PR #44)
+- **Pull request:** Draft PR from `agent/plan-0031-0036-foundation-stack` (one consolidated PR for PLAN-0031–PLAN-0036)
+- **Numbering:** Created as PLAN-0031. Renumbered to PLAN-0034 on 2026-10-28 because merged PR #44 had already published PLAN-0028–PLAN-0030 ([mapping](PLAN-0031-amendment-2026-10-28-coverage-review.md#renumbering-after-pr-44)).
 - **Related ADRs:** ADR-0004, ADR-0006
-- **Dependencies:** PLAN-0030 (names used in scripts and runbooks)
+- **Dependencies:** PLAN-0033 (names used in scripts and runbooks)
 
 ## Objective
 
@@ -36,7 +37,7 @@ Its procedure lived outside this repository and built from the same checkout tha
 4. **Deployment in the repository:**
    - `infrastructure/deploy/linux-host/` with a systemd unit template, reverse-proxy snippet, backup unit and timer, and an environment-file example with placeholders only;
    - `scripts/deploy/deploy-linux-host.sh`, which builds from a clean worktree of a chosen ref (default `origin/main`) instead of the development checkout, backs up, applies idempotent migrations as the schema owner, publishes, and health-checks;
-   - an operations runbook covering first install, update, rollback/forward repair, restore rehearsal, the rename migration from PLAN-0030, and log locations.
+   - an operations runbook covering first install, update, rollback/forward repair, restore rehearsal, the rename migration from PLAN-0033, and log locations.
 5. **Identity documentation:** deployments document a generic OIDC provider (authority, client ID/secret, redirect and sign-out callback paths). ADR-0004 gets an amendment note stating that Keycloak is the development/test fixture and any standards-compliant OIDC provider may back a deployment.
 6. **Agent workflow:** propose an `AGENTS.md` §13 change that authorizes this host for remote Git/GitHub operations with owner-configured credentials. **The owner applies it**: agents may not change the rules that govern their own remote authority (an agent attempt on 2026-10-28 was blocked by the agent permission classifier). Until then, no push or PR is made from this host.
 7. **Reconcile ADR-0006:** the owner host is the current development and deployment environment, and the Virginia production target stays as the accepted future production region.
@@ -44,7 +45,7 @@ Its procedure lived outside this repository and built from the same checkout tha
 
 ### Excluded
 
-- Production in Virginia, CI/CD auto-deploy, secret manager adoption (recorded as follow-ups for PLAN-0051).
+- Production in Virginia, CI/CD auto-deploy, secret manager adoption (recorded as follow-ups for PLAN-0052).
 - Changing the deployment's identity provider or its registration.
 
 ## Acceptance criteria
@@ -86,17 +87,17 @@ do Cocinaris (docs/development/environment.md#owner-linux-host). Neste host:
   - Compose PostgreSQL port configurable (`COCINARIS_DEV_POSTGRES_PORT`).
   - Frontend workflow on Node.js 24.18.0.
   - ADR-0004 and ADR-0006 amendments, environment guide "Owner Linux host" section, deployment runbook, `infrastructure/deploy/linux-host/`, `scripts/deploy/deploy-linux-host.sh`.
-- **Last completed step:** A deploy dry run of `8f74062` (PLAN-0030 head) built, published and generated the migration script, then **refused to publish** because the entry page loads third-party scripts. That is the intended guard behavior; the scripts are removed by PLAN-0032. The failed partial release was left behind, so the script now deletes any release that does not finish building.
-- **Exact next action:** Owner applies the proposed `AGENTS.md` §13 change; agent pushes the stacked branches and opens draft PRs (PLAN-0028 → 0029 → 0030 → 0031 → 0032). After owner merge: rename migration steps from the runbook and a real deploy with `--install-units`.
-- **Blockers:** Owner must apply the `AGENTS.md` §13 change before pushes and PRs from this host. Owner merge before deploying.
+- **Last completed step:** A deploy dry run of `8f74062` (PLAN-0033 head) built, published and generated the migration script, then **refused to publish** because the entry page loads third-party scripts. That is the intended guard behavior; the scripts are removed by PLAN-0035. The failed partial release was left behind, so the script now deletes any release that does not finish building.
+- **Exact next action:** Deploy `agent/plan-0031-0036-foundation-stack` with the runbook rename migration (owner standing instruction, 2026-10-28), then final PR CI.
+- **Blockers:** None. Owner merge determines delivery state only.
 - **Validation performed:**
-  - On the host: backend unit 52/52, architecture 14/14 and integration 175/175 with the OIDC fixture; format; migrations; OpenAPI (recorded under PLAN-0030).
+  - On the host: backend unit 52/52, architecture 14/14 and integration 175/175 with the OIDC fixture; format; migrations; OpenAPI (recorded under PLAN-0033).
   - Frontend full gate set on Node.js 24.
   - Backup restore rehearsal: 15 tables and 9 migration rows matched.
   - Deploy dry run as described above.
   - Existing sites returned HTTP 200 after the Docker install.
 - **Known failures or limitations:** None for the dry run (passed on `4c1cc72`, see progress log). CSP is documented in the reverse-proxy template but not enabled live, because sign-in cannot be verified end to end by an agent.
-- **Working tree state:** Committed on `agent/plan-0031-owner-host-environment`.
+- **Working tree state:** Committed on `agent/plan-0031-0036-foundation-stack`.
 
 ## Progress log
 
@@ -108,12 +109,12 @@ do Cocinaris (docs/development/environment.md#owner-linux-host). Neste host:
 
 - **Checkpoint:** Host environment, deployment assets and documentation delivered (see execution state).
 - **Incidents handled:** A session restart interrupted the first dry run mid-build; the partial release was removed and the dry run repeated. The development compose stack was stopped to free memory.
-- **Privacy incident (handled under PLAN-0032):** The deployed `index.html` loaded a third-party script and a session-recording analytics snippet inherited from the Emergent import. At 15:29Z the deployed file was hot-fixed (scripts removed, title corrected; backup at `/var/backups/wtk-cocinaris/web-index-20261028T152920Z.html`). The deploy script now refuses entry pages with external script or style origins.
+- **Privacy incident (handled under PLAN-0035):** The deployed `index.html` loaded a third-party script and a session-recording analytics snippet inherited from the Emergent import. At 15:29Z the deployed file was hot-fixed (scripts removed, title corrected; backup at `/var/backups/wtk-cocinaris/web-index-20261028T152920Z.html`). The deploy script now refuses entry pages with external script or style origins.
 - **Next action:** See execution state.
 
 ### 2026-10-28T18:15:00Z — Claude Code
 
-- Deploy dry run on `4c1cc72` (PLAN-0032 head) **passed** in about 95 seconds:
+- Deploy dry run on `4c1cc72` (PLAN-0035 head) **passed** in about 95 seconds:
   - worktree build, API publish, migration script and production frontend completed;
   - the third-party check passed;
   - the pre-flight listed the unit and environment-key rename steps.
@@ -121,7 +122,14 @@ do Cocinaris (docs/development/environment.md#owner-linux-host). Neste host:
 
 ### 2026-10-28T20:15:00Z — Claude Code
 
-- The owner confirmed the GitHub CLI login on this host and explicitly instructed: "pode aplicar a mudança do AGENTS.md proposta no PLAN-0031". Applied, with one adjustment: the review request applies when the author identity differs from `RodrigoWantuk`, because pushes from this host use the owner's own account and GitHub does not allow requesting a review from the author. The section intro now states that remote operations are allowed only on the listed hosts.
+- The owner confirmed the GitHub CLI login on this host and explicitly instructed: "pode aplicar a mudança do AGENTS.md proposta no PLAN-0034". Applied, with one adjustment: the review request applies when the author identity differs from `RodrigoWantuk`, because pushes from this host use the owner's own account and GitHub does not allow requesting a review from the author. The section intro now states that remote operations are allowed only on the listed hosts.
 - Remote access verified (`gh auth status`, `git ls-remote`). The token has very broad scopes; recommended to the owner to replace it with a token restricted to this repository.
 - The first fetch revealed open PR #44 (another agent, 2026-08-06): it implements the recipe AI gateway and cook-now generation as PLAN-0028, and drafts PLAN-0029/PLAN-0030, which collide with this stack's plan IDs. Nothing was pushed; owner decision requested on integration order.
 
+### 2026-10-28T22:20:00Z — Claude Code
+
+- The owner merged PR #44 and gave two standing instructions: "Pode tratar suas alterações como aprovadas" and "Sempre faça deploy das alterações quando fechar um ciclo, o ambiente não está em prod, ainda somos somente eu e você testando". Deploying a closed cycle from its branch before merge is therefore authorized on this host while it is not production. Merge itself remains the owner's action (`AGENTS.md` §11).
+- Integrated `main` (PR #44) into the stack on `agent/plan-0031-0036-foundation-stack` and renumbered this stack's plans (this plan was PLAN-0031).
+- Found and fixed a deployment gap: the PR #44 migration creates the `recipes` and `ai` schemas, and the deploy script did not grant them to `cocinaris_app`, so the first deploy would have failed with permission errors. The script now grants USAGE and DML on every schema owned by `cocinaris_owner` after migrations, plus default privileges. Verified twice on a scratch database (idempotent).
+- `api.env.example` and the runbook document the optional AI Gateway keys (`Ai__Providers__DeepSeek__Enabled`, `Ai__Providers__DeepSeek__ApiKey`).
+- **Next action:** Deploy this branch with the rename migration (`api.env` keys, `--install-units`), verify health and the public site, then push and open the draft PR.

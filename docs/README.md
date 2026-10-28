@@ -6,7 +6,7 @@ Documentation is part of the product. Code, tests, contracts, plans, and operati
 
 ## Naming history
 
-The product was called **KitchenFlow** during discovery and the first implementation plans. On 2026-10-28 the owner adopted **Cocinaris** for the product and every technical identifier ([PLAN-0030](plans/PLAN-0030-rename-to-cocinaris.md)). Living documents, code, contracts and configuration use Cocinaris. Completed plans PLAN-0001 to PLAN-0027 and `docs/evidence/` are immutable execution history and keep the old name, along with the commands and identifiers that were valid at the commits they reference.
+The product was called **KitchenFlow** during discovery and the first implementation plans. On 2026-10-28 the owner adopted **Cocinaris** for the product and every technical identifier ([PLAN-0033](plans/PLAN-0033-rename-to-cocinaris.md)). Living documents, code, contracts and configuration use Cocinaris. Completed plans PLAN-0001 to PLAN-0027 and `docs/evidence/` are immutable execution history and keep the old name, along with the commands and identifiers that were valid at the commits they reference.
 
 ## Documentation map
 

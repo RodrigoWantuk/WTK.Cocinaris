@@ -30,7 +30,7 @@ function requestUrl(input: RequestInfo | URL): string {
   return String(input);
 }
 
-describe("Production shell and navigation (PLAN-0032)", () => {
+describe("Production shell and navigation (PLAN-0035)", () => {
   let fetchSpy: MockInstance;
 
   beforeEach(() => {
@@ -93,7 +93,7 @@ describe("Production shell and navigation (PLAN-0032)", () => {
   });
 
   it("gives not-yet-available areas a heading and a way back home", async () => {
-    window.history.pushState({}, "", "/app/receitas");
+    window.history.pushState({}, "", "/app/compras");
     render(<ProductionApp />);
     expect(
       await screen.findByRole("heading", { level: 1, name: "Coming soon" }),
@@ -113,7 +113,10 @@ describe("Production shell and navigation (PLAN-0032)", () => {
     ["/app/despensa/abc", "page.title.inventoryDetail"],
     ["/app/despensa/abc/editar", "page.title.inventoryEdit"],
     ["/app/perfil/preferencias", "page.title.profile"],
-    ["/app/receitas", "page.title.unavailable"],
+    ["/app/receitas", "page.title.recipes"],
+    ["/app/receitas/gerar", "page.title.recipeGenerate"],
+    ["/app/receitas/abc", "page.title.recipeDetail"],
+    ["/app/compras", "page.title.unavailable"],
   ])("maps %s to %s", (pathname, key) => {
     expect(pageTitleKeyFor(pathname)).toBe(key);
   });

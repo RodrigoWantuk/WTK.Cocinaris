@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Last updated:** 2026-10-28
-- **Plan:** [PLAN-0031](../plans/PLAN-0031-owner-host-development-and-deployment.md)
+- **Plan:** [PLAN-0034](../plans/PLAN-0034-owner-host-development-and-deployment.md)
 - **Assets:** [`infrastructure/deploy/linux-host/`](../../infrastructure/deploy/linux-host/), [`scripts/deploy/deploy-linux-host.sh`](../../scripts/deploy/deploy-linux-host.sh)
 
 This runbook deploys Cocinaris on one Linux host: a systemd-managed API, static frontend files behind a TLS-terminating reverse proxy, and PostgreSQL on the same host. It is the procedure for the owner's Debian 13 host, which is both the development environment and the current deployment (see [`environment.md`](../development/environment.md#owner-linux-host)). The Virginia production target in ADR-0006 remains the future production region.
@@ -44,7 +44,7 @@ Steps performed:
 5. Refuse to publish if `index.html` loads any script or stylesheet from another origin.
 6. Pre-flight: the installed unit must start `Cocinaris.Api.dll`, and the environment file must not contain `KITCHENFLOW_*` keys.
 7. Stop the service and take a backup.
-8. Apply migrations as `cocinaris_owner`. A migration that creates a **new schema** also needs `GRANT USAGE ON SCHEMA <name> TO cocinaris_app;` and matching default privileges (see "First install").
+8. Apply migrations as `cocinaris_owner`, then grant `cocinaris_app` USAGE and DML on every schema the owner role owns, including schemas a migration has just created (`recipes` and `ai` arrive this way), and set matching default privileges. The grant step is idempotent.
 9. Switch the `api` and `web` symlinks, start the service, and wait for `/health/ready`.
 10. Prune old releases.
 
@@ -83,9 +83,9 @@ sudo -u postgres dropdb cocinaris_restore_rehearsal
 - 2026-10-28: a fresh dump (129 KB) restored without errors.
 - All 15 application tables and the migration history (9 rows) matched the live database.
 
-## Rename migration (KitchenFlow → Cocinaris, PLAN-0030)
+## Rename migration (KitchenFlow → Cocinaris, PLAN-0033)
 
-Do this once, on the first deploy of a release that contains PLAN-0030:
+Do this once, on the first deploy of a release that contains PLAN-0033:
 
 ```sh
 sudo cp -p /etc/wtk-cocinaris/api.env /etc/wtk-cocinaris/api.env.pre-rename
@@ -105,11 +105,12 @@ Rename any dashboard or alert that uses `kitchenflow.*` metric names.
 1. Install .NET 10.0.302 to `/opt/dotnet` (`dotnet-install.sh --version 10.0.302 --install-dir /opt/dotnet --no-path`), Node.js 24 to `/opt/node24` (checksum-verified tarball, then `corepack enable --install-directory /opt/node24/bin`), PostgreSQL, and Caddy.
 2. `useradd --system --no-create-home --shell /usr/sbin/nologin wtk-cocinaris`.
 3. Create `/etc/wtk-cocinaris/api.env` from `api.env.example` (`chown root:wtk-cocinaris`, `chmod 0640`).
-4. Database: create role `cocinaris_owner` (NOLOGIN) and `cocinaris_app` (LOGIN, random password), and database `cocinaris` owned by `cocinaris_owner`. For each schema (`identity`, `inventory`, `platform`, `profiles`, `public`), grant USAGE plus DML on tables and sequences to `cocinaris_app`, and set `ALTER DEFAULT PRIVILEGES FOR ROLE cocinaris_owner` to match.
-5. Register an OIDC client with redirect URI `https://<host>/signin-oidc` and sign-out callback `https://<host>/signout-callback-oidc`; put authority, client ID and secret in the environment file.
-6. Add the `Caddyfile.cocinaris` block with the real host name, then `caddy validate` and `systemctl reload caddy`.
-7. Point DNS at the host. With a proxying CDN, create the record **before** the proxy first requests a certificate. If the certificate attempt ran before DNS existed, `systemctl reload caddy` retries immediately (the CDN shows HTTP 525 until then).
-8. `sudo scripts/deploy/deploy-linux-host.sh --install-units`.
+4. Database: create role `cocinaris_owner` (NOLOGIN) and `cocinaris_app` (LOGIN, random password), and database `cocinaris` owned by `cocinaris_owner`. The deploy script grants `cocinaris_app` USAGE plus DML on every schema owned by `cocinaris_owner` after each migration run; `COCINARIS_APP_ROLE` overrides the role name.
+5. Optional AI Gateway: set `Ai__Providers__DeepSeek__Enabled=true` and `Ai__Providers__DeepSeek__ApiKey` in the environment file. Without them, recipe generation shows its unavailable state and the rest of the product works.
+6. Register an OIDC client with redirect URI `https://<host>/signin-oidc` and sign-out callback `https://<host>/signout-callback-oidc`; put authority, client ID and secret in the environment file.
+7. Add the `Caddyfile.cocinaris` block with the real host name, then `caddy validate` and `systemctl reload caddy`.
+8. Point DNS at the host. With a proxying CDN, create the record **before** the proxy first requests a certificate. If the certificate attempt ran before DNS existed, `systemctl reload caddy` retries immediately (the CDN shows HTTP 525 until then).
+9. `sudo scripts/deploy/deploy-linux-host.sh --install-units`.
 
 ## Operations
 

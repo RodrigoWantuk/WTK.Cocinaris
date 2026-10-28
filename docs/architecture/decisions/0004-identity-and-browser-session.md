@@ -34,7 +34,7 @@ The application requires account creation, email verification, recovery, externa
 - Same-origin proxying is preferred where practical, with CSRF protection for cookie-authenticated mutations.
 - A future identity-provider replacement remains possible through OIDC and internal user identity.
 
-## Amendment — 2026-10-28 (owner decision, PLAN-0031)
+## Amendment — 2026-10-28 (owner decision, PLAN-0034)
 
 - Cocinaris integrates with **any standards-compliant OIDC provider**. Keycloak remains the development and test fixture (`infrastructure/keycloak`, compose stack, integration tests), not a deployment requirement.
 - A deployment documents only its OIDC parameters (authority, client ID and secret, redirect and sign-out callback URIs). Repository documentation does not name the provider a deployment uses.

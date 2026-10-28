@@ -181,7 +181,7 @@ Before completion:
 
 ## Progress log
 
-### 2026-10-28T15:00:00Z — Claude Code (PLAN-0029 drift reconciliation)
+### 2026-10-28T15:00:00Z — Claude Code (PLAN-0032 drift reconciliation)
 
 - Header status reconciled with the registry and the completion handoff. Historical entries below are unchanged.
 

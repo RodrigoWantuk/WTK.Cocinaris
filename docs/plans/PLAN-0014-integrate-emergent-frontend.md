@@ -268,7 +268,7 @@ Convert and type, in dependency order:
 
 ## Progress log
 
-### 2026-10-28T15:00:00Z — Claude Code (PLAN-0029 drift reconciliation)
+### 2026-10-28T15:00:00Z — Claude Code (PLAN-0032 drift reconciliation)
 
 - Header status reconciled with the registry: PLAN-0015 completed the remediation and validation this plan deferred. Historical entries below are unchanged.
 

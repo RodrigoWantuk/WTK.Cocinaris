@@ -17,18 +17,20 @@ Cocinaris has completed its initial product and architecture discovery and now h
 
 - backend-managed OIDC browser session and internal user ownership;
 - owner-isolated PostgreSQL inventory with concurrency, idempotency, history, migrations, OpenAPI, and operational tests;
-- profile, household context, preferences/restrictions, equipment, and completeness backend;
-- generated TypeScript API client;
+- profile, household context, preferences/restrictions, equipment, and completeness backend plus production profile UI;
 - prepared components recorded as derived inventory lots with parent consumption (backend);
 - generated TypeScript API client;
 - production session, authenticated inventory, and profile/household/preferences/equipment frontend routes;
 - public entry page and a contextual home rendered from mock source adapters;
-- an evaluated recipe AI artifact protocol (contract only; no AI Gateway code yet);
+- recipe AI protocol `0.3` (Revised) with deterministic validators;
+- AI Gateway cook-now recipe generation (suggest three candidates → select → expand → persist user-owned revision) with production Recipes UI;
 - prototype/production isolation and blocking frontend/backend CI gates.
 
-The full initial release is **not** implemented. Live contextual-home sources, recipes, planning, shopping, guided cooking, reconciliation, AI Gateway, persistent jobs, notifications, privacy workflows, generated media, billing, and launch operations remain plan-driven future work. The ordered roadmap is in [`PLAN-0028`](docs/plans/PLAN-0028-resume-project-and-define-evolution-roadmap.md).
+The full initial release is **not** implemented. Inventory lifecycle and shelf-life attention, the recipe library, sequential planning/menus/shopping, guided cooking, reconciliation, live contextual-home sources, thumbnail generation, persistent jobs, notifications, privacy workflows, billing, and launch operations remain plan-driven future work. The ordered roadmap is in the [`PLAN-0031` coverage review](docs/plans/PLAN-0031-amendment-2026-10-28-coverage-review.md).
 
 Do not interpret accepted architecture or prototype surfaces as completed production capability.
+
+See [`docs/roadmap/initial-release-delivery-map.md`](docs/roadmap/initial-release-delivery-map.md).
 
 ## Initial release direction
 

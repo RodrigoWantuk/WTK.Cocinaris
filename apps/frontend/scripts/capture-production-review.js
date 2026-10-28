@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Interface and navigation review capture for the production build (PLAN-0032).
+ * Interface and navigation review capture for the production build (PLAN-0035).
  *
  * Serves `build/` (run `yarn build:production` first), answers `/api/v1/*` with
  * synthetic contract-shaped fixtures, and for every production route and
@@ -9,7 +9,7 @@
  * endpoint was fetched while navigating through the primary navigation.
  *
  * Synthetic data only; no backend, identity provider, or personal data is
- * involved. Output: `REVIEW_OUT_DIR` (default `../../docs/evidence/plan-0032/<label>`).
+ * involved. Output: `REVIEW_OUT_DIR` (default `../../docs/evidence/plan-0035/<label>`).
  *
  * Usage: node scripts/capture-production-review.js [label]
  */
@@ -21,7 +21,7 @@ const path = require("path");
 const LABEL = process.argv[2] || "review";
 const OUT_DIR =
   process.env.REVIEW_OUT_DIR ||
-  path.join(__dirname, "..", "..", "..", "docs", "evidence", "plan-0032", LABEL);
+  path.join(__dirname, "..", "..", "..", "docs", "evidence", "plan-0035", LABEL);
 const PORT = Number(process.env.REVIEW_PORT || 3093);
 const BASE = `http://127.0.0.1:${PORT}`;
 const VIEWPORTS = [
