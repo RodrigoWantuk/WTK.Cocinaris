@@ -50,8 +50,8 @@ Its procedure lived outside this repository and built from the same checkout tha
 ## Acceptance criteria
 
 - [x] Backend unit, architecture and **integration** tests pass on the host, including the OIDC-fixture-dependent tests.
-- [ ] Frontend gates pass on the host with Node.js 24 and Yarn via Corepack. The frontend workflow uses Node.js 24.
-- [ ] The deployment script and runbook can rebuild the running deployment from a ref without touching the development checkout. Verified with a dry run (`--dry-run`) on the host.
+- [x] Frontend gates pass on the host with Node.js 24 and Yarn via Corepack. The frontend workflow uses Node.js 24.
+- [x] The deployment script and runbook can rebuild the running deployment from a ref without touching the development checkout. Verified with a dry run (`--dry-run`) on the host.
 - [x] A backup restore rehearsal into a scratch database succeeds and is documented.
 - [x] No identity-provider product name appears in deployment documentation.
 - [ ] `AGENTS.md` §13 reflects the host decision (owner action; proposed text below).
@@ -87,7 +87,7 @@ do Cocinaris (docs/development/environment.md#owner-linux-host). Neste host:
   - Frontend workflow on Node.js 24.18.0.
   - ADR-0004 and ADR-0006 amendments, environment guide "Owner Linux host" section, deployment runbook, `infrastructure/deploy/linux-host/`, `scripts/deploy/deploy-linux-host.sh`.
 - **Last completed step:** A deploy dry run of `8f74062` (PLAN-0030 head) built, published and generated the migration script, then **refused to publish** because the entry page loads third-party scripts. That is the intended guard behavior; the scripts are removed by PLAN-0032. The failed partial release was left behind, so the script now deletes any release that does not finish building.
-- **Exact next action:** On the PLAN-0032 head (trackers removed), rerun `scripts/deploy/deploy-linux-host.sh --ref <PLAN-0032 head> --dry-run` and confirm the release builds completely. After owner merge: rename migration steps from the runbook and a real deploy.
+- **Exact next action:** Owner applies the proposed `AGENTS.md` §13 change; agent pushes the stacked branches and opens draft PRs (PLAN-0028 → 0029 → 0030 → 0031 → 0032). After owner merge: rename migration steps from the runbook and a real deploy with `--install-units`.
 - **Blockers:** Owner must apply the `AGENTS.md` §13 change before pushes and PRs from this host. Owner merge before deploying.
 - **Validation performed:**
   - On the host: backend unit 52/52, architecture 14/14 and integration 175/175 with the OIDC fixture; format; migrations; OpenAPI (recorded under PLAN-0030).
@@ -95,7 +95,7 @@ do Cocinaris (docs/development/environment.md#owner-linux-host). Neste host:
   - Backup restore rehearsal: 15 tables and 9 migration rows matched.
   - Deploy dry run as described above.
   - Existing sites returned HTTP 200 after the Docker install.
-- **Known failures or limitations:** No complete dry-run success yet, by design, until PLAN-0032 removes the trackers. CSP is documented in the reverse-proxy template but not enabled live, because sign-in cannot be verified end to end by an agent.
+- **Known failures or limitations:** None for the dry run (passed on `4c1cc72`, see progress log). CSP is documented in the reverse-proxy template but not enabled live, because sign-in cannot be verified end to end by an agent.
 - **Working tree state:** Committed on `agent/plan-0031-owner-host-environment`.
 
 ## Progress log
@@ -110,4 +110,12 @@ do Cocinaris (docs/development/environment.md#owner-linux-host). Neste host:
 - **Incidents handled:** A session restart interrupted the first dry run mid-build; the partial release was removed and the dry run repeated. The development compose stack was stopped to free memory.
 - **Privacy incident (handled under PLAN-0032):** The deployed `index.html` loaded a third-party script and a session-recording analytics snippet inherited from the Emergent import. At 15:29Z the deployed file was hot-fixed (scripts removed, title corrected; backup at `/var/backups/wtk-cocinaris/web-index-20261028T152920Z.html`). The deploy script now refuses entry pages with external script or style origins.
 - **Next action:** See execution state.
+
+### 2026-10-28T18:15:00Z — Claude Code
+
+- Deploy dry run on `4c1cc72` (PLAN-0032 head) **passed** in about 95 seconds:
+  - worktree build, API publish, migration script and production frontend completed;
+  - the third-party check passed;
+  - the pre-flight listed the unit and environment-key rename steps.
+- The unactivated release was removed. Remaining acceptance: `AGENTS.md` §13 (owner) and the post-merge deploy.
 

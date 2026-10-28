@@ -40,7 +40,7 @@ Review the production frontend (public entry, contextual home, inventory, profil
 ## Acceptance criteria
 
 - [x] Review findings recorded in this plan, each with a decision (fixed, deferred with owner plan, or rejected with reason).
-- [x] Every fixed finding has a test: Jest for behavior and copy (UI-02, 04–07, 09, 12, 15–17, guard for UI-01/03); the axe and overflow capture for visual and structural accessibility (UI-08, 10, 11, 13, 14).
+- [x] Every fixed finding has a test: Jest for behavior and copy (UI-02, 04–07, 12, 15–17, guard for UI-01/03); the axe and overflow capture for visual and structural accessibility (UI-08–11, 13, 14).
 - [x] Frontend gates pass; axe reports no serious or critical violations on production routes.
 - [x] Screenshots before and after are stored under `docs/evidence/plan-0032/` (360 px kept; full reports for all viewports).
 
@@ -81,7 +81,7 @@ Captured with `apps/frontend/scripts/capture-production-review.js` (production b
   - per-route titles present;
   - session refetches while navigating: **0**.
 - **Last completed step:** Frontend gates on Node.js 24: typecheck, lint, Prettier, five guards, Jest 46 suites / 387 tests, production build, bundle inspection, `audit:policy`.
-- **Exact next action:** Rerun the PLAN-0031 deploy dry run on this head (it must now pass the third-party check). Then CI on the PR head once the owner enables pushes from this host.
+- **Exact next action:** CI on the PR head once the owner enables pushes from this host (PLAN-0031 §13 proposal), then owner review and merge.
 - **Blockers:** Remote push/PR from this host awaits the owner's `AGENTS.md` §13 change (see PLAN-0031).
 - **Known failures or limitations:**
   - Manual screen-reader passes (NVDA/VoiceOver) remain owned by PLAN-0051.
@@ -100,4 +100,9 @@ Captured with `apps/frontend/scripts/capture-production-review.js` (production b
 - **Changes:** `public/index.html`, `scripts/guard-third-party-html.js` (+ CI step), bundled fonts, `ProductionApp.tsx` layout route/title/skip link/header, home consolidated notice, inventory and shell catalogs, history labels, code-list select, preference tab panel, muted token, lot detail list, entry page cleanup. New tests: `ProductionShellNavigation.test.tsx`, catalog fallback and history-contract tests, updated home/entry/i18n tests. Capture script and evidence.
 - **Validation:** All frontend gates green; capture metrics as in execution state.
 - **Next action:** Deploy dry run on this head.
+
+### 2026-10-28T18:15:00Z — Claude Code
+
+- Deploy dry run of `4c1cc72` (this plan's implementation head) succeeded: release built with API, web and migration script; the entry page has only same-origin content and the title "Cocinaris". The pre-flight correctly reported the two rename-migration steps a real deploy needs (unit update, `KITCHENFLOW_*` keys). The unactivated dry-run release was removed afterwards; the live deployment was not touched.
+- Corrected the acceptance note: UI-09 is covered by the axe capture, not by a dedicated Jest test.
 
