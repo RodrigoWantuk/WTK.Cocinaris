@@ -22,7 +22,11 @@ import type {
 } from "@/contracts/recipes";
 import { RecipeApiError } from "@/contracts/recipes";
 import { PRODUCTION_LOCALES } from "@/app/i18n/productionCatalog";
-import { executionStubs } from "./testExecutionStubs";
+import {
+  executionStubs,
+  libraryDetail,
+  librarySummary,
+} from "./testExecutionStubs";
 
 const CANDIDATES: RecipeCandidate[] = [
   {
@@ -153,7 +157,7 @@ function inventoryWithLots(count: number): InventoryRepository {
 function createRecipeRepo(
   overrides: Partial<RecipeRepository> = {},
 ): RecipeRepository {
-  const detail: RecipeDetail = {
+  const detail: RecipeDetail = libraryDetail({
     recipeId: "recipe-1",
     revisionNumber: 1,
     name: "Tomato Skillet",
@@ -168,15 +172,15 @@ function createRecipeRepo(
     }),
     thumbnailVisualJson: "{}",
     createdAt: new Date().toISOString(),
-  };
+  });
   const summaries: RecipeSummary[] = [
-    {
+    librarySummary({
       recipeId: "recipe-1",
       name: "Tomato Skillet",
       mealTypes: ["dinner"],
       servings: 2,
       createdAt: new Date().toISOString(),
-    },
+    }),
   ];
 
   return {
@@ -266,16 +270,18 @@ describe("production recipes vertical slice", () => {
 
   it("renders exactly three candidates and navigates after selection", async () => {
     const user = userEvent.setup();
-    const selectCandidate = vi.fn(async () => ({
-      recipeId: "recipe-1",
-      revisionNumber: 1,
-      name: "Tomato Skillet",
-      mealTypes: ["dinner"],
-      servings: 2,
-      normalizedRecipeJson: "{}",
-      thumbnailVisualJson: "{}",
-      createdAt: new Date().toISOString(),
-    }));
+    const selectCandidate = vi.fn(async () =>
+      libraryDetail({
+        recipeId: "recipe-1",
+        revisionNumber: 1,
+        name: "Tomato Skillet",
+        mealTypes: ["dinner"],
+        servings: 2,
+        normalizedRecipeJson: "{}",
+        thumbnailVisualJson: "{}",
+        createdAt: new Date().toISOString(),
+      }),
+    );
     renderGenerate(
       createRecipeRepo({
         selectCandidate,

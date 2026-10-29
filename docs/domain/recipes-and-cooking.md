@@ -1,7 +1,7 @@
 # Recipes and Guided Cooking
 
 - **Status:** Accepted
-- **Last updated:** 2026-07-28
+- **Last updated:** 2026-10-29
 
 ## Recipe identity
 
@@ -69,6 +69,22 @@ A derived recipe receives a new UUID when the method, identity, or intended resu
 
 A derived recipe records parent recipe, parent revision, and derivation reason.
 
+### Implemented library (PLAN-0038)
+
+- **Origins.**
+  - **Recipes** are `generated` (cook-now), `manual` (written by the owner), or `derived`.
+  - **Revisions** are `generated`, `manual`, `edited`, or `derived`, and may carry a change reason and the completed cooking session they came from.
+- **Owner-written content.** Validated and composed deterministically into the same protocol 0.3 shape as generated content, so display and cooking read both the same way.
+  - Rows that keep their identifier keep their pantry link.
+  - Fields the editor does not show are carried over.
+- **Editing.** Every edit appends the next revision. An edit that started from an older revision is refused instead of overwriting the newer one. Earlier revisions stay readable at `/app/receitas/:id/versoes/:n`.
+- **Revision or derived recipe.** The owner chooses between "Editar" (a revision) and "Criar variação" (a derived recipe). The application does not infer materiality.
+- **Derived recipes.** A derived recipe requires a reason and records its parent recipe and parent revision. The parent is not changed.
+- **Favorites and archive.** Both are flags on the recipe and never touch revision content.
+  - Archived recipes leave the default list and the home page; their history and executions are kept, and they can be restored.
+  - Recipes are not deleted, because executions and derived recipes reference them.
+- **History.** The recipe page lists revisions and finished cooking sessions with their date, servings, rating, and notes.
+
 ## Favorites and menu references
 
 A favorite points to the logical recipe and follows its current revision.
@@ -109,7 +125,8 @@ The checklist informs and offers adaptations but does not arbitrarily block cont
 - **Start.** "Cozinhar agora" on the recipe page creates an execution pinned to the current revision. The servings default to the revision's. A recipe has at most one execution in progress, and starting again returns it. The home page lists executions in progress so the cook can resume.
 - **Cooking view.** Ingredients, equipment, and stages with each stage's instructions, timings, and doneness cues, all with checkboxes. Checks are kept only in the browser, per execution.
 - **Completion proposal.** Deterministic and recomputed from the pinned revision and the current pantry. Quantities scale with servings cooked over the revision's servings: whole units round up, and grams and milliliters round to whole numbers. Each line is `ready`, `insufficient` (capped at what the lot holds), `lot_unavailable`, or `not_tracked`, and the cook may pick any measured pantry lot for any line.
-- **Finalization in Phase 1.** Lot quantities consumed, leftover portions with storage and an optional use-by date, a 1–5 rating, and private notes. Substitutions as revisions, derived recipes, photos, and consumed-portion records come in later phases.
+- **Finalization in Phase 1.** Lot quantities consumed, leftover portions with storage and an optional use-by date, a 1–5 rating, and private notes. Photos and consumed-portion records come in later phases.
+- **Saving changes after cooking (Phase 2, with PLAN-0038).** The finished screen offers "Salvar ajustes na receita" (next revision) and "Criar variação" (derived recipe). The editor shows the session's notes and rating, and the result records the session. Nothing changes the saved recipe unless the owner saves. Substitutions recorded during cooking are not yet implemented.
 - **Abandonment.** Ends the execution without touching inventory.
 
 ## Stage-based instructions

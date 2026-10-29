@@ -60,7 +60,7 @@ try {
   }).replaceAll("'", "''");
   const sql = `INSERT INTO recipes.recipes ("Id","OwnerUserId","CurrentRevisionNumber","CreatedAt","UpdatedAt") VALUES ('${recipeId}','${userId}',1,now(),now());
 INSERT INTO recipes.recipe_revisions ("Id","RecipeId","OwnerUserId","RevisionNumber","Name","MealTypesJson","Servings","NormalizedRecipeJson","ThumbnailVisualJson","SourceCandidateId","SourceGenerationSessionId","CreatedAt")
-VALUES ('${randomUUID()}','${recipeId}','${userId}',1,'Arroz E2E','["lunch"]',2,'${content}','{}','cand-e2e','${randomUUID()}',now());`;
+VALUES ('${randomUUID()}','${recipeId}','${userId}',1,'${productName} pronto','["lunch"]',2,'${content}','{}','cand-e2e','${randomUUID()}',now());`;
   execFileSync("docker", ["compose", "-f", path.join(repo, "infrastructure/compose/compose.dev.yml"), "exec", "-T", "postgres", "psql", "-q", "-v", "ON_ERROR_STOP=1", "-U", "cocinaris_dev", "-d", "cocinaris"], { input: sql, stdio: ["pipe", "ignore", "inherit"] });
 
   await page.goto(`${BASE}/app/receitas/${recipeId}`, { waitUntil: "networkidle" });
@@ -82,7 +82,8 @@ VALUES ('${randomUUID()}','${recipeId}','${userId}',1,'Arroz E2E','["lunch"]',2,
 
   const after = await page.evaluate(async (id) => (await (await fetch(`/api/v1/inventory/lots/${id}`, { credentials: "include" })).json()).quantity.measuredValue, lotId);
   check("pantry lot went from 500 g to 300 g", after === 300, `measured ${after}`);
-  const leftovers = await page.evaluate(async () => (await (await fetch("/api/v1/inventory/lots?search=Arroz%20E2E", { credentials: "include" })).json()).items.length);
+  // The product and the recipe share a per-run name, so earlier runs never match the search.
+  const leftovers = await page.evaluate(async (name) => (await (await fetch(`/api/v1/inventory/lots?search=${encodeURIComponent(name)}`, { credentials: "include" })).json()).items.length, productName);
   check("leftover lot was created next to the original lot", leftovers === 2, `items ${leftovers}`);
 } catch (error) {
   check("journey", false, error.message.split("\n")[0]);

@@ -5,9 +5,9 @@
 - **Priority:** High
 - **Owner:** Claude Code (deterministic tiers claimed 2026-10-29)
 - **Created:** 2026-08-02
-- **Last updated:** 2026-08-05
-- **Branch:** `agent/plan-0042-cook-and-reconcile` (deterministic tiers delivered with PLAN-0042 Phase 1)
-- **Pull request:** Not opened
+- **Last updated:** 2026-10-29
+- **Branch:** `agent/plan-0042-cook-and-reconcile` (deterministic tiers delivered with PLAN-0042 Phase 1; merged and deleted)
+- **Pull request:** Deterministic tiers merged via [PR #50](https://github.com/RodrigoWantuk/WTK.Cocinaris/pull/50) at `595af8e`
 - **Dependencies:** PLAN-0011 presentation boundary; PLAN-0020 production profile UI; PLAN-0022 recipe contract decisions (Completed); accepted menu/planning read contract from PLAN-0029
 - **Related product:** `docs/product/entry-and-contextual-home.md`
 - **Parent implementation plan:** PLAN-0011 Phase 3 and Phase 4 transfer
@@ -105,7 +105,7 @@ Represent:
   - cooking in progress (PLAN-0042);
   - the main "O que cozinho agora?" action;
   - the five most urgent items from the inventory attention list (PLAN-0037);
-  - the three most recent saved recipes.
+  - the three most recent saved recipes (archived recipes are excluded since PLAN-0038).
 
   The sections are composed in the frontend from existing owner-scoped endpoints. No new aggregate endpoint was needed, and the plan allows either approach.
 - **Remaining:**

@@ -19,7 +19,7 @@ import { createUnavailableAdultDeclarationPolicy } from "@/features/profile/adul
 import { RecipeApiError } from "@/contracts/recipes";
 import ProductionApp from "@/app/ProductionApp";
 import { PRODUCTION_LOCALE_STORAGE_KEY } from "@/app/i18n/productionCatalog";
-import { executionStubs } from "./testExecutionStubs";
+import { executionStubs, libraryDetail } from "./testExecutionStubs";
 
 const candidate = (id: string, name: string) => ({
   candidateId: id,
@@ -151,22 +151,9 @@ function renderGenerateTree(
 describe("Recipes generate flow", () => {
   it("renders three candidates and navigates after selection", async () => {
     const user = userEvent.setup();
-    const selectCandidate = vi.fn(async () => ({
-      recipeId: "cccccccc-cccc-cccc-cccc-cccccccccccc",
-      revisionNumber: 1,
-      name: "Tomato Pasta",
-      mealTypes: ["dinner"],
-      servings: 2,
-      normalizedRecipeJson: "{}",
-      thumbnailVisualJson: "{}",
-      createdAt: "2026-08-05T12:00:00Z",
-    }));
-
-    const recipeRepo: RecipeRepository = {
-      ...executionStubs,
-      listRecipes: async () => [],
-      getRecipe: async (recipeId) => ({
-        recipeId,
+    const selectCandidate = vi.fn(async () =>
+      libraryDetail({
+        recipeId: "cccccccc-cccc-cccc-cccc-cccccccccccc",
         revisionNumber: 1,
         name: "Tomato Pasta",
         mealTypes: ["dinner"],
@@ -175,6 +162,22 @@ describe("Recipes generate flow", () => {
         thumbnailVisualJson: "{}",
         createdAt: "2026-08-05T12:00:00Z",
       }),
+    );
+
+    const recipeRepo: RecipeRepository = {
+      ...executionStubs,
+      listRecipes: async () => [],
+      getRecipe: async (recipeId) =>
+        libraryDetail({
+          recipeId,
+          revisionNumber: 1,
+          name: "Tomato Pasta",
+          mealTypes: ["dinner"],
+          servings: 2,
+          normalizedRecipeJson: "{}",
+          thumbnailVisualJson: "{}",
+          createdAt: "2026-08-05T12:00:00Z",
+        }),
       requestCandidates: async () => ({
         sessionId: "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
         status: "CandidatesReady",

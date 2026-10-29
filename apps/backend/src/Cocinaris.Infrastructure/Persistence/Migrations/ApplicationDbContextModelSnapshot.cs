@@ -820,25 +820,61 @@ namespace Cocinaris.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<DateTimeOffset?>("ArchivedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("CreationKey")
+                        .HasColumnType("uuid");
 
                     b.Property<int>("CurrentRevisionNumber")
                         .HasColumnType("integer");
 
+                    b.Property<string>("DerivationReason")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<bool>("IsFavorite")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Origin")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("Generated");
+
                     b.Property<Guid>("OwnerUserId")
                         .HasColumnType("uuid");
+
+                    b.Property<Guid?>("ParentRecipeId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int?>("ParentRevisionNumber")
+                        .HasColumnType("integer");
 
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
 
+                    b.HasIndex("OwnerUserId", "CreationKey")
+                        .IsUnique()
+                        .HasFilter("\"CreationKey\" IS NOT NULL");
+
+                    b.HasIndex("ParentRecipeId", "OwnerUserId");
+
                     b.HasIndex("OwnerUserId", "CreatedAt", "Id");
 
                     b.ToTable("recipes", "recipes", t =>
                         {
                             t.HasCheckConstraint("ck_recipes_current_revision_number", "\"CurrentRevisionNumber\" >= 1");
+
+                            t.HasCheckConstraint("ck_recipes_derivation", "(\"Origin\" = 'Derived') = (\"ParentRecipeId\" IS NOT NULL AND \"ParentRevisionNumber\" IS NOT NULL AND \"DerivationReason\" IS NOT NULL)");
+
+                            t.HasCheckConstraint("ck_recipes_origin", "\"Origin\" IN ('Generated', 'Manual', 'Derived')");
                         });
                 });
 
@@ -847,6 +883,10 @@ namespace Cocinaris.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
+
+                    b.Property<string>("ChangeReason")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -864,6 +904,13 @@ namespace Cocinaris.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("jsonb");
 
+                    b.Property<string>("Origin")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("Generated");
+
                     b.Property<Guid>("OwnerUserId")
                         .HasColumnType("uuid");
 
@@ -877,11 +924,13 @@ namespace Cocinaris.Infrastructure.Persistence.Migrations
                         .HasColumnType("integer");
 
                     b.Property<string>("SourceCandidateId")
-                        .IsRequired()
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)");
 
-                    b.Property<Guid>("SourceGenerationSessionId")
+                    b.Property<Guid?>("SourceExecutionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("SourceGenerationSessionId")
                         .HasColumnType("uuid");
 
                     b.Property<string>("ThumbnailVisualJson")
@@ -889,6 +938,8 @@ namespace Cocinaris.Infrastructure.Persistence.Migrations
                         .HasColumnType("jsonb");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("SourceExecutionId");
 
                     b.HasIndex("RecipeId", "OwnerUserId");
 
@@ -899,13 +950,19 @@ namespace Cocinaris.Infrastructure.Persistence.Migrations
 
                     b.ToTable("recipe_revisions", "recipes", t =>
                         {
+                            t.HasCheckConstraint("ck_recipe_revisions_edited_number", "(\"Origin\" = 'Edited') = (\"RevisionNumber\" > 1)");
+
+                            t.HasCheckConstraint("ck_recipe_revisions_generated_source", "(\"Origin\" = 'Generated') = (\"SourceCandidateId\" IS NOT NULL AND \"SourceGenerationSessionId\" IS NOT NULL)");
+
                             t.HasCheckConstraint("ck_recipe_revisions_name", "length(btrim(\"Name\")) > 0");
+
+                            t.HasCheckConstraint("ck_recipe_revisions_origin", "\"Origin\" IN ('Generated', 'Manual', 'Edited', 'Derived')");
 
                             t.HasCheckConstraint("ck_recipe_revisions_revision_number", "\"RevisionNumber\" >= 1");
 
                             t.HasCheckConstraint("ck_recipe_revisions_servings", "\"Servings\" BETWEEN 1 AND 24");
 
-                            t.HasCheckConstraint("ck_recipe_revisions_source_candidate_id", "length(btrim(\"SourceCandidateId\")) > 0");
+                            t.HasCheckConstraint("ck_recipe_revisions_source_candidate_id", "\"SourceCandidateId\" IS NULL OR length(btrim(\"SourceCandidateId\")) > 0");
                         });
                 });
 
@@ -1447,6 +1504,12 @@ namespace Cocinaris.Infrastructure.Persistence.Migrations
                         .HasForeignKey("OwnerUserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.HasOne("Cocinaris.Infrastructure.Persistence.RecipeRecord", null)
+                        .WithMany()
+                        .HasForeignKey("ParentRecipeId", "OwnerUserId")
+                        .HasPrincipalKey("Id", "OwnerUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("Cocinaris.Infrastructure.Persistence.RecipeRevisionRecord", b =>
@@ -1456,6 +1519,11 @@ namespace Cocinaris.Infrastructure.Persistence.Migrations
                         .HasForeignKey("OwnerUserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.HasOne("Cocinaris.Infrastructure.Persistence.RecipeExecutionRecord", null)
+                        .WithMany()
+                        .HasForeignKey("SourceExecutionId")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("Cocinaris.Infrastructure.Persistence.RecipeRecord", null)
                         .WithMany()

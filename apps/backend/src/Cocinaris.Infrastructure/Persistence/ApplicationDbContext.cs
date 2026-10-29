@@ -350,11 +350,21 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
 
         modelBuilder.Entity<RecipeRecord>(entity =>
         {
-            entity.ToTable("recipes", "recipes", table => table.HasCheckConstraint("ck_recipes_current_revision_number", "\"CurrentRevisionNumber\" >= 1"));
+            entity.ToTable("recipes", "recipes", table =>
+            {
+                table.HasCheckConstraint("ck_recipes_current_revision_number", "\"CurrentRevisionNumber\" >= 1");
+                table.HasCheckConstraint("ck_recipes_origin", "\"Origin\" IN ('Generated', 'Manual', 'Derived')");
+                table.HasCheckConstraint("ck_recipes_derivation", "(\"Origin\" = 'Derived') = (\"ParentRecipeId\" IS NOT NULL AND \"ParentRevisionNumber\" IS NOT NULL AND \"DerivationReason\" IS NOT NULL)");
+            });
             entity.HasKey(x => x.Id);
             entity.HasAlternateKey(x => new { x.Id, x.OwnerUserId });
+            entity.Property(x => x.Origin).HasMaxLength(20).IsRequired().HasDefaultValue("Generated");
+            entity.Property(x => x.DerivationReason).HasMaxLength(200);
             entity.HasOne<InternalUser>().WithMany().HasForeignKey(x => x.OwnerUserId).OnDelete(DeleteBehavior.Restrict);
+            // A derived recipe's parent belongs to the same owner; copies across owners are sharing, not derivation.
+            entity.HasOne<RecipeRecord>().WithMany().HasForeignKey(x => new { x.ParentRecipeId, x.OwnerUserId }).HasPrincipalKey(x => new { x.Id, x.OwnerUserId }).OnDelete(DeleteBehavior.Restrict);
             entity.HasIndex(x => new { x.OwnerUserId, x.CreatedAt, x.Id });
+            entity.HasIndex(x => new { x.OwnerUserId, x.CreationKey }).IsUnique().HasFilter("\"CreationKey\" IS NOT NULL");
         });
 
         modelBuilder.Entity<RecipeRevisionRecord>(entity =>
@@ -364,14 +374,20 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
                 table.HasCheckConstraint("ck_recipe_revisions_revision_number", "\"RevisionNumber\" >= 1");
                 table.HasCheckConstraint("ck_recipe_revisions_servings", "\"Servings\" BETWEEN 1 AND 24");
                 table.HasCheckConstraint("ck_recipe_revisions_name", "length(btrim(\"Name\")) > 0");
-                table.HasCheckConstraint("ck_recipe_revisions_source_candidate_id", "length(btrim(\"SourceCandidateId\")) > 0");
+                table.HasCheckConstraint("ck_recipe_revisions_source_candidate_id", "\"SourceCandidateId\" IS NULL OR length(btrim(\"SourceCandidateId\")) > 0");
+                table.HasCheckConstraint("ck_recipe_revisions_origin", "\"Origin\" IN ('Generated', 'Manual', 'Edited', 'Derived')");
+                table.HasCheckConstraint("ck_recipe_revisions_generated_source", "(\"Origin\" = 'Generated') = (\"SourceCandidateId\" IS NOT NULL AND \"SourceGenerationSessionId\" IS NOT NULL)");
+                table.HasCheckConstraint("ck_recipe_revisions_edited_number", "(\"Origin\" = 'Edited') = (\"RevisionNumber\" > 1)");
             });
             entity.HasKey(x => x.Id);
             entity.Property(x => x.Name).HasMaxLength(80).IsRequired();
             entity.Property(x => x.MealTypesJson).HasColumnType("jsonb").IsRequired();
             entity.Property(x => x.NormalizedRecipeJson).HasColumnType("jsonb").IsRequired();
             entity.Property(x => x.ThumbnailVisualJson).HasColumnType("jsonb").IsRequired();
-            entity.Property(x => x.SourceCandidateId).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.SourceCandidateId).HasMaxLength(64);
+            entity.Property(x => x.Origin).HasMaxLength(20).IsRequired().HasDefaultValue("Generated");
+            entity.Property(x => x.ChangeReason).HasMaxLength(200);
+            entity.HasOne<RecipeExecutionRecord>().WithMany().HasForeignKey(x => x.SourceExecutionId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne<RecipeRecord>().WithMany().HasForeignKey(x => new { x.RecipeId, x.OwnerUserId }).HasPrincipalKey(x => new { x.Id, x.OwnerUserId }).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne<InternalUser>().WithMany().HasForeignKey(x => x.OwnerUserId).OnDelete(DeleteBehavior.Restrict);
             entity.HasIndex(x => new { x.RecipeId, x.RevisionNumber }).IsUnique();

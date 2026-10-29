@@ -216,14 +216,6 @@ public sealed class RecipeCookNowApplicationService(
         return RecipeApplicationResult<RecipeDetailView>.Succeeded(ToDetailView(revision), RecipeApplicationSuccess.Created);
     }
 
-    /// <summary>Lists all recipes owned by the current internal user, most recently created first.</summary>
-    public async Task<RecipeApplicationResult<IReadOnlyList<RecipeSummaryView>>> ListRecipesAsync(CancellationToken cancellationToken)
-    {
-        var user = await currentUser.GetCurrentAsync(cancellationToken);
-        var items = await recipeStore.ListAsync(user.Id, cancellationToken);
-        return RecipeApplicationResult<IReadOnlyList<RecipeSummaryView>>.Succeeded(items.Select(ToSummaryView).ToList());
-    }
-
     /// <summary>Gets one owned recipe's current revision without cross-user disclosure.</summary>
     public async Task<RecipeApplicationResult<RecipeDetailView>> GetRecipeAsync(Guid recipeId, CancellationToken cancellationToken)
     {
@@ -361,8 +353,6 @@ public sealed class RecipeCookNowApplicationService(
 
     private static RecipeDetailView ToDetailView(RecipeRevision revision) => new(revision.RecipeId, revision.RevisionNumber, revision.Name, revision.MealTypes, revision.Servings, revision.NormalizedRecipeJson, revision.ThumbnailVisualJson, revision.CreatedAt);
     private static RecipeDetailView ToDetailView(RecipeDetail detail) => new(detail.RecipeId, detail.RevisionNumber, detail.Name, detail.MealTypes, detail.Servings, detail.NormalizedRecipeJson, detail.ThumbnailVisualJson, detail.CreatedAt);
-    private static RecipeSummaryView ToSummaryView(RecipeSummary summary) => new(summary.RecipeId, summary.Name, summary.MealTypes, summary.Servings, summary.CreatedAt);
-
     private static RecipeApplicationResult<T> Failure<T>(string code, string detail, IReadOnlyDictionary<string, string[]>? errors = null) => RecipeApplicationResult<T>.Failure(code, detail, errors);
 
     private static string MapReservationFailure(AiUsageReservationOutcome outcome) => outcome switch

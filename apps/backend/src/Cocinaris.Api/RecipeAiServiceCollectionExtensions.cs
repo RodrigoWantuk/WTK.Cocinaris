@@ -38,6 +38,7 @@ public static class RecipeAiServiceCollectionExtensions
                 provider.GetRequiredService<TimeProvider>()));
         services.AddScoped<IRecipeGenerationStore, PostgreSqlRecipeGenerationStore>();
         services.AddScoped<IRecipeStore, PostgreSqlRecipeStore>();
+        services.AddScoped<IRecipeLibraryStore, PostgreSqlRecipeLibraryStore>();
         services.AddScoped<IRecipeCookNowUnitOfWork, PostgreSqlRecipeCookNowUnitOfWork>();
         services.AddScoped<IRecipeContextAssembler, RecipeContextAssembler>();
         services.AddScoped<RecipeCookNowApplicationService>();
@@ -46,6 +47,8 @@ public static class RecipeAiServiceCollectionExtensions
         services.AddScoped<IRecipeExecutionUnitOfWork, PostgreSqlRecipeExecutionUnitOfWork>();
         services.AddScoped<RecipeExecutionApplicationService>();
         services.AddScoped<RecipeExecutionApiService>();
+        services.AddScoped<RecipeLibraryApplicationService>();
+        services.AddScoped<RecipeLibraryApiService>();
 
         var deepSeekSection = configuration.GetSection("Ai:Providers:DeepSeek");
         var enabled = deepSeekSection.GetValue("Enabled", false);

@@ -276,7 +276,8 @@ export interface paths {
         /** GET /api/v1/recipes */
         get: operations["getApiV1Recipes"];
         put?: never;
-        post?: never;
+        /** POST /api/v1/recipes */
+        post: operations["postApiV1Recipes"];
         delete?: never;
         options?: never;
         head?: never;
@@ -419,6 +420,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/recipes/{recipeId}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** POST /api/v1/recipes/{recipeId}/archive */
+        post: operations["postApiV1RecipesRecipeIdArchive"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/recipes/{recipeId}/derivations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** POST /api/v1/recipes/{recipeId}/derivations */
+        post: operations["postApiV1RecipesRecipeIdDerivations"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/recipes/{recipeId}/executions": {
         parameters: {
             query?: never;
@@ -430,6 +465,74 @@ export interface paths {
         put?: never;
         /** POST /api/v1/recipes/{recipeId}/executions */
         post: operations["postApiV1RecipesRecipeIdExecutions"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/recipes/{recipeId}/favorite": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** POST /api/v1/recipes/{recipeId}/favorite */
+        post: operations["postApiV1RecipesRecipeIdFavorite"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/recipes/{recipeId}/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** GET /api/v1/recipes/{recipeId}/history */
+        get: operations["getApiV1RecipesRecipeIdHistory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/recipes/{recipeId}/revisions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** POST /api/v1/recipes/{recipeId}/revisions */
+        post: operations["postApiV1RecipesRecipeIdRevisions"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/recipes/{recipeId}/revisions/{revisionNumber}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** GET /api/v1/recipes/{recipeId}/revisions/{revisionNumber} */
+        get: operations["getApiV1RecipesRecipeIdRevisionsRevisionNumber"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -553,6 +656,26 @@ export interface components {
             quantity: components["schemas"]["QuantityRequest"];
             /** @enum {string} */
             storageLocation: "Pantry" | "Refrigerator" | "Freezer" | "Other";
+        };
+        /** @description Body for writing a recipe from scratch. */
+        CreateRecipeRequest: {
+            content: null | components["schemas"]["RecipeContentRequest"];
+        };
+        /** @description Body for deriving a new recipe. */
+        DeriveRecipeRequest: {
+            content: null | components["schemas"]["RecipeContentRequest"];
+            /** @description How the new recipe differs, at most 200 characters. */
+            derivationReason: null | string;
+            /**
+             * Format: int32
+             * @description Revision the derivation starts from.
+             */
+            parentRevisionNumber: number | string;
+            /**
+             * Format: uuid
+             * @description Completed cooking session of the parent the changes come from.
+             */
+            sourceExecutionId: null | string;
         };
         /** @description Versioned equipment collection response DTO. */
         EquipmentCollectionResponse: {
@@ -955,6 +1078,11 @@ export interface components {
             measuredValue?: null;
             unit?: null;
         });
+        /** @description Body for archiving a recipe. */
+        RecipeArchiveRequest: {
+            /** @description True to archive, false to bring it back to the library. */
+            archived: boolean;
+        };
         /** @description HTTP projection of one cook-now candidate. */
         RecipeCandidateResponse: {
             /** Format: int32 */
@@ -977,20 +1105,108 @@ export interface components {
             /** Format: int32 */
             totalMinutes: number | string;
         };
-        /** @description HTTP projection of one owned recipe detail. */
-        RecipeDetailResponse: {
-            /** Format: date-time */
-            createdAt: string;
-            mealTypes: string[];
-            name: string;
-            normalizedRecipeJson: string;
+        /** @description Editable recipe content. */
+        RecipeContentRequest: {
+            /** @description Up to 20 utensil names. */
+            equipment: null | string[];
+            /** @description 1 to 40 ingredients in display order. */
+            ingredients: null | components["schemas"]["RecipeIngredientRequest"][];
+            /** @description One to four of `breakfast`, `lunch`, `dinner`, `snack`. */
+            mealTypes: null | string[];
+            /** @description Recipe name, at most 80 characters. */
+            name: null | string;
+            /**
+             * Format: int32
+             * @description Servings the quantities are written for, 1 to 24.
+             */
+            servings: number | string;
+            /** @description 1 to 30 stages in order. */
+            stages: null | components["schemas"]["RecipeStageRequest"][];
+            /** @description Optional yield text. */
+            yield: null | string;
+        };
+        /** @description One finished cooking session: Status is `Completed` or `Abandoned`. */
+        RecipeCookingEntryResponse: {
             /** Format: uuid */
-            recipeId: string;
+            executionId: string;
+            /** Format: date-time */
+            finishedAt: null | string;
+            notes: null | string;
+            /** Format: int32 */
+            rating: null | number | string;
             /** Format: int32 */
             revisionNumber: number | string;
             /** Format: int32 */
             servings: number | string;
+            /** Format: date-time */
+            startedAt: string;
+            status: string;
+        };
+        /** @description HTTP projection of one revision of an owned recipe with its library state. */
+        RecipeDetailResponse: {
+            /**
+             * Format: date-time
+             * @description Archive instant, or null while in the library.
+             */
+            archivedAt: null | string;
+            /** @description Reason given for an edited revision. */
+            changeReason: null | string;
+            /**
+             * Format: date-time
+             * @description Recipe creation instant.
+             */
+            createdAt: string;
+            /**
+             * Format: int32
+             * @description Latest revision; differs from RevisionNumber when an older revision is shown.
+             */
+            currentRevisionNumber: number | string;
+            /** @description How a derived recipe differs from its parent. */
+            derivationReason: null | string;
+            /** @description Whether the owner marked it as a favorite. */
+            isFavorite: boolean;
+            /** @description Revision meal types. */
+            mealTypes: string[];
+            /** @description Revision name. */
+            name: string;
+            /** @description Revision content (protocol 0.3 shape). */
+            normalizedRecipeJson: string;
+            /** @description `generated`, `manual`, or `derived`. */
+            origin: string;
+            /**
+             * Format: uuid
+             * @description Parent of a derived recipe.
+             */
+            parentRecipeId: null | string;
+            /**
+             * Format: int32
+             * @description Parent revision a derived recipe started from.
+             */
+            parentRevisionNumber: null | number | string;
+            /**
+             * Format: uuid
+             * @description Recipe identifier.
+             */
+            recipeId: string;
+            /**
+             * Format: int32
+             * @description Revision shown.
+             */
+            revisionNumber: number | string;
+            /** @description `generated`, `manual`, `edited`, or `derived`. */
+            revisionOrigin: string;
+            /**
+             * Format: int32
+             * @description Servings the quantities are written for.
+             */
+            servings: number | string;
+            /** @description Thumbnail descriptor; `{}` for recipes written by the owner. */
             thumbnailVisualJson: string;
+            /**
+             * Format: date-time
+             * @description Instant of the latest revision.
+             */
+            updatedAt: string;
         };
         /** @description One confirmed lot consumption in the lot's canonical unit (`Gram`, `Milliliter`, `Unit`). */
         RecipeExecutionConsumptionRequest: {
@@ -1096,6 +1312,11 @@ export interface components {
             /** Format: date-time */
             startedAt: string;
         };
+        /** @description Body for marking a favorite. */
+        RecipeFavoriteRequest: {
+            /** @description Whether the recipe is a favorite. */
+            isFavorite: boolean;
+        };
         /** @description HTTP projection of one cook-now generation session. */
         RecipeGenerationSessionResponse: {
             candidates: null | components["schemas"]["RecipeCandidateResponse"][];
@@ -1104,16 +1325,131 @@ export interface components {
             sessionId: string;
             status: string;
         };
-        /** @description HTTP projection of one owned recipe summary. */
-        RecipeSummaryResponse: {
+        /** @description A recipe's revisions and finished cooking sessions, newest first. */
+        RecipeHistoryResponse: {
+            cooking: components["schemas"]["RecipeCookingEntryResponse"][];
+            revisions: components["schemas"]["RecipeRevisionEntryResponse"][];
+        };
+        /** @description One ingredient row; IngredientId keeps an existing row and its pantry link. */
+        RecipeIngredientRequest: {
+            /** @description Ingredient name. */
+            displayName: null | string;
+            /** @description Identifier from the base revision, or null for a new row. */
+            ingredientId: null | string;
+            /** @description Whether the dish works without it. */
+            optional: boolean;
+            /**
+             * Format: double
+             * @description Quantity, greater than zero.
+             */
+            quantity: number | string;
+            /** @description `g`, `ml`, or `unit`. */
+            unit: null | string;
+        };
+        /** @description One revision: Origin is `generated`, `manual`, `edited`, or `derived`. */
+        RecipeRevisionEntryResponse: {
+            changeReason: null | string;
             /** Format: date-time */
             createdAt: string;
-            mealTypes: string[];
             name: string;
-            /** Format: uuid */
-            recipeId: string;
+            origin: string;
             /** Format: int32 */
+            revisionNumber: number | string;
+            /** Format: uuid */
+            sourceExecutionId: null | string;
+        };
+        /** @description One stage; StageId keeps an existing stage and its dependencies. */
+        RecipeStageRequest: {
+            /**
+             * Format: int32
+             * @description Hands-on minutes, 0 to 1440.
+             */
+            activeMinutes: number | string;
+            /** @description Instructions, at most 2000 characters; line breaks separate steps. */
+            instructions: null | string;
+            /** @description Stage title. */
+            name: null | string;
+            /**
+             * Format: int32
+             * @description Waiting minutes, 0 to 1440.
+             */
+            passiveMinutes: number | string;
+            /** @description Up to six signs of doneness. */
+            sensoryCues: null | string[];
+            /** @description Identifier from the base revision, or null for a new stage. */
+            stageId: null | string;
+        };
+        /** @description HTTP projection of one library row. */
+        RecipeSummaryResponse: {
+            /**
+             * Format: date-time
+             * @description Archive instant, or null while in the library.
+             */
+            archivedAt: null | string;
+            /**
+             * Format: date-time
+             * @description Recipe creation instant.
+             */
+            createdAt: string;
+            /** @description Whether the owner marked it as a favorite. */
+            isFavorite: boolean;
+            /**
+             * Format: date-time
+             * @description Completion instant of the latest session.
+             */
+            lastCookedAt: null | string;
+            /**
+             * Format: int32
+             * @description Rating given in the latest session, if any.
+             */
+            lastRating: null | number | string;
+            /** @description Current revision meal types. */
+            mealTypes: string[];
+            /** @description Current revision name. */
+            name: string;
+            /** @description `generated`, `manual`, or `derived`. */
+            origin: string;
+            /**
+             * Format: uuid
+             * @description Recipe identifier.
+             */
+            recipeId: string;
+            /**
+             * Format: int32
+             * @description Current revision number.
+             */
+            revisionNumber: number | string;
+            /**
+             * Format: int32
+             * @description Current revision servings.
+             */
             servings: number | string;
+            /**
+             * Format: int32
+             * @description Completed cooking sessions.
+             */
+            timesCooked: number | string;
+            /**
+             * Format: date-time
+             * @description Instant of the last revision.
+             */
+            updatedAt: string;
+        };
+        /** @description Body for saving an edit as a new revision. */
+        ReviseRecipeRequest: {
+            /** @description Optional reason, at most 200 characters. */
+            changeReason: null | string;
+            content: null | components["schemas"]["RecipeContentRequest"];
+            /**
+             * Format: int32
+             * @description Revision the edit started from.
+             */
+            expectedRevisionNumber: number | string;
+            /**
+             * Format: uuid
+             * @description Completed cooking session of this recipe the edit comes from.
+             */
+            sourceExecutionId: null | string;
         };
         /** @description HTTP body for selecting one cook-now candidate. */
         SelectCandidateRequest: {
@@ -2823,7 +3159,11 @@ export interface operations {
     };
     getApiV1Recipes: {
         parameters: {
-            query?: never;
+            query?: {
+                archived?: boolean;
+                favorites?: boolean;
+                search?: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -2839,8 +3179,100 @@ export interface operations {
                     "application/json": components["schemas"]["RecipeSummaryResponse"][];
                 };
             };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
             /** @description Unauthorized */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    postApiV1Recipes: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Required CSRF token issued by GET /api/v1/session. */
+                "X-CSRF-TOKEN": string;
+                /** @description Required UUID key; a retry with the same key returns the recipe it created. */
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateRecipeRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecipeDetailResponse"];
+                };
+            };
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecipeDetailResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description The request content type is not supported. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3435,6 +3867,174 @@ export interface operations {
             };
         };
     };
+    postApiV1RecipesRecipeIdArchive: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Required CSRF token issued by GET /api/v1/session. */
+                "X-CSRF-TOKEN": string;
+            };
+            path: {
+                recipeId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecipeArchiveRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecipeDetailResponse"];
+                };
+            };
+            /** @description The request or CSRF token is invalid. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description The request content type is not supported. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    postApiV1RecipesRecipeIdDerivations: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Required CSRF token issued by GET /api/v1/session. */
+                "X-CSRF-TOKEN": string;
+                /** @description Required UUID key; a retry with the same key returns the recipe it created. */
+                "Idempotency-Key": string;
+            };
+            path: {
+                recipeId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DeriveRecipeRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecipeDetailResponse"];
+                };
+            };
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecipeDetailResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description The request content type is not supported. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
     postApiV1RecipesRecipeIdExecutions: {
         parameters: {
             query?: never;
@@ -3500,6 +4100,262 @@ export interface operations {
             };
             /** @description The request content type is not supported. */
             415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    postApiV1RecipesRecipeIdFavorite: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Required CSRF token issued by GET /api/v1/session. */
+                "X-CSRF-TOKEN": string;
+            };
+            path: {
+                recipeId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecipeFavoriteRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecipeDetailResponse"];
+                };
+            };
+            /** @description The request or CSRF token is invalid. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description The request content type is not supported. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    getApiV1RecipesRecipeIdHistory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                recipeId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecipeHistoryResponse"];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    postApiV1RecipesRecipeIdRevisions: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Required CSRF token issued by GET /api/v1/session. */
+                "X-CSRF-TOKEN": string;
+            };
+            path: {
+                recipeId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReviseRecipeRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecipeDetailResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description The request content type is not supported. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    getApiV1RecipesRecipeIdRevisionsRevisionNumber: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                recipeId: string;
+                revisionNumber: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecipeDetailResponse"];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

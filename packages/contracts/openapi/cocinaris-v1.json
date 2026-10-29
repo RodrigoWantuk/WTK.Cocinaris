@@ -290,6 +290,73 @@
         ],
         "type": "object"
       },
+      "CreateRecipeRequest": {
+        "description": "Body for writing a recipe from scratch.",
+        "properties": {
+          "content": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/RecipeContentRequest",
+                "description": "Recipe content."
+              }
+            ]
+          }
+        },
+        "required": [
+          "content"
+        ],
+        "type": "object"
+      },
+      "DeriveRecipeRequest": {
+        "description": "Body for deriving a new recipe.",
+        "properties": {
+          "content": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/RecipeContentRequest",
+                "description": "Content of the new recipe."
+              }
+            ]
+          },
+          "derivationReason": {
+            "description": "How the new recipe differs, at most 200 characters.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "parentRevisionNumber": {
+            "description": "Revision the derivation starts from.",
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ]
+          },
+          "sourceExecutionId": {
+            "description": "Completed cooking session of the parent the changes come from.",
+            "format": "uuid",
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "required": [
+          "parentRevisionNumber",
+          "content",
+          "derivationReason",
+          "sourceExecutionId"
+        ],
+        "type": "object"
+      },
       "EquipmentCollectionResponse": {
         "description": "Versioned equipment collection response DTO.",
         "properties": {
@@ -2043,6 +2110,19 @@
         },
         "type": "object"
       },
+      "RecipeArchiveRequest": {
+        "description": "Body for archiving a recipe.",
+        "properties": {
+          "archived": {
+            "description": "True to archive, false to bring it back to the library.",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "archived"
+        ],
+        "type": "object"
+      },
       "RecipeCandidateResponse": {
         "description": "HTTP projection of one cook-now candidate.",
         "properties": {
@@ -2140,28 +2220,112 @@
         ],
         "type": "object"
       },
-      "RecipeDetailResponse": {
-        "description": "HTTP projection of one owned recipe detail.",
+      "RecipeContentRequest": {
+        "description": "Editable recipe content.",
         "properties": {
-          "createdAt": {
-            "format": "date-time",
-            "type": "string"
-          },
-          "mealTypes": {
+          "equipment": {
+            "description": "Up to 20 utensil names.",
             "items": {
               "type": "string"
             },
-            "type": "array"
+            "type": [
+              "null",
+              "array"
+            ]
+          },
+          "ingredients": {
+            "description": "1 to 40 ingredients in display order.",
+            "items": {
+              "$ref": "#/components/schemas/RecipeIngredientRequest"
+            },
+            "type": [
+              "null",
+              "array"
+            ]
+          },
+          "mealTypes": {
+            "description": "One to four of `breakfast`, `lunch`, `dinner`, `snack`.",
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "null",
+              "array"
+            ]
           },
           "name": {
-            "type": "string"
+            "description": "Recipe name, at most 80 characters.",
+            "type": [
+              "null",
+              "string"
+            ]
           },
-          "normalizedRecipeJson": {
-            "type": "string"
+          "servings": {
+            "description": "Servings the quantities are written for, 1 to 24.",
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ]
           },
-          "recipeId": {
+          "stages": {
+            "description": "1 to 30 stages in order.",
+            "items": {
+              "$ref": "#/components/schemas/RecipeStageRequest"
+            },
+            "type": [
+              "null",
+              "array"
+            ]
+          },
+          "yield": {
+            "description": "Optional yield text.",
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "required": [
+          "name",
+          "mealTypes",
+          "servings",
+          "yield",
+          "ingredients",
+          "equipment",
+          "stages"
+        ],
+        "type": "object"
+      },
+      "RecipeCookingEntryResponse": {
+        "description": "One finished cooking session: Status is `Completed` or `Abandoned`.",
+        "properties": {
+          "executionId": {
             "format": "uuid",
             "type": "string"
+          },
+          "finishedAt": {
+            "format": "date-time",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "notes": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "rating": {
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ]
           },
           "revisionNumber": {
             "format": "int32",
@@ -2179,7 +2343,140 @@
               "string"
             ]
           },
+          "startedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "executionId",
+          "revisionNumber",
+          "servings",
+          "status",
+          "startedAt",
+          "finishedAt",
+          "rating",
+          "notes"
+        ],
+        "type": "object"
+      },
+      "RecipeDetailResponse": {
+        "description": "HTTP projection of one revision of an owned recipe with its library state.",
+        "properties": {
+          "archivedAt": {
+            "description": "Archive instant, or null while in the library.",
+            "format": "date-time",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "changeReason": {
+            "description": "Reason given for an edited revision.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "createdAt": {
+            "description": "Recipe creation instant.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "currentRevisionNumber": {
+            "description": "Latest revision; differs from RevisionNumber when an older revision is shown.",
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ]
+          },
+          "derivationReason": {
+            "description": "How a derived recipe differs from its parent.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "isFavorite": {
+            "description": "Whether the owner marked it as a favorite.",
+            "type": "boolean"
+          },
+          "mealTypes": {
+            "description": "Revision meal types.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "name": {
+            "description": "Revision name.",
+            "type": "string"
+          },
+          "normalizedRecipeJson": {
+            "description": "Revision content (protocol 0.3 shape).",
+            "type": "string"
+          },
+          "origin": {
+            "description": "`generated`, `manual`, or `derived`.",
+            "type": "string"
+          },
+          "parentRecipeId": {
+            "description": "Parent of a derived recipe.",
+            "format": "uuid",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "parentRevisionNumber": {
+            "description": "Parent revision a derived recipe started from.",
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ]
+          },
+          "recipeId": {
+            "description": "Recipe identifier.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "revisionNumber": {
+            "description": "Revision shown.",
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ]
+          },
+          "revisionOrigin": {
+            "description": "`generated`, `manual`, `edited`, or `derived`.",
+            "type": "string"
+          },
+          "servings": {
+            "description": "Servings the quantities are written for.",
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ]
+          },
           "thumbnailVisualJson": {
+            "description": "Thumbnail descriptor; `{}` for recipes written by the owner.",
+            "type": "string"
+          },
+          "updatedAt": {
+            "description": "Instant of the latest revision.",
+            "format": "date-time",
             "type": "string"
           }
         },
@@ -2191,7 +2488,17 @@
           "servings",
           "normalizedRecipeJson",
           "thumbnailVisualJson",
-          "createdAt"
+          "createdAt",
+          "currentRevisionNumber",
+          "updatedAt",
+          "origin",
+          "isFavorite",
+          "archivedAt",
+          "parentRecipeId",
+          "parentRevisionNumber",
+          "derivationReason",
+          "revisionOrigin",
+          "changeReason"
         ],
         "type": "object"
       },
@@ -2520,6 +2827,19 @@
         ],
         "type": "object"
       },
+      "RecipeFavoriteRequest": {
+        "description": "Body for marking a favorite.",
+        "properties": {
+          "isFavorite": {
+            "description": "Whether the recipe is a favorite.",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "isFavorite"
+        ],
+        "type": "object"
+      },
       "RecipeGenerationSessionResponse": {
         "description": "HTTP projection of one cook-now generation session.",
         "properties": {
@@ -2554,33 +2874,272 @@
         ],
         "type": "object"
       },
-      "RecipeSummaryResponse": {
-        "description": "HTTP projection of one owned recipe summary.",
+      "RecipeHistoryResponse": {
+        "description": "A recipe's revisions and finished cooking sessions, newest first.",
         "properties": {
+          "cooking": {
+            "items": {
+              "$ref": "#/components/schemas/RecipeCookingEntryResponse"
+            },
+            "type": "array"
+          },
+          "revisions": {
+            "items": {
+              "$ref": "#/components/schemas/RecipeRevisionEntryResponse"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "revisions",
+          "cooking"
+        ],
+        "type": "object"
+      },
+      "RecipeIngredientRequest": {
+        "description": "One ingredient row; IngredientId keeps an existing row and its pantry link.",
+        "properties": {
+          "displayName": {
+            "description": "Ingredient name.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "ingredientId": {
+            "description": "Identifier from the base revision, or null for a new row.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "optional": {
+            "description": "Whether the dish works without it.",
+            "type": "boolean"
+          },
+          "quantity": {
+            "description": "Quantity, greater than zero.",
+            "format": "double",
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ]
+          },
+          "unit": {
+            "description": "`g`, `ml`, or `unit`.",
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "required": [
+          "ingredientId",
+          "displayName",
+          "quantity",
+          "unit",
+          "optional"
+        ],
+        "type": "object"
+      },
+      "RecipeRevisionEntryResponse": {
+        "description": "One revision: Origin is `generated`, `manual`, `edited`, or `derived`.",
+        "properties": {
+          "changeReason": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
           "createdAt": {
             "format": "date-time",
             "type": "string"
           },
-          "mealTypes": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array"
-          },
           "name": {
             "type": "string"
           },
-          "recipeId": {
-            "format": "uuid",
+          "origin": {
             "type": "string"
           },
-          "servings": {
+          "revisionNumber": {
             "format": "int32",
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "integer",
               "string"
             ]
+          },
+          "sourceExecutionId": {
+            "format": "uuid",
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "required": [
+          "revisionNumber",
+          "name",
+          "origin",
+          "changeReason",
+          "sourceExecutionId",
+          "createdAt"
+        ],
+        "type": "object"
+      },
+      "RecipeStageRequest": {
+        "description": "One stage; StageId keeps an existing stage and its dependencies.",
+        "properties": {
+          "activeMinutes": {
+            "description": "Hands-on minutes, 0 to 1440.",
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ]
+          },
+          "instructions": {
+            "description": "Instructions, at most 2000 characters; line breaks separate steps.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "name": {
+            "description": "Stage title.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "passiveMinutes": {
+            "description": "Waiting minutes, 0 to 1440.",
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ]
+          },
+          "sensoryCues": {
+            "description": "Up to six signs of doneness.",
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "null",
+              "array"
+            ]
+          },
+          "stageId": {
+            "description": "Identifier from the base revision, or null for a new stage.",
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "required": [
+          "stageId",
+          "name",
+          "instructions",
+          "activeMinutes",
+          "passiveMinutes",
+          "sensoryCues"
+        ],
+        "type": "object"
+      },
+      "RecipeSummaryResponse": {
+        "description": "HTTP projection of one library row.",
+        "properties": {
+          "archivedAt": {
+            "description": "Archive instant, or null while in the library.",
+            "format": "date-time",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "createdAt": {
+            "description": "Recipe creation instant.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "isFavorite": {
+            "description": "Whether the owner marked it as a favorite.",
+            "type": "boolean"
+          },
+          "lastCookedAt": {
+            "description": "Completion instant of the latest session.",
+            "format": "date-time",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "lastRating": {
+            "description": "Rating given in the latest session, if any.",
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ]
+          },
+          "mealTypes": {
+            "description": "Current revision meal types.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "name": {
+            "description": "Current revision name.",
+            "type": "string"
+          },
+          "origin": {
+            "description": "`generated`, `manual`, or `derived`.",
+            "type": "string"
+          },
+          "recipeId": {
+            "description": "Recipe identifier.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "revisionNumber": {
+            "description": "Current revision number.",
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ]
+          },
+          "servings": {
+            "description": "Current revision servings.",
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ]
+          },
+          "timesCooked": {
+            "description": "Completed cooking sessions.",
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ]
+          },
+          "updatedAt": {
+            "description": "Instant of the last revision.",
+            "format": "date-time",
+            "type": "string"
           }
         },
         "required": [
@@ -2588,7 +3147,62 @@
           "name",
           "mealTypes",
           "servings",
-          "createdAt"
+          "createdAt",
+          "revisionNumber",
+          "origin",
+          "isFavorite",
+          "archivedAt",
+          "updatedAt",
+          "timesCooked",
+          "lastCookedAt",
+          "lastRating"
+        ],
+        "type": "object"
+      },
+      "ReviseRecipeRequest": {
+        "description": "Body for saving an edit as a new revision.",
+        "properties": {
+          "changeReason": {
+            "description": "Optional reason, at most 200 characters.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "content": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/RecipeContentRequest",
+                "description": "Edited content."
+              }
+            ]
+          },
+          "expectedRevisionNumber": {
+            "description": "Revision the edit started from.",
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ]
+          },
+          "sourceExecutionId": {
+            "description": "Completed cooking session of this recipe the edit comes from.",
+            "format": "uuid",
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "required": [
+          "expectedRevisionNumber",
+          "content",
+          "changeReason",
+          "sourceExecutionId"
         ],
         "type": "object"
       },
@@ -6247,6 +6861,29 @@
     "/api/v1/recipes": {
       "get": {
         "operationId": "getApiV1Recipes",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "archived",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "favorites",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "search",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -6260,6 +6897,16 @@
               }
             },
             "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Bad Request"
           },
           "401": {
             "content": {
@@ -6314,6 +6961,160 @@
           }
         ],
         "summary": "GET /api/v1/recipes",
+        "tags": [
+          "Cocinaris.Api"
+        ]
+      },
+      "post": {
+        "operationId": "postApiV1Recipes",
+        "parameters": [
+          {
+            "description": "Required CSRF token issued by GET /api/v1/session.",
+            "in": "header",
+            "name": "X-CSRF-TOKEN",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Required UUID key; a retry with the same key returns the recipe it created.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRecipeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecipeDetailResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecipeDetailResponse"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "authenticationFailure": {
+                    "summary": "The backend-managed session is absent or invalid.",
+                    "value": {
+                      "detail": "Authentication is required.",
+                      "errorCode": "authentication_required",
+                      "status": 401,
+                      "title": "Unauthorized",
+                      "traceId": "00-00000000000000000000000000000000-0000000000000000-00",
+                      "type": "about:blank"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authentication is required."
+          },
+          "415": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "unsupportedMediaType": {
+                    "summary": "The request content type is unsupported.",
+                    "value": {
+                      "detail": "The request content type is not supported.",
+                      "errorCode": "unsupported_media_type",
+                      "status": 415,
+                      "title": "Unsupported Media Type",
+                      "traceId": "00-00000000000000000000000000000000-0000000000000000-00",
+                      "type": "about:blank"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request content type is not supported."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "unexpectedFailure": {
+                    "summary": "An unexpected error was safely redacted.",
+                    "value": {
+                      "detail": "An unexpected error occurred.",
+                      "errorCode": "unexpected_error",
+                      "status": 500,
+                      "title": "Internal Server Error",
+                      "traceId": "00-00000000000000000000000000000000-0000000000000000-00",
+                      "type": "about:blank"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An unexpected server error occurred."
+          }
+        },
+        "security": [
+          {
+            "cocinarisSession": []
+          }
+        ],
+        "summary": "POST /api/v1/recipes",
         "tags": [
           "Cocinaris.Api"
         ]
@@ -7364,6 +8165,326 @@
         ]
       }
     },
+    "/api/v1/recipes/{recipeId}/archive": {
+      "post": {
+        "operationId": "postApiV1RecipesRecipeIdArchive",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "recipeId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Required CSRF token issued by GET /api/v1/session.",
+            "in": "header",
+            "name": "X-CSRF-TOKEN",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecipeArchiveRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecipeDetailResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request or CSRF token is invalid."
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "authenticationFailure": {
+                    "summary": "The backend-managed session is absent or invalid.",
+                    "value": {
+                      "detail": "Authentication is required.",
+                      "errorCode": "authentication_required",
+                      "status": 401,
+                      "title": "Unauthorized",
+                      "traceId": "00-00000000000000000000000000000000-0000000000000000-00",
+                      "type": "about:blank"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authentication is required."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "415": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "unsupportedMediaType": {
+                    "summary": "The request content type is unsupported.",
+                    "value": {
+                      "detail": "The request content type is not supported.",
+                      "errorCode": "unsupported_media_type",
+                      "status": 415,
+                      "title": "Unsupported Media Type",
+                      "traceId": "00-00000000000000000000000000000000-0000000000000000-00",
+                      "type": "about:blank"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request content type is not supported."
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "unexpectedFailure": {
+                    "summary": "An unexpected error was safely redacted.",
+                    "value": {
+                      "detail": "An unexpected error occurred.",
+                      "errorCode": "unexpected_error",
+                      "status": 500,
+                      "title": "Internal Server Error",
+                      "traceId": "00-00000000000000000000000000000000-0000000000000000-00",
+                      "type": "about:blank"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An unexpected server error occurred."
+          }
+        },
+        "security": [
+          {
+            "cocinarisSession": []
+          }
+        ],
+        "summary": "POST /api/v1/recipes/{recipeId}/archive",
+        "tags": [
+          "Cocinaris.Api"
+        ]
+      }
+    },
+    "/api/v1/recipes/{recipeId}/derivations": {
+      "post": {
+        "operationId": "postApiV1RecipesRecipeIdDerivations",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "recipeId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Required CSRF token issued by GET /api/v1/session.",
+            "in": "header",
+            "name": "X-CSRF-TOKEN",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Required UUID key; a retry with the same key returns the recipe it created.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeriveRecipeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecipeDetailResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecipeDetailResponse"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "authenticationFailure": {
+                    "summary": "The backend-managed session is absent or invalid.",
+                    "value": {
+                      "detail": "Authentication is required.",
+                      "errorCode": "authentication_required",
+                      "status": 401,
+                      "title": "Unauthorized",
+                      "traceId": "00-00000000000000000000000000000000-0000000000000000-00",
+                      "type": "about:blank"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authentication is required."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "415": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "unsupportedMediaType": {
+                    "summary": "The request content type is unsupported.",
+                    "value": {
+                      "detail": "The request content type is not supported.",
+                      "errorCode": "unsupported_media_type",
+                      "status": 415,
+                      "title": "Unsupported Media Type",
+                      "traceId": "00-00000000000000000000000000000000-0000000000000000-00",
+                      "type": "about:blank"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request content type is not supported."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "unexpectedFailure": {
+                    "summary": "An unexpected error was safely redacted.",
+                    "value": {
+                      "detail": "An unexpected error occurred.",
+                      "errorCode": "unexpected_error",
+                      "status": 500,
+                      "title": "Internal Server Error",
+                      "traceId": "00-00000000000000000000000000000000-0000000000000000-00",
+                      "type": "about:blank"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An unexpected server error occurred."
+          }
+        },
+        "security": [
+          {
+            "cocinarisSession": []
+          }
+        ],
+        "summary": "POST /api/v1/recipes/{recipeId}/derivations",
+        "tags": [
+          "Cocinaris.Api"
+        ]
+      }
+    },
     "/api/v1/recipes/{recipeId}/executions": {
       "post": {
         "operationId": "postApiV1RecipesRecipeIdExecutions",
@@ -7520,6 +8641,502 @@
           }
         ],
         "summary": "POST /api/v1/recipes/{recipeId}/executions",
+        "tags": [
+          "Cocinaris.Api"
+        ]
+      }
+    },
+    "/api/v1/recipes/{recipeId}/favorite": {
+      "post": {
+        "operationId": "postApiV1RecipesRecipeIdFavorite",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "recipeId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Required CSRF token issued by GET /api/v1/session.",
+            "in": "header",
+            "name": "X-CSRF-TOKEN",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecipeFavoriteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecipeDetailResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request or CSRF token is invalid."
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "authenticationFailure": {
+                    "summary": "The backend-managed session is absent or invalid.",
+                    "value": {
+                      "detail": "Authentication is required.",
+                      "errorCode": "authentication_required",
+                      "status": 401,
+                      "title": "Unauthorized",
+                      "traceId": "00-00000000000000000000000000000000-0000000000000000-00",
+                      "type": "about:blank"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authentication is required."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "415": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "unsupportedMediaType": {
+                    "summary": "The request content type is unsupported.",
+                    "value": {
+                      "detail": "The request content type is not supported.",
+                      "errorCode": "unsupported_media_type",
+                      "status": 415,
+                      "title": "Unsupported Media Type",
+                      "traceId": "00-00000000000000000000000000000000-0000000000000000-00",
+                      "type": "about:blank"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request content type is not supported."
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "unexpectedFailure": {
+                    "summary": "An unexpected error was safely redacted.",
+                    "value": {
+                      "detail": "An unexpected error occurred.",
+                      "errorCode": "unexpected_error",
+                      "status": 500,
+                      "title": "Internal Server Error",
+                      "traceId": "00-00000000000000000000000000000000-0000000000000000-00",
+                      "type": "about:blank"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An unexpected server error occurred."
+          }
+        },
+        "security": [
+          {
+            "cocinarisSession": []
+          }
+        ],
+        "summary": "POST /api/v1/recipes/{recipeId}/favorite",
+        "tags": [
+          "Cocinaris.Api"
+        ]
+      }
+    },
+    "/api/v1/recipes/{recipeId}/history": {
+      "get": {
+        "operationId": "getApiV1RecipesRecipeIdHistory",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "recipeId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecipeHistoryResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "authenticationFailure": {
+                    "summary": "The backend-managed session is absent or invalid.",
+                    "value": {
+                      "detail": "Authentication is required.",
+                      "errorCode": "authentication_required",
+                      "status": 401,
+                      "title": "Unauthorized",
+                      "traceId": "00-00000000000000000000000000000000-0000000000000000-00",
+                      "type": "about:blank"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authentication is required."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "unexpectedFailure": {
+                    "summary": "An unexpected error was safely redacted.",
+                    "value": {
+                      "detail": "An unexpected error occurred.",
+                      "errorCode": "unexpected_error",
+                      "status": 500,
+                      "title": "Internal Server Error",
+                      "traceId": "00-00000000000000000000000000000000-0000000000000000-00",
+                      "type": "about:blank"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An unexpected server error occurred."
+          }
+        },
+        "security": [
+          {
+            "cocinarisSession": []
+          }
+        ],
+        "summary": "GET /api/v1/recipes/{recipeId}/history",
+        "tags": [
+          "Cocinaris.Api"
+        ]
+      }
+    },
+    "/api/v1/recipes/{recipeId}/revisions": {
+      "post": {
+        "operationId": "postApiV1RecipesRecipeIdRevisions",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "recipeId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Required CSRF token issued by GET /api/v1/session.",
+            "in": "header",
+            "name": "X-CSRF-TOKEN",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviseRecipeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecipeDetailResponse"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "authenticationFailure": {
+                    "summary": "The backend-managed session is absent or invalid.",
+                    "value": {
+                      "detail": "Authentication is required.",
+                      "errorCode": "authentication_required",
+                      "status": 401,
+                      "title": "Unauthorized",
+                      "traceId": "00-00000000000000000000000000000000-0000000000000000-00",
+                      "type": "about:blank"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authentication is required."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "412": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Precondition Failed"
+          },
+          "415": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "unsupportedMediaType": {
+                    "summary": "The request content type is unsupported.",
+                    "value": {
+                      "detail": "The request content type is not supported.",
+                      "errorCode": "unsupported_media_type",
+                      "status": 415,
+                      "title": "Unsupported Media Type",
+                      "traceId": "00-00000000000000000000000000000000-0000000000000000-00",
+                      "type": "about:blank"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request content type is not supported."
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "unexpectedFailure": {
+                    "summary": "An unexpected error was safely redacted.",
+                    "value": {
+                      "detail": "An unexpected error occurred.",
+                      "errorCode": "unexpected_error",
+                      "status": 500,
+                      "title": "Internal Server Error",
+                      "traceId": "00-00000000000000000000000000000000-0000000000000000-00",
+                      "type": "about:blank"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An unexpected server error occurred."
+          }
+        },
+        "security": [
+          {
+            "cocinarisSession": []
+          }
+        ],
+        "summary": "POST /api/v1/recipes/{recipeId}/revisions",
+        "tags": [
+          "Cocinaris.Api"
+        ]
+      }
+    },
+    "/api/v1/recipes/{recipeId}/revisions/{revisionNumber}": {
+      "get": {
+        "operationId": "getApiV1RecipesRecipeIdRevisionsRevisionNumber",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "recipeId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "revisionNumber",
+            "required": true,
+            "schema": {
+              "format": "int32",
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecipeDetailResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "authenticationFailure": {
+                    "summary": "The backend-managed session is absent or invalid.",
+                    "value": {
+                      "detail": "Authentication is required.",
+                      "errorCode": "authentication_required",
+                      "status": 401,
+                      "title": "Unauthorized",
+                      "traceId": "00-00000000000000000000000000000000-0000000000000000-00",
+                      "type": "about:blank"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authentication is required."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "unexpectedFailure": {
+                    "summary": "An unexpected error was safely redacted.",
+                    "value": {
+                      "detail": "An unexpected error occurred.",
+                      "errorCode": "unexpected_error",
+                      "status": 500,
+                      "title": "Internal Server Error",
+                      "traceId": "00-00000000000000000000000000000000-0000000000000000-00",
+                      "type": "about:blank"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An unexpected server error occurred."
+          }
+        },
+        "security": [
+          {
+            "cocinarisSession": []
+          }
+        ],
+        "summary": "GET /api/v1/recipes/{recipeId}/revisions/{revisionNumber}",
         "tags": [
           "Cocinaris.Api"
         ]

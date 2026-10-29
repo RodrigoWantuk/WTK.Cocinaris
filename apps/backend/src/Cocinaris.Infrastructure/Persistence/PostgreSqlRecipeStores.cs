@@ -421,38 +421,6 @@ public sealed class PostgreSqlRecipeStore(ApplicationDbContext database) : IReci
     }
 
     /// <inheritdoc />
-    public async Task<IReadOnlyList<RecipeSummary>> ListAsync(Guid ownerUserId, CancellationToken cancellationToken)
-    {
-        var recipes = await database.Recipes.AsNoTracking()
-            .Where(item => item.OwnerUserId == ownerUserId)
-            .OrderByDescending(item => item.CreatedAt)
-            .ThenByDescending(item => item.Id)
-            .ToListAsync(cancellationToken);
-        if (recipes.Count == 0)
-        {
-            return [];
-        }
-
-        var recipeIds = recipes.Select(item => item.Id).ToList();
-        var revisions = await database.RecipeRevisions.AsNoTracking()
-            .Where(item => item.OwnerUserId == ownerUserId && recipeIds.Contains(item.RecipeId))
-            .ToListAsync(cancellationToken);
-        var currentByRecipe = revisions
-            .GroupBy(item => item.RecipeId)
-            .ToDictionary(group => group.Key, group => group.OrderByDescending(item => item.RevisionNumber).First());
-
-        return recipes
-            .Where(recipe => currentByRecipe.ContainsKey(recipe.Id))
-            .Select(recipe =>
-            {
-                var revision = currentByRecipe[recipe.Id];
-                var mealTypes = JsonSerializer.Deserialize<string[]>(revision.MealTypesJson, SerializerOptions) ?? [];
-                return new RecipeSummary(recipe.Id, revision.Name, mealTypes, revision.Servings, revision.RevisionNumber, recipe.CreatedAt, recipe.UpdatedAt);
-            })
-            .ToList();
-    }
-
-    /// <inheritdoc />
     public async Task<RecipeDetail?> FindDetailAsync(Guid ownerUserId, Guid recipeId, CancellationToken cancellationToken)
     {
         var recipe = await database.Recipes.AsNoTracking()

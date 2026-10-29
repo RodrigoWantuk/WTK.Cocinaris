@@ -292,6 +292,29 @@ export function CookingPage() {
         ) : (
           <p role="status">{t("cooking.abandoned")}</p>
         )}
+        {execution.status === "Completed" ? (
+          <div className="space-y-2 rounded-2xl border border-border p-4">
+            <p className="text-sm">{t("cooking.done.changesHint")}</p>
+            <div className="flex flex-wrap gap-2">
+              <Button asChild variant="secondary">
+                <Link
+                  to={`/app/receitas/${execution.recipeId}/editar?execucao=${execution.executionId}`}
+                  data-testid="cooking-done-save-changes"
+                >
+                  {t("cooking.done.saveChanges")}
+                </Link>
+              </Button>
+              <Button asChild variant="secondary">
+                <Link
+                  to={`/app/receitas/${execution.recipeId}/variacao?execucao=${execution.executionId}`}
+                  data-testid="cooking-done-variation"
+                >
+                  {t("cooking.done.variation")}
+                </Link>
+              </Button>
+            </div>
+          </div>
+        ) : null}
         <div className="flex flex-wrap gap-2">
           <Button asChild>
             <Link to="/app/despensa" data-testid="cooking-done-pantry">

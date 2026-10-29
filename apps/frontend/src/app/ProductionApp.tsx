@@ -26,6 +26,7 @@ import { RecipesListPage } from "@/features/recipes/RecipesListPage";
 import { RecipeGeneratePage } from "@/features/recipes/RecipeGeneratePage";
 import { TodayPage } from "@/features/home/TodayPage";
 import { CookingPage } from "@/features/recipes/CookingPage";
+import { RecipeEditorPage } from "@/features/recipes/RecipeEditorPage";
 import { RecipeDetailPage } from "@/features/recipes/RecipeDetailPage";
 import { PublicEntryPage } from "@/features/entry/PublicEntryPage";
 import { ProfileProvider } from "@/features/profile/ProfileProvider";
@@ -213,6 +214,13 @@ export function pageTitleKeyFor(pathname: string): string {
   }
   if (pathname.startsWith("/app/despensa")) return "page.title.inventory";
   if (pathname === "/app/receitas/gerar") return "page.title.recipeGenerate";
+  if (pathname === "/app/receitas/nova") return "page.title.recipeNew";
+  if (/^\/app\/receitas\/[^/]+\/editar$/.test(pathname))
+    return "page.title.recipeEdit";
+  if (/^\/app\/receitas\/[^/]+\/variacao$/.test(pathname))
+    return "page.title.recipeVariation";
+  if (/^\/app\/receitas\/[^/]+\/versoes\//.test(pathname))
+    return "page.title.recipeRevision";
   if (pathname.startsWith("/app/receitas/cozinhar/"))
     return "page.title.cooking";
   if (pathname.startsWith("/app/receitas/")) return "page.title.recipeDetail";
@@ -485,7 +493,20 @@ function createProductionRouter() {
         { path: "despensa/:lotId", element: <ProductionInventoryDetail /> },
         { path: "receitas", element: <RecipesListPage /> },
         { path: "receitas/gerar", element: <RecipeGeneratePage /> },
+        { path: "receitas/nova", element: <RecipeEditorPage mode="new" /> },
         { path: "receitas/:recipeId", element: <RecipeDetailPage /> },
+        {
+          path: "receitas/:recipeId/versoes/:revisionNumber",
+          element: <RecipeDetailPage />,
+        },
+        {
+          path: "receitas/:recipeId/editar",
+          element: <RecipeEditorPage mode="edit" />,
+        },
+        {
+          path: "receitas/:recipeId/variacao",
+          element: <RecipeEditorPage mode="variation" />,
+        },
         { path: "receitas/cozinhar/:executionId", element: <CookingPage /> },
         {
           path: "perfil",
