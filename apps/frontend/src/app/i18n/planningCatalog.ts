@@ -173,7 +173,7 @@ const ptBR: Record<string, string> = {
   "planning.statusHint.draft":
     "Rascunho: as refeições ainda não aparecem no Hoje, e a lista de compras é só uma simulação. Use o cardápio quando estiver pronto.",
   "planning.statusHint.accepted":
-    "Em uso: as refeições do dia aparecem no Hoje. Você pode mudar qualquer refeição; nada é reservado na despensa.",
+    "Em uso: as refeições do dia aparecem no Hoje, e o que já está na despensa fica reservado para elas. Você pode mudar qualquer refeição.",
   "planning.statusHint.archived": "Arquivado: só para consulta.",
   "planning.accept": "Usar este cardápio",
   "planning.archive": "Arquivar",
@@ -287,7 +287,7 @@ const en: Record<string, string> = {
   "planning.statusHint.draft":
     "Draft: the meals do not appear on Today yet, and the shopping list is only a simulation. Start using the menu when it is ready.",
   "planning.statusHint.accepted":
-    "In use: each day's meals appear on Today. You can change any meal; nothing is reserved in the pantry.",
+    "In use: each day's meals appear on Today, and what is already in the pantry is set aside for them. You can change any meal.",
   "planning.statusHint.archived": "Archived: read-only.",
   "planning.accept": "Use this menu",
   "planning.archive": "Archive",
@@ -404,7 +404,7 @@ const es: Record<string, string> = {
   "planning.statusHint.draft":
     "Borrador: las comidas aún no aparecen en Hoy, y la lista de la compra es solo una simulación. Usa el menú cuando esté listo.",
   "planning.statusHint.accepted":
-    "En uso: las comidas del día aparecen en Hoy. Puedes cambiar cualquier comida; no se reserva nada en la despensa.",
+    "En uso: las comidas del día aparecen en Hoy, y lo que ya está en la despensa queda reservado para ellas. Puedes cambiar cualquier comida.",
   "planning.statusHint.archived": "Archivado: solo lectura.",
   "planning.accept": "Usar este menú",
   "planning.archive": "Archivar",

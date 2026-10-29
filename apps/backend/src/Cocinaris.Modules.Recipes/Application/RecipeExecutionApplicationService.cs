@@ -296,6 +296,7 @@ public sealed class RecipeExecutionApplicationService(
     /// Builds the deterministic proposal. Quantities scale with the portions cooked; whole units
     /// round up (half an egg is still an egg used) and grams and milliliters round to whole numbers.
     /// A proposal never exceeds what the lot holds, and never includes quantity the owner protected.
+    /// An ingredient without its own lot is matched to a pantry lot by name and unit.
     /// Menu reservations of other meals do not change the proposal; they are returned so the cook
     /// sees which meal would be short (the owner decides, the proposal does not block).
     /// </summary>
@@ -321,15 +322,17 @@ public sealed class RecipeExecutionApplicationService(
         {
             var unit = RecipeIngredientReader.ToLotUnit(ingredient.Unit);
             var required = RecipeIngredientReader.Scale(ingredient.Quantity, unit, scale);
-            if (ingredient.SourceType != "inventory")
+            // The lot the recipe was written for comes first; otherwise a pantry lot with the same
+            // name and unit (case and accents ignored), so a recipe written by hand or a lot used up
+            // and bought again still proposes the pantry item.
+            var linked = ingredient.SourceType == "inventory" && ingredient.LotId is { } lotId && byId.TryGetValue(lotId, out var exact) && exact.MeasuredUnit == unit ? exact : null;
+            var named = linked ?? measured
+                .Where(candidate => candidate.MeasuredUnit == unit && RecipeIngredientReader.NormalizeName(candidate.ProductName) == RecipeIngredientReader.NormalizeName(ingredient.Name))
+                .OrderByDescending(candidate => candidate.MeasuredValue)
+                .FirstOrDefault();
+            if (named is not { } lot)
             {
-                lines.Add(new(ingredient.Id, ingredient.Name, ingredient.Optional, required, unit, "not_tracked", null, null));
-                continue;
-            }
-
-            if (ingredient.LotId is not { } lotId || !byId.TryGetValue(lotId, out var lot) || lot.MeasuredUnit != unit)
-            {
-                lines.Add(new(ingredient.Id, ingredient.Name, ingredient.Optional, required, unit, "lot_unavailable", null, null));
+                lines.Add(new(ingredient.Id, ingredient.Name, ingredient.Optional, required, unit, ingredient.SourceType == "inventory" ? "lot_unavailable" : "not_tracked", null, null));
                 continue;
             }
 
