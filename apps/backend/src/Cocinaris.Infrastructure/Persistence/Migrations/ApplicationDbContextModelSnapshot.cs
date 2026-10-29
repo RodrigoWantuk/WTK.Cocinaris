@@ -427,6 +427,9 @@ namespace Cocinaris.Infrastructure.Persistence.Migrations
                     b.Property<DateTimeOffset>("PreparedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<Guid?>("SourceReferenceId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("SourceType")
                         .IsRequired()
                         .HasMaxLength(40)
@@ -436,6 +439,10 @@ namespace Cocinaris.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("OutputProductId", "OwnerUserId");
 
+                    b.HasIndex("OwnerUserId", "SourceReferenceId")
+                        .IsUnique()
+                        .HasFilter("\"SourceReferenceId\" IS NOT NULL");
+
                     b.HasIndex("OwnerUserId", "PreparedAt", "Id");
 
                     b.ToTable("preparation_batches", "inventory", t =>
@@ -444,7 +451,9 @@ namespace Cocinaris.Infrastructure.Persistence.Migrations
 
                             t.HasCheckConstraint("ck_preparation_batches_prepared_at", "\"PreparedAt\" <= \"CreatedAt\"");
 
-                            t.HasCheckConstraint("ck_preparation_batches_source", "\"SourceType\" IN ('ManualPreparation')");
+                            t.HasCheckConstraint("ck_preparation_batches_source", "\"SourceType\" IN ('ManualPreparation', 'RecipeExecution')");
+
+                            t.HasCheckConstraint("ck_preparation_batches_source_reference", "(\"SourceType\" = 'RecipeExecution') = (\"SourceReferenceId\" IS NOT NULL)");
                         });
                 });
 
@@ -657,6 +666,79 @@ namespace Cocinaris.Infrastructure.Persistence.Migrations
                     b.HasIndex("OwnerUserId", "ListName", "SortOrder");
 
                     b.ToTable("ordered_code_entries", "profiles");
+                });
+
+            modelBuilder.Entity("Cocinaris.Infrastructure.Persistence.RecipeExecutionRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("CompletionKey")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("FinishedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("InventoryBatchId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<Guid>("OwnerUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int?>("Rating")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("RecipeId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("RevisionNumber")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Servings")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("StartedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OwnerUserId", "RecipeId")
+                        .IsUnique()
+                        .HasFilter("\"Status\" = 'InProgress'");
+
+                    b.HasIndex("RecipeId", "OwnerUserId");
+
+                    b.HasIndex("OwnerUserId", "Status", "StartedAt");
+
+                    b.ToTable("recipe_executions", "recipes", t =>
+                        {
+                            t.HasCheckConstraint("ck_recipe_executions_completion", "(\"Status\" = 'Completed') = (\"CompletionKey\" IS NOT NULL)");
+
+                            t.HasCheckConstraint("ck_recipe_executions_finished", "(\"Status\" = 'InProgress') = (\"FinishedAt\" IS NULL)");
+
+                            t.HasCheckConstraint("ck_recipe_executions_rating", "\"Rating\" IS NULL OR \"Rating\" BETWEEN 1 AND 5");
+
+                            t.HasCheckConstraint("ck_recipe_executions_servings", "\"Servings\" BETWEEN 1 AND 24");
+
+                            t.HasCheckConstraint("ck_recipe_executions_status", "\"Status\" IN ('InProgress', 'Completed', 'Abandoned')");
+                        });
                 });
 
             modelBuilder.Entity("Cocinaris.Infrastructure.Persistence.RecipeGenerationSessionRecord", b =>
@@ -1324,6 +1406,22 @@ namespace Cocinaris.Infrastructure.Persistence.Migrations
                         .WithMany()
                         .HasForeignKey("OwnerUserId")
                         .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Cocinaris.Infrastructure.Persistence.RecipeExecutionRecord", b =>
+                {
+                    b.HasOne("Cocinaris.Modules.Identity.InternalUser", null)
+                        .WithMany()
+                        .HasForeignKey("OwnerUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Cocinaris.Infrastructure.Persistence.RecipeRecord", null)
+                        .WithMany()
+                        .HasForeignKey("RecipeId", "OwnerUserId")
+                        .HasPrincipalKey("Id", "OwnerUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
 

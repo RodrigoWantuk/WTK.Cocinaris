@@ -1,4 +1,4 @@
-using Cocinaris.Infrastructure.Persistence;
+﻿using Cocinaris.Infrastructure.Persistence;
 using Cocinaris.Modules.Ai.Abstractions;
 using Cocinaris.Modules.Ai.Providers;
 using Cocinaris.Modules.Ai.Usage;
@@ -42,6 +42,10 @@ public static class RecipeAiServiceCollectionExtensions
         services.AddScoped<IRecipeContextAssembler, RecipeContextAssembler>();
         services.AddScoped<RecipeCookNowApplicationService>();
         services.AddScoped<RecipeApiService>();
+        services.AddScoped<IRecipeExecutionStore, PostgreSqlRecipeExecutionStore>();
+        services.AddScoped<IRecipeExecutionUnitOfWork, PostgreSqlRecipeExecutionUnitOfWork>();
+        services.AddScoped<RecipeExecutionApplicationService>();
+        services.AddScoped<RecipeExecutionApiService>();
 
         var deepSeekSection = configuration.GetSection("Ai:Providers:DeepSeek");
         var enabled = deepSeekSection.GetValue("Enabled", false);

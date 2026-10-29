@@ -77,3 +77,36 @@ public sealed class RecipeGenerationSessionRecord
     /// <summary>Gets or sets the UTC instant after which the session may no longer be acted upon.</summary>
     public DateTimeOffset ExpiresAt { get; set; }
 }
+
+/// <summary>Persistence representation of one owner-scoped recipe execution (PLAN-0042).</summary>
+public sealed class RecipeExecutionRecord
+{
+    /// <summary>Gets or sets the execution identifier.</summary>
+    public Guid Id { get; set; }
+    /// <summary>Gets or sets the authoritative owner identifier.</summary>
+    public Guid OwnerUserId { get; set; }
+    /// <summary>Gets or sets the recipe being cooked.</summary>
+    public Guid RecipeId { get; set; }
+    /// <summary>Gets or sets the pinned revision number.</summary>
+    public int RevisionNumber { get; set; }
+    /// <summary>Gets or sets the portions cooked.</summary>
+    public int Servings { get; set; }
+    /// <summary>Gets or sets the controlled lifecycle status.</summary>
+    public required string Status { get; set; }
+    /// <summary>Gets or sets the UTC start instant.</summary>
+    public DateTimeOffset StartedAt { get; set; }
+    /// <summary>Gets or sets the UTC instant of the last state change.</summary>
+    public DateTimeOffset UpdatedAt { get; set; }
+    /// <summary>Gets or sets the UTC completion or abandonment instant.</summary>
+    public DateTimeOffset? FinishedAt { get; set; }
+    /// <summary>Gets or sets the inventory batch that reconciled the completion.</summary>
+    public Guid? InventoryBatchId { get; set; }
+    /// <summary>Gets or sets the completion idempotency key.</summary>
+    public Guid? CompletionKey { get; set; }
+    /// <summary>Gets or sets the optional rating.</summary>
+    public int? Rating { get; set; }
+    /// <summary>Gets or sets the optional private notes.</summary>
+    public string? Notes { get; set; }
+    /// <summary>Gets or sets the optimistic-concurrency token.</summary>
+    public Guid Version { get; set; }
+}

@@ -1,4 +1,4 @@
-using System.Security.Cryptography;
+﻿using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using Cocinaris.Modules.Identity;
@@ -12,8 +12,14 @@ public sealed record PreparationInputCommand(Guid LotId, decimal? ConsumedValue,
 /// <summary>One stored portion of the declared preparation yield.</summary>
 public sealed record PreparationOutputCommand(decimal? MeasuredValue, string? Unit, string? AvailabilityState, string? StorageLocation, string? CustomLocation, string? PackageState, DateOnly? ShelfLifeDate, string? ShelfLifeSource, string? ShelfLifeConfidence, string? ShelfLifeConditions);
 
-/// <summary>Creates one owner-scoped manual preparation with a single output product and one or more stored portions.</summary>
-public sealed record PrepareComponentsCommand(Guid? OutputProductId, string? OutputProductName, decimal? DeclaredYieldValue, string? DeclaredYieldUnit, string? DeclaredYieldAvailabilityState, IReadOnlyList<PreparationInputCommand>? Inputs, IReadOnlyList<PreparationOutputCommand>? Outputs, DateTimeOffset? PreparedAt, Guid? IdempotencyKey, string CorrelationId);
+/// <summary>
+/// Creates one owner-scoped preparation with a single output product. A manual preparation stores
+/// one or more portions that exactly partition the declared yield. A recipe-execution
+/// reconciliation (<paramref name="SourceType"/> <see cref="PreparationSourceType.RecipeExecution"/>)
+/// declares the portions cooked and stores zero or more leftover portions whose sum does not
+/// exceed that yield; HTTP callers cannot select this source.
+/// </summary>
+public sealed record PrepareComponentsCommand(Guid? OutputProductId, string? OutputProductName, decimal? DeclaredYieldValue, string? DeclaredYieldUnit, string? DeclaredYieldAvailabilityState, IReadOnlyList<PreparationInputCommand>? Inputs, IReadOnlyList<PreparationOutputCommand>? Outputs, DateTimeOffset? PreparedAt, Guid? IdempotencyKey, string CorrelationId, PreparationSourceType SourceType = PreparationSourceType.ManualPreparation, Guid? SourceReferenceId = null);
 
 /// <summary>Returns a consumed parent quantity without exposing any private parent metadata not needed for provenance.</summary>
 public sealed record PreparationInputView(Guid LotId, InventoryQuantity ConsumedQuantity);
@@ -133,7 +139,9 @@ public sealed class PreparedComponentApplicationWorkflow(ICurrentUserAccessor cu
             command.DeclaredYieldAvailabilityState,
             Inputs = command.Inputs?.Select(item => new { item.LotId, item.ConsumedValue, item.Unit }).OrderBy(item => item.LotId),
             Outputs = command.Outputs?.Select(item => new { item.MeasuredValue, item.Unit, item.AvailabilityState, item.StorageLocation, item.CustomLocation, item.PackageState, item.ShelfLifeDate, item.ShelfLifeSource, item.ShelfLifeConfidence, ShelfLifeConditions = item.ShelfLifeConditions?.Trim() }).OrderBy(item => JsonSerializer.Serialize(item)),
-            PreparedAt = command.PreparedAt?.ToUniversalTime()
+            PreparedAt = command.PreparedAt?.ToUniversalTime(),
+            SourceType = command.SourceType.ToString(),
+            command.SourceReferenceId
         });
         var existing = await store.FindIdempotencyAsync(user.Id, command.IdempotencyKey.Value, cancellationToken);
         if (existing is not null)
@@ -141,7 +149,9 @@ public sealed class PreparedComponentApplicationWorkflow(ICurrentUserAccessor cu
             return Replay(existing, hash);
         }
 
-        if (command.Inputs is not { Count: > 0 } || command.Inputs.Count > 32 || command.Inputs.Any(item => item.LotId == Guid.Empty) || command.Inputs.Select(item => item.LotId).Distinct().Count() != command.Inputs.Count)
+        // A recipe execution may store leftovers of a dish made only from untracked ingredients.
+        var minimumInputs = command.SourceType == PreparationSourceType.RecipeExecution ? 0 : 1;
+        if (command.Inputs is null || command.Inputs.Count < minimumInputs || command.Inputs.Count > 32 || command.Inputs.Any(item => item.LotId == Guid.Empty) || command.Inputs.Select(item => item.LotId).Distinct().Count() != command.Inputs.Count)
         {
             return Failure("validation_failed", "Preparation inputs must contain one to 32 unique lot identifiers.", "inputs", "Preparation inputs must contain one to 32 unique lot identifiers.");
         }
@@ -195,7 +205,9 @@ public sealed class PreparedComponentApplicationWorkflow(ICurrentUserAccessor cu
             return Failure("validation_failed", "Declared yield must be a positive canonical measured value or availability state.", "declaredYield", "Declared yield must be a positive canonical measured value or availability state.");
         }
 
-        if (command.Outputs is not { Count: > 0 } || command.Outputs.Count > 32)
+        var fromRecipe = command.SourceType == PreparationSourceType.RecipeExecution;
+        // Eating everything that was cooked is the common case, so a recipe execution may store no leftovers.
+        if (command.Outputs is null || command.Outputs.Count > 32 || (command.Outputs.Count == 0 && !fromRecipe))
         {
             return Failure("validation_failed", "Preparation outputs must contain one to 32 portions.", "outputs", "Preparation outputs must contain one to 32 portions.");
         }
@@ -254,13 +266,15 @@ public sealed class PreparedComponentApplicationWorkflow(ICurrentUserAccessor cu
             }
 
             var lot = InventoryLot.Create(user.Id, outputProduct.Id, quantity!, storage!, packageState, null, null, now, LotLifecycle.Prepared);
-            var transaction = InventoryTransaction.Create(lot.Id, user.Id, InventoryTransactionType.PreparationOutputCreated, null, lot.Quantity, "preparation", null, command.IdempotencyKey, now);
+            var transaction = InventoryTransaction.Create(lot.Id, user.Id, InventoryTransactionType.PreparationOutputCreated, null, lot.Quantity, ReasonCode(command.SourceType), null, command.IdempotencyKey, now);
             outputWrites.Add(new PreparationOutputWrite(lot, transaction, evidence!));
         }
 
-        if (!OutputPartitionsYield(declaredYield!, outputWrites))
+        if (fromRecipe ? !OutputsFitWithinYield(declaredYield!, outputWrites) : !OutputPartitionsYield(declaredYield!, outputWrites))
         {
-            return Failure("domain_rule_violated", "Output portions must exactly partition the declared yield using the same quantity mode and unit.", "outputs", "Output portions must exactly partition the declared yield using the same quantity mode and unit.");
+            return fromRecipe
+                ? Failure("domain_rule_violated", "Leftover portions cannot exceed the portions cooked and must use the same quantity mode and unit.", "outputs", "Leftover portions cannot exceed the portions cooked and must use the same quantity mode and unit.")
+                : Failure("domain_rule_violated", "Output portions must exactly partition the declared yield using the same quantity mode and unit.", "outputs", "Output portions must exactly partition the declared yield using the same quantity mode and unit.");
         }
 
         // Complete all validation before mutating detached aggregates. This makes command failure
@@ -269,14 +283,14 @@ public sealed class PreparedComponentApplicationWorkflow(ICurrentUserAccessor cu
         foreach (var input in validatedInputs)
         {
             var expectedVersion = input.State.Lot.Version;
-            var transaction = input.State.Lot.AdjustMeasured(InventoryTransactionType.PreparationInputConsumed, input.ConsumedValue, "preparation", null, command.IdempotencyKey, now);
+            var transaction = input.State.Lot.AdjustMeasured(InventoryTransactionType.PreparationInputConsumed, input.ConsumedValue, ReasonCode(command.SourceType), null, command.IdempotencyKey, now);
             inputWrites.Add(new PreparationInputWrite(input.State.Lot, input.State.Product, expectedVersion, input.ConsumedValue, transaction));
         }
 
         PreparationBatch batch;
         try
         {
-            batch = PreparationBatch.Create(user.Id, outputProduct.Id, command.PreparedAt.Value, now);
+            batch = PreparationBatch.Create(user.Id, outputProduct.Id, command.PreparedAt.Value, now, command.SourceType, command.SourceReferenceId);
         }
         catch (ArgumentException exception)
         {
@@ -371,6 +385,9 @@ public sealed class PreparedComponentApplicationWorkflow(ICurrentUserAccessor cu
 
         try { evidence = new PreparedShelfLifeEvidence(output.ShelfLifeDate, source, confidence, output.ShelfLifeConditions); return true; } catch (ArgumentException) { return false; }
     }
+    private static string ReasonCode(PreparationSourceType source) => source == PreparationSourceType.RecipeExecution ? "recipe_execution" : "preparation";
+    private static bool OutputsFitWithinYield(LotQuantity yield, IReadOnlyList<PreparationOutputWrite> outputs) =>
+        outputs.Count == 0 || (yield is LotQuantity.Measured measured && outputs.All(item => item.Lot.Quantity is LotQuantity.Measured output && output.Unit == measured.Unit) && outputs.Sum(item => ((LotQuantity.Measured)item.Lot.Quantity).Value) <= measured.Value);
     private static bool OutputPartitionsYield(LotQuantity yield, IReadOnlyList<PreparationOutputWrite> outputs) => yield switch
     {
         LotQuantity.Measured measured => outputs.All(item => item.Lot.Quantity is LotQuantity.Measured output && output.Unit == measured.Unit) && outputs.Sum(item => ((LotQuantity.Measured)item.Lot.Quantity).Value) == measured.Value,

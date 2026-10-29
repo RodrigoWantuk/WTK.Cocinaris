@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using Cocinaris.Api.Observability;
 using Cocinaris.Api.Services;
 using Cocinaris.Modules.Recipes.Application;
@@ -39,6 +39,7 @@ public static class RecipeEndpoints
         group.MapGet("/{recipeId:guid}", (RecipeApiService service, Guid recipeId, HttpContext context, CancellationToken cancellationToken) => service.GetRecipeAsync(recipeId, context, cancellationToken))
             .Produces<RecipeDetailResponse>()
             .ProducesProblem(404);
+        group.MapRecipeExecutionEndpoints();
         return group;
     }
 
