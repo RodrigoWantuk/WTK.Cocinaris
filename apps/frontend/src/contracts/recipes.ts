@@ -52,6 +52,79 @@ export interface RecipeDetail {
   createdAt: string;
 }
 
+/** One recipe ingredient matched against the pantry (PLAN-0042). */
+export interface ExecutionProposalLine {
+  ingredientId: string;
+  displayName: string;
+  optional: boolean;
+  /** Quantity for the servings cooked, in `unit`. */
+  requiredQuantity: number;
+  /** Lot canonical unit: `Gram`, `Milliliter`, or `Unit`. */
+  unit: string;
+  /** `ready`, `insufficient`, `lot_unavailable`, or `not_tracked`. */
+  status: string;
+  lotId: string | null;
+  proposedQuantity: number | null;
+}
+
+/** An active measured pantry lot the cook can pick for any line. */
+export interface ExecutionPantryLot {
+  lotId: string;
+  productName: string;
+  quantity: number;
+  unit: string;
+  storageLocation: string;
+  /** Lot version read with the proposal; completion fails if the lot changed. */
+  version: string;
+}
+
+/** One recipe execution; `proposal` is present while in progress. */
+export interface RecipeExecution {
+  executionId: string;
+  recipeId: string;
+  revisionNumber: number;
+  recipeName: string;
+  servings: number;
+  recipeServings: number;
+  status: "InProgress" | "Completed" | "Abandoned" | string;
+  startedAt: string;
+  finishedAt: string | null;
+  inventoryBatchId: string | null;
+  rating: number | null;
+  notes: string | null;
+  normalizedRecipeJson: string;
+  proposal: {
+    lines: ExecutionProposalLine[];
+    pantryLots: ExecutionPantryLot[];
+  } | null;
+}
+
+/** Compact in-progress execution. */
+export interface RecipeExecutionSummary {
+  executionId: string;
+  recipeId: string;
+  recipeName: string;
+  servings: number;
+  startedAt: string;
+}
+
+/** What the cook confirms at completion; nothing is inferred server-side. */
+export interface CompleteExecutionInput {
+  consumptions: Array<{
+    lotId: string;
+    quantity: number;
+    unit: string;
+    version: string;
+  }>;
+  leftover: {
+    portions: number;
+    storageLocation: string;
+    useBy: string | null;
+  } | null;
+  rating: number | null;
+  notes: string | null;
+}
+
 /** Stable error codes mapped from recipe BFF Problem Details. */
 export type RecipeApiErrorCode =
   | "authentication_required"
@@ -59,6 +132,7 @@ export type RecipeApiErrorCode =
   | "not_found"
   | "conflict"
   | "domain_rule_violated"
+  | "precondition_failed"
   | "ai_capability_unavailable"
   | "ai_budget_exhausted"
   | "ai_budget_unavailable"
@@ -102,9 +176,11 @@ export class RecipeApiError extends Error {
 export interface RecipeRepository {
   listRecipes(signal?: AbortSignal): Promise<RecipeSummary[]>;
   getRecipe(recipeId: string, signal?: AbortSignal): Promise<RecipeDetail>;
+  /** `language` is the interface locale; the AI writes in it unless the profile sets one. */
   requestCandidates(options: {
     csrfToken: string;
     idempotencyKey: string;
+    language?: string;
     signal?: AbortSignal;
   }): Promise<RecipeGenerationSession>;
   getGenerationSession(
@@ -117,7 +193,34 @@ export interface RecipeRepository {
     options: {
       csrfToken: string;
       idempotencyKey: string;
+      language?: string;
       signal?: AbortSignal;
     },
   ): Promise<RecipeDetail>;
+  /** Starts cooking, or returns the recipe's execution already in progress. */
+  startExecution(
+    recipeId: string,
+    options: { csrfToken: string; servings?: number; signal?: AbortSignal },
+  ): Promise<RecipeExecution>;
+  getExecution(
+    executionId: string,
+    signal?: AbortSignal,
+  ): Promise<RecipeExecution>;
+  listExecutionsInProgress(
+    signal?: AbortSignal,
+  ): Promise<RecipeExecutionSummary[]>;
+  /** Consumes the confirmed lots and stores leftovers atomically; a retry with the same key replays. */
+  completeExecution(
+    executionId: string,
+    input: CompleteExecutionInput,
+    options: {
+      csrfToken: string;
+      idempotencyKey: string;
+      signal?: AbortSignal;
+    },
+  ): Promise<RecipeExecution>;
+  abandonExecution(
+    executionId: string,
+    options: { csrfToken: string; signal?: AbortSignal },
+  ): Promise<RecipeExecution>;
 }

@@ -22,6 +22,7 @@ import type {
 } from "@/contracts/recipes";
 import { RecipeApiError } from "@/contracts/recipes";
 import { PRODUCTION_LOCALES } from "@/app/i18n/productionCatalog";
+import { executionStubs } from "./testExecutionStubs";
 
 const CANDIDATES: RecipeCandidate[] = [
   {
@@ -194,6 +195,7 @@ function createRecipeRepo(
       candidates: CANDIDATES,
       failureReason: null,
     }),
+    ...executionStubs,
     ...overrides,
   };
 }

@@ -1,10 +1,18 @@
 namespace Cocinaris.Modules.Recipes.Application;
 
 /// <summary>Transport-neutral input for the <c>request candidates</c> cook-now command.</summary>
-public sealed record RequestCandidatesCommand(Guid? IdempotencyKey, string CorrelationId);
+/// <param name="IdempotencyKey">Client replay key.</param>
+/// <param name="CorrelationId">Request correlation identifier.</param>
+/// <param name="RequestLanguage">Interface language of the request (<c>pt-BR</c>, <c>en</c>, <c>es</c>), used when the profile declares none.</param>
+public sealed record RequestCandidatesCommand(Guid? IdempotencyKey, string CorrelationId, string? RequestLanguage = null);
 
 /// <summary>Transport-neutral input for the <c>select candidate</c> cook-now command.</summary>
-public sealed record SelectCandidateCommand(Guid SessionId, string CandidateId, Guid? IdempotencyKey, string CorrelationId);
+/// <param name="SessionId">Generation session.</param>
+/// <param name="CandidateId">Selected candidate.</param>
+/// <param name="IdempotencyKey">Client replay key.</param>
+/// <param name="CorrelationId">Request correlation identifier.</param>
+/// <param name="RequestLanguage">Interface language of the request, used when the profile declares none.</param>
+public sealed record SelectCandidateCommand(Guid SessionId, string CandidateId, Guid? IdempotencyKey, string CorrelationId, string? RequestLanguage = null);
 
 /// <summary>API-facing projection of one time-boxed cook-now candidate.</summary>
 public sealed record RecipeCandidateView(

@@ -68,6 +68,9 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
     /// <summary>Gets owner-scoped cook-now recipe generation session records.</summary>
     public DbSet<RecipeGenerationSessionRecord> RecipeGenerationSessions => Set<RecipeGenerationSessionRecord>();
 
+    /// <summary>Gets owner-scoped recipe execution records.</summary>
+    public DbSet<RecipeExecutionRecord> RecipeExecutions => Set<RecipeExecutionRecord>();
+
     /// <inheritdoc />
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -161,7 +164,8 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
         {
             entity.ToTable("preparation_batches", "inventory", table =>
             {
-                table.HasCheckConstraint("ck_preparation_batches_source", "\"SourceType\" IN ('ManualPreparation')");
+                table.HasCheckConstraint("ck_preparation_batches_source", "\"SourceType\" IN ('ManualPreparation', 'RecipeExecution')");
+                table.HasCheckConstraint("ck_preparation_batches_source_reference", "(\"SourceType\" = 'RecipeExecution') = (\"SourceReferenceId\" IS NOT NULL)");
                 table.HasCheckConstraint("ck_preparation_batches_prepared_at", "\"PreparedAt\" <= \"CreatedAt\"");
                 table.HasCheckConstraint("ck_preparation_batches_declared_yield", "((\"DeclaredYieldMeasuredValue\" IS NOT NULL AND \"DeclaredYieldMeasuredValue\" > 0 AND \"DeclaredYieldMeasuredUnit\" IN ('Gram', 'Milliliter', 'Unit') AND \"DeclaredYieldAvailabilityState\" IS NULL) OR (\"DeclaredYieldMeasuredValue\" IS NULL AND \"DeclaredYieldMeasuredUnit\" IS NULL AND \"DeclaredYieldAvailabilityState\" IN ('Available', 'Low', 'Unavailable'))) IS TRUE");
             });
@@ -174,6 +178,8 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             entity.HasOne<InternalUser>().WithMany().HasForeignKey(x => x.OwnerUserId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne<ProductRecord>().WithMany().HasForeignKey(x => new { x.OutputProductId, x.OwnerUserId }).HasPrincipalKey(x => new { x.Id, x.OwnerUserId }).OnDelete(DeleteBehavior.Restrict);
             entity.HasIndex(x => new { x.OwnerUserId, x.PreparedAt, x.Id });
+            // One reconciliation per recipe execution, enforced by the database as well as by the workflow.
+            entity.HasIndex(x => new { x.OwnerUserId, x.SourceReferenceId }).IsUnique().HasFilter("\"SourceReferenceId\" IS NOT NULL");
         });
 
         modelBuilder.Entity<PreparationInputRecord>(entity =>
@@ -372,6 +378,27 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             entity.HasIndex(x => new { x.OwnerUserId, x.RecipeId, x.RevisionNumber });
         });
 
+        modelBuilder.Entity<RecipeExecutionRecord>(entity =>
+        {
+            entity.ToTable("recipe_executions", "recipes", table =>
+            {
+                table.HasCheckConstraint("ck_recipe_executions_status", "\"Status\" IN ('InProgress', 'Completed', 'Abandoned')");
+                table.HasCheckConstraint("ck_recipe_executions_servings", "\"Servings\" BETWEEN 1 AND 24");
+                table.HasCheckConstraint("ck_recipe_executions_rating", "\"Rating\" IS NULL OR \"Rating\" BETWEEN 1 AND 5");
+                table.HasCheckConstraint("ck_recipe_executions_finished", "(\"Status\" = 'InProgress') = (\"FinishedAt\" IS NULL)");
+                table.HasCheckConstraint("ck_recipe_executions_completion", "(\"Status\" = 'Completed') = (\"CompletionKey\" IS NOT NULL)");
+            });
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Status).HasMaxLength(20).IsRequired();
+            entity.Property(x => x.Notes).HasMaxLength(1000);
+            entity.Property(x => x.Version).IsConcurrencyToken();
+            entity.HasOne<RecipeRecord>().WithMany().HasForeignKey(x => new { x.RecipeId, x.OwnerUserId }).HasPrincipalKey(x => new { x.Id, x.OwnerUserId }).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne<InternalUser>().WithMany().HasForeignKey(x => x.OwnerUserId).OnDelete(DeleteBehavior.Restrict);
+            // At most one in-progress execution per recipe; starting again returns the existing one.
+            entity.HasIndex(x => new { x.OwnerUserId, x.RecipeId }).IsUnique().HasFilter("\"Status\" = 'InProgress'");
+            entity.HasIndex(x => new { x.OwnerUserId, x.Status, x.StartedAt });
+        });
+
         modelBuilder.Entity<RecipeGenerationSessionRecord>(entity =>
         {
             entity.ToTable("generation_sessions", "recipes", table =>
@@ -534,6 +561,8 @@ public sealed class PreparationBatchRecord
     public string? DeclaredYieldAvailabilityState { get; set; }
     /// <summary>Gets or sets the controlled source type.</summary>
     public required string SourceType { get; set; }
+    /// <summary>Gets or sets the recipe execution reconciled by this batch; set only for <c>RecipeExecution</c>.</summary>
+    public Guid? SourceReferenceId { get; set; }
     /// <summary>Gets or sets when the component was prepared.</summary>
     public DateTimeOffset PreparedAt { get; set; }
     /// <summary>Gets or sets when the authoritative batch was created.</summary>

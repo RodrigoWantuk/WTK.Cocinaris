@@ -4,7 +4,12 @@ namespace Cocinaris.Modules.Inventory.Domain;
 public enum PreparationSourceType
 {
     /// <summary>A user explicitly recorded a preparation outside recipe-execution reconciliation.</summary>
-    ManualPreparation
+    ManualPreparation,
+    /// <summary>
+    /// Completion of a recipe execution (PLAN-0042): the inputs are the pantry lots the user
+    /// confirmed as used, and the outputs are the leftover portions stored, which may be none.
+    /// </summary>
+    RecipeExecution
 }
 
 /// <summary>Identifies the lifecycle state attached to an output of the manual preparation contract.</summary>
@@ -85,12 +90,13 @@ public sealed record PreparedShelfLifeEvidence
 /// <summary>Represents the immutable identity and common provenance of one preparation transaction.</summary>
 public sealed class PreparationBatch
 {
-    private PreparationBatch(Guid id, Guid ownerUserId, Guid outputProductId, PreparationSourceType sourceType, DateTimeOffset preparedAt, DateTimeOffset createdAt)
+    private PreparationBatch(Guid id, Guid ownerUserId, Guid outputProductId, PreparationSourceType sourceType, Guid? sourceReferenceId, DateTimeOffset preparedAt, DateTimeOffset createdAt)
     {
         Id = id;
         OwnerUserId = ownerUserId;
         OutputProductId = outputProductId;
         SourceType = sourceType;
+        SourceReferenceId = sourceReferenceId;
         PreparedAt = preparedAt;
         CreatedAt = createdAt;
     }
@@ -107,20 +113,35 @@ public sealed class PreparationBatch
     /// <summary>Gets the explicit creation source.</summary>
     public PreparationSourceType SourceType { get; }
 
+    /// <summary>Gets the recipe execution that produced the batch; present only for <see cref="PreparationSourceType.RecipeExecution"/>.</summary>
+    public Guid? SourceReferenceId { get; }
+
     /// <summary>Gets when the food was prepared, in UTC.</summary>
     public DateTimeOffset PreparedAt { get; }
 
     /// <summary>Gets when the authoritative transaction was created.</summary>
     public DateTimeOffset CreatedAt { get; }
 
-    /// <summary>Creates a manual preparation batch with valid ownership and timestamps.</summary>
-    public static PreparationBatch Create(Guid ownerUserId, Guid outputProductId, DateTimeOffset preparedAt, DateTimeOffset now)
+    /// <summary>Creates a preparation batch with valid ownership, source, and timestamps.</summary>
+    /// <param name="ownerUserId">Owner of the batch.</param>
+    /// <param name="outputProductId">Product represented by the outputs.</param>
+    /// <param name="preparedAt">When the food was prepared, in UTC; not in the future.</param>
+    /// <param name="now">Creation instant.</param>
+    /// <param name="sourceType">Creation source.</param>
+    /// <param name="sourceReferenceId">Recipe execution identifier; required for, and only for, <see cref="PreparationSourceType.RecipeExecution"/>.</param>
+    /// <exception cref="ArgumentException">Thrown when identity, timestamp, or source reference is invalid.</exception>
+    public static PreparationBatch Create(Guid ownerUserId, Guid outputProductId, DateTimeOffset preparedAt, DateTimeOffset now, PreparationSourceType sourceType = PreparationSourceType.ManualPreparation, Guid? sourceReferenceId = null)
     {
-        if (ownerUserId == Guid.Empty || outputProductId == Guid.Empty || preparedAt > now)
+        if (ownerUserId == Guid.Empty || outputProductId == Guid.Empty || preparedAt > now || !Enum.IsDefined(sourceType))
         {
             throw new ArgumentException("Preparation batch identity or timestamp is invalid.");
         }
 
-        return new PreparationBatch(Guid.NewGuid(), ownerUserId, outputProductId, PreparationSourceType.ManualPreparation, preparedAt, now);
+        if ((sourceType == PreparationSourceType.RecipeExecution) != (sourceReferenceId is { } reference && reference != Guid.Empty))
+        {
+            throw new ArgumentException("Only a recipe-execution batch carries a source reference, and it must carry one.");
+        }
+
+        return new PreparationBatch(Guid.NewGuid(), ownerUserId, outputProductId, sourceType, sourceReferenceId, preparedAt, now);
     }
 }

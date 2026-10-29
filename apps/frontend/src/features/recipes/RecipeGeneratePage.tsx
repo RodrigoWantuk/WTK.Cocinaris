@@ -52,7 +52,7 @@ export function RecipeGeneratePage() {
   const recipeRepo = useRecipeRepository();
   const inventoryRepo = useInventoryRepository();
   const { session } = useSession();
-  const { t } = useProductionI18n();
+  const { t, locale } = useProductionI18n();
   const navigate = useNavigate();
   const candidatesHeadingId = useId();
 
@@ -171,6 +171,7 @@ export function RecipeGeneratePage() {
     try {
       const initial = await recipeRepo.requestCandidates({
         csrfToken: session.csrfToken,
+        language: locale,
         idempotencyKey: requestIdempotencyKey,
         signal: controller.signal,
       });
@@ -242,6 +243,7 @@ export function RecipeGeneratePage() {
         candidate.candidateId,
         {
           csrfToken: session.csrfToken,
+          language: locale,
           idempotencyKey: selectKey,
           signal: controller.signal,
         },
@@ -284,6 +286,7 @@ export function RecipeGeneratePage() {
             candidate.candidateId,
             {
               csrfToken: session.csrfToken,
+              language: locale,
               idempotencyKey: selectKey,
               signal: controller.signal,
             },

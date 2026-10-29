@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { useSession } from "@/app/session/SessionProvider";
+import { RecipeContent } from "./RecipeContent";
 import { useRecipeRepository } from "./RecipeProvider";
 import { RecipeApiError, type RecipeDetail } from "@/contracts/recipes";
 import { useProductionI18n } from "@/app/i18n/ProductionI18nProvider";
@@ -23,6 +25,31 @@ export function RecipeDetailPage() {
   const [reloadToken, setReloadToken] = useState(0);
   const requestIdRef = useRef(0);
   const abortRef = useRef<AbortController | null>(null);
+  const { session } = useSession();
+  const navigate = useNavigate();
+  const [starting, setStarting] = useState(false);
+  const [startError, setStartError] = useState<string | null>(null);
+
+  // Starting is explicit; the backend returns the execution already in progress, if any.
+  const startCooking = async () => {
+    if (!session.csrfToken || !detail) return;
+    setStarting(true);
+    setStartError(null);
+    try {
+      const execution = await repo.startExecution(detail.recipeId, {
+        csrfToken: session.csrfToken,
+      });
+      navigate(`/app/receitas/cozinhar/${execution.executionId}`);
+    } catch (err) {
+      setStartError(
+        err instanceof RecipeApiError
+          ? recipeErrorMessageKey(err.code)
+          : "recipes.error.unexpected",
+      );
+    } finally {
+      setStarting(false);
+    }
+  };
 
   useEffect(() => {
     if (!recipeId) {
@@ -117,56 +144,23 @@ export function RecipeDetailPage() {
         ) : null}
       </div>
 
-      {parsed && parsed.ingredients.length > 0 ? (
-        <section aria-labelledby="recipes-detail-ingredients">
-          <h2 id="recipes-detail-ingredients" className="font-display text-xl">
-            {t("recipes.detail.ingredients")}
-          </h2>
-          <ul className="mt-2 list-disc space-y-1 pl-5 text-sm">
-            {parsed.ingredients.map((ingredient, index) => (
-              <li key={`${ingredient.displayName}-${index}`}>
-                {ingredient.displayName}
-                {ingredient.quantityLabel
-                  ? ` — ${ingredient.quantityLabel}`
-                  : ""}
-              </li>
-            ))}
-          </ul>
-        </section>
+      <div className="flex flex-wrap gap-2">
+        <Button
+          type="button"
+          data-testid="recipes-detail-cook"
+          disabled={starting || !session.csrfToken}
+          onClick={() => void startCooking()}
+        >
+          {starting ? t("recipes.detail.starting") : t("recipes.detail.cook")}
+        </Button>
+      </div>
+      {startError ? (
+        <p role="alert" className="text-sm text-destructive">
+          {t(startError)}
+        </p>
       ) : null}
 
-      {parsed && parsed.stages.length > 0 ? (
-        <section aria-labelledby="recipes-detail-stages">
-          <h2 id="recipes-detail-stages" className="font-display text-xl">
-            {t("recipes.detail.stages")}
-          </h2>
-          <ol className="mt-3 space-y-4">
-            {parsed.stages.map((stage, index) => (
-              <li key={`${stage.title}-${index}`}>
-                <h3 className="font-medium">{stage.title}</h3>
-                <ol className="mt-1 list-decimal space-y-1 pl-5 text-sm text-muted-foreground">
-                  {stage.instructions.map((instruction, stepIndex) => (
-                    <li key={stepIndex}>{instruction}</li>
-                  ))}
-                </ol>
-              </li>
-            ))}
-          </ol>
-        </section>
-      ) : null}
-
-      {parsed && parsed.assumptions.length > 0 ? (
-        <section aria-labelledby="recipes-detail-assumptions">
-          <h2 id="recipes-detail-assumptions" className="font-display text-xl">
-            {t("recipes.detail.assumptions")}
-          </h2>
-          <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-muted-foreground">
-            {parsed.assumptions.map((assumption) => (
-              <li key={assumption}>{assumption}</li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
+      {parsed ? <RecipeContent recipe={parsed} /> : null}
 
       <Button asChild variant="secondary" data-testid="recipes-detail-back">
         <Link to="/app/receitas">{t("recipes.actions.back")}</Link>

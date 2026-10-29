@@ -54,13 +54,12 @@ export const REQUIRED_RECIPES_I18N_KEYS = [
 const en: Record<(typeof REQUIRED_RECIPES_I18N_KEYS)[number], string> = {
   "nav.recipes": "Recipes",
   "recipes.title": "Recipes",
-  "recipes.subtitle":
-    "Saved cook-now recipes from your inventory and preferences.",
+  "recipes.subtitle": "Recipes you saved from what you have at home.",
   "recipes.loading": "Loading recipes…",
   "recipes.empty": "No saved recipes yet.",
   "recipes.empty.guidance":
-    "Generate cook-now candidates from your pantry to save your first recipe.",
-  "recipes.actions.generate": "Generate cook-now",
+    "Ask for suggestions based on your pantry and save the one you like.",
+  "recipes.actions.generate": "What can I cook now?",
   "recipes.actions.retry": "Try again",
   "recipes.actions.back": "Back",
   "recipes.actions.cancel": "Cancel",
@@ -79,7 +78,7 @@ const en: Record<(typeof REQUIRED_RECIPES_I18N_KEYS)[number], string> = {
   "recipes.detail.stages": "Steps",
   "recipes.detail.assumptions": "Assumptions",
   "recipes.detail.yield": "Yield: {{value}}",
-  "recipes.generate.title": "Cook-now generation",
+  "recipes.generate.title": "What can I cook now?",
   "recipes.generate.subtitle":
     "Use current inventory and profile constraints to suggest three recipes.",
   "recipes.generate.confirmDetail":
@@ -95,7 +94,7 @@ const en: Record<(typeof REQUIRED_RECIPES_I18N_KEYS)[number], string> = {
   "recipes.generate.difficulty": "Difficulty: {{value}}",
   "recipes.generate.emptyInventoryTitle": "Pantry is empty",
   "recipes.generate.emptyInventoryDetail":
-    "Add at least one pantry item before requesting cook-now candidates.",
+    "Add at least one pantry item before asking for suggestions.",
   "recipes.generate.cancelled": "Request cancelled.",
   "recipes.error.providerUnavailable":
     "Recipe AI is unavailable right now. You can retry later.",
@@ -111,13 +110,12 @@ const en: Record<(typeof REQUIRED_RECIPES_I18N_KEYS)[number], string> = {
 const ptBR: Record<(typeof REQUIRED_RECIPES_I18N_KEYS)[number], string> = {
   "nav.recipes": "Receitas",
   "recipes.title": "Receitas",
-  "recipes.subtitle":
-    "Receitas cook-now salvas a partir da sua despensa e preferências.",
+  "recipes.subtitle": "Receitas que você salvou a partir do que tem em casa.",
   "recipes.loading": "Carregando receitas…",
   "recipes.empty": "Nenhuma receita salva ainda.",
   "recipes.empty.guidance":
-    "Gere candidatos cook-now a partir da despensa para salvar a primeira receita.",
-  "recipes.actions.generate": "Gerar cook-now",
+    "Peça sugestões com base na sua despensa e salve a que gostar.",
+  "recipes.actions.generate": "O que cozinho agora?",
   "recipes.actions.retry": "Tentar de novo",
   "recipes.actions.back": "Voltar",
   "recipes.actions.cancel": "Cancelar",
@@ -136,7 +134,7 @@ const ptBR: Record<(typeof REQUIRED_RECIPES_I18N_KEYS)[number], string> = {
   "recipes.detail.stages": "Passos",
   "recipes.detail.assumptions": "Assunções",
   "recipes.detail.yield": "Rendimento: {{value}}",
-  "recipes.generate.title": "Geração cook-now",
+  "recipes.generate.title": "O que cozinho agora?",
   "recipes.generate.subtitle":
     "Use a despensa e as preferências atuais para sugerir três receitas.",
   "recipes.generate.confirmDetail":
@@ -152,7 +150,7 @@ const ptBR: Record<(typeof REQUIRED_RECIPES_I18N_KEYS)[number], string> = {
   "recipes.generate.difficulty": "Dificuldade: {{value}}",
   "recipes.generate.emptyInventoryTitle": "Despensa vazia",
   "recipes.generate.emptyInventoryDetail":
-    "Adicione pelo menos um item na despensa antes de pedir candidatos cook-now.",
+    "Adicione pelo menos um item na despensa antes de pedir sugestões.",
   "recipes.generate.cancelled": "Solicitação cancelada.",
   "recipes.error.providerUnavailable":
     "A IA de receitas está indisponível no momento. Você pode tentar depois.",
@@ -170,12 +168,12 @@ const es: Record<(typeof REQUIRED_RECIPES_I18N_KEYS)[number], string> = {
   "nav.recipes": "Recetas",
   "recipes.title": "Recetas",
   "recipes.subtitle":
-    "Recetas cook-now guardadas a partir de tu despensa y preferencias.",
+    "Recetas que guardaste a partir de lo que tienes en casa.",
   "recipes.loading": "Cargando recetas…",
   "recipes.empty": "Aún no hay recetas guardadas.",
   "recipes.empty.guidance":
-    "Genera candidatos cook-now desde la despensa para guardar tu primera receta.",
-  "recipes.actions.generate": "Generar cook-now",
+    "Pide sugerencias según tu despensa y guarda la que te guste.",
+  "recipes.actions.generate": "¿Qué cocino ahora?",
   "recipes.actions.retry": "Reintentar",
   "recipes.actions.back": "Volver",
   "recipes.actions.cancel": "Cancelar",
@@ -195,7 +193,7 @@ const es: Record<(typeof REQUIRED_RECIPES_I18N_KEYS)[number], string> = {
   "recipes.detail.stages": "Pasos",
   "recipes.detail.assumptions": "Supuestos",
   "recipes.detail.yield": "Rendimiento: {{value}}",
-  "recipes.generate.title": "Generación cook-now",
+  "recipes.generate.title": "¿Qué cocino ahora?",
   "recipes.generate.subtitle":
     "Usa la despensa y las preferencias actuales para sugerir tres recetas.",
   "recipes.generate.confirmDetail":
@@ -212,7 +210,7 @@ const es: Record<(typeof REQUIRED_RECIPES_I18N_KEYS)[number], string> = {
   "recipes.generate.difficulty": "Dificultad: {{value}}",
   "recipes.generate.emptyInventoryTitle": "Despensa vacía",
   "recipes.generate.emptyInventoryDetail":
-    "Añade al menos un artículo a la despensa antes de pedir candidatos cook-now.",
+    "Añade al menos un artículo a la despensa antes de pedir sugerencias.",
   "recipes.generate.cancelled": "Solicitud cancelada.",
   "recipes.error.providerUnavailable":
     "La IA de recetas no está disponible ahora. Puedes reintentar más tarde.",

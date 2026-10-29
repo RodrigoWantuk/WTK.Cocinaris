@@ -59,6 +59,23 @@ Every suggestion request includes:
 }
 ```
 
+Both operations also state the output language and the instruction style (added 2026-10-29 after owner feedback: candidates arrived in English for a Portuguese user, and the steps were bare titles for a profile that asked for detailed steps):
+
+```json
+{
+  "outputLanguage": {
+    "languageTag": "pt-BR",
+    "languageName": "Brazilian Portuguese",
+    "rule": "Write every human-readable string in Brazilian Portuguese (pt-BR): ... Keep stable ids, enum values, and units exactly as the schema defines them."
+  },
+  "instructionStyle": { "detailLevel": "detailed", "cookingSkill": "beginner", "rule": "..." }
+}
+```
+
+- **Language source, in order:** the profile language; else the interface locale the frontend sends in `Accept-Language`; else `pt-BR`. Only `pt-BR`, `en`, and `es` are accepted, so a header can never place free text in the envelope. Inventory user names stay verbatim (`preserveInventoryUserNames`).
+- **Detail source:** the profile's preferred instruction detail (`minimal`, `standard`, `detailed`). When none is declared, `beginner` and `developing` cooks get `detailed` and everyone else gets `standard`. `detailed` asks for every action in order with quantities, utensil, heat, time, and doneness signs, using up to the 700 characters a stage allows.
+- The DeepSeek system prompt names both fields. Language and detail cannot be validated deterministically; they are evaluation criteria for the AI evaluation set (PLAN-0040).
+
 The model never guesses timezone or silently changes the requested meal. A `cook_now` candidate is invalid when soaking, thawing, marinating, fermentation, cooling or another blocking preparation exceeds the available lead window.
 
 ## Candidate strategies

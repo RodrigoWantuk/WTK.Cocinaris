@@ -72,7 +72,12 @@ public sealed class RecipeContextAssembler(IInventoryLotReadStore inventoryReadS
         var preferences = confirmed.Where(item => item.Category == PreferenceCategory.Preference).Select(item => item.StableCode.Value).ToList();
         var restrictions = confirmed.Where(item => item.Category != PreferenceCategory.Preference).Select(item => item.StableCode.Value).ToList();
         var servings = profile.Profile.DefaultServingCount ?? DefaultServings;
-        return new RecipeUserPresets(servings, preferences, restrictions, []);
+        var core = profile.Profile;
+        return new RecipeUserPresets(
+            servings, preferences, restrictions, [],
+            core.LanguagePresence != ProfileFieldPresence.Absent ? core.Language?.Value : null,
+            core.PreferredInstructionDetailPresence != ProfileFieldPresence.Absent ? core.PreferredInstructionDetail?.ToString() : null,
+            core.OverallSkillPresence != ProfileFieldPresence.Absent ? core.OverallSkill?.ToString() : null);
     }
 
     private static (IReadOnlyList<RecipeInventoryContextItem> InventoryItems, IReadOnlyList<RecipeEquipmentContextItem> Equipment) BoundBySuggestBudget(

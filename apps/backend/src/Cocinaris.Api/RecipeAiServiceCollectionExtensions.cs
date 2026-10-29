@@ -42,6 +42,10 @@ public static class RecipeAiServiceCollectionExtensions
         services.AddScoped<IRecipeContextAssembler, RecipeContextAssembler>();
         services.AddScoped<RecipeCookNowApplicationService>();
         services.AddScoped<RecipeApiService>();
+        services.AddScoped<IRecipeExecutionStore, PostgreSqlRecipeExecutionStore>();
+        services.AddScoped<IRecipeExecutionUnitOfWork, PostgreSqlRecipeExecutionUnitOfWork>();
+        services.AddScoped<RecipeExecutionApplicationService>();
+        services.AddScoped<RecipeExecutionApiService>();
 
         var deepSeekSection = configuration.GetSection("Ai:Providers:DeepSeek");
         var enabled = deepSeekSection.GetValue("Enabled", false);

@@ -66,6 +66,7 @@ public sealed class PostgreSqlInventoryPreparationStore(ApplicationDbContext dat
             DeclaredYieldMeasuredUnit = write.DeclaredYield.Unit,
             DeclaredYieldAvailabilityState = write.DeclaredYield.AvailabilityState,
             SourceType = write.Batch.SourceType.ToString(),
+            SourceReferenceId = write.Batch.SourceReferenceId,
             PreparedAt = write.Batch.PreparedAt,
             CreatedAt = write.Batch.CreatedAt
         });
@@ -110,7 +111,7 @@ public sealed class PostgreSqlInventoryPreparationStore(ApplicationDbContext dat
             TargetId = write.Batch.Id,
             CorrelationId = write.CorrelationId,
             // Counts and source are operationally useful while avoiding product names, notes, values, or request bodies.
-            MetadataJson = JsonSerializer.Serialize(new { source = "ManualPreparation", inputCount = write.Inputs.Count, outputCount = write.Outputs.Count }),
+            MetadataJson = JsonSerializer.Serialize(new { source = write.Batch.SourceType.ToString(), inputCount = write.Inputs.Count, outputCount = write.Outputs.Count }),
             OccurredAt = write.Batch.CreatedAt
         });
         database.IdempotencyRecords.Add(new IdempotencyRecord
@@ -141,6 +142,12 @@ public sealed class PostgreSqlInventoryPreparationStore(ApplicationDbContext dat
         {
             database.ChangeTracker.Clear();
             return PreparationWriteOutcome.IdempotencyConflict;
+        }
+        catch (DbUpdateException exception) when (IsSourceReferenceConflict(exception))
+        {
+            // Another request already reconciled this recipe execution under a different key.
+            database.ChangeTracker.Clear();
+            return PreparationWriteOutcome.ConcurrencyConflict;
         }
         catch
         {
@@ -246,5 +253,6 @@ public sealed class PostgreSqlInventoryPreparationStore(ApplicationDbContext dat
 
 
     private static PreparationBatchView? Deserialize(string? body) => string.IsNullOrWhiteSpace(body) ? null : JsonSerializer.Deserialize<PreparationBatchView>(body);
+    private static bool IsSourceReferenceConflict(DbUpdateException exception) => exception.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation, ConstraintName: "IX_preparation_batches_OwnerUserId_SourceReferenceId" };
     private static bool IsIdempotencyKeyConflict(DbUpdateException exception) => exception.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation, ConstraintName: "IX_idempotency_records_OwnerUserId_Scope_Key" };
 }

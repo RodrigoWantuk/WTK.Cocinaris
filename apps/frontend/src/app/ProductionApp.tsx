@@ -24,10 +24,10 @@ import { ProductionInventoryForm } from "@/features/inventory/ProductionInventor
 import { RecipeProvider } from "@/features/recipes/RecipeProvider";
 import { RecipesListPage } from "@/features/recipes/RecipesListPage";
 import { RecipeGeneratePage } from "@/features/recipes/RecipeGeneratePage";
+import { TodayPage } from "@/features/home/TodayPage";
+import { CookingPage } from "@/features/recipes/CookingPage";
 import { RecipeDetailPage } from "@/features/recipes/RecipeDetailPage";
 import { PublicEntryPage } from "@/features/entry/PublicEntryPage";
-import { ContextualHomePage } from "@/features/home/ContextualHomePage";
-import { ContextualHomeProvider } from "@/features/home/ContextualHomeProvider";
 import { ProfileProvider } from "@/features/profile/ProfileProvider";
 import { ProfileOverviewPage } from "@/features/profile/ProfileOverviewPage";
 import { ProfileDataPage } from "@/features/profile/ProfileDataPage";
@@ -213,6 +213,8 @@ export function pageTitleKeyFor(pathname: string): string {
   }
   if (pathname.startsWith("/app/despensa")) return "page.title.inventory";
   if (pathname === "/app/receitas/gerar") return "page.title.recipeGenerate";
+  if (pathname.startsWith("/app/receitas/cozinhar/"))
+    return "page.title.cooking";
   if (pathname.startsWith("/app/receitas/")) return "page.title.recipeDetail";
   if (pathname === "/app/receitas") return "page.title.recipes";
   if (pathname.startsWith("/app/perfil")) return "page.title.profile";
@@ -342,14 +344,9 @@ function RequireAuth({ children }: { children: ReactNode }) {
 }
 
 function HomeRoute() {
-  const runtime = useRuntime();
-  // Production wires the unavailable adapter; prototype composition may inject mocks
-  // via a separate app root — never through createProductionRuntime.
-  return (
-    <ContextualHomeProvider adapter={runtime.contextualHomeAdapter}>
-      <ContextualHomePage />
-    </ContextualHomeProvider>
-  );
+  // Live deterministic sources (PLAN-0021, PLAN-0042). The prototype composition keeps the
+  // contextual-home presentation with mock adapters in its own app root.
+  return <TodayPage />;
 }
 
 /**
@@ -489,6 +486,7 @@ function createProductionRouter() {
         { path: "receitas", element: <RecipesListPage /> },
         { path: "receitas/gerar", element: <RecipeGeneratePage /> },
         { path: "receitas/:recipeId", element: <RecipeDetailPage /> },
+        { path: "receitas/cozinhar/:executionId", element: <CookingPage /> },
         {
           path: "perfil",
           element: <ProfileLayout />,
