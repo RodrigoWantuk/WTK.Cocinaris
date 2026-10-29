@@ -73,6 +73,7 @@ function LocaleSwitcher() {
  * Signed-out public entry.
  * Must not call SessionProvider / getSession or render authenticated personal data.
  * CTA always targets `/acesso` — do not inspect session to change the destination.
+ * Signed-in visitors never reach this page: the `/` route redirects them to the home.
  */
 export function PublicEntryPage({
   telemetry = createNoOpHomeTelemetry(),
@@ -279,7 +280,6 @@ export function PublicEntryPage({
 
       <footer className="border-t border-border">
         <div className="mx-auto flex max-w-6xl flex-col gap-3 px-6 py-10 text-xs text-muted-foreground md:px-10">
-          <p>{t("entry.adultNotice")}</p>
           <p className="flex flex-wrap gap-4">
             {/* Inert policy placeholders until legal destinations are accepted. */}
             <a

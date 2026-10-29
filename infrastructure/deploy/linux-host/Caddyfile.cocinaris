@@ -1,6 +1,5 @@
 # Cocinaris site block for Caddy. The application assumes it is served at the root of its own host.
 cocinaris.example.com {
-	encode zstd gzip
 	header {
 		X-Content-Type-Options "nosniff"
 		Referrer-Policy "strict-origin-when-cross-origin"
@@ -16,6 +15,9 @@ cocinaris.example.com {
 		reverse_proxy 127.0.0.1:8004
 	}
 	handle {
+		# Compress static files only. Compression rewrites ETags ("-gzip" suffix), and API
+		# ETags must reach the browser unchanged because clients send them back in If-Match.
+		encode zstd gzip
 		root * /srv/wtk-cocinaris/web
 		try_files {path} /index.html
 		file_server

@@ -33,6 +33,8 @@ The product records an adult-capacity declaration and the accepted terms version
 
 The interface, advertising, onboarding, and community features must not be directed to children.
 
+Presentation (owner decision 2026-10-28, PLAN-0053): the age requirement is stated in the terms of use. The product asks for the formal adult declaration once, when the account is first used, and does not repeat age notices elsewhere in the interface. A completed declaration remains recorded but is not shown again.
+
 ## Profile information
 
 ### Household context

@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import ProductionApp from "./ProductionApp";
 import { PRODUCTION_LOCALE_STORAGE_KEY } from "./i18n/productionCatalog";
@@ -25,16 +25,23 @@ describe("ProductionApp landing controls", () => {
     vi.restoreAllMocks();
   });
 
-  it("renders public `/` without calling session or fetch", async () => {
-    const fetchSpy = vi.spyOn(globalThis, "fetch");
+  it("renders public `/` at once and only checks the session, without other data", async () => {
+    // Owner decision 2026-10-28: `/` checks the session so signed-in visitors go to the home.
+    // The public page renders before that check and fetches nothing else.
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation(async () => new Response(null, { status: 401 }));
     render(<ProductionApp />);
     expect(await screen.findByTestId("production-landing")).toBeInTheDocument();
-    expect(fetchSpy).not.toHaveBeenCalled();
+    await waitFor(() => expect(fetchSpy).toHaveBeenCalled());
     expect(
-      fetchSpy.mock.calls.some(([input]) =>
-        String(input).includes("/api/v1/session"),
+      fetchSpy.mock.calls.every(([input]) =>
+        String(input instanceof Request ? input.url : input).includes(
+          "/api/v1/session",
+        ),
       ),
-    ).toBe(false);
+    ).toBe(true);
+    expect(screen.getByTestId("production-landing")).toBeInTheDocument();
   });
 
   it("uses asChild link CTA without nested button inside anchor", async () => {

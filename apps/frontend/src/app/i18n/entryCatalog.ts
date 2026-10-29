@@ -22,7 +22,6 @@ export const REQUIRED_ENTRY_I18N_KEYS = [
   "entry.outcomes.attention",
   "entry.outcomes.plan",
   "entry.outcomes.adapt",
-  "entry.adultNotice",
   "entry.legal.terms",
   "entry.legal.privacy",
   "entry.legal.placeholderNote",
@@ -32,7 +31,7 @@ type Catalog = Record<string, string>;
 
 export const entryCatalogs: Record<ProductionLocale, Catalog> = {
   "pt-BR": {
-    "entry.hero.eyebrow": "Para adultos que querem cozinhar com o que têm",
+    "entry.hero.eyebrow": "Para quem quer cozinhar com o que tem",
     "entry.hero.title": "Transforme alimentos disponíveis em refeições úteis",
     "entry.hero.lead":
       "O Cocinaris ajuda a decidir o que preparar com inventário, urgência, planos, preferências, tempo e esforço — com menos desperdício e menos dependência de delivery.",
@@ -58,15 +57,13 @@ export const entryCatalogs: Record<ProductionLocale, Catalog> = {
     "entry.outcomes.plan": "Planejar refeições e compras com flexibilidade",
     "entry.outcomes.adapt":
       "Adaptar sugestões a preferências, restrições, equipamento, tempo e limpeza",
-    "entry.adultNotice":
-      "Serviço destinado a adultos. Declarações e consentimentos aplicáveis são tratados no fluxo de conta.",
     "entry.legal.terms": "Termos (texto jurídico em preparação)",
     "entry.legal.privacy": "Privacidade (texto jurídico em preparação)",
     "entry.legal.placeholderNote":
       "Links jurídicos são placeholders até a revisão legal definitiva.",
   },
   en: {
-    "entry.hero.eyebrow": "For adults who want to cook with what they have",
+    "entry.hero.eyebrow": "For anyone who wants to cook with what they have",
     "entry.hero.title": "Turn available food into useful meals",
     "entry.hero.lead":
       "Cocinaris helps you decide what to prepare using inventory, urgency, plans, preferences, time, and effort — with less waste and less delivery dependence.",
@@ -92,15 +89,13 @@ export const entryCatalogs: Record<ProductionLocale, Catalog> = {
     "entry.outcomes.plan": "Plan meals and purchases with flexibility",
     "entry.outcomes.adapt":
       "Adapt suggestions to preferences, restrictions, equipment, time, and cleanup",
-    "entry.adultNotice":
-      "Service intended for adults. Applicable declarations and consents are handled in the account flow.",
     "entry.legal.terms": "Terms (legal text forthcoming)",
     "entry.legal.privacy": "Privacy (legal text forthcoming)",
     "entry.legal.placeholderNote":
       "Legal links are placeholders until definitive legal review.",
   },
   es: {
-    "entry.hero.eyebrow": "Para adultos que quieren cocinar con lo que tienen",
+    "entry.hero.eyebrow": "Para quien quiere cocinar con lo que tiene",
     "entry.hero.title": "Convierte alimentos disponibles en comidas útiles",
     "entry.hero.lead":
       "Cocinaris ayuda a decidir qué preparar usando inventario, urgencia, planes, preferencias, tiempo y esfuerzo — con menos desperdicio y menos dependencia del delivery.",
@@ -126,8 +121,6 @@ export const entryCatalogs: Record<ProductionLocale, Catalog> = {
     "entry.outcomes.plan": "Planificar comidas y compras con flexibilidad",
     "entry.outcomes.adapt":
       "Adaptar sugerencias a preferencias, restricciones, equipo, tiempo y limpieza",
-    "entry.adultNotice":
-      "Servicio destinado a adultos. Las declaraciones y consentimientos aplicables se tratan en el flujo de cuenta.",
     "entry.legal.terms": "Términos (texto jurídico en preparación)",
     "entry.legal.privacy": "Privacidad (texto jurídico en preparación)",
     "entry.legal.placeholderNote":

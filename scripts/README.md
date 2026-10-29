@@ -43,3 +43,9 @@ CI uses its loopback HTTP endpoint and accepted local evidence does not use this
 
 See the [`backend inventory runbook`](../docs/operations/backend-inventory-runbook.md) for exact
 commands, deployment evidence, forward-repair policy, and troubleshooting.
+
+## Host-local gates and proxy replica (PLAN-0053)
+
+- `ci/run-local-gates.sh` runs the backend, contract, frontend, browser-smoke and secret-scan gates on a clean worktree of a commit. It replaces the GitHub Actions workflows, which do not run for this repository.
+- `e2e/proxy-replica.sh start|stop` runs the API behind a separate Caddy that uses the deployment template, on `https://localhost:7443` with the local OIDC fixture.
+- `e2e/profile-journey.mjs` signs in through the replica and saves on every profile page. It catches defects that only appear behind the deployment proxy.

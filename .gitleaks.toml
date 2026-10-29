@@ -26,4 +26,6 @@ regexes = [
   '''(?i)"exactShaUnderTest"\s*:\s*"[a-f0-9]{40}"''',
   '''(?i)OpenAPI (blob|contract git object id):\s*`[a-f0-9]{40}`''',
   '''(?i)Integrated main SHA:\s*`[a-f0-9]{40}`''',
+  # Browser storage key names in the prototype store (e.g. "cocinaris_state_v1"), not credentials.
+  '''const LS(_PREFS)?_KEY = "[a-z]+_(state|prefs)_v[0-9]+"''',
 ]

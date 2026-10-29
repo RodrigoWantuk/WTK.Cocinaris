@@ -85,6 +85,19 @@ function LocaleSwitcher() {
   );
 }
 
+/**
+ * Public entry route. A visitor who already has a session goes straight to the home. Everyone
+ * else, including while the session check is still loading or when it fails, sees the public
+ * page at once; the page itself never reads the session, so it cannot render personal data.
+ */
+function EntryRoute() {
+  const { session } = useSession();
+  if (session.status === "authenticated") {
+    return <Navigate to="/app/hoje" replace />;
+  }
+  return <PublicEntryPage />;
+}
+
 function ProductionAccess() {
   const { session, beginLogin } = useSession();
   const { t } = useProductionI18n();
@@ -437,7 +450,9 @@ function createProductionRouter() {
       path: "/",
       element: (
         <Titled>
-          <PublicEntryPage />
+          <SessionScopedRoutes>
+            <EntryRoute />
+          </SessionScopedRoutes>
         </Titled>
       ),
     },

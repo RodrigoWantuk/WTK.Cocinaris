@@ -71,7 +71,8 @@ Video requires captions, an accessible name, keyboard controls, and a transcript
 - No authenticated or personal data is embedded in public output.
 - Demonstration data is synthetic and clearly illustrative.
 - Account creation and login start through the backend-managed authentication redirect.
-- The adult-only notice and policy links are visible without fabricating unapproved legal text.
+- Policy links are visible without fabricating unapproved legal text. The age requirement belongs to the terms of use; the page shows no separate age notice (owner decision 2026-10-28, PLAN-0053).
+- A visitor who already has a valid session goes from the public entry straight to the authenticated home. The public page itself never reads the session (owner decision 2026-10-28, PLAN-0053).
 - Marketing analytics must not capture pantry contents, restrictions, private notes, or recipe requests.
 - The page is localized in English, Portuguese (Brazil), and Spanish.
 - The page remains useful at 360 px, 768 px, 1280 px, intermediate widths, 200% zoom, keyboard-only navigation, and screen-reader navigation.

@@ -168,6 +168,23 @@ telemetry.WithMetrics(metrics =>
 });
 
 var app = builder.Build();
+// API responses are private and carry opaque ETags that clients send back in If-Match. Proxies
+// and CDNs that compress a response rewrite or drop its ETag (Caddy appends "-gzip"; Cloudflare
+// removes strong ETags it re-encodes), which broke concurrency checks behind the deployment proxy.
+// no-transform keeps intermediaries from altering the response; no-store keeps it out of caches.
+app.Use((context, next) =>
+{
+    if (context.Request.Path.StartsWithSegments("/api"))
+    {
+        context.Response.OnStarting(() =>
+        {
+            context.Response.Headers.CacheControl = "no-store, no-transform";
+            return Task.CompletedTask;
+        });
+    }
+
+    return next(context);
+});
 app.UseExceptionHandler(error => error.Run(async context =>
 {
     var exception = context.Features.Get<IExceptionHandlerFeature>()?.Error;

@@ -537,3 +537,21 @@ An agent that cannot verify a required tool must mark the plan `Blocked` or docu
 - [OpenTelemetry Collector installation](https://opentelemetry.io/docs/collector/install/)
 - [Lovable GitHub integration](https://docs.lovable.dev/integrations/github)
 - [Lovable FAQ and generated stacks](https://docs.lovable.dev/introduction/faq)
+
+## Merge gates without GitHub Actions
+
+GitHub Actions does not run for this repository (owner decision 2026-10-28, PLAN-0053). Before a pull request is merged, run the gates on its head commit on the owner host:
+
+```bash
+scripts/ci/run-local-gates.sh --ref <branch-or-sha>            # all gates
+scripts/ci/run-local-gates.sh --ref HEAD --only frontend,smoke   # a subset
+```
+
+The script checks out a clean worktree of the commit and runs:
+
+- backend: locked restore, vulnerability check, format, warnings-as-errors build, full tests with the PostgreSQL and OIDC fixtures, migrations applied twice, OpenAPI drift and lint;
+- contracts and the frontend: recipe AI contracts, API client drift, typecheck and format, every frontend gate, both production builds with bundle inspection, the prototype build;
+- the browser smoke matrix;
+- a gitleaks scan of the full history.
+
+Stop the development stack and dev servers first: it needs ports 3000, 3001, 7080 and 8080. Results are written to `artifacts/local-gates/<sha>/summary.md` (ignored by Git); copy the summary into the pull request.

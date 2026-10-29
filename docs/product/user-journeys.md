@@ -14,7 +14,7 @@ Open the public entry page
 → understand the core problem and useful outcomes from concise text
 → optionally watch or interact with an accessible demonstration
 → review how inventory, planning, suggestions, guided cooking, and reconciliation connect
-→ inspect adult-only and policy information
+→ inspect policy information
 → create an account or sign in through the backend-managed authentication flow
 ```
 

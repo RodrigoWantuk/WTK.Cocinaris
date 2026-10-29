@@ -38,10 +38,8 @@ export const REQUIRED_PROFILE_I18N_KEYS = [
   "profile.overview.linkPreferences",
   "profile.overview.linkEquipment",
   "profile.overview.adultDeclaration.title",
-  "profile.overview.adultDeclaration.declared",
   "profile.overview.adultDeclaration.notDeclared",
   "profile.overview.adultDeclaration.declined",
-  "profile.overview.adultDeclaration.unavailable",
   "profile.overview.nextSteps",
   "profile.data.title",
   "profile.data.subtitle",
@@ -178,9 +176,6 @@ export const REQUIRED_PROFILE_I18N_KEYS = [
   "profile.unsavedChanges.stay",
   "profile.data.serverVersionNotice",
   "profile.overview.adultDeclaration.unknown",
-  "profile.overview.adultDeclaration.acceptedAt",
-  "profile.overview.adultDeclaration.termsVersion",
-  "profile.overview.adultDeclaration.privacyVersion",
   "profile.overview.nextSteps.household",
   "profile.overview.nextSteps.preferences",
   "profile.overview.nextSteps.equipment",
@@ -232,7 +227,7 @@ const en: Record<ProfileI18nKey, string> = {
   "profile.actions.back": "Back to profile",
   "profile.actions.confirm": "Confirm",
   "profile.actions.remove": "Remove",
-  "profile.actions.useDefault": "Use and save this default",
+  "profile.actions.useDefault": "Use this default",
   "profile.actions.edit": "Edit",
   "profile.actions.add": "Add",
   "profile.actions.moveUp": "Move up",
@@ -285,15 +280,12 @@ const en: Record<ProfileI18nKey, string> = {
   "profile.overview.linkPreferences": "Edit preferences & restrictions",
   "profile.overview.linkEquipment": "Edit equipment",
   "profile.overview.adultDeclaration.title": "Adult declaration",
-  "profile.overview.adultDeclaration.declared": "Declared",
   "profile.overview.adultDeclaration.notDeclared": "Not declared yet",
   "profile.overview.adultDeclaration.declined": "Declined",
-  "profile.overview.adultDeclaration.unavailable":
-    "Adult declaration is not available yet in this build.",
   "profile.overview.nextSteps": "Suggested next steps",
   "profile.data.title": "Household & cooking data",
   "profile.data.subtitle":
-    "Each field can be confirmed, removed, or left as a suggested default.",
+    "Change what you want in each section, then press Save in that section. Nothing is saved before that.",
   "profile.data.section.household": "Household",
   "profile.data.section.cooking": "Cooking context",
   "profile.data.section.lists": "Techniques, goals & history",
@@ -342,7 +334,7 @@ const en: Record<ProfileI18nKey, string> = {
   "profile.data.removeListItem": "Remove",
   "profile.preferences.title": "Preferences & restrictions",
   "profile.preferences.subtitle":
-    "Only confirmed entries are shown. Removed entries are not listed here.",
+    "Each item is saved as soon as you add or remove it.",
   "profile.preferences.empty": "No entries in this category yet.",
   "profile.preferences.addFromCatalog": "Add from catalog",
   "profile.preferences.addCustom": "Add custom entry",
@@ -369,7 +361,7 @@ const en: Record<ProfileI18nKey, string> = {
   "profile.preferences.sensitive.cancel": "Cancel",
   "profile.equipment.title": "Equipment",
   "profile.equipment.subtitle":
-    "Order matters: it reflects how you prefer equipment to be considered.",
+    "Add, remove, and order your equipment, then press Save. The order shows which equipment you prefer to use first.",
   "profile.equipment.empty": "No equipment added yet.",
   "profile.equipment.addFromCatalog": "Add from catalog",
   "profile.equipment.addCustom": "Add custom equipment",
@@ -443,10 +435,6 @@ const en: Record<ProfileI18nKey, string> = {
   "profile.data.serverVersionNotice":
     "This changed on the server. The current server value is shown next to your unsaved edit so you can compare before retrying.",
   "profile.overview.adultDeclaration.unknown": "Unknown status",
-  "profile.overview.adultDeclaration.acceptedAt": "Accepted on {date}",
-  "profile.overview.adultDeclaration.termsVersion": "Terms version {version}",
-  "profile.overview.adultDeclaration.privacyVersion":
-    "Privacy version {version}",
   "profile.overview.nextSteps.household": "Add household & cooking data",
   "profile.overview.nextSteps.preferences": "Add preferences & restrictions",
   "profile.overview.nextSteps.equipment": "Add equipment",
@@ -486,7 +474,7 @@ const ptBR: Record<ProfileI18nKey, string> = {
   "profile.actions.back": "Voltar ao perfil",
   "profile.actions.confirm": "Confirmar",
   "profile.actions.remove": "Remover",
-  "profile.actions.useDefault": "Usar e salvar este padrão",
+  "profile.actions.useDefault": "Usar este padrão",
   "profile.actions.edit": "Editar",
   "profile.actions.add": "Adicionar",
   "profile.actions.moveUp": "Mover para cima",
@@ -539,15 +527,12 @@ const ptBR: Record<ProfileI18nKey, string> = {
   "profile.overview.linkPreferences": "Editar preferências e restrições",
   "profile.overview.linkEquipment": "Editar equipamentos",
   "profile.overview.adultDeclaration.title": "Declaração de maioridade",
-  "profile.overview.adultDeclaration.declared": "Declarada",
   "profile.overview.adultDeclaration.notDeclared": "Ainda não declarada",
   "profile.overview.adultDeclaration.declined": "Recusada",
-  "profile.overview.adultDeclaration.unavailable":
-    "A declaração de maioridade ainda não está disponível nesta versão.",
   "profile.overview.nextSteps": "Próximos passos sugeridos",
   "profile.data.title": "Dados de família e culinária",
   "profile.data.subtitle":
-    "Cada campo pode ser confirmado, removido ou deixado como um padrão sugerido.",
+    "Altere o que quiser em cada seção e clique em Salvar na própria seção. Nada é salvo antes disso.",
   "profile.data.section.household": "Família",
   "profile.data.section.cooking": "Contexto de cozinha",
   "profile.data.section.lists": "Técnicas, objetivos e histórico",
@@ -597,7 +582,7 @@ const ptBR: Record<ProfileI18nKey, string> = {
   "profile.data.removeListItem": "Remover",
   "profile.preferences.title": "Preferências e restrições",
   "profile.preferences.subtitle":
-    "Apenas entradas confirmadas são mostradas. Entradas removidas não aparecem aqui.",
+    "Cada item é salvo assim que você o adiciona ou remove.",
   "profile.preferences.empty": "Nenhuma entrada nesta categoria ainda.",
   "profile.preferences.addFromCatalog": "Adicionar do catálogo",
   "profile.preferences.addCustom": "Adicionar entrada personalizada",
@@ -624,7 +609,7 @@ const ptBR: Record<ProfileI18nKey, string> = {
   "profile.preferences.sensitive.cancel": "Cancelar",
   "profile.equipment.title": "Equipamentos",
   "profile.equipment.subtitle":
-    "A ordem importa: ela reflete como você prefere que os equipamentos sejam considerados.",
+    "Adicione, remova e ordene seus equipamentos e depois clique em Salvar. A ordem indica quais você prefere usar primeiro.",
   "profile.equipment.empty": "Nenhum equipamento adicionado ainda.",
   "profile.equipment.addFromCatalog": "Adicionar do catálogo",
   "profile.equipment.addCustom": "Adicionar equipamento personalizado",
@@ -699,11 +684,6 @@ const ptBR: Record<ProfileI18nKey, string> = {
   "profile.data.serverVersionNotice":
     "Isso mudou no servidor. O valor atual do servidor é mostrado ao lado da sua edição não salva para você comparar antes de tentar novamente.",
   "profile.overview.adultDeclaration.unknown": "Status desconhecido",
-  "profile.overview.adultDeclaration.acceptedAt": "Aceito em {date}",
-  "profile.overview.adultDeclaration.termsVersion":
-    "Versão dos termos {version}",
-  "profile.overview.adultDeclaration.privacyVersion":
-    "Versão da privacidade {version}",
   "profile.overview.nextSteps.household":
     "Adicionar dados de família e culinária",
   "profile.overview.nextSteps.preferences":
@@ -747,7 +727,7 @@ const es: Record<ProfileI18nKey, string> = {
   "profile.actions.back": "Volver al perfil",
   "profile.actions.confirm": "Confirmar",
   "profile.actions.remove": "Quitar",
-  "profile.actions.useDefault": "Usar y guardar este valor predeterminado",
+  "profile.actions.useDefault": "Usar este valor predeterminado",
   "profile.actions.edit": "Editar",
   "profile.actions.add": "Agregar",
   "profile.actions.moveUp": "Subir",
@@ -802,15 +782,12 @@ const es: Record<ProfileI18nKey, string> = {
   "profile.overview.linkPreferences": "Editar preferencias y restricciones",
   "profile.overview.linkEquipment": "Editar equipamiento",
   "profile.overview.adultDeclaration.title": "Declaración de mayoría de edad",
-  "profile.overview.adultDeclaration.declared": "Declarada",
   "profile.overview.adultDeclaration.notDeclared": "Aún no declarada",
   "profile.overview.adultDeclaration.declined": "Rechazada",
-  "profile.overview.adultDeclaration.unavailable":
-    "La declaración de mayoría de edad aún no está disponible en esta versión.",
   "profile.overview.nextSteps": "Próximos pasos sugeridos",
   "profile.data.title": "Datos del hogar y cocina",
   "profile.data.subtitle":
-    "Cada campo se puede confirmar, quitar o dejar como un valor predeterminado sugerido.",
+    "Cambia lo que quieras en cada sección y pulsa Guardar en esa sección. No se guarda nada antes.",
   "profile.data.section.household": "Hogar",
   "profile.data.section.cooking": "Contexto de cocina",
   "profile.data.section.lists": "Técnicas, objetivos e historial",
@@ -861,7 +838,7 @@ const es: Record<ProfileI18nKey, string> = {
   "profile.data.removeListItem": "Quitar",
   "profile.preferences.title": "Preferencias y restricciones",
   "profile.preferences.subtitle":
-    "Solo se muestran las entradas confirmadas. Las entradas quitadas no aparecen aquí.",
+    "Cada elemento se guarda en cuanto lo agregas o lo quitas.",
   "profile.preferences.empty": "Aún no hay entradas en esta categoría.",
   "profile.preferences.addFromCatalog": "Agregar del catálogo",
   "profile.preferences.addCustom": "Agregar entrada personalizada",
@@ -889,7 +866,7 @@ const es: Record<ProfileI18nKey, string> = {
   "profile.preferences.sensitive.cancel": "Cancelar",
   "profile.equipment.title": "Equipamiento",
   "profile.equipment.subtitle":
-    "El orden importa: refleja cómo prefieres que se considere el equipamiento.",
+    "Agrega, quita y ordena tu equipamiento y luego pulsa Guardar. El orden indica cuál prefieres usar primero.",
   "profile.equipment.empty": "Aún no se agregó equipamiento.",
   "profile.equipment.addFromCatalog": "Agregar del catálogo",
   "profile.equipment.addCustom": "Agregar equipamiento personalizado",
@@ -964,11 +941,6 @@ const es: Record<ProfileI18nKey, string> = {
   "profile.data.serverVersionNotice":
     "Esto cambió en el servidor. El valor actual del servidor se muestra junto a tu edición sin guardar para que puedas comparar antes de reintentar.",
   "profile.overview.adultDeclaration.unknown": "Estado desconocido",
-  "profile.overview.adultDeclaration.acceptedAt": "Aceptado el {date}",
-  "profile.overview.adultDeclaration.termsVersion":
-    "Versión de términos {version}",
-  "profile.overview.adultDeclaration.privacyVersion":
-    "Versión de privacidad {version}",
   "profile.overview.nextSteps.household": "Agregar datos del hogar y cocina",
   "profile.overview.nextSteps.preferences":
     "Agregar preferencias y restricciones",
