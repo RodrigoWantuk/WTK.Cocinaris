@@ -1,6 +1,9 @@
 import type { ReactNode } from "react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { InventoryProvider } from "./InventoryProvider";
+import { createUnavailablePlanningRepository } from "@/adapters/live/livePlanningRepository";
+import { PlanningProvider } from "@/features/planning/PlanningProvider";
+import type { PlanningRepository } from "@/contracts/planning";
 import { SessionProvider } from "@/app/session/SessionProvider";
 import { ProductionI18nProvider } from "@/app/i18n/ProductionI18nProvider";
 import type { InventoryRepository } from "@/adapters/live/inventoryTypes";
@@ -43,9 +46,11 @@ export function renderInventoryTree({
   repository,
   sessionAdapter = createSessionAdapter(),
   initialPath = "/app/despensa",
+  planning = createUnavailablePlanningRepository(),
   children,
 }: {
   repository: InventoryRepository;
+  planning?: PlanningRepository;
   sessionAdapter?: SessionAdapter;
   initialPath?: string;
   children: ReactNode;
@@ -54,14 +59,16 @@ export function renderInventoryTree({
     <ProductionI18nProvider initialLocale="en">
       <SessionProvider adapter={sessionAdapter}>
         <InventoryProvider repository={repository}>
-          <MemoryRouter initialEntries={[initialPath]}>
-            <Routes>
-              <Route path="/app/despensa" element={children} />
-              <Route path="/app/despensa/novo" element={children} />
-              <Route path="/app/despensa/:lotId" element={children} />
-              <Route path="/app/despensa/:lotId/editar" element={children} />
-            </Routes>
-          </MemoryRouter>
+          <PlanningProvider repository={planning}>
+            <MemoryRouter initialEntries={[initialPath]}>
+              <Routes>
+                <Route path="/app/despensa" element={children} />
+                <Route path="/app/despensa/novo" element={children} />
+                <Route path="/app/despensa/:lotId" element={children} />
+                <Route path="/app/despensa/:lotId/editar" element={children} />
+              </Routes>
+            </MemoryRouter>
+          </PlanningProvider>
         </InventoryProvider>
       </SessionProvider>
     </ProductionI18nProvider>

@@ -451,6 +451,9 @@ export function CookingPage() {
                         </span>
                       ) : null}
                     </label>
+                    {lot ? (
+                      <CommitmentNotice lot={lot} quantity={line.quantity} />
+                    ) : null}
                   </div>
                 ) : null}
               </li>
@@ -579,5 +582,65 @@ export function CookingPage() {
         </Button>
       </div>
     </form>
+  );
+}
+
+/**
+ * Explains what is promised from the chosen lot: the part the owner protected and what other
+ * menu meals reserve. Advisory only (PLAN-0029 Phase 3): the cook may still use it, and the notice
+ * says which meal would be short.
+ */
+function CommitmentNotice({
+  lot,
+  quantity,
+}: {
+  lot: ExecutionPantryLot;
+  quantity: string;
+}) {
+  const { t, locale } = useProductionI18n();
+  if (lot.protectedQuantity <= 0 && lot.reservedQuantity <= 0) return null;
+  const unit = t(`inventory.unit.${lot.unit}`);
+  const amount = (value: number) =>
+    `${formatLocaleDecimal(value, locale)} ${unit}`;
+  const parsed = parseLocaleDecimal(quantity, locale);
+  const used = parsed.ok ? parsed.value : 0;
+  const free = lot.quantity - lot.protectedQuantity - lot.reservedQuantity;
+  const intoReserved = used > Math.max(0, free);
+  const intoProtected = used > lot.quantity - lot.protectedQuantity;
+  const names = lot.reservedFor.map((meal) => meal.recipeName).join(", ");
+  return (
+    <div
+      data-testid="cooking-review-commitment"
+      className="space-y-1 text-xs sm:col-span-2"
+    >
+      {lot.protectedQuantity > 0 ? (
+        <p className="text-muted-foreground">
+          {t("cooking.review.protected", {
+            value: amount(lot.protectedQuantity),
+          })}
+        </p>
+      ) : null}
+      {lot.reservedQuantity > 0 ? (
+        <p className="text-muted-foreground">
+          {names
+            ? t("cooking.review.reservedFor", {
+                value: amount(lot.reservedQuantity),
+                meals: names,
+              })
+            : t("cooking.review.reserved", {
+                value: amount(lot.reservedQuantity),
+              })}
+        </p>
+      ) : null}
+      {intoProtected || intoReserved ? (
+        <p role="status" className="font-medium text-destructive">
+          {t(
+            intoProtected
+              ? "cooking.review.usesProtected"
+              : "cooking.review.usesReserved",
+          )}
+        </p>
+      ) : null}
+    </div>
   );
 }

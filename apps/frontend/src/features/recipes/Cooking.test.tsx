@@ -89,6 +89,15 @@ function execution(overrides: Partial<RecipeExecution> = {}): RecipeExecution {
           status: "ready",
           lotId: "lot-rice",
           proposedQuantity: 180,
+          protectedQuantity: 0,
+          reservedElsewhere: [
+            {
+              menuEntryId: "entry-9",
+              recipeName: "Risoto",
+              plannedDate: "2026-11-02",
+              quantity: 300,
+            },
+          ],
         },
         {
           ingredientId: "ing-salt",
@@ -99,6 +108,8 @@ function execution(overrides: Partial<RecipeExecution> = {}): RecipeExecution {
           status: "not_tracked",
           lotId: null,
           proposedQuantity: null,
+          protectedQuantity: 0,
+          reservedElsewhere: [],
         },
       ],
       pantryLots: [
@@ -109,6 +120,16 @@ function execution(overrides: Partial<RecipeExecution> = {}): RecipeExecution {
           unit: "Gram",
           storageLocation: "Pantry",
           version: "v-rice",
+          protectedQuantity: 0,
+          reservedQuantity: 300,
+          reservedFor: [
+            {
+              menuEntryId: "entry-9",
+              recipeName: "Risoto",
+              plannedDate: "2026-11-02",
+              quantity: 300,
+            },
+          ],
         },
       ],
     },
@@ -196,8 +217,15 @@ describe("cooking a recipe", () => {
     expect(lines).toHaveLength(2);
     expect(within(lines[1]!).getByRole("checkbox")).not.toBeChecked();
     const quantity = within(lines[0]!).getByRole("textbox");
+    // 300 g of the 500 g lot is reserved for another menu meal: using more than 200 g is flagged, not blocked.
+    const notice = within(lines[0]!).getByTestId("cooking-review-commitment");
+    expect(notice).toHaveTextContent("300 g is reserved for: Risoto.");
+    await user.clear(quantity);
+    await user.type(quantity, "250");
+    expect(notice).toHaveTextContent("leaves another menu meal short");
     await user.clear(quantity);
     await user.type(quantity, "150");
+    expect(notice).not.toHaveTextContent("short");
     await user.click(screen.getByTestId("cooking-leftover-toggle"));
     await user.click(screen.getByTestId("cooking-confirm"));
 
@@ -294,6 +322,8 @@ describe("today page", () => {
           servings: 4,
           status: "planned",
           executionId: null,
+          reserveIngredients: true,
+          readiness: null,
         },
       },
     ]);

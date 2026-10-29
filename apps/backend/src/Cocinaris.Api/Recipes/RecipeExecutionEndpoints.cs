@@ -75,8 +75,8 @@ public sealed class RecipeExecutionApiService(RecipeExecutionApplicationService 
         view.ExecutionId, view.RecipeId, view.RevisionNumber, view.RecipeName, view.Servings, view.RecipeServings, view.Status, view.StartedAt, view.FinishedAt, view.InventoryBatchId, view.Rating, view.Notes, view.NormalizedRecipeJson,
         view.Proposal is { } proposal
             ? new RecipeExecutionProposalResponse(
-                proposal.Lines.Select(line => new RecipeExecutionProposalLineResponse(line.IngredientId, line.DisplayName, line.Optional, line.RequiredQuantity, line.Unit, line.Status, line.LotId, line.ProposedQuantity)).ToList(),
-                proposal.PantryLots.Select(lot => new RecipeExecutionPantryLotResponse(lot.LotId, lot.ProductName, lot.Quantity, lot.Unit, lot.StorageLocation, lot.Version)).ToList())
+                proposal.Lines.Select(line => new RecipeExecutionProposalLineResponse(line.IngredientId, line.DisplayName, line.Optional, line.RequiredQuantity, line.Unit, line.Status, line.LotId, line.ProposedQuantity, line.ProtectedQuantity, (line.ReservedElsewhere ?? []).Select(item => new RecipeExecutionReservationResponse(item.MenuEntryId, item.RecipeName, item.PlannedDate, item.Quantity)).ToList())).ToList(),
+                proposal.PantryLots.Select(lot => new RecipeExecutionPantryLotResponse(lot.LotId, lot.ProductName, lot.Quantity, lot.Unit, lot.StorageLocation, lot.Version, lot.ProtectedQuantity, lot.ReservedQuantity, (lot.ReservedFor ?? []).Select(item => new RecipeExecutionReservationResponse(item.MenuEntryId, item.RecipeName, item.PlannedDate, item.Quantity)).ToList())).ToList())
             : null);
 
     private static IResult ToResult<TApp, THttp>(RecipeApplicationResult<TApp> result, string traceId, Func<TApp, THttp> map)
@@ -128,10 +128,18 @@ public sealed record RecipeExecutionLeftoverRequest(int Portions, string Storage
 public sealed record CompleteRecipeExecutionRequest(IReadOnlyList<RecipeExecutionConsumptionRequest>? Consumptions, RecipeExecutionLeftoverRequest? Leftover, int? Rating, string? Notes);
 
 /// <summary>One proposal line; <c>status</c> is <c>ready</c>, <c>insufficient</c>, <c>lot_unavailable</c>, or <c>not_tracked</c>.</summary>
-public sealed record RecipeExecutionProposalLineResponse(string IngredientId, string DisplayName, bool Optional, decimal RequiredQuantity, string Unit, string Status, Guid? LotId, decimal? ProposedQuantity);
+/// <remarks>
+/// <c>Status</c> adds <c>protected</c> (PLAN-0029 Phase 3). <c>ProtectedQuantity</c> is never proposed;
+/// <c>ReservedElsewhere</c> lists other menu meals counting on the same lot.
+/// </remarks>
+public sealed record RecipeExecutionProposalLineResponse(string IngredientId, string DisplayName, bool Optional, decimal RequiredQuantity, string Unit, string Status, Guid? LotId, decimal? ProposedQuantity, decimal ProtectedQuantity, IReadOnlyList<RecipeExecutionReservationResponse> ReservedElsewhere);
+
+/// <summary>Quantity of a lot another menu meal counts on.</summary>
+public sealed record RecipeExecutionReservationResponse(Guid MenuEntryId, string RecipeName, DateOnly? PlannedDate, decimal Quantity);
 
 /// <summary>An active measured pantry lot the user can pick.</summary>
-public sealed record RecipeExecutionPantryLotResponse(Guid LotId, string ProductName, decimal Quantity, string Unit, string StorageLocation, Guid Version);
+/// <remarks><c>ProtectedQuantity</c> is locked by the owner; <c>ReservedQuantity</c> is reserved for other menu meals.</remarks>
+public sealed record RecipeExecutionPantryLotResponse(Guid LotId, string ProductName, decimal Quantity, string Unit, string StorageLocation, Guid Version, decimal ProtectedQuantity, decimal ReservedQuantity, IReadOnlyList<RecipeExecutionReservationResponse> ReservedFor);
 
 /// <summary>Deterministic, editable completion proposal.</summary>
 public sealed record RecipeExecutionProposalResponse(IReadOnlyList<RecipeExecutionProposalLineResponse> Lines, IReadOnlyList<RecipeExecutionPantryLotResponse> PantryLots);

@@ -1,5 +1,6 @@
 using Cocinaris.Infrastructure.Persistence;
 using Cocinaris.Modules.Planning.Application;
+using Cocinaris.Modules.Recipes.Application;
 
 namespace Cocinaris.Api.Planning;
 
@@ -11,6 +12,8 @@ public static class PlanningServiceCollectionExtensions
     {
         services.AddScoped<IMenuPlanStore, PostgreSqlMenuPlanStore>();
         services.AddScoped<MenuPlanningApplicationService>();
+        // The cooking proposal reads planning commitments through a port the Recipes module owns.
+        services.AddScoped<IPantryCommitmentLookup, PantryCommitmentLookup>();
         services.AddScoped<PlanningApiService>();
         return services;
     }

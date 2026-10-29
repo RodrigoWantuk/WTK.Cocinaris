@@ -40,6 +40,49 @@ export interface MenuEntry {
   servings: number;
   status: MenuEntryStatus;
   executionId: string | null;
+  /** Whether the meal reserves pantry quantity once its menu is in use (PLAN-0029 Phase 3). */
+  reserveIngredients: boolean;
+  /**
+   * Present for meals still to cook that reserve ingredients: real reservations on a menu in use,
+   * a simulation on a draft.
+   */
+  readiness: MealReadiness | null;
+}
+
+/** `ready` when every required pantry ingredient is reserved; `missing` lists what is not. */
+export interface MealReadiness {
+  entryId: string;
+  readiness: "ready" | "missing" | string;
+  missing: Array<{ name: string; unit: string; quantity: number }>;
+}
+
+/** Quantity of a lot reserved for one meal. */
+export interface LotReservation {
+  menuEntryId: string;
+  recipeName: string;
+  plannedDate: string | null;
+  quantity: number;
+}
+
+/** One lot with what is promised from it; quantities in `unit`. */
+export interface LotCommitment {
+  lotId: string;
+  productName: string;
+  unit: string;
+  quantity: number;
+  protectedQuantity: number;
+  reservedQuantity: number;
+  freeQuantity: number;
+  /** `whole`, or `minimum` with the quantity to keep. */
+  protection: { kind: string; minimumQuantity: number | null } | null;
+  reservations: LotReservation[];
+}
+
+/** Pantry commitments; reading or changing them never changes physical quantity. */
+export interface Reservations {
+  from: string;
+  lots: LotCommitment[];
+  meals: MealReadiness[];
 }
 
 /** A menu with its meals, ordered by day (flexible last) and meal. */
@@ -96,6 +139,8 @@ export interface MenuEntryInput {
   servings: number;
   /** `planned` or `skipped`. */
   status: string;
+  /** Releases (false) or restores (true) the meal's reservations; unchanged when omitted. */
+  reserveIngredients?: boolean;
 }
 
 interface Mutation {
@@ -156,6 +201,15 @@ export interface PlanningRepository {
     checked: boolean,
     options: Mutation,
   ): Promise<void>;
+  /** Protections and menu reservations from `from` (the owner's current day). */
+  getReservations(from: string, signal?: AbortSignal): Promise<Reservations>;
+  /** Protects a whole lot, or keeps at least `minimumQuantity` of it. */
+  protectLot(
+    lotId: string,
+    protection: { kind: "whole" | "minimum"; minimumQuantity: number | null },
+    options: Mutation,
+  ): Promise<Reservations>;
+  unprotectLot(lotId: string, options: Mutation): Promise<Reservations>;
   /** Meals of accepted menus for `date`, the owner's current day. */
   getToday(date: string, signal?: AbortSignal): Promise<TodayMenuEntry[]>;
 }

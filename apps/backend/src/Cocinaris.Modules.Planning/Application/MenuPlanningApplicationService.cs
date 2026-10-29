@@ -15,6 +15,18 @@ public interface IMenuPlanStore
     /// <summary>Lists the owner's accepted plans whose period contains <paramref name="date"/>.</summary>
     Task<IReadOnlyList<MenuPlan>> ListAcceptedOnAsync(Guid ownerUserId, DateOnly date, CancellationToken cancellationToken);
 
+    /// <summary>Lists the owner's accepted plans that end on or after <paramref name="from"/>.</summary>
+    Task<IReadOnlyList<MenuPlan>> ListAcceptedFromAsync(Guid ownerUserId, DateOnly from, CancellationToken cancellationToken);
+
+    /// <summary>Lists the owner's lot protections.</summary>
+    Task<IReadOnlyList<LotProtection>> ListProtectionsAsync(Guid ownerUserId, CancellationToken cancellationToken);
+
+    /// <summary>Sets (inserts or replaces) the protection of one lot.</summary>
+    Task SetProtectionAsync(LotProtection protection, CancellationToken cancellationToken);
+
+    /// <summary>Removes the protection of one lot; removing an absent protection is a no-op.</summary>
+    Task RemoveProtectionAsync(Guid ownerUserId, Guid lotId, CancellationToken cancellationToken);
+
     /// <summary>Finds one owned plan.</summary>
     Task<MenuPlan?> FindAsync(Guid ownerUserId, Guid planId, CancellationToken cancellationToken);
 
@@ -55,6 +67,9 @@ public sealed record MenuPlanSummaryView(Guid PlanId, string Name, DateOnly Star
 /// <summary>
 /// One entry with its recipe and derived state. <paramref name="Status"/> is <c>planned</c>,
 /// <c>skipped</c>, <c>cooking</c> (a session started from it is in progress), or <c>cooked</c>.
+/// <paramref name="Readiness"/> is present for meals still to cook that reserve ingredients: for an
+/// accepted menu it reflects real reservations; for a draft it simulates the menu being accepted
+/// after the menus already in use.
 /// </summary>
 public sealed record MenuEntryView(
     Guid EntryId,
@@ -66,7 +81,9 @@ public sealed record MenuEntryView(
     string? MealType,
     int Servings,
     string Status,
-    Guid? ExecutionId);
+    Guid? ExecutionId,
+    bool ReserveIngredients = true,
+    MealReadinessView? Readiness = null);
 
 /// <summary>A plan with its entries, ordered by day (flexible last), meal, and creation.</summary>
 public sealed record MenuPlanView(Guid PlanId, string Name, DateOnly StartDate, DateOnly EndDate, string Status, DateTimeOffset? AcceptedAt, DateTimeOffset UpdatedAt, IReadOnlyList<MenuEntryView> Entries);
@@ -97,8 +114,26 @@ public sealed record ChangeMenuPlanCommand(Guid PlanId, string? Name, DateOnly? 
 /// <param name="PinRevision">Pin the recipe's current revision instead of following later edits.</param>
 public sealed record AddMenuEntryCommand(Guid PlanId, Guid? IdempotencyKey, Guid RecipeId, DateOnly? PlannedDate, string? MealType, int? Servings, bool PinRevision);
 
-/// <summary>Moves, re-portions, skips, or restores an entry.</summary>
-public sealed record ChangeMenuEntryCommand(Guid PlanId, Guid EntryId, DateOnly? PlannedDate, string? MealType, int Servings, string? Status);
+/// <summary>Moves, re-portions, skips, or restores an entry, and optionally releases or restores its reservations.</summary>
+public sealed record ChangeMenuEntryCommand(Guid PlanId, Guid EntryId, DateOnly? PlannedDate, string? MealType, int Servings, string? Status, bool? ReserveIngredients = null);
+
+/// <summary>One lot with what is promised from it.</summary>
+/// <param name="LotId">Lot.</param>
+/// <param name="ProductName">Product name.</param>
+/// <param name="Unit">Lot unit.</param>
+/// <param name="Quantity">Physical quantity.</param>
+/// <param name="ProtectedQuantity">Quantity the owner locked.</param>
+/// <param name="ReservedQuantity">Quantity reserved for accepted menu meals.</param>
+/// <param name="FreeQuantity">What is neither protected nor reserved.</param>
+/// <param name="Protection">The lot's protection rule, if any.</param>
+/// <param name="Reservations">Meals counting on the lot.</param>
+public sealed record LotCommitmentView(Guid LotId, string ProductName, string Unit, decimal Quantity, decimal ProtectedQuantity, decimal ReservedQuantity, decimal FreeQuantity, LotProtectionView? Protection, IReadOnlyList<LotReservationView> Reservations);
+
+/// <summary>A protection rule: <paramref name="Kind"/> is <c>whole</c> or <c>minimum</c>.</summary>
+public sealed record LotProtectionView(string Kind, decimal? MinimumQuantity);
+
+/// <summary>The owner's pantry commitments and the readiness of each reserving meal.</summary>
+public sealed record ReservationsView(DateOnly From, IReadOnlyList<LotCommitmentView> Lots, IReadOnlyList<MealReadinessView> Meals);
 
 /// <summary>
 /// Menu planning (PLAN-0029): draft and accepted plans, entries, the menu of the day for the home
@@ -294,7 +329,7 @@ public sealed class MenuPlanningApplicationService(
         }
 
         var now = timeProvider.GetUtcNow();
-        entry.Change(plan, command.PlannedDate, command.MealType, command.Servings, status.Value, now);
+        entry.Change(plan, command.PlannedDate, command.MealType, command.Servings, status.Value, now, command.ReserveIngredients);
         plan.Touch(now);
         await store.SaveEntryAsync(plan, entry, cancellationToken);
         return Succeeded(await ViewAsync(user.Id, plan, cancellationToken));
@@ -342,8 +377,14 @@ public sealed class MenuPlanningApplicationService(
             .Where(item => item.View.Status is "planned" or "cooking" && (item.View.PlannedDate is null || item.View.PlannedDate >= start) && item.Content is not null)
             .Select(item => new ShoppingMeal(item.View.EntryId, item.View.RecipeName, item.View.PlannedDate, item.View.Servings, item.Content!.Servings, item.Content.NormalizedRecipeJson))
             .ToList();
+        // Stock this menu can use: physical quantity minus protections and what other menus in use reserve.
         var lots = await inventory.ListActiveAsync(user.Id, MaxPantryLots, cancellationToken);
-        var items = ShoppingProjector.Build(meals, lots, await store.ListCheckedAsync(user.Id, plan.Id, cancellationToken));
+        var others = await ProjectAsync(user.Id, start, lots, simulateDraft: null, excludePlanId: plan.Id, cancellationToken);
+        var usable = lots.Select(lot => others.Projection.Lots.TryGetValue(lot.LotId, out var commitment) && lot.MeasuredValue is { } value
+                ? lot with { MeasuredValue = Math.Max(0, value - commitment.ProtectedQuantity - commitment.Reservations.Sum(item => item.Quantity)) }
+                : lot)
+            .ToList();
+        var items = ShoppingProjector.Build(meals, usable, await store.ListCheckedAsync(user.Id, plan.Id, cancellationToken));
         return RecipeApplicationResult<ShoppingListView>.Succeeded(new ShoppingListView(plan.Id, start, meals.Count, items));
     }
 
@@ -424,8 +465,124 @@ public sealed class MenuPlanningApplicationService(
     private async Task<MenuPlanView> ViewAsync(Guid ownerUserId, MenuPlan plan, CancellationToken cancellationToken)
     {
         var resolved = await ResolveEntriesAsync(ownerUserId, await store.ListEntriesAsync(ownerUserId, [plan.Id], cancellationToken), cancellationToken);
-        return new MenuPlanView(plan.Id, plan.Name, plan.StartDate, plan.EndDate, Name(plan.Status), plan.AcceptedAt, plan.UpdatedAt, resolved.Select(item => item.View).ToList());
+        var readiness = new Dictionary<Guid, MealReadinessView>();
+        if (plan.Status != MenuPlanStatus.Archived)
+        {
+            var lots = await inventory.ListActiveAsync(ownerUserId, MaxPantryLots, cancellationToken);
+            var projected = await ProjectAsync(ownerUserId, ConservativeToday(), lots, plan.Status == MenuPlanStatus.Draft ? plan : null, excludePlanId: null, cancellationToken);
+            readiness = projected.Projection.Meals.ToDictionary();
+        }
+
+        return new MenuPlanView(plan.Id, plan.Name, plan.StartDate, plan.EndDate, Name(plan.Status), plan.AcceptedAt, plan.UpdatedAt, resolved
+            .Select(item => item.View with { Readiness = readiness.GetValueOrDefault(item.View.EntryId) })
+            .ToList());
     }
+
+    /// <summary>
+    /// The owner's pantry commitments from <paramref name="from"/>: protections and the reservations
+    /// of accepted menus, plus each reserving meal's readiness. Read-only.
+    /// </summary>
+    public async Task<RecipeApplicationResult<ReservationsView>> GetReservationsAsync(DateOnly? from, CancellationToken cancellationToken)
+    {
+        var user = await currentUser.GetCurrentAsync(cancellationToken);
+        var start = from ?? ConservativeToday();
+        var lots = await inventory.ListActiveAsync(user.Id, MaxPantryLots, cancellationToken);
+        var projected = await ProjectAsync(user.Id, start, lots, simulateDraft: null, excludePlanId: null, cancellationToken);
+        var protections = projected.Protections.ToDictionary(item => item.LotId);
+        var views = lots
+            .Where(lot => projected.Projection.Lots.ContainsKey(lot.LotId) || protections.ContainsKey(lot.LotId))
+            .Select(lot =>
+            {
+                var commitment = projected.Projection.Lots.GetValueOrDefault(lot.LotId);
+                var quantity = lot.MeasuredValue ?? 0;
+                var reserved = commitment?.Reservations.Sum(item => item.Quantity) ?? 0;
+                var protectedQuantity = commitment?.ProtectedQuantity ?? 0;
+                var rule = protections.GetValueOrDefault(lot.LotId);
+                return new LotCommitmentView(
+                    lot.LotId,
+                    lot.ProductName,
+                    lot.MeasuredUnit ?? string.Empty,
+                    quantity,
+                    protectedQuantity,
+                    reserved,
+                    Math.Max(0, quantity - protectedQuantity - reserved),
+                    rule is null ? null : new LotProtectionView(rule.Whole ? "whole" : "minimum", rule.MinimumQuantity),
+                    commitment?.Reservations ?? []);
+            })
+            .OrderBy(item => item.ProductName, StringComparer.CurrentCultureIgnoreCase)
+            .ToList();
+        return RecipeApplicationResult<ReservationsView>.Succeeded(new ReservationsView(start, views, projected.Projection.Meals.Values.ToList()));
+    }
+
+    /// <summary>Protects a whole lot or a minimum quantity of it; replaces any earlier protection.</summary>
+    public async Task<RecipeApplicationResult<ReservationsView>> ProtectAsync(Guid lotId, string? kind, decimal? minimumQuantity, CancellationToken cancellationToken)
+    {
+        if (kind is not ("whole" or "minimum") || (kind == "minimum") != minimumQuantity.HasValue || minimumQuantity is <= 0 or > 100_000m)
+        {
+            return Failure<ReservationsView>("validation_failed", "Protect the whole lot, or a minimum quantity greater than zero.", "minimumQuantity");
+        }
+
+        var user = await currentUser.GetCurrentAsync(cancellationToken);
+        var lot = await inventory.FindActiveAsync(user.Id, lotId, cancellationToken);
+        if (lot is null)
+        {
+            return Failure<ReservationsView>("resource_not_found", "The pantry item was not found.");
+        }
+
+        if (kind == "minimum" && lot.MeasuredValue is null)
+        {
+            return Failure<ReservationsView>("validation_failed", "Only a measured item can keep a minimum quantity.", "minimumQuantity");
+        }
+
+        await store.SetProtectionAsync(LotProtection.Create(user.Id, lot.LotId, kind == "whole", minimumQuantity, timeProvider.GetUtcNow()), cancellationToken);
+        return await GetReservationsAsync(null, cancellationToken);
+    }
+
+    /// <summary>Removes a lot's protection.</summary>
+    public async Task<RecipeApplicationResult<ReservationsView>> UnprotectAsync(Guid lotId, CancellationToken cancellationToken)
+    {
+        var user = await currentUser.GetCurrentAsync(cancellationToken);
+        await store.RemoveProtectionAsync(user.Id, lotId, cancellationToken);
+        return await GetReservationsAsync(null, cancellationToken);
+    }
+
+    /// <summary>Commitments for the cooking proposal (<see cref="IPantryCommitmentLookup"/>).</summary>
+    public async Task<IReadOnlyDictionary<Guid, LotCommitment>> GetCommitmentsAsync(Guid ownerUserId, CancellationToken cancellationToken)
+    {
+        var lots = await inventory.ListActiveAsync(ownerUserId, MaxPantryLots, cancellationToken);
+        return (await ProjectAsync(ownerUserId, ConservativeToday(), lots, simulateDraft: null, excludePlanId: null, cancellationToken)).Projection.Lots;
+    }
+
+    // Reserving meals: entries of accepted menus (and of one simulated draft, after them) that are
+    // still to cook, reserve ingredients, and are dated from `from` or flexible.
+    private async Task<(ReservationProjection Projection, IReadOnlyList<LotProtection> Protections)> ProjectAsync(
+        Guid ownerUserId, DateOnly from, IReadOnlyList<InventoryLotReadModel> lots, MenuPlan? simulateDraft, Guid? excludePlanId, CancellationToken cancellationToken)
+    {
+        var plans = (await store.ListAcceptedFromAsync(ownerUserId, from, cancellationToken)).Where(plan => plan.Id != excludePlanId).ToList();
+        var accepted = plans.Select(plan => plan.Id).ToHashSet();
+        if (simulateDraft is not null)
+        {
+            plans.Add(simulateDraft);
+        }
+
+        var entries = (await store.ListEntriesAsync(ownerUserId, plans.Select(plan => plan.Id).ToList(), cancellationToken))
+            .Where(entry => entry.ReserveIngredients && (entry.PlannedDate is null || entry.PlannedDate >= from))
+            .ToList();
+        var resolved = await ResolveEntriesAsync(ownerUserId, entries, cancellationToken);
+        var meals = resolved
+            .Where(item => item.View.Status is "planned" or "cooking" && item.Content is not null)
+            // Menus in use reserve before a simulated draft; within each, the resolver's day and meal order holds.
+            .OrderBy(item => !accepted.Contains(item.PlanId))
+            .Select(item => new ReservingMeal(item.View.EntryId, item.View.RecipeName, item.View.PlannedDate, item.View.Servings, item.Content!.Servings, item.Content.NormalizedRecipeJson))
+            .ToList();
+        var protections = await store.ListProtectionsAsync(ownerUserId, cancellationToken);
+        return (ReservationProjector.Build(meals, lots, protections), protections);
+    }
+
+    // The server does not know the owner's time zone. A meal keeps its reservation until its day
+    // has ended everywhere (UTC-12), so a meal is never released early; one missed yesterday may
+    // reserve for a few more hours.
+    private DateOnly ConservativeToday() => DateOnly.FromDateTime(timeProvider.GetUtcNow().UtcDateTime.AddHours(-12));
 
     private sealed record ResolvedEntry(Guid PlanId, MenuEntryView View, RecipeRevisionContent? Content);
 
@@ -475,7 +632,8 @@ public sealed class MenuPlanningApplicationService(
                 entry.MealType,
                 entry.Servings,
                 status,
-                session?.Status is RecipeExecutionStatus.Completed or RecipeExecutionStatus.InProgress ? session.Id : null), content));
+                session?.Status is RecipeExecutionStatus.Completed or RecipeExecutionStatus.InProgress ? session.Id : null,
+                entry.ReserveIngredients), content));
         }
 
         return resolved;

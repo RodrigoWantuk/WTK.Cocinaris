@@ -31,6 +31,7 @@ import { MenusPage } from "./MenusPage";
 import { addDays, daysBetween, localIsoDate } from "./planningDates";
 import { PlanningProvider } from "./PlanningProvider";
 import { ShoppingPage } from "./ShoppingPage";
+import { LotCommitmentsPanel } from "./LotCommitmentsPanel";
 
 const MENU: Menu = {
   menuId: "menu-1",
@@ -52,6 +53,12 @@ const MENU: Menu = {
       servings: 4,
       status: "planned",
       executionId: null,
+      reserveIngredients: true,
+      readiness: {
+        entryId: "entry-1",
+        readiness: "missing",
+        missing: [{ name: "Feijão", unit: "Gram", quantity: 200 }],
+      },
     },
   ],
 };
@@ -311,5 +318,98 @@ describe("menu planning (PLAN-0029)", () => {
       { csrfToken: expect.any(String), idempotencyKey: expect.any(String) },
     );
     await waitFor(() => expect(getShopping).toHaveBeenCalledTimes(2));
+  });
+
+  it("shows what a meal lacks and releases its reservations", async () => {
+    const user = userEvent.setup();
+    const changeEntry = vi.fn(async () => ({
+      ...MENU,
+      entries: [
+        { ...MENU.entries[0], reserveIngredients: false, readiness: null },
+      ],
+    }));
+    renderAt("/app/cardapio/menu-1", {
+      getMenu: async () => MENU,
+      changeEntry,
+    });
+
+    expect(await screen.findByTestId("menu-entry-readiness")).toHaveTextContent(
+      "Missing: Feijão 200 g",
+    );
+    await user.click(screen.getByTestId("menu-entry-edit"));
+    await user.click(screen.getByTestId("menu-entry-reserve"));
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(changeEntry).toHaveBeenCalledWith(
+      "menu-1",
+      "entry-1",
+      expect.objectContaining({ reserveIngredients: false }),
+      { csrfToken: expect.any(String) },
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId("menu-entry-readiness")).toHaveTextContent(
+        "Does not reserve pantry items",
+      ),
+    );
+  });
+
+  it("lists a lot's reservations and protects a minimum quantity", async () => {
+    const user = userEvent.setup();
+    const reservations = (
+      protection: { kind: string; minimumQuantity: number | null } | null,
+    ) => ({
+      from: localIsoDate(),
+      lots: [
+        {
+          lotId: sampleLot.lotId,
+          productName: "Rice",
+          unit: "Gram",
+          quantity: 500,
+          protectedQuantity: protection ? 100 : 0,
+          reservedQuantity: 300,
+          freeQuantity: protection ? 100 : 200,
+          protection,
+          reservations: [
+            {
+              menuEntryId: "entry-1",
+              recipeName: "Risoto",
+              plannedDate: "2026-11-02",
+              quantity: 300,
+            },
+          ],
+        },
+      ],
+      meals: [],
+    });
+    const protectLot = vi.fn(async () =>
+      reservations({ kind: "minimum", minimumQuantity: 100 }),
+    );
+    render(
+      <ProductionI18nProvider initialLocale="en">
+        <SessionProvider adapter={createSessionAdapter()}>
+          <PlanningProvider
+            repository={{
+              ...createUnavailablePlanningRepository(),
+              getReservations: async () => reservations(null),
+              protectLot,
+            }}
+          >
+            <LotCommitmentsPanel lot={sampleLot} />
+          </PlanningProvider>
+        </SessionProvider>
+      </ProductionI18nProvider>,
+    );
+
+    expect(await screen.findByTestId("lot-commitments-meal")).toHaveTextContent(
+      "Risoto",
+    );
+    await user.click(screen.getByTestId("lot-protect-minimum"));
+    await user.type(screen.getByTestId("lot-protect-quantity"), "100");
+    await user.click(screen.getByTestId("lot-protect-save"));
+    expect(protectLot).toHaveBeenCalledWith(
+      sampleLot.lotId,
+      { kind: "minimum", minimumQuantity: 100 },
+      { csrfToken: expect.any(String) },
+    );
   });
 });

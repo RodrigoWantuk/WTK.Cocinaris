@@ -233,6 +233,34 @@ namespace Cocinaris.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Cocinaris.Infrastructure.Persistence.LotProtectionRecord", b =>
+                {
+                    b.Property<Guid>("OwnerUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("LotId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal?>("MinimumQuantity")
+                        .HasPrecision(12, 3)
+                        .HasColumnType("numeric(12,3)");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("Whole")
+                        .HasColumnType("boolean");
+
+                    b.HasKey("OwnerUserId", "LotId");
+
+                    b.HasIndex("LotId");
+
+                    b.ToTable("lot_protections", "planning", t =>
+                        {
+                            t.HasCheckConstraint("ck_lot_protections_kind", "\"Whole\" = (\"MinimumQuantity\" IS NULL) AND (\"MinimumQuantity\" IS NULL OR \"MinimumQuantity\" > 0)");
+                        });
+                });
+
             modelBuilder.Entity("Cocinaris.Infrastructure.Persistence.LotRecord", b =>
                 {
                     b.Property<Guid>("Id")
@@ -383,6 +411,11 @@ namespace Cocinaris.Infrastructure.Persistence.Migrations
 
                     b.Property<Guid>("RecipeId")
                         .HasColumnType("uuid");
+
+                    b.Property<bool>("ReserveIngredients")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
 
                     b.Property<int>("Servings")
                         .HasColumnType("integer");
@@ -1482,6 +1515,21 @@ namespace Cocinaris.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("Cocinaris.Infrastructure.Persistence.IdempotencyRecord", b =>
                 {
+                    b.HasOne("Cocinaris.Modules.Identity.InternalUser", null)
+                        .WithMany()
+                        .HasForeignKey("OwnerUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Cocinaris.Infrastructure.Persistence.LotProtectionRecord", b =>
+                {
+                    b.HasOne("Cocinaris.Infrastructure.Persistence.LotRecord", null)
+                        .WithMany()
+                        .HasForeignKey("LotId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.HasOne("Cocinaris.Modules.Identity.InternalUser", null)
                         .WithMany()
                         .HasForeignKey("OwnerUserId")

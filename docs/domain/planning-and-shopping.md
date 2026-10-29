@@ -11,7 +11,7 @@ A menu entry is an intention, shortcut, and source of preparation or purchase ac
 
 ## Implemented (PLAN-0029 Phase 1)
 
-- **Menus.** A menu covers 1 to 31 days and is a draft, accepted ("em uso"), or archived (read-only). A draft is a simulation: its shopping list works, but its meals are not on the home page. Accepting creates no reservations yet.
+- **Menus.** A menu covers 1 to 31 days and is a draft, accepted ("em uso"), or archived (read-only). A draft is a simulation: its shopping list and readiness work, but its meals are not on the home page and it reserves nothing.
 - **Meals.** A meal names a recipe, an optional day inside the period (none means "some time in the period"), an optional meal type, and servings. It follows the recipe's current revision; pinning exists in the API only. Every change touches one meal.
 - **Cooking from a meal.** Starting from a meal links the cooking session to it. The meal is "cooking" while the session runs and "cooked" once it completes; this state is derived from the session, never stored separately. Completion and inventory reconciliation are unchanged.
 - **Home.** "Hoje" lists the accepted menus' meals for the owner's current day (dated that day, or flexible), excluding skipped and cooked meals, as the first suggestion tier.
@@ -21,7 +21,8 @@ A menu entry is an intention, shortcut, and source of preparation or purchase ac
   - Lines are required, assumed basics, optional, "you have it but it will run out", or already available.
   - No package size is assumed.
   - A check mark is only remembered. "Comprei" records the purchase as a pantry lot through the normal inventory command, and the list is recalculated.
-- **Not yet.** AI-generated plans, reservations, package remainders, planned-versus-actual purchase impact, readiness checks, and reminders.
+- **Reservations and readiness (Phase 3).** A menu in use reserves pantry quantity for its meals still to cook. The reservations are derived, and a meal's reservations can be released. Each meal shows whether its pantry ingredients are covered or what it lacks; a draft shows the same as a simulation. A menu's shopping list counts only stock that is neither protected nor reserved by other menus in use. See `inventory-lifecycle.md` for protections.
+- **Not yet.** AI-generated plans, package remainders, planned-versus-actual purchase impact, and reminders.
 
 ## Planning states
 

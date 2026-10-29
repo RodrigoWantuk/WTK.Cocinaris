@@ -80,6 +80,9 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
     /// <summary>Gets shopping lines checked off per plan.</summary>
     public DbSet<ShoppingCheckRecord> ShoppingChecks => Set<ShoppingCheckRecord>();
 
+    /// <summary>Gets the owner's pantry lot protections (PLAN-0029 Phase 3).</summary>
+    public DbSet<LotProtectionRecord> LotProtections => Set<LotProtectionRecord>();
+
     /// <inheritdoc />
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -455,12 +458,24 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             entity.HasKey(x => x.Id);
             entity.Property(x => x.Status).HasMaxLength(20).IsRequired();
             entity.Property(x => x.MealType).HasMaxLength(20);
+            entity.Property(x => x.ReserveIngredients).HasDefaultValue(true);
             // Both foreign keys include the owner, so an entry can only point at the owner's plan and recipe.
             entity.HasOne<MenuPlanRecord>().WithMany().HasForeignKey(x => new { x.MenuPlanId, x.OwnerUserId }).HasPrincipalKey(x => new { x.Id, x.OwnerUserId }).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne<RecipeRecord>().WithMany().HasForeignKey(x => new { x.RecipeId, x.OwnerUserId }).HasPrincipalKey(x => new { x.Id, x.OwnerUserId }).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne<InternalUser>().WithMany().HasForeignKey(x => x.OwnerUserId).OnDelete(DeleteBehavior.Restrict);
             entity.HasIndex(x => new { x.OwnerUserId, x.CreationKey }).IsUnique();
             entity.HasIndex(x => new { x.OwnerUserId, x.MenuPlanId, x.PlannedDate });
+        });
+
+        modelBuilder.Entity<LotProtectionRecord>(entity =>
+        {
+            entity.ToTable("lot_protections", "planning", table =>
+                table.HasCheckConstraint("ck_lot_protections_kind", "\"Whole\" = (\"MinimumQuantity\" IS NULL) AND (\"MinimumQuantity\" IS NULL OR \"MinimumQuantity\" > 0)"));
+            entity.HasKey(x => new { x.OwnerUserId, x.LotId });
+            entity.Property(x => x.MinimumQuantity).HasPrecision(12, 3);
+            // A protection is a planning decision about a lot; it disappears with the lot row.
+            entity.HasOne<LotRecord>().WithMany().HasForeignKey(x => x.LotId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<InternalUser>().WithMany().HasForeignKey(x => x.OwnerUserId).OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<ShoppingCheckRecord>(entity =>

@@ -76,9 +76,58 @@ export const REQUIRED_PLANNING_I18N_KEYS = [
   "today.menu.today",
   "today.menu.flexible",
   "today.menu.open",
+  "cooking.review.status.protected",
+  "cooking.review.protected",
+  "cooking.review.reserved",
+  "cooking.review.reservedFor",
+  "cooking.review.usesReserved",
+  "cooking.review.usesProtected",
+  "planning.readiness.ready",
+  "planning.readiness.missing",
+  "planning.readiness.released",
+  "planning.field.reserve",
+  "lotCommitments.title",
+  "lotCommitments.unavailable",
+  "lotCommitments.none",
+  "lotCommitments.reserved",
+  "lotCommitments.protect",
+  "lotCommitments.protectHint",
+  "lotCommitments.option.none",
+  "lotCommitments.option.whole",
+  "lotCommitments.option.minimum",
+  "lotCommitments.minimum",
+  "lotCommitments.error.minimum",
 ] as const;
 
 const ptBR: Record<string, string> = {
+  "cooking.review.status.protected":
+    "Você protegeu este item; nada dele foi proposto",
+  "cooking.review.protected": "Você protegeu {{value}} deste item.",
+  "cooking.review.reserved":
+    "{{value}} estão reservados para outras refeições do cardápio.",
+  "cooking.review.reservedFor": "{{value}} estão reservados para: {{meals}}.",
+  "cooking.review.usesReserved":
+    "Usar essa quantidade deixa outra refeição do cardápio sem o suficiente.",
+  "cooking.review.usesProtected":
+    "Essa quantidade usa a parte que você protegeu.",
+  "planning.readiness.ready": "Ingredientes da despensa reservados",
+  "planning.readiness.missing": "Falta: {{items}}",
+  "planning.readiness.released": "Não reserva itens da despensa",
+  "planning.field.reserve":
+    "Reservar os ingredientes desta refeição na despensa",
+  "lotCommitments.title": "Reservas e proteção",
+  "lotCommitments.unavailable": "Não foi possível carregar as reservas agora.",
+  "lotCommitments.none": "Nenhuma refeição do cardápio conta com este item.",
+  "lotCommitments.reserved":
+    "{{value}} reservados para o cardápio · {{free}} livres",
+  "lotCommitments.protect": "Proteger",
+  "lotCommitments.protectHint":
+    "A parte protegida não é proposta no preparo nem reservada para o cardápio. Você ainda pode usá-la se quiser.",
+  "lotCommitments.option.none": "Sem proteção",
+  "lotCommitments.option.whole": "Proteger o item todo",
+  "lotCommitments.option.minimum": "Manter pelo menos uma quantidade",
+  "lotCommitments.minimum": "Quantidade mínima ({{unit}})",
+  "lotCommitments.error.minimum": "Use um número maior que zero.",
   "nav.planning": "Cardápio",
   "page.title.planning": "Cardápio",
   "page.title.menu": "Cardápio",
@@ -162,6 +211,30 @@ const ptBR: Record<string, string> = {
 };
 
 const en: Record<string, string> = {
+  "cooking.review.status.protected":
+    "You protected this item; none of it was proposed",
+  "cooking.review.protected": "You protected {{value}} of this item.",
+  "cooking.review.reserved": "{{value}} is reserved for other menu meals.",
+  "cooking.review.reservedFor": "{{value}} is reserved for: {{meals}}.",
+  "cooking.review.usesReserved":
+    "Using this much leaves another menu meal short.",
+  "cooking.review.usesProtected": "This quantity uses the part you protected.",
+  "planning.readiness.ready": "Pantry ingredients reserved",
+  "planning.readiness.missing": "Missing: {{items}}",
+  "planning.readiness.released": "Does not reserve pantry items",
+  "planning.field.reserve": "Reserve this meal's ingredients in the pantry",
+  "lotCommitments.title": "Reservations and protection",
+  "lotCommitments.unavailable": "Reservations could not be loaded right now.",
+  "lotCommitments.none": "No menu meal counts on this item.",
+  "lotCommitments.reserved": "{{value}} reserved for the menu · {{free}} free",
+  "lotCommitments.protect": "Protect",
+  "lotCommitments.protectHint":
+    "The protected part is never proposed when cooking or reserved for the menu. You can still use it if you choose.",
+  "lotCommitments.option.none": "No protection",
+  "lotCommitments.option.whole": "Protect the whole item",
+  "lotCommitments.option.minimum": "Keep at least a quantity",
+  "lotCommitments.minimum": "Minimum quantity ({{unit}})",
+  "lotCommitments.error.minimum": "Use a number greater than zero.",
   "nav.planning": "Menu",
   "page.title.planning": "Menu",
   "page.title.menu": "Menu",
@@ -245,6 +318,33 @@ const en: Record<string, string> = {
 };
 
 const es: Record<string, string> = {
+  "cooking.review.status.protected":
+    "Protegiste este artículo; no se propuso nada de él",
+  "cooking.review.protected": "Protegiste {{value}} de este artículo.",
+  "cooking.review.reserved":
+    "{{value}} está reservado para otras comidas del menú.",
+  "cooking.review.reservedFor": "{{value}} está reservado para: {{meals}}.",
+  "cooking.review.usesReserved":
+    "Usar esta cantidad deja corta otra comida del menú.",
+  "cooking.review.usesProtected": "Esta cantidad usa la parte que protegiste.",
+  "planning.readiness.ready": "Ingredientes de la despensa reservados",
+  "planning.readiness.missing": "Falta: {{items}}",
+  "planning.readiness.released": "No reserva artículos de la despensa",
+  "planning.field.reserve":
+    "Reservar los ingredientes de esta comida en la despensa",
+  "lotCommitments.title": "Reservas y protección",
+  "lotCommitments.unavailable": "No se pudieron cargar las reservas ahora.",
+  "lotCommitments.none": "Ninguna comida del menú cuenta con este artículo.",
+  "lotCommitments.reserved":
+    "{{value}} reservados para el menú · {{free}} libres",
+  "lotCommitments.protect": "Proteger",
+  "lotCommitments.protectHint":
+    "La parte protegida no se propone al cocinar ni se reserva para el menú. Aún puedes usarla si quieres.",
+  "lotCommitments.option.none": "Sin protección",
+  "lotCommitments.option.whole": "Proteger todo el artículo",
+  "lotCommitments.option.minimum": "Mantener al menos una cantidad",
+  "lotCommitments.minimum": "Cantidad mínima ({{unit}})",
+  "lotCommitments.error.minimum": "Usa un número mayor que cero.",
   "nav.planning": "Menú",
   "page.title.planning": "Menú",
   "page.title.menu": "Menú",

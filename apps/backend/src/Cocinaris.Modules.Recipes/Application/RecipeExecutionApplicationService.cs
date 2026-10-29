@@ -66,10 +66,19 @@ public sealed record CompleteRecipeExecutionCommand(Guid ExecutionId, IReadOnlyL
 /// <c>lot_unavailable</c> (the lot was used up, deleted, or is not measured), or
 /// <c>not_tracked</c> (the recipe did not take it from the pantry).
 /// </summary>
-public sealed record ExecutionProposalLineView(string IngredientId, string DisplayName, bool Optional, decimal RequiredQuantity, string Unit, string Status, Guid? LotId, decimal? ProposedQuantity);
+/// <remarks>
+/// <see cref="Status"/> is <c>ready</c>, <c>insufficient</c>, <c>protected</c> (the owner locked the whole usable
+/// quantity), <c>lot_unavailable</c>, or <c>not_tracked</c>. <see cref="ProtectedQuantity"/> is never proposed;
+/// <see cref="ReservedElsewhere"/> lists other menu meals counting on the same lot (PLAN-0029 Phase 3).
+/// </remarks>
+public sealed record ExecutionProposalLineView(string IngredientId, string DisplayName, bool Optional, decimal RequiredQuantity, string Unit, string Status, Guid? LotId, decimal? ProposedQuantity, decimal ProtectedQuantity = 0, IReadOnlyList<LotReservationView>? ReservedElsewhere = null);
 
 /// <summary>An active measured pantry lot the user can pick for any ingredient.</summary>
-public sealed record ExecutionPantryLotView(Guid LotId, string ProductName, decimal Quantity, string Unit, string StorageLocation, Guid Version);
+/// <remarks>
+/// <see cref="ProtectedQuantity"/> is locked by the owner; <see cref="ReservedQuantity"/> is reserved for
+/// the other menu meals in <see cref="ReservedFor"/>, so any lot the cook picks can name them.
+/// </remarks>
+public sealed record ExecutionPantryLotView(Guid LotId, string ProductName, decimal Quantity, string Unit, string StorageLocation, Guid Version, decimal ProtectedQuantity = 0, decimal ReservedQuantity = 0, IReadOnlyList<LotReservationView>? ReservedFor = null);
 
 /// <summary>Deterministic completion proposal: what to deduct, editable by the user before confirming.</summary>
 public sealed record ExecutionProposalView(IReadOnlyList<ExecutionProposalLineView> Lines, IReadOnlyList<ExecutionPantryLotView> PantryLots);
@@ -94,6 +103,7 @@ public sealed class RecipeExecutionApplicationService(
     IRecipeExecutionUnitOfWork unitOfWork,
     IInventoryLotReadStore inventory,
     IPrepareComponentsUseCase prepare,
+    IPantryCommitmentLookup commitments,
     TimeProvider timeProvider)
 {
     private const int MaxPantryLots = 200;
@@ -275,7 +285,8 @@ public sealed class RecipeExecutionApplicationService(
         if (execution.Status == RecipeExecutionStatus.InProgress)
         {
             var lots = await inventory.ListActiveAsync(ownerUserId, MaxPantryLots, cancellationToken);
-            proposal = BuildProposal(revision.NormalizedRecipeJson, revision.Servings, execution.Servings, lots);
+            var committed = await commitments.GetAsync(ownerUserId, cancellationToken);
+            proposal = BuildProposal(revision.NormalizedRecipeJson, revision.Servings, execution.Servings, lots, committed, execution.MenuEntryId);
         }
 
         return new RecipeExecutionView(execution.Id, execution.RecipeId, execution.RevisionNumber, revision.Name, execution.Servings, revision.Servings, execution.Status.ToString(), execution.StartedAt, execution.FinishedAt, execution.InventoryBatchId, execution.Rating, execution.Notes, revision.NormalizedRecipeJson, proposal);
@@ -284,15 +295,24 @@ public sealed class RecipeExecutionApplicationService(
     /// <summary>
     /// Builds the deterministic proposal. Quantities scale with the portions cooked; whole units
     /// round up (half an egg is still an egg used) and grams and milliliters round to whole numbers.
-    /// A proposal never exceeds what the lot holds.
+    /// A proposal never exceeds what the lot holds, and never includes quantity the owner protected.
+    /// Menu reservations of other meals do not change the proposal; they are returned so the cook
+    /// sees which meal would be short (the owner decides, the proposal does not block).
     /// </summary>
     /// <param name="normalizedRecipeJson">Validated revision content.</param>
     /// <param name="recipeServings">Servings the revision was written for.</param>
     /// <param name="servings">Servings being cooked.</param>
     /// <param name="lots">The owner's active lots.</param>
+    /// <param name="commitments">Planning commitments by lot; none when null.</param>
+    /// <param name="ownMenuEntryId">Menu meal this session cooks; its own reservations are not warnings.</param>
     /// <returns>The proposal lines and the pickable measured lots.</returns>
-    public static ExecutionProposalView BuildProposal(string normalizedRecipeJson, int recipeServings, int servings, IReadOnlyList<InventoryLotReadModel> lots)
+    public static ExecutionProposalView BuildProposal(string normalizedRecipeJson, int recipeServings, int servings, IReadOnlyList<InventoryLotReadModel> lots, IReadOnlyDictionary<Guid, LotCommitment>? commitments = null, Guid? ownMenuEntryId = null)
     {
+        commitments ??= new Dictionary<Guid, LotCommitment>();
+        decimal Protected(Guid lotId) => commitments.TryGetValue(lotId, out var commitment) ? commitment.ProtectedQuantity : 0;
+        IReadOnlyList<LotReservationView> Elsewhere(Guid lotId) => commitments.TryGetValue(lotId, out var commitment)
+            ? commitment.Reservations.Where(item => item.MenuEntryId != ownMenuEntryId).ToList()
+            : [];
         var measured = lots.Where(lot => lot.MeasuredValue is > 0 && lot.MeasuredUnit is not null).ToList();
         var byId = measured.ToDictionary(lot => lot.LotId);
         var scale = (decimal)servings / Math.Max(1, recipeServings);
@@ -313,14 +333,18 @@ public sealed class RecipeExecutionApplicationService(
                 continue;
             }
 
-            var available = lot.MeasuredValue!.Value;
-            lines.Add(required <= available
-                ? new(ingredient.Id, ingredient.Name, ingredient.Optional, required, unit, "ready", lot.LotId, required)
-                : new(ingredient.Id, ingredient.Name, ingredient.Optional, required, unit, "insufficient", lot.LotId, available));
+            var protectedQuantity = Math.Min(Protected(lot.LotId), lot.MeasuredValue!.Value);
+            var available = lot.MeasuredValue!.Value - protectedQuantity;
+            var elsewhere = Elsewhere(lot.LotId);
+            lines.Add(available <= 0
+                ? new(ingredient.Id, ingredient.Name, ingredient.Optional, required, unit, "protected", lot.LotId, null, protectedQuantity, elsewhere)
+                : required <= available
+                    ? new(ingredient.Id, ingredient.Name, ingredient.Optional, required, unit, "ready", lot.LotId, required, protectedQuantity, elsewhere)
+                    : new(ingredient.Id, ingredient.Name, ingredient.Optional, required, unit, "insufficient", lot.LotId, available, protectedQuantity, elsewhere));
         }
 
         var pantry = measured.OrderBy(lot => lot.ProductName, StringComparer.CurrentCultureIgnoreCase)
-            .Select(lot => new ExecutionPantryLotView(lot.LotId, lot.ProductName, lot.MeasuredValue!.Value, lot.MeasuredUnit!, lot.StorageLocation, lot.ConcurrencyToken)).ToList();
+            .Select(lot => new ExecutionPantryLotView(lot.LotId, lot.ProductName, lot.MeasuredValue!.Value, lot.MeasuredUnit!, lot.StorageLocation, lot.ConcurrencyToken, Math.Min(Protected(lot.LotId), lot.MeasuredValue!.Value), Elsewhere(lot.LotId).Sum(item => item.Quantity), Elsewhere(lot.LotId))).ToList();
         return new ExecutionProposalView(lines, pantry);
     }
 

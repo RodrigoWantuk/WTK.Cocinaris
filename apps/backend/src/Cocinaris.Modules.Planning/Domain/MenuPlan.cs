@@ -206,6 +206,12 @@ public sealed class MenuEntry
     /// <summary>Gets whether the owner still intends to cook it.</summary>
     public MenuEntryStatus Status { get; private set; }
 
+    /// <summary>
+    /// Gets whether the meal, once its menu is accepted, reserves pantry quantity (PLAN-0029 Phase 3).
+    /// The owner can release a meal's reservations without skipping it.
+    /// </summary>
+    public bool ReserveIngredients { get; private set; } = true;
+
     /// <summary>Gets the UTC creation instant.</summary>
     public DateTimeOffset CreatedAt { get; private init; }
 
@@ -235,8 +241,9 @@ public sealed class MenuEntry
     }
 
     /// <summary>Restores a persisted entry.</summary>
-    public static MenuEntry Restore(Guid id, Guid menuPlanId, Guid ownerUserId, Guid creationKey, Guid recipeId, int? pinnedRevisionNumber, DateOnly? plannedDate, string? mealType, int servings, MenuEntryStatus status, DateTimeOffset createdAt, DateTimeOffset updatedAt) => new()
+    public static MenuEntry Restore(Guid id, Guid menuPlanId, Guid ownerUserId, Guid creationKey, Guid recipeId, int? pinnedRevisionNumber, DateOnly? plannedDate, string? mealType, int servings, MenuEntryStatus status, DateTimeOffset createdAt, DateTimeOffset updatedAt, bool reserveIngredients = true) => new()
     {
+        ReserveIngredients = reserveIngredients,
         Id = id,
         MenuPlanId = menuPlanId,
         OwnerUserId = ownerUserId,
@@ -254,7 +261,14 @@ public sealed class MenuEntry
     /// <summary>Moves, re-portions, skips, or restores the entry. Changing one entry never touches another.</summary>
     /// <exception cref="ArgumentException">The day is outside the period, or the meal or portions are invalid.</exception>
     /// <exception cref="InvalidOperationException">The plan is archived.</exception>
-    public void Change(MenuPlan plan, DateOnly? plannedDate, string? mealType, int servings, MenuEntryStatus status, DateTimeOffset now)
+    /// <param name="plan">The entry's plan.</param>
+    /// <param name="plannedDate">Day inside the period, or null for flexible.</param>
+    /// <param name="mealType">Meal, or null.</param>
+    /// <param name="servings">Portions, 1 to 24.</param>
+    /// <param name="status">Planned or skipped.</param>
+    /// <param name="now">Change instant.</param>
+    /// <param name="reserveIngredients">Whether the meal reserves pantry quantity; unchanged when null.</param>
+    public void Change(MenuPlan plan, DateOnly? plannedDate, string? mealType, int servings, MenuEntryStatus status, DateTimeOffset now, bool? reserveIngredients = null)
     {
         plan.EnsureEditable();
         if (plannedDate is { } date && !plan.Contains(date))
@@ -276,6 +290,53 @@ public sealed class MenuEntry
         MealType = mealType;
         Servings = servings;
         Status = status;
+        ReserveIngredients = reserveIngredients ?? ReserveIngredients;
         UpdatedAt = now;
     }
+}
+
+/// <summary>
+/// The owner's lock on a pantry lot (PLAN-0029 Phase 3): the whole lot, or a minimum quantity to
+/// keep. Protected quantity is never proposed for cooking or counted as available for a menu; the
+/// owner can still use it explicitly. A protection never changes the lot's physical quantity.
+/// </summary>
+public sealed class LotProtection
+{
+    private LotProtection()
+    {
+    }
+
+    /// <summary>Gets the owner.</summary>
+    public Guid OwnerUserId { get; private init; }
+
+    /// <summary>Gets the protected lot.</summary>
+    public Guid LotId { get; private init; }
+
+    /// <summary>Gets whether the whole lot is protected.</summary>
+    public bool Whole { get; private init; }
+
+    /// <summary>Gets the minimum quantity to keep, in the lot's unit, when not the whole lot.</summary>
+    public decimal? MinimumQuantity { get; private init; }
+
+    /// <summary>Gets the UTC instant the protection was set.</summary>
+    public DateTimeOffset UpdatedAt { get; private init; }
+
+    /// <summary>Protects a whole lot, or keeps at least <paramref name="minimumQuantity"/>.</summary>
+    /// <exception cref="ArgumentException">Neither or both forms were given, or the minimum is not positive.</exception>
+    public static LotProtection Create(Guid ownerUserId, Guid lotId, bool whole, decimal? minimumQuantity, DateTimeOffset now)
+    {
+        if (whole == minimumQuantity.HasValue || minimumQuantity is <= 0 or > 100_000m)
+        {
+            throw new ArgumentException("Protect the whole lot, or a minimum quantity greater than zero.");
+        }
+
+        return new LotProtection { OwnerUserId = ownerUserId, LotId = lotId, Whole = whole, MinimumQuantity = minimumQuantity, UpdatedAt = now };
+    }
+
+    /// <summary>Restores a persisted protection.</summary>
+    public static LotProtection Restore(Guid ownerUserId, Guid lotId, bool whole, decimal? minimumQuantity, DateTimeOffset updatedAt) =>
+        new() { OwnerUserId = ownerUserId, LotId = lotId, Whole = whole, MinimumQuantity = minimumQuantity, UpdatedAt = updatedAt };
+
+    /// <summary>Quantity protected now, given what the lot holds.</summary>
+    public decimal ProtectedOf(decimal lotQuantity) => Whole ? lotQuantity : Math.Min(MinimumQuantity ?? 0, lotQuantity);
 }

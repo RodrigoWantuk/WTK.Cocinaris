@@ -164,6 +164,17 @@ A user can:
 
 The system must detect over-reservation and explain the conflict.
 
+### Implemented reservations and locks (PLAN-0029 Phase 3)
+
+- **Reservations are derived.** Accepted menu meals still to cook reserve pantry quantity in plan order. They use the lot the recipe was written for first, then lots with the same normalized name and unit, earliest printed or prepared date first. They are recomputed on every read and never change physical quantity.
+- **Locks are planning-owned protections.**
+  - The owner can protect a whole lot or keep a minimum quantity.
+  - Protected quantity is set aside before reservations and never proposed for cooking.
+  - The owner may still use it explicitly; nothing is blocked.
+- **Releasing a meal.** The owner can release a meal's reservations without skipping it. A meal cooked or skipped stops reserving by itself.
+- **Over-reservation.** It shows as readiness ("Falta: …") on the meals that do not get enough. The cooking review warns, naming the meals, when a quantity eats into another meal's reservation or the protected part.
+- **Not yet:** manual reallocation, and recommendations reorganizing reservations.
+
 ## Entry and provenance
 
 Initial entry methods are:
@@ -215,7 +226,7 @@ Partial preparation consumption preserves the source lot as the authoritative re
 
 Lot-provenance reads are bounded to the fifty most-recent related batches in each direction, ordered by `PreparedAt` descending then `BatchId` descending. `consumedByTruncated` and `producedByTruncated` independently signal that the corresponding direction has additional older batches; `false` means the returned direction is complete within the current data. The Inventory persistence boundary fetches at most fifty-one identifiers per direction and then batch-loads the retained graphs, rather than issuing one batch query per relationship. Cursor pagination is intentionally deferred until a consumer needs more than this operational inspection window.
 
-Planning reservations and locks are not yet persisted. The preparation boundary retains owner-consistent provenance so a future planning-owned protection query can reject protected consumption without migrating historical batches.
+Planning reservations are derived and protections are planning-owned (PLAN-0029 Phase 3). The cooking proposal reads both through `IPantryCommitmentLookup`. Protected consumption is advised against, not rejected, because the owner's explicit choice prevails.
 
 ## Recipe completion reconciliation
 

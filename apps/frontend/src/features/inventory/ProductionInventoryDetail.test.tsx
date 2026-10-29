@@ -1,3 +1,5 @@
+import { createUnavailablePlanningRepository } from "@/adapters/live/livePlanningRepository";
+import { PlanningProvider } from "@/features/planning/PlanningProvider";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ProductionInventoryDetail } from "./ProductionInventoryDetail";
@@ -42,15 +44,17 @@ function renderDetail(
     <ProductionI18nProvider initialLocale="en">
       <SessionProvider adapter={session}>
         <InventoryProvider repository={repo}>
-          <MemoryRouter initialEntries={[`/app/despensa/${sampleLot.lotId}`]}>
-            <Routes>
-              <Route
-                path="/app/despensa/:lotId"
-                element={<ProductionInventoryDetail />}
-              />
-              <Route path="/app/despensa" element={<div>list</div>} />
-            </Routes>
-          </MemoryRouter>
+          <PlanningProvider repository={createUnavailablePlanningRepository()}>
+            <MemoryRouter initialEntries={[`/app/despensa/${sampleLot.lotId}`]}>
+              <Routes>
+                <Route
+                  path="/app/despensa/:lotId"
+                  element={<ProductionInventoryDetail />}
+                />
+                <Route path="/app/despensa" element={<div>list</div>} />
+              </Routes>
+            </MemoryRouter>
+          </PlanningProvider>
         </InventoryProvider>
       </SessionProvider>
     </ProductionI18nProvider>,
