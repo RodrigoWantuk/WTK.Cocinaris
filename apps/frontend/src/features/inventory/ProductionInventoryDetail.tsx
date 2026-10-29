@@ -48,6 +48,7 @@ export function ProductionInventoryDetail() {
   const [conflict, setConflict] = useState(false);
   const [missingPrecondition, setMissingPrecondition] = useState(false);
   const [adjustValue, setAdjustValue] = useState("");
+  const [correctionEstimated, setCorrectionEstimated] = useState(false);
   const [measuredAction, setMeasuredAction] =
     useState<MeasuredAction>("Consume");
   const [availability, setAvailability] =
@@ -224,6 +225,9 @@ export function ProductionInventoryDetail() {
           type,
           value: parsed.value,
           reasonCode: `ui_${type.toLowerCase()}`,
+          ...(type === "Correct" && correctionEstimated
+            ? { estimated: true }
+            : {}),
         },
         {
           csrfToken,
@@ -234,6 +238,7 @@ export function ProductionInventoryDetail() {
       // Authoritative mutation succeeded — commit lot/ETag before auxiliary history.
       setLot(nextLot);
       setAdjustValue("");
+      setCorrectionEstimated(false);
     } catch (err) {
       handleMutationError(err, "inventory.error.adjust");
       return;
@@ -569,6 +574,21 @@ export function ProductionInventoryDetail() {
               aria-describedby={adjustError ? "adjust-error" : undefined}
             />
           </label>
+          {measuredAction === "Correct" && (
+            <label className="flex items-center gap-2 text-[15px]">
+              <input
+                type="checkbox"
+                data-testid="inventory-adjust-estimated"
+                className="h-5 w-5 accent-primary"
+                checked={correctionEstimated}
+                disabled={busy}
+                onChange={(event) =>
+                  setCorrectionEstimated(event.target.checked)
+                }
+              />
+              {t("inventory.adjust.estimated")}
+            </label>
+          )}
           {adjustError && (
             <p
               id="adjust-error"

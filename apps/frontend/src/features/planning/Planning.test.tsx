@@ -254,6 +254,7 @@ describe("menu planning (PLAN-0029)", () => {
           category: "required",
           requiredQuantity: 1000,
           availableQuantity: 300,
+          availableIsEstimate: true,
           toBuyQuantity: 700,
           checked: false,
           uses: [
@@ -291,7 +292,7 @@ describe("menu planning (PLAN-0029)", () => {
 
     const toBuy = await screen.findByTestId("shopping-required");
     expect(toBuy).toHaveTextContent("Feijão — 700 g");
-    expect(toBuy).toHaveTextContent("Need 1,000 g · have 300 g");
+    expect(toBuy).toHaveTextContent("Need 1,000 g · have ~300 g");
     expect(screen.getByTestId("shopping-available")).toHaveTextContent("Sal");
     expect(getShopping).toHaveBeenCalledWith(
       "menu-1",

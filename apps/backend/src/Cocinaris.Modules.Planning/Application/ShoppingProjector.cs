@@ -33,7 +33,8 @@ public sealed record ShoppingUseView(Guid EntryId, string RecipeName, DateOnly? 
 /// <param name="ToBuyQuantity">Required minus what the pantry covers, never negative.</param>
 /// <param name="Checked">Whether the owner checked the line off.</param>
 /// <param name="Uses">The meals that need it, in plan order.</param>
-public sealed record ShoppingItemView(string ItemKey, string DisplayName, string Unit, string Category, decimal RequiredQuantity, decimal AvailableQuantity, decimal ToBuyQuantity, bool Checked, IReadOnlyList<ShoppingUseView> Uses);
+/// <param name="AvailableIsEstimate">Whether any matched lot holds an estimated amount, so <paramref name="AvailableQuantity"/> is approximate (PLAN-0054).</param>
+public sealed record ShoppingItemView(string ItemKey, string DisplayName, string Unit, string Category, decimal RequiredQuantity, decimal AvailableQuantity, decimal ToBuyQuantity, bool Checked, IReadOnlyList<ShoppingUseView> Uses, bool AvailableIsEstimate = false);
 
 /// <summary>
 /// Derives a shopping list from the meals still to cook and the current pantry (PLAN-0029).
@@ -63,10 +64,15 @@ public static class ShoppingProjector
         var measured = lots.Where(lot => lot.MeasuredValue is > 0 && lot.MeasuredUnit is not null).ToList();
         var lotById = measured.ToDictionary(lot => lot.LotId);
         var stock = new Dictionary<string, decimal>(StringComparer.Ordinal);
+        var estimated = new HashSet<string>(StringComparer.Ordinal);
         foreach (var lot in measured)
         {
             var key = Key(lot.ProductName, lot.MeasuredUnit!);
             stock[key] = stock.GetValueOrDefault(key) + lot.MeasuredValue!.Value;
+            if (lot.QuantityIsEstimate)
+            {
+                estimated.Add(key);
+            }
         }
 
         var remaining = new Dictionary<string, decimal>(stock, StringComparer.Ordinal);
@@ -109,7 +115,7 @@ public static class ShoppingProjector
                 var category = toBuy > 0
                     ? item.HasRequired ? "required" : item.HasAssumed ? "assumed" : "optional"
                     : remaining.GetValueOrDefault(item.Key) <= 0 ? "runs_out" : "available";
-                return new ShoppingItemView(item.Key, item.DisplayName, item.Unit, category, item.Required, stock.GetValueOrDefault(item.Key), toBuy, checkedKeys.Contains(item.Key), item.Uses);
+                return new ShoppingItemView(item.Key, item.DisplayName, item.Unit, category, item.Required, stock.GetValueOrDefault(item.Key), toBuy, checkedKeys.Contains(item.Key), item.Uses, estimated.Contains(item.Key));
             })
             .OrderBy(item => Array.IndexOf(CategoryOrder, item.Category))
             .ThenBy(item => item.DisplayName, StringComparer.CurrentCultureIgnoreCase)

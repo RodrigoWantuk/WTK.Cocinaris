@@ -58,6 +58,7 @@ export const REQUIRED_INVENTORY_I18N_KEYS = [
   "inventory.savedAnother",
   "inventory.actions.saveAnother",
   "inventory.moreDetails",
+  "inventory.adjust.estimated",
   "inventory.unit.Gram",
   "inventory.unit.Milliliter",
   "inventory.unit.Unit",
@@ -373,6 +374,8 @@ const en: Record<InventoryI18nKey, string> = {
   "inventory.savedAnother": "{name} saved. Add the next one.",
   "inventory.actions.saveAnother": "Save and add another",
   "inventory.moreDetails": "More details (package, date, notes)",
+  "inventory.adjust.estimated":
+    "It is an estimate (I did not weigh or count it)",
 };
 
 const ptBR: Record<InventoryI18nKey, string> = {
@@ -574,6 +577,7 @@ const ptBR: Record<InventoryI18nKey, string> = {
   "inventory.savedAnother": "{name} salvo. Adicione o próximo.",
   "inventory.actions.saveAnother": "Salvar e adicionar outro",
   "inventory.moreDetails": "Mais detalhes (embalagem, data, notas)",
+  "inventory.adjust.estimated": "É uma estimativa (não pesei nem contei)",
 };
 
 const es: Record<InventoryI18nKey, string> = {
@@ -774,6 +778,7 @@ const es: Record<InventoryI18nKey, string> = {
   "inventory.savedAnother": "{name} guardado. Agrega el siguiente.",
   "inventory.actions.saveAnother": "Guardar y agregar otro",
   "inventory.moreDetails": "Más detalles (envase, fecha, notas)",
+  "inventory.adjust.estimated": "Es una estimación (no lo pesé ni lo conté)",
 };
 
 export const inventoryCatalogs: Record<

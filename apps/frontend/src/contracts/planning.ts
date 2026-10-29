@@ -113,6 +113,8 @@ export interface ShoppingItem {
   category: string;
   requiredQuantity: number;
   availableQuantity: number;
+  /** Whether `availableQuantity` includes an estimated pantry amount (shown with "~"). */
+  availableIsEstimate?: boolean;
   toBuyQuantity: number;
   checked: boolean;
   uses: Array<{

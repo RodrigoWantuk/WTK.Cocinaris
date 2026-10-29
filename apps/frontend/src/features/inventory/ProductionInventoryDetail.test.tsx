@@ -152,6 +152,36 @@ describe("ProductionInventoryDetail", () => {
     );
   });
 
+  it("sends a correction as an estimate when the owner marks it", async () => {
+    const user = userEvent.setup();
+    const adjustLot = vi.fn(async () => ({ ...sampleLot, etag: '"v3"' }));
+    const repo = createMockInventoryRepo({
+      getLot: vi.fn(async () => sampleLot),
+      getHistory: vi.fn(async () => []),
+      adjustLot,
+    });
+    renderDetail(repo);
+    await screen.findByText("Rice");
+    await user.selectOptions(
+      screen.getByTestId("inventory-adjust-type"),
+      "Correct",
+    );
+    await user.type(screen.getByTestId("inventory-adjust-value"), "250");
+    await user.click(screen.getByTestId("inventory-adjust-estimated"));
+    await user.click(screen.getByTestId("inventory-adjust-submit"));
+    await waitFor(() =>
+      expect(adjustLot).toHaveBeenCalledWith(
+        sampleLot.lotId,
+        expect.objectContaining({
+          type: "Correct",
+          value: 250,
+          estimated: true,
+        }),
+        expect.any(Object),
+      ),
+    );
+  });
+
   it("changes qualitative availability", async () => {
     const user = userEvent.setup();
     const qualitative = {

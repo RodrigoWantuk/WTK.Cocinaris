@@ -79,28 +79,23 @@ Phase 5 is large and changes the data model. It follows Phases 1–4 because tho
   - "Salvar e adicionar outro" stays on the form for the next item.
   - Package, date, and notes fold under "Mais detalhes".
 - **Pantry list.** An estimate shows as "~500 g". The copy says "itens" and "Adicionar" instead of "lote".
-- **Not yet done:**
-  - The lot detail's correction has no "this is an estimate" choice yet; the API supports it.
-  - The menu, shopping, and AI context do not show or receive the estimate mark; they use the value.
-  - Hoje, recipe, and menu screens still have their boxed sections (Phase 4 rebuilds recipe and cooking).
+- **Completed in the second part:**
+  - The lot detail's correction has the checkbox "É uma estimativa (não pesei nem contei)".
+  - The shopping list's "tem" shows "~" when a matched lot is an estimate (`availableIsEstimate`).
+  - The AI context marks estimated items with `quantityIsEstimate`, and the suggest policy then adds `estimatedQuantities`. Both are written only when an estimate exists, so exact envelopes are unchanged.
+- **Not done (accepted):**
+  - Menu readiness and reservations use the estimated value without a mark; the lot itself shows "~".
+  - Hoje, recipe, and menu screens keep their boxed sections until Phase 4.
 
 ## Execution state
 
-- **Current run delivery target:** Phase 2 (estimated amounts and quick add).
-- **Current checkpoint:** Phase 2 first part delivered as above.
+- **Current run delivery target:** finish Phase 2, then Phases 3 and 4 (owner, 2026-10-29: "Conclua os itens 1, 2 e 3"). Dish images are out of this run; the owner is investigating the provider.
+- **Current checkpoint:** Phase 2 complete.
 - **Validation:**
-  - **Backend unit tests:** the inventory domain and application tests pass (21), including the new estimate tests (consumption beyond an estimate; correction and split keep or set the mark).
-  - **Backend integration tests:** `InventoryLifecycleTransitionApiTests` and `PostgreSqlMigrationTests` pass (28) against PostgreSQL. The new test covers create, consumption past the estimate, rejecting `estimated` on Discard, and an exact correction.
-  - **Frontend:** typecheck is clean, and Vitest passes 55 files and 450 tests, including the half-package, little-without-size, and add-another cases.
-  - **Build:** the frontend build passes. OpenAPI lint shows the 6 known warnings.
-  - **Visual check:** the add screen and the pantry list were captured on the replica.
-- **Not run:** the full backend suites.
-- **Exact next action:** finish Phase 2.
-  - Add the estimate choice to the lot detail's correction.
-  - Show "~" in the shopping list's "tem" and in the menu reservations.
-  - Pass the estimate mark to the AI context.
-
-  Then Phase 3: dual measures.
+  - **Backend unit tests:** ShoppingProjector (3) and the AI envelope and contract tests (18) pass, including the estimate-mark cases.
+  - **Frontend:** typecheck is clean. Vitest passes 451 tests, including the estimated correction and the "~300 g" shopping text.
+  - **Contract:** OpenAPI was regenerated, and the client was synced.
+- **Exact next action:** Phase 3, dual measures.
 - **Blockers:** none.
 
 ## Progress log
@@ -121,3 +116,11 @@ Phase 5 is large and changes the data model. It follows Phases 1–4 because tho
 
 - Phase 2 first part: approximate pantry amounts end to end (domain, migration, API, client), a quick add screen in everyday words with common items, and save-and-add-another. The pantry list now shows "~" for estimates.
 - Backend tests pass: 21 unit and 28 integration. Frontend tests pass: 450.
+
+### 2026-10-29T23:50:00Z — Claude Code
+
+- Phase 2 complete:
+  - an estimated correction on the lot detail;
+  - "~" in the shopping list;
+  - the estimate mark in the AI suggest context.
+- Tests pass: backend 21 targeted, frontend 451.
