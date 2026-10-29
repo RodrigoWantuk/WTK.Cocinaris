@@ -19,5 +19,10 @@ export function createUnavailableRecipeRepository(): RecipeRepository {
     requestCandidates: async () => fail(),
     getGenerationSession: async () => fail(),
     selectCandidate: async () => fail(),
+    startExecution: async () => fail(),
+    getExecution: async () => fail(),
+    listExecutionsInProgress: async () => fail(),
+    completeExecution: async () => fail(),
+    abandonExecution: async () => fail(),
   };
 }

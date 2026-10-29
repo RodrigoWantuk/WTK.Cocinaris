@@ -65,6 +65,7 @@ public sealed class RecipeCookNowApplicationService(
         }
 
         var context = await contextAssembler.AssembleSuggestContextAsync(user.Id, Guid.NewGuid().ToString("n"), definition.ContextBudgetCharacters, cancellationToken);
+        context = context with { Presets = WithOutputLanguage(context.Presets, command.RequestLanguage) };
         var invocation = await InvokeSuggestWithRepairAsync(definition, context, command.CorrelationId, cancellationToken);
         if (invocation.Response is null)
         {
@@ -172,6 +173,7 @@ public sealed class RecipeCookNowApplicationService(
         }
 
         var context = await contextAssembler.AssembleExpandContextAsync(user.Id, Guid.NewGuid().ToString("n"), selected, definition.ContextBudgetCharacters, cancellationToken);
+        context = context with { Presets = WithOutputLanguage(context.Presets, command.RequestLanguage) };
         var invocation = await InvokeExpandWithRepairAsync(definition, context, command.CorrelationId, cancellationToken);
         if (invocation.Response is null)
         {
@@ -408,5 +410,19 @@ public sealed class RecipeCookNowApplicationService(
             AiProviderFailureKind.Unavailable => "The AI provider is currently unavailable.",
             _ => "The AI provider did not return a usable response."
         };
+    }
+
+    /// <summary>
+    /// Resolves the language the model must write in: the profile language, else the request's
+    /// interface language, else Brazilian Portuguese (the primary market). Anything outside the
+    /// supported set falls through, so a header can never inject free text into the envelope.
+    /// </summary>
+    /// <param name="presets">Presets assembled from the profile.</param>
+    /// <param name="requestLanguage">Interface language of the request, if any.</param>
+    /// <returns>Presets with a resolved, supported output language.</returns>
+    public static RecipeUserPresets WithOutputLanguage(RecipeUserPresets presets, string? requestLanguage)
+    {
+        static string? Supported(string? tag) => tag is "pt-BR" or "en" or "es" ? tag : null;
+        return presets with { OutputLanguage = Supported(presets.OutputLanguage) ?? Supported(requestLanguage) ?? "pt-BR" };
     }
 }

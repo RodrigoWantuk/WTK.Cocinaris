@@ -1,4 +1,4 @@
-﻿using Cocinaris.Infrastructure.Persistence;
+using Cocinaris.Infrastructure.Persistence;
 using Cocinaris.Modules.Ai.Abstractions;
 using Cocinaris.Modules.Ai.Providers;
 using Cocinaris.Modules.Ai.Usage;

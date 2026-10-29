@@ -1,4 +1,4 @@
-﻿using System.Text.Json;
+using System.Text.Json;
 using Cocinaris.Modules.Inventory.Application;
 using Cocinaris.Modules.Inventory.Domain;
 using Microsoft.EntityFrameworkCore;

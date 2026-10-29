@@ -124,6 +124,17 @@ Daypart boundaries may vary by locale, region, and user preference. A future imp
 
 Time of day influences relevance and wording. It does not alter authoritative inventory state, food-safety evidence, expiration dates, or accepted plans.
 
+### Current production home (2026-10-29)
+
+The production "Hoje" page shows only live, authoritative sources, each loaded and failing independently (PLAN-0021 deterministic tiers, PLAN-0042):
+
+1. **Cooking in progress.** Every recipe execution in progress, with "Continuar".
+2. **"O que cozinho agora?"** Opens the recipe suggestion flow, with a shortcut to add a pantry item.
+3. **"Use logo".** The five most urgent items of the inventory attention list (PLAN-0037), each with its advisory label and a link to the item.
+4. **"Suas receitas".** The three most recent saved recipes.
+
+The accepted-menu tier waits for PLAN-0029. The quick chooser and the AI-ranked recommendations wait for their own plans. The prototype keeps the full contextual-home presentation on mock adapters, and production never shows fixtures.
+
 ## Suggestion-source priority
 
 The authenticated home presents preparation possibilities in a stable, explainable priority order. A higher tier appears before a lower tier when it has relevant, valid candidates.

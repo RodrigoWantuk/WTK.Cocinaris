@@ -15,6 +15,19 @@
 
 "Vamos tentar fazer entregas grandes, quero uma versão usável de ponta a ponta logo." The roadmap places PLAN-0042 after PLAN-0029 (planning) and PLAN-0038 (recipe library). Cooking a cook-now recipe needs neither a menu nor a library, and it closes the loop that makes the product usable end to end: pantry, then recipe suggestion, then cooking, then the pantry updated. Phase 1 therefore runs now. Menu-pinned executions, reservations, and revision/derivation at finalization wait for PLAN-0029 and PLAN-0038.
 
+## Owner feedback handled in this run (2026-10-29)
+
+- "As opções de receita estão vindo em inglês mesmo com meu idioma configurado para português... No contrato com a IA precisa ficar claro o idioma esperado de retorno."
+- "No meu perfil eu coloquei receita com passo a passo detalhado, o passo a passo veio ridículo." The recipe showed stage titles only, and ingredients had no quantities.
+
+Causes and fixes:
+
+1. **No language in the AI contract.** Both operations now send `outputLanguage` (tag, name, and an explicit rule) and the DeepSeek system prompt names it. The source is the profile language, then the interface locale (the frontend sends it as `Accept-Language`), then `pt-BR`; only `pt-BR`, `en`, and `es` are accepted.
+2. **Profile instruction detail not sent.** Both operations now send `instructionStyle`, built from the profile's preferred instruction detail and skill. `detailed` asks for every action with quantities, utensil, heat, time, and doneness signs, within the 700 characters per stage the schema allows.
+3. **The recipe page discarded content the model had returned.** The parser expected `steps[]` and `quantity`, but protocol 0.3 sends `instructions` (string) and `requiredQuantity`. It now reads the protocol fields and also shows timings, doneness cues, and equipment. Recipes already saved display their instructions without being regenerated.
+
+Language and detail cannot be checked deterministically. They are recorded as evaluation criteria for PLAN-0040, and existing recipes keep the language they were generated in.
+
 ## Phases
 
 | Phase | Outcome | Depends on |
@@ -80,18 +93,27 @@ Text troubleshooting is PLAN-0045.
 - [x] The proposal is deterministic, scales with servings, never exceeds a lot, and marks unavailable and untracked ingredients.
 - [x] Completion consumes the confirmed lots and stores the leftovers atomically with the execution state change; a stale lot rolls everything back.
 - [x] Completion is idempotent per key; a second completion is refused; another user gets 404.
-- [ ] The cooking page and the completion review work end to end in the browser, and the pantry reflects the result.
+- [x] The cooking page and the completion review work end to end in the browser, and the pantry reflects the result (`scripts/e2e/cooking-journey.mjs` through the proxy replica: 5/5).
 - [ ] Deployed to the owner host.
 
 ## Execution state
 
-- **Current run delivery target:** Phase 1 complete, together with the PLAN-0021 home tiers that make the loop visible from "Hoje".
-- **Current checkpoint:** Backend complete: domain, persistence, migration `20261029032441_AddRecipeExecutions`, API, OpenAPI snapshot, regenerated client.
-- **Validation:**
-  - unit tests: `RecipeExecutionTests` (3) and the prepared-component tests (6), all passing;
-  - integration tests: `RecipeExecutionApiTests` (2: full loop with leftovers, replay, refusal, isolation; stale version rolls back), `Plan0027*`, `InventoryLifecycleTransitionApiTests` (shared test host extracted to `ApiTestHost.cs`) and `PostgreSqlMigrationTests`: 43 passing;
-  - OpenAPI lint valid (one pre-existing warning).
-- **Exact next action:** Frontend cooking page and completion review, then the home tiers, documentation, deploy, draft PR.
+- **Current run delivery target:** Phase 1 complete, together with the PLAN-0021 home tiers that make the loop visible from "Hoje", and the owner's language and detail feedback.
+- **Current checkpoint:** Phase 1 implemented end to end:
+  - backend and API;
+  - the cooking page and completion review;
+  - the recipe page shows full instructions, quantities, cues and equipment;
+  - the live "Hoje" page;
+  - the AI request carries the output language and the instruction style.
+- **Validation (lean, targeted):**
+  - backend unit tests: `RecipeExecutionTests`, `RecipeAiLanguageContractTests`, the recipe cook-now and protocol tests (29 passing);
+  - backend integration tests: `RecipeExecutionApiTests`, `Plan0027*`, `InventoryLifecycleTransitionApiTests`, `PostgreSqlMigrationTests` (43 passing, run before the language change, which does not touch persistence);
+  - `dotnet format` verified;
+  - OpenAPI exported (additions only) and lint valid; client regenerated and drift check passed;
+  - frontend: `Cooking.test.tsx` (4 new), recipe, i18n, app shell and home suites (22 files, 183 tests) passing; typecheck, ESLint and Prettier clean; guards (ts-only, interactive-nesting, production-isolation, third-party-html) passing; production build passing;
+  - browser journey through the proxy replica: 5/5.
+- **Not run:** full backend and frontend suites; the browser smoke matrix; the full local gates (owner direction: lean validation).
+- **Exact next action:** Deploy, then open the draft PR. After merge: Phase 2 with PLAN-0038 (execution changes as revisions or derived recipes).
 - **Blockers:** None.
 
 ## Progress log
@@ -100,3 +122,9 @@ Text troubleshooting is PLAN-0045.
 
 - Claimed the plan for Phase 1 per the owner's end-to-end direction. Reused the PLAN-0023 preparation transaction for reconciliation instead of a second consumption path. It already validates owner-scoped lots, per-lot versions, idempotency, history and provenance, and stores leftovers as prepared lots, so the PLAN-0037 attention rules apply to them.
 - Backend delivered and validated as recorded above.
+
+### 2026-10-29T05:10:00Z — Claude Code
+
+- Frontend delivered: the cooking page (checklists), the completion review (editable lines, lot picker, leftovers, rating, notes, stale-pantry reload), the "Cozinhar agora" action, and the live "Hoje" page.
+- Handled the owner's language and step-detail feedback as described above. Also replaced the "cook-now" jargon in the recipe copy with plain language in three locales.
+- Added `scripts/e2e/cooking-journey.mjs` and ran it through the proxy replica: 5/5 passing.

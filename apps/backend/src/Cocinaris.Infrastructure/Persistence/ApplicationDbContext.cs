@@ -1,4 +1,4 @@
-﻿using Cocinaris.Modules.Identity;
+using Cocinaris.Modules.Identity;
 using Microsoft.EntityFrameworkCore;
 
 namespace Cocinaris.Infrastructure.Persistence;

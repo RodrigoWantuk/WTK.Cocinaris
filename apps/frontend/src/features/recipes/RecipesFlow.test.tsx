@@ -19,6 +19,7 @@ import { createUnavailableAdultDeclarationPolicy } from "@/features/profile/adul
 import { RecipeApiError } from "@/contracts/recipes";
 import ProductionApp from "@/app/ProductionApp";
 import { PRODUCTION_LOCALE_STORAGE_KEY } from "@/app/i18n/productionCatalog";
+import { executionStubs } from "./testExecutionStubs";
 
 const candidate = (id: string, name: string) => ({
   candidateId: id,
@@ -162,6 +163,7 @@ describe("Recipes generate flow", () => {
     }));
 
     const recipeRepo: RecipeRepository = {
+      ...executionStubs,
       listRecipes: async () => [],
       getRecipe: async (recipeId) => ({
         recipeId,
@@ -249,6 +251,7 @@ describe("Recipes generate flow", () => {
     });
 
     const recipeRepo: RecipeRepository = {
+      ...executionStubs,
       listRecipes: async () => [],
       getRecipe: async () => {
         throw new Error("not used");
@@ -284,6 +287,7 @@ describe("Recipes generate flow", () => {
   it("shows invalid-output state", async () => {
     const user = userEvent.setup();
     const recipeRepo: RecipeRepository = {
+      ...executionStubs,
       listRecipes: async () => [],
       getRecipe: async () => {
         throw new Error("not used");
@@ -315,6 +319,7 @@ describe("Recipes generate flow", () => {
 
   it("guides when inventory is empty", async () => {
     const recipeRepo: RecipeRepository = {
+      ...executionStubs,
       listRecipes: async () => [],
       getRecipe: async () => {
         throw new Error("not used");

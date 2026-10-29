@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using Cocinaris.Api.Observability;
 using Cocinaris.Api.Services;
 using Cocinaris.Modules.Recipes.Application;
@@ -68,7 +68,7 @@ public sealed class RecipeApiService(RecipeCookNowApplicationService application
     /// <summary>Creates a generation session and requests three validated cook-now candidates.</summary>
     public async Task<IResult> RequestCandidatesAsync(HttpRequest request, CancellationToken cancellationToken)
     {
-        var command = new RequestCandidatesCommand(ParseIdempotencyKey(request), request.HttpContext.TraceIdentifier);
+        var command = new RequestCandidatesCommand(ParseIdempotencyKey(request), request.HttpContext.TraceIdentifier, RequestLanguage(request));
         var result = await application.RequestCandidatesAsync(command, cancellationToken);
         return ToResult(result, request.HttpContext.TraceIdentifier, ToResponse);
     }
@@ -83,7 +83,7 @@ public sealed class RecipeApiService(RecipeCookNowApplicationService application
     /// <summary>Selects one candidate, expands it, and persists an immutable recipe revision.</summary>
     public async Task<IResult> SelectCandidateAsync(Guid sessionId, SelectCandidateRequest body, HttpRequest request, CancellationToken cancellationToken)
     {
-        var command = new SelectCandidateCommand(sessionId, body.CandidateId, ParseIdempotencyKey(request), request.HttpContext.TraceIdentifier);
+        var command = new SelectCandidateCommand(sessionId, body.CandidateId, ParseIdempotencyKey(request), request.HttpContext.TraceIdentifier, RequestLanguage(request));
         var result = await application.SelectCandidateAsync(command, cancellationToken);
         return ToResult(result, request.HttpContext.TraceIdentifier, ToResponse);
     }
@@ -101,6 +101,16 @@ public sealed class RecipeApiService(RecipeCookNowApplicationService application
         var result = await application.GetRecipeAsync(recipeId, cancellationToken);
         return ToResult(result, context.TraceIdentifier, ToResponse);
     }
+
+    /// <summary>
+    /// First supported tag of <c>Accept-Language</c>. The frontend sends its interface locale there,
+    /// and the browser default otherwise; the application layer accepts only supported tags.
+    /// </summary>
+    private static string? RequestLanguage(HttpRequest request) =>
+        request.GetTypedHeaders().AcceptLanguage
+            .OrderByDescending(item => item.Quality ?? 1)
+            .Select(item => item.Value.Value?.ToLowerInvariant() switch { "pt-br" or "pt" => "pt-BR", "en" or "en-us" or "en-gb" => "en", "es" or "es-es" => "es", _ => null })
+            .FirstOrDefault(tag => tag is not null);
 
     private static Guid? ParseIdempotencyKey(HttpRequest request)
     {

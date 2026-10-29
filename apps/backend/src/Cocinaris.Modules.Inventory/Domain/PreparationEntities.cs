@@ -1,4 +1,4 @@
-﻿namespace Cocinaris.Modules.Inventory.Domain;
+namespace Cocinaris.Modules.Inventory.Domain;
 
 /// <summary>Identifies the authorized source that created a preparation batch.</summary>
 public enum PreparationSourceType

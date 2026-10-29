@@ -144,8 +144,18 @@ public sealed class RecipeExecutionApiTests : IAsyncLifetime
         database.Recipes.Add(new RecipeRecord { Id = recipeId, OwnerUserId = owner, CurrentRevisionNumber = 1, CreatedAt = now, UpdatedAt = now });
         database.RecipeRevisions.Add(new RecipeRevisionRecord
         {
-            Id = Guid.NewGuid(), RecipeId = recipeId, OwnerUserId = owner, RevisionNumber = 1, Name = "Chicken and rice", MealTypesJson = "[\"lunch\"]", Servings = servings,
-            NormalizedRecipeJson = content, ThumbnailVisualJson = "{}", SourceCandidateId = "cand-1", SourceGenerationSessionId = Guid.NewGuid(), CreatedAt = now
+            Id = Guid.NewGuid(),
+            RecipeId = recipeId,
+            OwnerUserId = owner,
+            RevisionNumber = 1,
+            Name = "Chicken and rice",
+            MealTypesJson = "[\"lunch\"]",
+            Servings = servings,
+            NormalizedRecipeJson = content,
+            ThumbnailVisualJson = "{}",
+            SourceCandidateId = "cand-1",
+            SourceGenerationSessionId = Guid.NewGuid(),
+            CreatedAt = now
         });
         await database.SaveChangesAsync();
         return recipeId;

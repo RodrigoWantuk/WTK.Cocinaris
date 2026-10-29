@@ -42,7 +42,7 @@ describe("Production home route profile isolation", () => {
     const fetchSpy = vi.spyOn(globalThis, "fetch");
     render(<ProductionApp />);
     await waitFor(() =>
-      expect(screen.getByTestId("contextual-home")).toBeInTheDocument(),
+      expect(screen.getByTestId("today-page")).toBeInTheDocument(),
     );
     const profileCalls = fetchSpy.mock.calls.filter(([input]) =>
       String(input).includes("/api/v1/profile"),

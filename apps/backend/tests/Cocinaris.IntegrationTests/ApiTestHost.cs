@@ -1,4 +1,4 @@
-﻿using System.Security.Claims;
+using System.Security.Claims;
 using System.Text.Encodings.Web;
 using Cocinaris.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authentication;

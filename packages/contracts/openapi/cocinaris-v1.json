@@ -6640,6 +6640,16 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "description": "Required UUID key; a retry with the same key replays the completion.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
           }
         ],
         "requestBody": {

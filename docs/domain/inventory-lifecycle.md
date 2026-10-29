@@ -231,6 +231,13 @@ Release plan reservations
 
 The user may confirm or edit. Execution completion and these mutations commit atomically, or the execution is marked pending reconciliation.
 
+### Implemented reconciliation (PLAN-0042 Phase 1)
+
+- Completion runs the preparation workflow with source `RecipeExecution`. The batch records the execution as `SourceReferenceId`, and a unique index allows one reconciliation per execution.
+- Inputs are the lots the user confirmed, each protected by the version read with the proposal. The output is at most one prepared leftover lot, named after the recipe, measured in portions (`Unit`), with an optional user-entered use-by date. The attention rules for prepared lots apply to it.
+- Unlike a manual preparation, a recipe execution may consume nothing (leftovers of a dish made only from untracked ingredients) or store nothing (everything eaten). Leftover portions may not exceed the portions cooked. History rows carry the reason `recipe_execution`.
+- The inventory writes and the execution state change share one PostgreSQL transaction. A stale lot or any failure rolls back everything, so "pending reconciliation" never arises in Phase 1.
+
 ## Attention and reminder actions
 
 Each attention item should expose relevant actions:

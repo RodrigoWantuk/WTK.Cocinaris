@@ -104,9 +104,17 @@ Before start, the product reviews:
 
 The checklist informs and offers adaptations but does not arbitrarily block continuation.
 
+### Implemented execution (PLAN-0042 Phase 1)
+
+- **Start.** "Cozinhar agora" on the recipe page creates an execution pinned to the current revision. The servings default to the revision's. A recipe has at most one execution in progress, and starting again returns it. The home page lists executions in progress so the cook can resume.
+- **Cooking view.** Ingredients, equipment, and stages with each stage's instructions, timings, and doneness cues, all with checkboxes. Checks are kept only in the browser, per execution.
+- **Completion proposal.** Deterministic and recomputed from the pinned revision and the current pantry. Quantities scale with servings cooked over the revision's servings: whole units round up, and grams and milliliters round to whole numbers. Each line is `ready`, `insufficient` (capped at what the lot holds), `lot_unavailable`, or `not_tracked`, and the cook may pick any measured pantry lot for any line.
+- **Finalization in Phase 1.** Lot quantities consumed, leftover portions with storage and an optional use-by date, a 1–5 rating, and private notes. Substitutions as revisions, derived recipes, photos, and consumed-portion records come in later phases.
+- **Abandonment.** Ends the execution without touching inventory.
+
 ## Stage-based instructions
 
-Instructions are divided into stages. The profile determines a default detail level. Every stage can request more explanation independently.
+Instructions are divided into stages. The profile determines a default detail level; the recipe AI request carries it as `instructionStyle` (see `docs/ai/recipe-artifact-protocol.md`). Every stage can request more explanation independently.
 
 A beginner may receive sensory references, heat levels, approximate durations, and expected appearance. An experienced user may receive concise instructions for familiar techniques.
 

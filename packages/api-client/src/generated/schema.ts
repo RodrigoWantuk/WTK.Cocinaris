@@ -3031,6 +3031,8 @@ export interface operations {
             header: {
                 /** @description Required CSRF token issued by GET /api/v1/session. */
                 "X-CSRF-TOKEN": string;
+                /** @description Required UUID key; a retry with the same key replays the completion. */
+                "Idempotency-Key": string;
             };
             path: {
                 executionId: string;

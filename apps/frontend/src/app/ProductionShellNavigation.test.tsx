@@ -68,7 +68,7 @@ describe("Production shell and navigation (PLAN-0035)", () => {
       await screen.findByTestId("production-inventory-list"),
     ).toBeInTheDocument();
     await userEvent.click(screen.getByTestId("production-nav-home"));
-    await screen.findByTestId("home-sources");
+    await screen.findByTestId("today-page");
 
     // Same header element: the layout did not unmount, and no session refetch happened.
     expect(screen.getByTestId("production-primary-nav")).toBe(header);

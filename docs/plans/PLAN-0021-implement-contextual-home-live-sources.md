@@ -1,12 +1,12 @@
 # PLAN-0021: Implement Contextual Home Live Source Contracts and Adapters
 
-- **Status:** Blocked
+- **Status:** In Progress
 - **Type:** Implementation
 - **Priority:** High
-- **Owner:** Unassigned backend/frontend vertical-slice agent
+- **Owner:** Claude Code (deterministic tiers claimed 2026-10-29)
 - **Created:** 2026-08-02
 - **Last updated:** 2026-08-05
-- **Branch:** `agent/plan-0021-contextual-home-live-sources`
+- **Branch:** `agent/plan-0042-cook-and-reconcile` (deterministic tiers delivered with PLAN-0042 Phase 1)
 - **Pull request:** Not opened
 - **Dependencies:** PLAN-0011 presentation boundary; PLAN-0020 production profile UI; PLAN-0022 recipe contract decisions (Completed); accepted menu/planning read contract from PLAN-0029
 - **Related product:** `docs/product/entry-and-contextual-home.md`
@@ -101,12 +101,28 @@ Represent:
 
 ## Execution state
 
-- **Current checkpoint:** PLAN-0011, PLAN-0020, and PLAN-0022 are complete. PLAN-0028 delivers recipe revisions. Full live home sources remain blocked on the accepted menu/planning read contract; deterministic inventory/profile tiers may go first.
-- **Blockers:** Accepted menu/planning read contract from the sequential-planning slice (PLAN-0029) for the menu tier only.
-- **Exact next action:** Implement the deterministic inventory/profile tiers after the inventory attention engine (PLAN-0037); add the menu tier once PLAN-0029 publishes the accepted-menu read contract. Branch `agent/plan-0021-contextual-home-live-sources`.
+- **Current checkpoint:** The production "Hoje" page (`TodayPage`) uses live sources and no fixtures. Each section loads and fails independently:
+  - cooking in progress (PLAN-0042);
+  - the main "O que cozinho agora?" action;
+  - the five most urgent items from the inventory attention list (PLAN-0037);
+  - the three most recent saved recipes.
+
+  The sections are composed in the frontend from existing owner-scoped endpoints. No new aggregate endpoint was needed, and the plan allows either approach.
+- **Remaining:**
+  - confirmed-profile fit and the quick chooser;
+  - the accepted-menu tier (needs PLAN-0029);
+  - AI-ranked suggestions through the gateway;
+  - source freshness and telemetry codes.
+- **Validation:** `Cooking.test.tsx` covers the home page: resume, attention, and recipe sources, with one failing source isolated. The app shell and home route tests pass, and the home section of the browser journey passes.
+- **Exact next action:** After PLAN-0029 publishes the accepted-menu read contract, add the menu tier; the confirmed-profile tier can go first.
+- **Blockers:** The menu tier depends on PLAN-0029.
 
 ## Progress log
 
 ### 2026-10-28T15:00:00Z — Claude Code (PLAN-0032 drift reconciliation; numbered PLAN-0029 before the PR #44 renumbering)
 
 - Clarified per-tier gating so the prerequisite paragraph agrees with the `Ready` status and the existing exact next action (deterministic inventory/profile tiers first). No scope or acceptance criterion changed.
+
+### 2026-10-29T05:10:00Z — Claude Code
+
+- Delivered the deterministic tiers with PLAN-0042 Phase 1, following the owner's end-to-end direction. Production `/app/hoje` no longer renders the permanent "unavailable" contextual home.

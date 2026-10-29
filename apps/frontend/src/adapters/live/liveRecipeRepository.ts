@@ -7,6 +7,8 @@ import {
   RecipeApiError,
   type RecipeApiErrorCode,
   type RecipeCandidate,
+  type RecipeExecution,
+  type RecipeExecutionSummary,
   type RecipeDetail,
   type RecipeGenerationSession,
   type RecipeRepository,
@@ -17,6 +19,9 @@ type CandidateDto = components["schemas"]["RecipeCandidateResponse"];
 type SessionDto = components["schemas"]["RecipeGenerationSessionResponse"];
 type SummaryDto = components["schemas"]["RecipeSummaryResponse"];
 type DetailDto = components["schemas"]["RecipeDetailResponse"];
+type ExecutionDto = components["schemas"]["RecipeExecutionResponse"];
+type ExecutionSummaryDto =
+  components["schemas"]["RecipeExecutionSummaryResponse"];
 
 const KNOWN_ERROR_CODES = new Set<RecipeApiErrorCode>([
   "authentication_required",
@@ -24,6 +29,7 @@ const KNOWN_ERROR_CODES = new Set<RecipeApiErrorCode>([
   "not_found",
   "conflict",
   "domain_rule_violated",
+  "precondition_failed",
   "ai_capability_unavailable",
   "ai_budget_exhausted",
   "ai_budget_unavailable",
@@ -127,6 +133,68 @@ function mapDetail(dto: DetailDto): RecipeDetail {
       "thumbnailVisualJson",
     ),
     createdAt: assertString(dto.createdAt, "createdAt"),
+  };
+}
+
+function mapExecution(dto: ExecutionDto): RecipeExecution {
+  const proposal = dto.proposal;
+  return {
+    executionId: assertString(dto.executionId, "executionId"),
+    recipeId: assertString(dto.recipeId, "recipeId"),
+    revisionNumber: asFiniteNumber(dto.revisionNumber, "revisionNumber"),
+    recipeName: assertString(dto.recipeName, "recipeName"),
+    servings: asFiniteNumber(dto.servings, "servings"),
+    recipeServings: asFiniteNumber(dto.recipeServings, "recipeServings"),
+    status: assertString(dto.status, "status"),
+    startedAt: assertString(dto.startedAt, "startedAt"),
+    finishedAt: typeof dto.finishedAt === "string" ? dto.finishedAt : null,
+    inventoryBatchId:
+      typeof dto.inventoryBatchId === "string" ? dto.inventoryBatchId : null,
+    rating: typeof dto.rating === "number" ? dto.rating : null,
+    notes: typeof dto.notes === "string" ? dto.notes : null,
+    normalizedRecipeJson: assertString(
+      dto.normalizedRecipeJson,
+      "normalizedRecipeJson",
+    ),
+    proposal: proposal
+      ? {
+          lines: (proposal.lines ?? []).map((line) => ({
+            ingredientId: String(line.ingredientId),
+            displayName: String(line.displayName),
+            optional: line.optional === true,
+            requiredQuantity: asFiniteNumber(
+              line.requiredQuantity,
+              "requiredQuantity",
+            ),
+            unit: String(line.unit),
+            status: String(line.status),
+            lotId: typeof line.lotId === "string" ? line.lotId : null,
+            proposedQuantity:
+              line.proposedQuantity === null ||
+              line.proposedQuantity === undefined
+                ? null
+                : asFiniteNumber(line.proposedQuantity, "proposedQuantity"),
+          })),
+          pantryLots: (proposal.pantryLots ?? []).map((lot) => ({
+            lotId: assertString(lot.lotId, "lotId"),
+            productName: String(lot.productName),
+            quantity: asFiniteNumber(lot.quantity, "quantity"),
+            unit: String(lot.unit),
+            storageLocation: String(lot.storageLocation),
+            version: assertString(lot.version, "version"),
+          })),
+        }
+      : null,
+  };
+}
+
+function mapExecutionSummary(dto: ExecutionSummaryDto): RecipeExecutionSummary {
+  return {
+    executionId: assertString(dto.executionId, "executionId"),
+    recipeId: assertString(dto.recipeId, "recipeId"),
+    recipeName: assertString(dto.recipeName, "recipeName"),
+    servings: asFiniteNumber(dto.servings, "servings"),
+    startedAt: assertString(dto.startedAt, "startedAt"),
   };
 }
 
@@ -282,7 +350,7 @@ export function createLiveRecipeRepository(options?: {
       }
     },
 
-    async requestCandidates({ csrfToken, idempotencyKey, signal }) {
+    async requestCandidates({ csrfToken, idempotencyKey, language, signal }) {
       try {
         const { data, error, response } = await client.POST(
           "/api/v1/recipes/generation-sessions",
@@ -293,6 +361,7 @@ export function createLiveRecipeRepository(options?: {
                 "Idempotency-Key": idempotencyKey,
               },
             },
+            headers: language ? { "Accept-Language": language } : undefined,
             signal,
             credentials: "include",
           },
@@ -338,7 +407,7 @@ export function createLiveRecipeRepository(options?: {
     async selectCandidate(
       sessionId,
       candidateId,
-      { csrfToken, idempotencyKey, signal },
+      { csrfToken, idempotencyKey, language, signal },
     ) {
       try {
         const body: components["schemas"]["SelectCandidateRequest"] = {
@@ -355,6 +424,7 @@ export function createLiveRecipeRepository(options?: {
               },
             },
             body,
+            headers: language ? { "Accept-Language": language } : undefined,
             signal,
             credentials: "include",
           },
@@ -368,6 +438,124 @@ export function createLiveRecipeRepository(options?: {
         }
         assertData(data, response);
         return mapDetail(data);
+      } catch (err) {
+        wrapAbort(err);
+      }
+    },
+
+    async startExecution(recipeId, { csrfToken, servings, signal }) {
+      try {
+        const { data, error, response } = await client.POST(
+          "/api/v1/recipes/{recipeId}/executions",
+          {
+            params: {
+              path: { recipeId },
+              header: { "X-CSRF-TOKEN": csrfToken },
+            },
+            body: { servings: servings ?? null },
+            signal,
+            credentials: "include",
+          },
+        );
+        if (!response.ok || !data) {
+          await throwForFailure(response, "Unable to start cooking.", error);
+        }
+        assertData(data, response);
+        return mapExecution(data);
+      } catch (err) {
+        wrapAbort(err);
+      }
+    },
+
+    async getExecution(executionId, signal) {
+      try {
+        const { data, error, response } = await client.GET(
+          "/api/v1/recipes/executions/{executionId}",
+          { params: { path: { executionId } }, signal, credentials: "include" },
+        );
+        if (!response.ok || !data) {
+          await throwForFailure(
+            response,
+            "Unable to load the cooking session.",
+            error,
+          );
+        }
+        assertData(data, response);
+        return mapExecution(data);
+      } catch (err) {
+        wrapAbort(err);
+      }
+    },
+
+    async listExecutionsInProgress(signal) {
+      try {
+        const { data, error, response } = await client.GET(
+          "/api/v1/recipes/executions/in-progress",
+          { signal, credentials: "include" },
+        );
+        if (!response.ok || !data) {
+          await throwForFailure(
+            response,
+            "Unable to list cooking sessions.",
+            error,
+          );
+        }
+        assertData(data, response);
+        return Array.isArray(data) ? data.map(mapExecutionSummary) : [];
+      } catch (err) {
+        wrapAbort(err);
+      }
+    },
+
+    async completeExecution(
+      executionId,
+      input,
+      { csrfToken, idempotencyKey, signal },
+    ) {
+      try {
+        const { data, error, response } = await client.POST(
+          "/api/v1/recipes/executions/{executionId}/completion",
+          {
+            params: {
+              path: { executionId },
+              header: {
+                "X-CSRF-TOKEN": csrfToken,
+                "Idempotency-Key": idempotencyKey,
+              },
+            },
+            body: input,
+            signal,
+            credentials: "include",
+          },
+        );
+        if (!response.ok || !data) {
+          await throwForFailure(response, "Unable to finish cooking.", error);
+        }
+        assertData(data, response);
+        return mapExecution(data);
+      } catch (err) {
+        wrapAbort(err);
+      }
+    },
+
+    async abandonExecution(executionId, { csrfToken, signal }) {
+      try {
+        const { data, error, response } = await client.POST(
+          "/api/v1/recipes/executions/{executionId}/abandonment",
+          {
+            params: {
+              path: { executionId },
+              header: { "X-CSRF-TOKEN": csrfToken },
+            },
+            signal,
+            credentials: "include",
+          },
+        );
+        if (!response.ok || !data) {
+          await throwForFailure(response, "Unable to stop cooking.", error);
+        }
+        assertData(data, response);
+        return mapExecution(data);
       } catch (err) {
         wrapAbort(err);
       }

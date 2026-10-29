@@ -7,7 +7,14 @@ public sealed record RecipeInventoryContextItem(string ItemId, string UserName, 
 public sealed record RecipeEquipmentContextItem(string EquipmentId, string Name, IReadOnlyList<string> Capabilities);
 
 /// <summary>Bounded owner presets relevant to recipe generation.</summary>
-public sealed record RecipeUserPresets(int Servings, IReadOnlyList<string> Preferences, IReadOnlyList<string> Restrictions, IReadOnlyList<string> AllowedAssumptions);
+/// <param name="Servings">Default servings.</param>
+/// <param name="Preferences">Confirmed preference codes.</param>
+/// <param name="Restrictions">Confirmed restriction codes.</param>
+/// <param name="AllowedAssumptions">Pantry assumptions the user allows.</param>
+/// <param name="OutputLanguage">Language for every human-readable string the model writes: <c>pt-BR</c>, <c>en</c>, or <c>es</c>; null until resolved from the request.</param>
+/// <param name="InstructionDetail">Profile instruction detail (<c>Minimal</c>, <c>Standard</c>, <c>Detailed</c>), or null when not declared.</param>
+/// <param name="CookingSkill">Profile skill band (<c>Beginner</c> to <c>Advanced</c>), or null when not declared.</param>
+public sealed record RecipeUserPresets(int Servings, IReadOnlyList<string> Preferences, IReadOnlyList<string> Restrictions, IReadOnlyList<string> AllowedAssumptions, string? OutputLanguage = null, string? InstructionDetail = null, string? CookingSkill = null);
 
 /// <summary>Execution-mode context; PLAN-0028 supports only <c>cook_now</c>.</summary>
 public sealed record RecipeExecutionContext(string ExecutionMode, int? AvailableLeadMinutes);
