@@ -93,7 +93,7 @@ describe("Production shell and navigation (PLAN-0035)", () => {
   });
 
   it("gives not-yet-available areas a heading and a way back home", async () => {
-    window.history.pushState({}, "", "/app/compras");
+    window.history.pushState({}, "", "/app/nao-existe");
     render(<ProductionApp />);
     expect(
       await screen.findByRole("heading", { level: 1, name: "Coming soon" }),
@@ -134,7 +134,8 @@ describe("Production shell and navigation (PLAN-0035)", () => {
     ["/app/receitas", "page.title.recipes"],
     ["/app/receitas/gerar", "page.title.recipeGenerate"],
     ["/app/receitas/abc", "page.title.recipeDetail"],
-    ["/app/compras", "page.title.unavailable"],
+    ["/app/compras", "page.title.shopping"],
+    ["/app/nao-existe", "page.title.unavailable"],
   ])("maps %s to %s", (pathname, key) => {
     expect(pageTitleKeyFor(pathname)).toBe(key);
   });

@@ -34,8 +34,11 @@ const UNIT_KEYS: Record<string, string> = {
  * purchase creates a pantry lot through the normal inventory command, and the list is
  * recalculated from the new pantry. No package size is assumed.
  */
-export function ShoppingPage() {
-  const { menuId = "" } = useParams<{ menuId: string }>();
+export function ShoppingPage({
+  menuId: fixedMenuId,
+}: { menuId?: string } = {}) {
+  const params = useParams<{ menuId: string }>();
+  const menuId = fixedMenuId ?? params.menuId ?? "";
   const repo = usePlanningRepository();
   const { t } = useProductionI18n();
   const { session } = useSession();
@@ -120,10 +123,13 @@ export function ShoppingPage() {
               data-testid={`shopping-${category}`}
               className="space-y-2"
             >
-              <h2 id={`shopping-${category}`} className="font-display text-xl">
+              <h2
+                id={`shopping-${category}`}
+                className="text-sm font-semibold text-muted-foreground"
+              >
                 {t(`shopping.category.${category}`)}
               </h2>
-              <ul className="space-y-2">
+              <ul className="divide-y divide-border border-y border-border">
                 {items.map((item) => (
                   <ShoppingRow
                     key={item.itemKey}
@@ -199,14 +205,11 @@ function ShoppingRow({
   };
 
   return (
-    <li
-      data-testid="shopping-item"
-      className="space-y-2 rounded-xl border border-border p-3"
-    >
+    <li data-testid="shopping-item" className="space-y-2 py-4">
       <div className="flex items-start gap-3">
         <input
           type="checkbox"
-          className="mt-1 h-4 w-4 shrink-0"
+          className="mt-0.5 h-5 w-5 shrink-0 accent-primary"
           data-testid="shopping-item-check"
           aria-label={item.displayName}
           checked={item.checked}
@@ -265,7 +268,7 @@ function ShoppingRow({
           <label className="space-y-1 text-xs text-muted-foreground">
             {t("shopping.storage")}
             <select
-              className="h-10 w-full rounded-md border border-input bg-background px-2 text-sm text-foreground"
+              className="h-11 w-full rounded-xl border border-input bg-background px-3 text-[15px] text-foreground"
               value={storage}
               onChange={(event) =>
                 setStorage(event.target.value as StorageLocation)

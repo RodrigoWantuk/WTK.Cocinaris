@@ -10,7 +10,7 @@ Scope: `apps/frontend/public` and referenced remote media in the Emergent snapsh
 | App icons / favicon | `public/` CRA defaults and snapshot assets | Inherited from Emergent snapshot; treat as product-owned after import | Keep; replace if licensing becomes unclear before public marketing use |
 | Recipe / pantry imagery | Remote URLs embedded in mock fixtures (`src/lib/mockData.js`) | Third-party stock/demo URLs used only for mock prototype | Do not ship mock remote imagery as production marketing assets without replacement or explicit license |
 | UI icons | `lucide-react` | ISC | Keep |
-| Fonts | Lora and Manrope, bundled from `@fontsource-variable/lora` and `@fontsource-variable/manrope` 5.3.0 (since PLAN-0035; previously loaded from the Google Fonts CDN) | SIL Open Font License 1.1 | Keep; the license permits bundling and redistribution |
+| Fonts | Inter, bundled from `@fontsource-variable/inter` 5.2.8 (since PLAN-0054 Phase 1; Lora and Manrope from PLAN-0035 were removed; never loaded from a font CDN) | SIL Open Font License 1.1 | Keep; the license permits bundling and redistribution |
 
 ## Conclusion
 

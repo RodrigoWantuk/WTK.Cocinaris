@@ -130,7 +130,7 @@ export function AiMealSuggestion({
             {t("planning.field.meal")}
             <select
               data-testid="menu-ai-meal"
-              className="h-10 w-full rounded-md border border-input bg-background px-2 text-sm text-foreground"
+              className="h-11 w-full rounded-xl border border-input bg-background px-3 text-[15px] text-foreground"
               value={meal}
               onChange={(event) => setMeal(event.target.value)}
             >

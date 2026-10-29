@@ -45,24 +45,38 @@ Phase 5 is large and changes the data model. It follows Phases 1–4 because tho
 - [x] Audit of every production screen with concrete findings.
 - [x] Design-direction proposal the owner can react to.
 - [x] Both audit defects fixed, with a test for the name match.
-- [ ] Owner reaction to the design direction (Phase 1 starts from it).
+- [x] Owner reaction to the design direction. The first direction felt like "um sistema". The owner approved direction 2 (white, near-black pills, Inter, rows instead of boxes, four tabs plus "+", the menu inside Hoje): "Vamos fechar assim por hora, ficou bem melhor já."
+
+## Phase 1 scope delivered
+
+- **Design system.** The rules are written in [`docs/design/design-system.md`](../design/design-system.md).
+  - Tokens for light and dark live in `index.css`. Tailwind now has `success` and `warning` colors; the existing `bg-warning/10`-style classes were silently no-ops before.
+  - The font is Inter, self-hosted. Lora and Manrope were removed.
+  - Buttons are pills with no shadows. Inputs and selects are 44px with 15px text. Cards have no shadow.
+- **Shell.**
+  - `AppNavigation` is a bottom bar on phones and inline in the header from `md`, with Hoje, Despensa, "+", Receitas, and Compras.
+  - `AccountMenu` holds Perfil, the language, and Sair.
+  - The header has no blur.
+  - The new `/app/compras` route (`ShoppingHubPage`) opens the list of the current menu: the accepted menu covering today, else the next accepted one, else a current draft. With no menu, it links to the menu page.
+- **Screens.** The pantry and shopping lists are rows instead of boxes. The pantry attention panel uses the amber tint. All native selects and inputs use the new size.
+- **Not yet moved:** Hoje, the recipe page, the menu page, and the profile still use their boxed sections. Phase 2 rewrites the pantry and the add flow, and Phase 4 rewrites recipe and cooking, so those screens move to the row pattern when they are rebuilt, not twice.
 
 ## Execution state
 
-- **Current run delivery target:** Phase 0.
-- **Current checkpoint:** Phase 0 delivered as above.
+- **Current run delivery target:** Phase 1.
+- **Current checkpoint:** Phase 1 delivered as above, with the limits noted.
 - **Validation:**
-  - **Backend unit tests:** the reservation, shopping, execution, and cook-now tests pass (23), including the new name-match test.
-  - **Backend integration tests:** `RecipeExecutionApiTests` (7) pass after the proposal change.
-  - **Frontend:** a copy change only; no code change.
-- **Not run:** the full suites.
-- **Exact next action:** The owner reacts to the design canvas. Then Phase 1:
-  - Tokens (color, type, spacing, radii, dark mode) in `index.css` and `tailwind.config.js`.
-  - Figtree replaces Lora and Manrope.
-  - Bottom navigation on phones, with the avatar menu holding profile, household, and language.
-  - Button, chip, status pill, sheet, and segmented control primitives.
-  - Every existing screen moved to the new primitives without changing its behavior.
-- **Blockers:** Phase 1 waits for the owner's reaction to the direction (taste decision); Phases 2–4 do not depend on it for their backend parts.
+  - **Frontend:** typecheck is clean. Vitest passes: 55 files, 447 tests. The shell tests were updated for the account menu and the `/app/compras` route. Prettier is clean on `src`.
+  - **Guards:** ts-only, interactive-nesting, production-isolation, build-mode, and third-party-html pass.
+  - **Build:** passes.
+  - **Visual check:** phone and desktop captures through the local proxy replica covered Hoje, Despensa, Receita, the menu, Compras, and the account menu.
+- **Not run:** the backend suites (no backend change in Phase 1).
+- **Exact next action:** Phase 2, the easy pantry.
+  - The amount can be exact or approximate (Cheio, Metade, Pouco). An approximate amount is stored with low confidence and a nominal value derived from the package size.
+  - A quick-add sheet behind "+" adds several items in a row, with region staples.
+  - Places are named in everyday words.
+  - Suggestions, menus, reservations, and shopping treat approximate amounts as estimates.
+- **Blockers:** none.
 
 ## Progress log
 
@@ -70,3 +84,10 @@ Phase 5 is large and changes the data model. It follows Phases 1–4 because tho
 
 - Recorded the owner's decisions after the flow review, audited every screen, and published the design proposal.
 - Fixed the two audit defects.
+
+### 2026-10-29T21:30:00Z — Claude Code
+
+- The owner approved design direction 2.
+- Delivered Phase 1: the tokens, Inter, the pill primitives, the bottom and inline navigation, the account menu, and the Compras hub, with the pantry and shopping lists as rows.
+- Added the success and warning Tailwind colors and the design-system document.
+- Frontend tests pass (447), the guards pass, and the build passes.

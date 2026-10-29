@@ -103,9 +103,20 @@ export const REQUIRED_PLANNING_I18N_KEYS = [
   "planning.ai.asking",
   "planning.ai.choose",
   "planning.ai.saving",
+  "nav.add",
+  "nav.shopping",
+  "account.menu",
+  "shopping.hub.empty",
+  "shopping.hub.plan",
 ] as const;
 
 const ptBR: Record<string, string> = {
+  "nav.add": "Adicionar",
+  "nav.shopping": "Compras",
+  "account.menu": "Conta, perfil e idioma",
+  "shopping.hub.empty":
+    "A lista de compras sai do cardápio: planeje algumas refeições e ela se monta sozinha com o que falta.",
+  "shopping.hub.plan": "Planejar refeições",
   "planning.ai.open": "Sugerir com IA",
   "planning.ai.hint":
     "A IA sugere três pratos para este dia usando só o que a despensa tem livre e evitando repetir o que já está no cardápio.",
@@ -224,6 +235,12 @@ const ptBR: Record<string, string> = {
 };
 
 const en: Record<string, string> = {
+  "nav.add": "Add",
+  "nav.shopping": "Shopping",
+  "account.menu": "Account, profile, and language",
+  "shopping.hub.empty":
+    "The shopping list comes from the menu: plan a few meals and it fills itself with what is missing.",
+  "shopping.hub.plan": "Plan meals",
   "planning.ai.open": "Suggest with AI",
   "planning.ai.hint":
     "The AI suggests three dishes for this day, using only what the pantry has free and avoiding what is already on the menu.",
@@ -338,6 +355,12 @@ const en: Record<string, string> = {
 };
 
 const es: Record<string, string> = {
+  "nav.add": "Añadir",
+  "nav.shopping": "Compras",
+  "account.menu": "Cuenta, perfil e idioma",
+  "shopping.hub.empty":
+    "La lista de la compra sale del menú: planifica algunas comidas y se arma sola con lo que falta.",
+  "shopping.hub.plan": "Planificar comidas",
   "planning.ai.open": "Sugerir con IA",
   "planning.ai.hint":
     "La IA sugiere tres platos para este día usando solo lo que la despensa tiene libre y evitando repetir lo que ya está en el menú.",

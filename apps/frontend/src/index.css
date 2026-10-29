@@ -3,53 +3,62 @@
 @tailwind utilities;
 
 @layer base {
+  /*
+   * PLAN-0054 direction 2 ("limpo e direto", owner-approved 2026-10-29): white ground, near-black
+   * text and actions, soft tints only where they inform (success = "tem", warning = "usar logo",
+   * accent = highlight). Text on a tint is always the dark foreground or the matching strong tone.
+   */
   :root {
-    --background: 42 47% 98%;
-    --foreground: 90 8% 17%;
+    --background: 0 0% 100%;
+    --foreground: 0 0% 7%;
     --card: 0 0% 100%;
-    --card-foreground: 90 8% 17%;
+    --card-foreground: 0 0% 7%;
     --popover: 0 0% 100%;
-    --popover-foreground: 90 8% 17%;
-    --primary: 122 11% 40%;
-    --primary-foreground: 42 47% 98%;
-    --secondary: 43 34% 93%;
-    --secondary-foreground: 90 8% 17%;
-    --muted: 43 30% 92%;
-    /* 39% keeps muted text at or above WCAG AA 4.5:1 on the muted and secondary surfaces (42% gave 4.33:1). */
-    --muted-foreground: 90 5% 39%;
-    --accent: 14 47% 55%;
-    --accent-foreground: 42 47% 98%;
-    --destructive: 2 40% 52%;
-    --destructive-foreground: 42 47% 98%;
-    --border: 42 22% 87%;
-    --input: 42 22% 87%;
-    --ring: 122 11% 40%;
-    --success: 118 15% 44%;
-    --warning: 30 47% 64%;
-    --radius: 0.75rem;
+    --popover-foreground: 0 0% 7%;
+    --primary: 0 0% 7%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 60 9% 95%;
+    --secondary-foreground: 0 0% 7%;
+    --muted: 60 9% 95%;
+    /* #5F5F5F: 6.4:1 on white, 5.9:1 on the secondary tint. */
+    --muted-foreground: 0 0% 37%;
+    --accent: 16 100% 93%;
+    --accent-foreground: 0 0% 7%;
+    --destructive: 4 76% 40%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 92%;
+    --input: 0 0% 88%;
+    --ring: 0 0% 7%;
+    --success: 140 57% 27%;
+    --success-soft: 138 45% 93%;
+    --warning: 38 100% 24%;
+    --warning-soft: 41 100% 92%;
+    --radius: 1rem;
   }
   .dark {
-    --background: 100 5% 9%;
-    --foreground: 60 15% 94%;
-    --card: 100 6% 12%;
-    --card-foreground: 60 15% 94%;
-    --popover: 100 6% 12%;
-    --popover-foreground: 60 15% 94%;
-    --primary: 122 15% 61%;
-    --primary-foreground: 100 5% 9%;
-    --secondary: 100 6% 16%;
-    --secondary-foreground: 60 15% 94%;
-    --muted: 100 6% 16%;
-    --muted-foreground: 90 5% 65%;
-    --accent: 14 47% 72%;
-    --accent-foreground: 100 5% 9%;
-    --destructive: 2 55% 63%;
-    --destructive-foreground: 100 5% 9%;
-    --border: 100 6% 20%;
-    --input: 100 6% 20%;
-    --ring: 122 15% 61%;
-    --success: 115 20% 55%;
-    --warning: 30 48% 70%;
+    --background: 0 0% 7%;
+    --foreground: 0 0% 96%;
+    --card: 0 0% 10%;
+    --card-foreground: 0 0% 96%;
+    --popover: 0 0% 10%;
+    --popover-foreground: 0 0% 96%;
+    --primary: 0 0% 96%;
+    --primary-foreground: 0 0% 7%;
+    --secondary: 0 0% 15%;
+    --secondary-foreground: 0 0% 96%;
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 68%;
+    --accent: 16 35% 22%;
+    --accent-foreground: 0 0% 96%;
+    --destructive: 4 70% 62%;
+    --destructive-foreground: 0 0% 7%;
+    --border: 0 0% 18%;
+    --input: 0 0% 24%;
+    --ring: 0 0% 96%;
+    --success: 140 45% 62%;
+    --success-soft: 140 30% 16%;
+    --warning: 38 90% 66%;
+    --warning-soft: 38 45% 16%;
   }
 }
 
@@ -65,16 +74,19 @@
   body {
     @apply bg-background text-foreground antialiased;
     font-family:
-      "Manrope Variable", "Manrope", ui-sans-serif, system-ui, sans-serif;
-    font-feature-settings: "ss01", "cv01";
+      "Inter Variable", "Inter", ui-sans-serif, system-ui, sans-serif;
+    font-feature-settings: "cv11", "ss01";
   }
   h1,
   h2,
   h3,
   h4,
   .font-display {
-    font-family: "Lora Variable", "Lora", ui-serif, Georgia, serif;
-    letter-spacing: -0.01em;
+    /* One family everywhere (owner: "sem fonte difícil"); headings are weight and tracking only. */
+    font-family:
+      "Inter Variable", "Inter", ui-sans-serif, system-ui, sans-serif;
+    font-weight: 700;
+    letter-spacing: -0.02em;
   }
 }
 
@@ -122,6 +134,19 @@
 
   .pill {
     @apply inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium;
+  }
+
+  /* Status pills: always a word, never color alone. */
+  .status-pill {
+    @apply inline-flex h-7 items-center rounded-full px-3 text-[13px] font-semibold;
+  }
+  .status-success {
+    background-color: hsl(var(--success-soft));
+    color: hsl(var(--success));
+  }
+  .status-warning {
+    background-color: hsl(var(--warning-soft));
+    color: hsl(var(--warning));
   }
 
   .safe-b {

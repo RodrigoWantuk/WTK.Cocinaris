@@ -185,7 +185,7 @@ export function ProductionInventoryList() {
         <section
           data-testid="inventory-attention-panel"
           aria-labelledby="inventory-attention-title"
-          className="space-y-2 rounded-xl border border-border p-4"
+          className="space-y-2 rounded-2xl bg-warning-soft p-4"
         >
           <h2 id="inventory-attention-title" className="font-medium">
             {t("inventory.attention.title")}
@@ -230,7 +230,7 @@ export function ProductionInventoryList() {
           <span className="sr-only">{t("inventory.filter.status")}</span>
           <select
             data-testid="inventory-filter-status"
-            className="flex h-9 rounded-md border border-input bg-transparent px-3 text-sm"
+            className="flex h-11 rounded-xl border border-input bg-background px-3 text-[15px]"
             value={draftStatus}
             onChange={(event) =>
               setDraftStatus(event.target.value as LotStatusFilter)
@@ -250,7 +250,7 @@ export function ProductionInventoryList() {
           <span className="sr-only">{t("inventory.filter.location")}</span>
           <select
             data-testid="inventory-filter-location"
-            className="flex h-9 rounded-md border border-input bg-transparent px-3 text-sm"
+            className="flex h-11 rounded-xl border border-input bg-background px-3 text-[15px]"
             value={draftLocation}
             onChange={(event) =>
               setDraftLocation(event.target.value as LocationFilter)
@@ -324,16 +324,18 @@ export function ProductionInventoryList() {
         </div>
       )}
 
-      <ul className="space-y-3">
+      <ul className="divide-y divide-border border-y border-border">
         {items.map((item) => (
           <li key={item.lotId}>
             <Link
               to={`/app/despensa/${item.lotId}`}
               data-testid={`inventory-lot-link-${item.lotId}`}
-              className="block rounded-xl border border-border p-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="-mx-2 block rounded-xl px-2 py-4 hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <div className="flex items-start justify-between gap-3">
-                <h2 className="font-medium">{item.productName}</h2>
+                <h2 className="text-[17px] font-semibold">
+                  {item.productName}
+                </h2>
                 <span className="text-sm text-muted-foreground">
                   {localizeInventoryKey(
                     t,

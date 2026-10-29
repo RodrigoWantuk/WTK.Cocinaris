@@ -167,6 +167,12 @@ async function dirtyProfileData(user: ReturnType<typeof userEvent.setup>) {
   );
 }
 
+// Sign out lives in the account menu since PLAN-0054 Phase 1.
+async function clickLogout(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByTestId("production-account-menu"));
+  await user.click(screen.getByTestId("production-logout"));
+}
+
 describe("ProductionApp dirty logout protection", () => {
   beforeEach(() => {
     window.localStorage.setItem(PRODUCTION_LOCALE_STORAGE_KEY, "en");
@@ -187,7 +193,7 @@ describe("ProductionApp dirty logout protection", () => {
         screen.getByTestId("profile-data-input-displayName"),
       ).toBeInTheDocument(),
     );
-    await user.click(screen.getByTestId("production-logout"));
+    await clickLogout(user);
     await waitFor(() => expect(logoutCalls).toHaveLength(1));
     expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
   });
@@ -199,7 +205,7 @@ describe("ProductionApp dirty logout protection", () => {
     const user = userEvent.setup();
     render(<ProductionApp />);
     await dirtyProfileData(user);
-    await user.click(screen.getByTestId("production-logout"));
+    await clickLogout(user);
     expect(await screen.findByRole("alertdialog")).toBeInTheDocument();
     expect(logoutCalls).toHaveLength(0);
     await user.click(screen.getByTestId("profile-unsaved-stay"));
@@ -222,7 +228,7 @@ describe("ProductionApp dirty logout protection", () => {
       screen.getByTestId("profile-preferences-custom-label"),
       "Dirty preference draft",
     );
-    await user.click(screen.getByTestId("production-logout"));
+    await clickLogout(user);
     expect(await screen.findByRole("alertdialog")).toBeInTheDocument();
     expect(logoutCalls).toHaveLength(0);
     expect(screen.getByTestId("profile-preferences-custom-label")).toHaveValue(
@@ -244,7 +250,7 @@ describe("ProductionApp dirty logout protection", () => {
       screen.getByTestId("profile-equipment-capacity-eq-oven"),
       "40",
     );
-    await user.click(screen.getByTestId("production-logout"));
+    await clickLogout(user);
     expect(await screen.findByRole("alertdialog")).toBeInTheDocument();
     expect(logoutCalls).toHaveLength(0);
     expect(
@@ -259,7 +265,7 @@ describe("ProductionApp dirty logout protection", () => {
     const user = userEvent.setup();
     render(<ProductionApp />);
     await dirtyProfileData(user);
-    await user.click(screen.getByTestId("production-logout"));
+    await clickLogout(user);
     expect(await screen.findByRole("alertdialog")).toBeInTheDocument();
     await user.keyboard("{Escape}");
     await waitFor(() =>
@@ -278,7 +284,7 @@ describe("ProductionApp dirty logout protection", () => {
     const user = userEvent.setup();
     render(<ProductionApp />);
     await dirtyProfileData(user);
-    await user.click(screen.getByTestId("production-logout"));
+    await clickLogout(user);
     expect(await screen.findByRole("alertdialog")).toBeInTheDocument();
     await user.click(screen.getByTestId("profile-unsaved-discard"));
     await waitFor(() => expect(logoutCalls).toHaveLength(1));
@@ -292,6 +298,7 @@ describe("ProductionApp dirty logout protection", () => {
     const user = userEvent.setup();
     render(<ProductionApp />);
     await dirtyProfileData(user);
+    await user.click(screen.getByTestId("production-account-menu"));
     const logoutButton = screen.getByTestId("production-logout");
     await user.click(logoutButton);
     expect(await screen.findByRole("alertdialog")).toBeInTheDocument();
@@ -311,7 +318,7 @@ describe("ProductionApp dirty logout protection", () => {
     const user = userEvent.setup();
     render(<ProductionApp />);
     await dirtyProfileData(user);
-    await user.click(screen.getByTestId("production-logout"));
+    await clickLogout(user);
     expect(await screen.findByRole("alertdialog")).toBeInTheDocument();
     await user.click(screen.getByTestId("profile-unsaved-discard"));
     await waitFor(() => expect(logoutCalls).toHaveLength(1));

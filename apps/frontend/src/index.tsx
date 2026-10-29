@@ -2,9 +2,7 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 // Fonts are bundled and served from the application origin; no third-party font CDN sees visitors.
-import "@fontsource-variable/manrope/wght.css";
-import "@fontsource-variable/lora/wght.css";
-import "@fontsource-variable/lora/wght-italic.css";
+import "@fontsource-variable/inter/wght.css";
 import "@/index.css";
 import App from "@/App";
 

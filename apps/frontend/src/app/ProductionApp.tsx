@@ -16,7 +16,6 @@ import {
   ProductionI18nProvider,
   useProductionI18n,
 } from "@/app/i18n/ProductionI18nProvider";
-import type { ProductionLocale } from "@/app/i18n/productionCatalog";
 import { InventoryProvider } from "@/features/inventory/InventoryProvider";
 import { ProductionInventoryList } from "@/features/inventory/ProductionInventoryList";
 import { ProductionInventoryDetail } from "@/features/inventory/ProductionInventoryDetail";
@@ -24,6 +23,9 @@ import { ProductionInventoryForm } from "@/features/inventory/ProductionInventor
 import { RecipeProvider } from "@/features/recipes/RecipeProvider";
 import { PlanningProvider } from "@/features/planning/PlanningProvider";
 import { MenusPage } from "@/features/planning/MenusPage";
+import { ShoppingHubPage } from "@/features/planning/ShoppingHubPage";
+import { AccountMenu, LanguageChoice } from "@/app/shell/AccountMenu";
+import { AppNavigation } from "@/app/shell/AppNavigation";
 import { MenuPage } from "@/features/planning/MenuPage";
 import { ShoppingPage } from "@/features/planning/ShoppingPage";
 import { RecipesListPage } from "@/features/recipes/RecipesListPage";
@@ -43,52 +45,6 @@ import {
   useOptionalUnsavedChangesCoordinator,
 } from "@/features/profile/UnsavedChangesCoordinator";
 import { ProfileWorkspaceStatusBanner } from "@/features/profile/ProfileWorkspaceStatusBanner";
-
-function LocaleSwitcher() {
-  const { locale, locales, setLocale, t } = useProductionI18n();
-  return (
-    <>
-      <div
-        className="hidden gap-1 sm:flex"
-        role="group"
-        aria-label={t("lang.label")}
-      >
-        {locales.map((code) => (
-          <button
-            key={code}
-            type="button"
-            data-testid={`production-lang-${code}`}
-            aria-pressed={locale === code}
-            onClick={() => setLocale(code as ProductionLocale)}
-            className={`rounded-full px-3 py-1 text-xs ${
-              locale === code ? "bg-secondary" : "text-muted-foreground"
-            }`}
-          >
-            {code === "pt-BR" ? "PT-BR" : code.toUpperCase()}
-          </button>
-        ))}
-      </div>
-      <label className="sm:hidden">
-        <span className="sr-only">{t("lang.label")}</span>
-        <select
-          data-testid="production-lang-select"
-          aria-label={t("lang.label")}
-          className="max-w-[5.5rem] rounded-md border border-border bg-background px-2 py-1 text-xs"
-          value={locale}
-          onChange={(event) =>
-            setLocale(event.target.value as ProductionLocale)
-          }
-        >
-          {locales.map((code) => (
-            <option key={code} value={code}>
-              {code === "pt-BR" ? "PT-BR" : code.toUpperCase()}
-            </option>
-          ))}
-        </select>
-      </label>
-    </>
-  );
-}
 
 /**
  * Public entry route. A visitor who already has a session goes straight to the home. Everyone
@@ -157,52 +113,6 @@ function ProductionAccess() {
   );
 }
 
-const PRIMARY_NAV_ITEMS = [
-  { to: "/app/hoje", key: "home", testId: "production-nav-home" },
-  { to: "/app/despensa", key: "inventory", testId: "production-nav-despensa" },
-  { to: "/app/receitas", key: "recipes", testId: "production-nav-receitas" },
-  { to: "/app/cardapio", key: "planning", testId: "production-nav-cardapio" },
-  { to: "/app/perfil", key: "profile", testId: "production-nav-perfil" },
-] as const;
-
-function PrimaryNav() {
-  const { t } = useProductionI18n();
-  const location = useLocation();
-  const labels: Record<(typeof PRIMARY_NAV_ITEMS)[number]["key"], string> = {
-    home: t("nav.home"),
-    inventory: t("inventory.title"),
-    recipes: t("nav.recipes"),
-    planning: t("nav.planning"),
-    profile: t("nav.profile"),
-  };
-  return (
-    <nav
-      aria-label={t("nav.primary")}
-      data-testid="production-primary-nav"
-      className="flex flex-wrap gap-1"
-    >
-      {PRIMARY_NAV_ITEMS.map((item) => {
-        const active = location.pathname.startsWith(item.to);
-        return (
-          <Link
-            key={item.key}
-            to={item.to}
-            data-testid={item.testId}
-            aria-current={active ? "page" : undefined}
-            className={`rounded-md px-3 py-1.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-              active
-                ? "bg-secondary font-medium"
-                : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-            }`}
-          >
-            {labels[item.key] || item.key}
-          </Link>
-        );
-      })}
-    </nav>
-  );
-}
-
 /**
  * Maps a production pathname to the catalog key of its page name, used for the
  * document title so browser tabs, history, and screen readers identify the page.
@@ -227,6 +137,7 @@ export function pageTitleKeyFor(pathname: string): string {
     return "page.title.recipeVariation";
   if (/^\/app\/receitas\/[^/]+\/versoes\//.test(pathname))
     return "page.title.recipeRevision";
+  if (pathname === "/app/compras") return "page.title.shopping";
   if (pathname === "/app/cardapio") return "page.title.planning";
   if (/^\/app\/cardapio\/[^/]+\/compras$/.test(pathname))
     return "page.title.shopping";
@@ -282,47 +193,33 @@ function ProductionAppShell({ children }: { children: ReactNode }) {
       >
         {t("nav.skipToContent")}
       </a>
-      <header className="sticky top-0 z-40 border-b border-border bg-background/95 px-4 py-3 backdrop-blur sm:px-6 sm:py-4">
+      <header className="sticky top-0 z-40 border-b border-border bg-background px-4 py-3 sm:px-6">
         {/*
-          On narrow screens the brand and account controls share the first row and the
-          primary navigation takes a full second row; from `sm` up everything is one row.
+          No backdrop filter here: it would make the header the containing block of the fixed
+          bottom navigation on phones. Brand and navigation use React Router links, so the
+          unsaved-changes coordinator still intercepts same-tab navigation from profile editors.
         */}
-        <div className="mx-auto flex max-w-3xl flex-wrap items-center gap-x-4 gap-y-2">
-          {/*
-            Brand and primary nav use ordinary React Router Links. While a profile
-            editor is dirty, UnsavedChangesCoordinatorProvider's useBlocker intercepts
-            same-tab navigations (including these). Modified clicks open a new context
-            and leave the draft in the original tab.
-          */}
+        <div className="mx-auto flex max-w-5xl items-center gap-4">
           <Link
             to="/app/hoje"
             data-testid="production-brand-link"
-            className="order-1 font-display text-xl"
+            className="text-lg font-bold tracking-tight"
           >
             {t("brand.name")}
           </Link>
           {isAuthenticated && (
-            <div className="order-3 w-full sm:order-2 sm:w-auto">
-              <PrimaryNav />
+            <div className="md:flex-1">
+              <AppNavigation />
             </div>
           )}
-          <div className="order-2 ml-auto flex items-center gap-2 sm:order-3">
-            <LocaleSwitcher />
-            {isAuthenticated && (
-              <>
-                <span className="hidden text-sm text-muted-foreground md:inline">
-                  {session.displayName || t("access.signedIn")}
-                </span>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="secondary"
-                  data-testid="production-logout"
-                  onClick={requestLogout}
-                >
-                  {t("access.logout")}
-                </Button>
-              </>
+          <div className="ml-auto flex items-center gap-2">
+            {isAuthenticated ? (
+              <AccountMenu
+                displayName={session.displayName ?? null}
+                onLogout={requestLogout}
+              />
+            ) : (
+              <LanguageChoice />
             )}
           </div>
         </div>
@@ -330,7 +227,7 @@ function ProductionAppShell({ children }: { children: ReactNode }) {
       <main
         id="main-content"
         tabIndex={-1}
-        className="mx-auto max-w-3xl px-4 py-6 focus:outline-none sm:p-8"
+        className="mx-auto max-w-3xl px-4 pb-28 pt-6 focus:outline-none sm:px-8 md:pb-10 md:pt-8"
       >
         {children}
       </main>
@@ -505,6 +402,7 @@ function createProductionRouter() {
         { path: "despensa/:lotId", element: <ProductionInventoryDetail /> },
         { path: "receitas", element: <RecipesListPage /> },
         { path: "receitas/gerar", element: <RecipeGeneratePage /> },
+        { path: "compras", element: <ShoppingHubPage /> },
         { path: "cardapio", element: <MenusPage /> },
         { path: "cardapio/:menuId", element: <MenuPage /> },
         { path: "cardapio/:menuId/compras", element: <ShoppingPage /> },

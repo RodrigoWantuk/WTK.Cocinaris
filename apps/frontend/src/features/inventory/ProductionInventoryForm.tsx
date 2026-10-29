@@ -568,7 +568,7 @@ export function ProductionInventoryForm({ mode }: { mode: "create" | "edit" }) {
               <label className="space-y-1">
                 <span>{t("inventory.fields.unit")}</span>
                 <select
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+                  className="flex h-11 w-full rounded-xl border border-input bg-background px-3 text-[15px]"
                   value={unit}
                   disabled={busy}
                   onChange={(event) =>
@@ -587,7 +587,7 @@ export function ProductionInventoryForm({ mode }: { mode: "create" | "edit" }) {
             <label className="block space-y-1">
               <span>{t("inventory.fields.availability")}</span>
               <select
-                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+                className="flex h-11 w-full rounded-xl border border-input bg-background px-3 text-[15px]"
                 value={availability}
                 disabled={busy}
                 onChange={(event) =>
@@ -611,7 +611,7 @@ export function ProductionInventoryForm({ mode }: { mode: "create" | "edit" }) {
         <span>{t("inventory.fields.location")}</span>
         <select
           data-testid="inventory-location"
-          className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+          className="flex h-11 w-full rounded-xl border border-input bg-background px-3 text-[15px]"
           value={storageLocation}
           disabled={busy || !editReady}
           onChange={(event) =>
@@ -658,7 +658,7 @@ export function ProductionInventoryForm({ mode }: { mode: "create" | "edit" }) {
       <label className="block space-y-1">
         <span>{t("inventory.fields.packageState")}</span>
         <select
-          className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+          className="flex h-11 w-full rounded-xl border border-input bg-background px-3 text-[15px]"
           value={packageState}
           disabled={busy || !editReady}
           onChange={(event) =>
