@@ -188,3 +188,14 @@ Phase 3 ran before Phase 2. Without it, two cooking sessions could count on the 
 ### 2026-10-29T14:30:00Z — Claude Code
 
 - The owner merged PR #53 (`f299090`), and `main` was deployed. Phase 2 (AI-assisted menu) waits for PLAN-0040, now in progress.
+
+### 2026-10-29T15:30:00Z — Claude Code (pause)
+
+- Phase 2 started on `agent/plan-0029-ai-menu`. Only its prerequisite was committed: rolling 24-hour token windows (PLAN-0040 follow-up). The run stopped at the agent's usage limit.
+- **Phase 2 design (next run):**
+  - **Request.** On a menu day, "Sugerir com IA" calls `recipe.suggest_candidates.v1` with `executionMode: menu_planning`. The request carries the planned date, meal type, and servings, plus the names of meals already on the menu for variety. The API resolves the menu so the names come from the backend.
+  - **Strategies.** For `menu_planning` the strategy set is `on_hand_first`, `planned_purchase_reuse`, and `exploratory`.
+  - **Pantry context.** The assembler subtracts `IPantryCommitmentLookup` commitments from pantry quantities.
+  - **Adding the meal.** The selected candidate is expanded as today; the frontend then adds the recipe to the menu slot.
+  - **Schema.** Widen `ck_generation_sessions_execution_mode` to include `menu_planning`.
+  - **Model policy.** Non-thinking, because the PLAN-0022 thinking-high samples returned truncated JSON.

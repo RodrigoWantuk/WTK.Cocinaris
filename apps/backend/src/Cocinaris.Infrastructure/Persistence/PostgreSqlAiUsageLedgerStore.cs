@@ -21,6 +21,7 @@ public sealed class PostgreSqlAiUsageLedgerStore(ApplicationDbContext database) 
         string operation,
         int estimatedUnits,
         long estimatedCostMicroUsd,
+        int estimatedTokens,
         string correlationId,
         DateTimeOffset now,
         AiUsageOptions ceilings,
@@ -63,6 +64,23 @@ public sealed class PostgreSqlAiUsageLedgerStore(ApplicationDbContext database) 
             return AiUsageReservationResult.Rejected(AiUsageReservationOutcome.MonthlyCostExhausted);
         }
 
+        // Rolling 24-hour token windows: reported tokens of closed calls plus estimates of open ones.
+        var windowStart = now.AddHours(-24);
+        var window = database.AiUsageLedgerEntries.Where(item => item.CreatedAt > windowStart && item.CreatedAt <= now);
+        var globalTokens = await SumWindowTokensAsync(window, cancellationToken);
+        if (globalTokens + estimatedTokens > ceilings.GlobalTokensPer24Hours)
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            return AiUsageReservationResult.Rejected(AiUsageReservationOutcome.GlobalTokenWindowExhausted);
+        }
+
+        var ownerTokens = await SumWindowTokensAsync(window.Where(item => item.OwnerUserId == ownerUserId), cancellationToken);
+        if (ownerTokens + estimatedTokens > ceilings.UserTokensPer24Hours)
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            return AiUsageReservationResult.Rejected(AiUsageReservationOutcome.UserTokenWindowExhausted);
+        }
+
         var id = Guid.NewGuid();
         database.AiUsageLedgerEntries.Add(new AiUsageLedgerRecord
         {
@@ -72,6 +90,7 @@ public sealed class PostgreSqlAiUsageLedgerStore(ApplicationDbContext database) 
             Status = nameof(AiUsageEntryStatus.Reserved),
             ReservedUnits = estimatedUnits,
             EstimatedCostMicroUsd = estimatedCostMicroUsd,
+            EstimatedTokens = estimatedTokens,
             CorrelationId = correlationId,
             CreatedAt = now
         });
@@ -165,6 +184,11 @@ public sealed class PostgreSqlAiUsageLedgerStore(ApplicationDbContext database) 
         entry.QualityFlags = usage.QualityFlags;
         entry.CostMicroUsd = costMicroUsd;
     }
+
+    private static async Task<long> SumWindowTokensAsync(IQueryable<AiUsageLedgerRecord> window, CancellationToken cancellationToken) =>
+        await window.SumAsync(item => item.Status == nameof(AiUsageEntryStatus.Reserved)
+            ? (long)item.EstimatedTokens
+            : (long)((item.PromptTokens ?? 0) + (item.CompletionTokens ?? 0)), cancellationToken);
 
     private async Task<int> SumUnitsInRangeAsync(Guid? ownerUserId, DateTimeOffset dayStart, DateTimeOffset dayEnd, CancellationToken cancellationToken)
     {

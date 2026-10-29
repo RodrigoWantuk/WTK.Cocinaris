@@ -56,7 +56,7 @@ public sealed class RecipeCookNowApplicationService(
             return RecipeApplicationResult<RecipeGenerationSessionView>.Succeeded(ToSessionView(claim.Session));
         }
 
-        var reservation = await usageGovernor.ReserveAsync(user.Id, definition.Operation, definition.EstimatedUsageUnits, definition.EstimatedCostMicroUsd, command.CorrelationId, cancellationToken);
+        var reservation = await usageGovernor.ReserveAsync(user.Id, definition.Operation, definition.EstimatedUsageUnits, definition.EstimatedCostMicroUsd, definition.EstimatedTokens, command.CorrelationId, cancellationToken);
         if (reservation.Outcome != AiUsageReservationOutcome.Reserved)
         {
             claim.Session.MarkFailed($"usage_{reservation.Outcome}", timeProvider.GetUtcNow());
@@ -164,7 +164,7 @@ public sealed class RecipeCookNowApplicationService(
             return Failure<RecipeDetailView>("resource_not_found", "The candidate was not found in this generation session.");
         }
 
-        var reservation = await usageGovernor.ReserveAsync(user.Id, definition.Operation, definition.EstimatedUsageUnits, definition.EstimatedCostMicroUsd, command.CorrelationId, cancellationToken);
+        var reservation = await usageGovernor.ReserveAsync(user.Id, definition.Operation, definition.EstimatedUsageUnits, definition.EstimatedCostMicroUsd, definition.EstimatedTokens, command.CorrelationId, cancellationToken);
         if (reservation.Outcome != AiUsageReservationOutcome.Reserved)
         {
             session.MarkFailed($"usage_{reservation.Outcome}", timeProvider.GetUtcNow());
@@ -398,7 +398,8 @@ public sealed class RecipeCookNowApplicationService(
     private static string MapReservationFailure(AiUsageReservationOutcome outcome) => outcome switch
     {
         AiUsageReservationOutcome.Disabled => "ai_capability_unavailable",
-        AiUsageReservationOutcome.GlobalBudgetExhausted or AiUsageReservationOutcome.UserBudgetExhausted or AiUsageReservationOutcome.MonthlyCostExhausted => "ai_budget_exhausted",
+        AiUsageReservationOutcome.GlobalBudgetExhausted or AiUsageReservationOutcome.UserBudgetExhausted or AiUsageReservationOutcome.MonthlyCostExhausted
+            or AiUsageReservationOutcome.GlobalTokenWindowExhausted or AiUsageReservationOutcome.UserTokenWindowExhausted => "ai_budget_exhausted",
         AiUsageReservationOutcome.ConcurrencyExhausted => "ai_operation_conflict",
         _ => "ai_budget_unavailable"
     };
@@ -410,6 +411,8 @@ public sealed class RecipeCookNowApplicationService(
         AiUsageReservationOutcome.UserBudgetExhausted => "Your daily AI usage budget is exhausted.",
         AiUsageReservationOutcome.ConcurrencyExhausted => "You already have the maximum number of AI requests in progress.",
         AiUsageReservationOutcome.MonthlyCostExhausted => "The monthly AI spending limit for this deployment is reached.",
+        AiUsageReservationOutcome.GlobalTokenWindowExhausted => "The AI usage limit for the last 24 hours is reached; it frees up as earlier calls leave the window.",
+        AiUsageReservationOutcome.UserTokenWindowExhausted => "Your AI usage limit for the last 24 hours is reached; it frees up as your earlier calls leave the window.",
         _ => "The AI Gateway is currently unavailable."
     };
 

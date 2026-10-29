@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # AI Gateway usage report for the owner host (PLAN-0040): this month's provider spend against the
-# monthly ceiling, calls by operation, model and outcome, provider latency p50/p95, repairs, and
-# quality flags. Reads only the usage ledger; prints no prompts, outputs, users, or secrets.
+# monthly ceiling, tokens in the rolling 24-hour window, calls by operation, model and outcome,
+# provider latency p50/p95, repairs, and quality flags. Reads only the usage ledger; prints no prompts, outputs, users, or secrets.
 #
 # Usage: sudo scripts/ops/ai-usage-report.sh [ceiling-usd]
 #   ceiling-usd defaults to 5 (Ai:Usage:MonthlyCostCeilingUsd); pass the configured value if changed.
@@ -18,6 +18,18 @@ SELECT round(sum(COALESCE("CostMicroUsd", CASE WHEN "Status" = 'Reserved' THEN "
        count(*) FILTER (WHERE "CostMicroUsd" IS NULL AND "Status" <> 'Reserved') AS calls_without_cost_before_plan_0040
 FROM ai.usage_ledger
 WHERE "CreatedAt" >= date_trunc('month', now() AT TIME ZONE 'UTC') AT TIME ZONE 'UTC';
+
+\echo '== Tokens in the last 24 hours, deployment and busiest owner (closed calls at reported tokens, open ones at estimate) =='
+WITH window_rows AS (
+    SELECT "OwnerUserId",
+           CASE WHEN "Status" = 'Reserved' THEN "EstimatedTokens" ELSE COALESCE("PromptTokens", 0) + COALESCE("CompletionTokens", 0) END AS tokens
+    FROM ai.usage_ledger
+    WHERE "CreatedAt" > now() - interval '24 hours'
+), per_owner AS (
+    SELECT sum(tokens) AS tokens FROM window_rows GROUP BY "OwnerUserId"
+)
+SELECT (SELECT COALESCE(sum(tokens), 0) FROM window_rows) AS deployment_tokens,
+       (SELECT COALESCE(max(tokens), 0) FROM per_owner) AS busiest_owner_tokens;
 
 \echo '== Calls by operation, model and outcome (last 30 days) =='
 SELECT "Operation", COALESCE("Model", '-') AS model, "Status", count(*) AS calls,

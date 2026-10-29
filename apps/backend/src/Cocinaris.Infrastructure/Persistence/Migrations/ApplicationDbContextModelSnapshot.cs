@@ -51,6 +51,9 @@ namespace Cocinaris.Infrastructure.Persistence.Migrations
                     b.Property<long>("EstimatedCostMicroUsd")
                         .HasColumnType("bigint");
 
+                    b.Property<int>("EstimatedTokens")
+                        .HasColumnType("integer");
+
                     b.Property<int?>("LatencyMs")
                         .HasColumnType("integer");
 

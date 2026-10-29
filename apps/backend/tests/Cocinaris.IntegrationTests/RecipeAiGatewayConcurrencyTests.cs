@@ -136,6 +136,35 @@ public sealed class RecipeAiGatewayConcurrencyTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task TokenWindows_LimitRolling24HoursPerOwnerAndForTheDeployment()
+    {
+        var options = CreateOptions();
+        await MigrateAsync(options);
+        var ana = await SeedUserAsync(options);
+        var bia = await SeedUserAsync(options);
+        var ceilings = new AiUsageOptions { GlobalTokensPer24Hours = 50_000, UserTokensPer24Hours = 30_000 };
+        var now = DateTimeOffset.UtcNow;
+        await using var context = new ApplicationDbContext(options);
+        var store = new PostgreSqlAiUsageLedgerStore(context);
+        Task<AiUsageReservationResult> Reserve(Guid owner, int tokens, DateTimeOffset at, string correlation) =>
+            store.TryReserveAsync(owner, AiOperationRegistry.SuggestCandidates, 1, 1, tokens, correlation, at, ceilings, CancellationToken.None);
+
+        var first = await Reserve(ana, 20_000, now, "t-1");
+        Assert.Equal(AiUsageReservationOutcome.Reserved, first.Outcome);
+        // Ana's open estimate (20 000) plus 15 000 exceeds her 30 000.
+        Assert.Equal(AiUsageReservationOutcome.UserTokenWindowExhausted, (await Reserve(ana, 15_000, now, "t-2")).Outcome);
+        Assert.Equal(AiUsageReservationOutcome.Reserved, (await Reserve(bia, 20_000, now, "t-3")).Outcome);
+        // 40 000 open in the deployment plus 15 000 exceeds 50 000.
+        Assert.Equal(AiUsageReservationOutcome.GlobalTokenWindowExhausted, (await Reserve(bia, 15_000, now, "t-4")).Outcome);
+
+        // Once settled, Ana's call counts at its reported 5 000 tokens instead of the estimate.
+        await store.SettleAsync(first.ReservationId!.Value, 1, new AiCallUsage("deepseek", "deepseek-v4-flash", 3_000, 2_000, 1, 500), 1, now, CancellationToken.None);
+        Assert.Equal(AiUsageReservationOutcome.Reserved, (await Reserve(ana, 20_000, now, "t-5")).Outcome);
+        // A day later the window has moved past every call.
+        Assert.Equal(AiUsageReservationOutcome.Reserved, (await Reserve(ana, 30_000, now.AddHours(25), "t-6")).Outcome);
+    }
+
+    [Fact]
     public async Task MonthlyCostCeiling_CountsRealCostOfClosedCallsAndEstimatesOfOpenOnes()
     {
         var options = CreateOptions();
@@ -147,20 +176,20 @@ public sealed class RecipeAiGatewayConcurrencyTests : IAsyncLifetime
         await using var context = new ApplicationDbContext(options);
         var store = new PostgreSqlAiUsageLedgerStore(context);
 
-        var first = await store.TryReserveAsync(ownerId, AiOperationRegistry.ExpandSelected, 5, 5_000, "m-1", now, ceilings, CancellationToken.None);
+        var first = await store.TryReserveAsync(ownerId, AiOperationRegistry.ExpandSelected, 5, 5_000, 1_000, "m-1", now, ceilings, CancellationToken.None);
         Assert.Equal(AiUsageReservationOutcome.Reserved, first.Outcome);
         // A failed call is released but still costs what the provider billed: 7 000.
         await store.ReleaseAsync(first.ReservationId!.Value, new AiCallUsage("deepseek", "deepseek-v4-flash", 10_000, 20_000, 2, 900), 7_000, now, CancellationToken.None);
 
-        var second = await store.TryReserveAsync(ownerId, AiOperationRegistry.SuggestCandidates, 3, 3_000, "m-2", now, ceilings, CancellationToken.None);
+        var second = await store.TryReserveAsync(ownerId, AiOperationRegistry.SuggestCandidates, 3, 3_000, 1_000, "m-2", now, ceilings, CancellationToken.None);
         Assert.Equal(AiUsageReservationOutcome.Reserved, second.Outcome);
         // 7 000 spent + 3 000 still open: one more micro-dollar would exceed the ceiling.
-        Assert.Equal(AiUsageReservationOutcome.MonthlyCostExhausted, (await store.TryReserveAsync(ownerId, AiOperationRegistry.SuggestCandidates, 3, 1, "m-3", now, ceilings, CancellationToken.None)).Outcome);
+        Assert.Equal(AiUsageReservationOutcome.MonthlyCostExhausted, (await store.TryReserveAsync(ownerId, AiOperationRegistry.SuggestCandidates, 3, 1, 1_000, "m-3", now, ceilings, CancellationToken.None)).Outcome);
 
         await store.SettleAsync(second.ReservationId!.Value, 3, new AiCallUsage("deepseek", "deepseek-v4-flash", 1_000, 1_000, 1, 400, "language"), 420, now, CancellationToken.None);
-        Assert.Equal(AiUsageReservationOutcome.Reserved, (await store.TryReserveAsync(ownerId, AiOperationRegistry.SuggestCandidates, 3, 2_000, "m-4", now, ceilings, CancellationToken.None)).Outcome);
+        Assert.Equal(AiUsageReservationOutcome.Reserved, (await store.TryReserveAsync(ownerId, AiOperationRegistry.SuggestCandidates, 3, 2_000, 1_000, "m-4", now, ceilings, CancellationToken.None)).Outcome);
         // Last month's spend does not count.
-        Assert.Equal(AiUsageReservationOutcome.Reserved, (await store.TryReserveAsync(ownerId, AiOperationRegistry.SuggestCandidates, 3, 9_000, "m-5", now.AddMonths(1), ceilings, CancellationToken.None)).Outcome);
+        Assert.Equal(AiUsageReservationOutcome.Reserved, (await store.TryReserveAsync(ownerId, AiOperationRegistry.SuggestCandidates, 3, 9_000, 1_000, "m-5", now.AddMonths(1), ceilings, CancellationToken.None)).Outcome);
 
         var settled = await context.AiUsageLedgerEntries.AsNoTracking().SingleAsync(item => item.CorrelationId == "m-2");
         Assert.Equal((420L, 400, 1, "language", "deepseek-v4-flash"), (settled.CostMicroUsd, settled.LatencyMs, settled.Attempts, settled.QualityFlags, settled.Model));
@@ -196,6 +225,7 @@ public sealed class RecipeAiGatewayConcurrencyTests : IAsyncLifetime
                 AiOperationRegistry.SuggestCandidates,
                 estimatedUnits: 3,
                 estimatedCostMicroUsd: 3_000,
+                estimatedTokens: 14_000,
                 correlationId: $"reserve-{index}",
                 now: DateTimeOffset.UtcNow,
                 ceilings: ceilings,

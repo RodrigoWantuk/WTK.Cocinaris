@@ -109,6 +109,7 @@ Rename any dashboard or alert that uses `kitchenflow.*` metric names.
 5. Optional AI Gateway: set `Ai__Providers__DeepSeek__Enabled=true` and `Ai__Providers__DeepSeek__ApiKey` in the environment file. Without them, recipe generation shows its unavailable state and the rest of the product works. Optional overrides (ADR-0009):
    - the model and its fallback, `Ai__Providers__DeepSeek__Model` (default `deepseek-v4-flash`) and `Ai__Providers__DeepSeek__FallbackModel` (default `deepseek-chat`; empty disables it);
    - the monthly spend ceiling, `Ai__Usage__MonthlyCostCeilingUsd` (default 5);
+   - the rolling 24-hour token limits, `Ai__Usage__GlobalTokensPer24Hours` (default 600000) and `Ai__Usage__UserTokensPer24Hours` (default 150000);
    - list prices, `Ai__Pricing__Models__<model>__InputUsdPerMillion` and `__OutputUsdPerMillion`.
 
    Check spend, latency, and quality flags with `sudo scripts/ops/ai-usage-report.sh [ceiling-usd]`.

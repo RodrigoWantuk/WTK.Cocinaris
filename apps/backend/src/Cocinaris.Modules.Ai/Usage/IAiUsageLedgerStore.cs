@@ -12,6 +12,7 @@ public interface IAiUsageLedgerStore
     /// <param name="operation">Registered AI Gateway operation name.</param>
     /// <param name="estimatedUnits">Cocinaris normalized usage credits to reserve (not provider tokens).</param>
     /// <param name="estimatedCostMicroUsd">Estimated provider cost held against the monthly ceiling until the call closes.</param>
+    /// <param name="estimatedTokens">Estimated provider tokens held against the rolling 24-hour token windows until the call closes.</param>
     /// <param name="correlationId">Request correlation identifier.</param>
     /// <param name="now">UTC evaluation instant used for day-bound ceilings.</param>
     /// <param name="ceilings">Configured global, per-owner, and concurrency ceilings.</param>
@@ -22,6 +23,7 @@ public interface IAiUsageLedgerStore
         string operation,
         int estimatedUnits,
         long estimatedCostMicroUsd,
+        int estimatedTokens,
         string correlationId,
         DateTimeOffset now,
         AiUsageOptions ceilings,

@@ -22,11 +22,22 @@ public sealed class AiUsageOptions
     /// </summary>
     public decimal MonthlyCostCeilingUsd { get; set; } = 5m;
 
+    /// <summary>
+    /// Gets or sets the most provider tokens (prompt plus completion) the whole deployment may use
+    /// in any rolling 24-hour window (owner request, 2026-10-29). Closed calls count at their
+    /// reported tokens, failed ones included; open reservations at their operation's estimate.
+    /// </summary>
+    public int GlobalTokensPer24Hours { get; set; } = 600_000;
+
+    /// <summary>Gets or sets the most provider tokens one owner may use in any rolling 24-hour window.</summary>
+    public int UserTokensPer24Hours { get; set; } = 150_000;
+
     /// <summary>Gets or sets whether the AI Gateway is administratively disabled regardless of remaining budget.</summary>
     public bool Disabled { get; set; }
 
     /// <summary>Validates that configured ceilings are positive and coherent.</summary>
-    public bool IsValid() => GlobalDailyUnitCeiling > 0 && UserDailyUnitCeiling > 0 && UserConcurrencyCeiling > 0 && UserDailyUnitCeiling <= GlobalDailyUnitCeiling && MonthlyCostCeilingUsd > 0;
+    public bool IsValid() => GlobalDailyUnitCeiling > 0 && UserDailyUnitCeiling > 0 && UserConcurrencyCeiling > 0 && UserDailyUnitCeiling <= GlobalDailyUnitCeiling && MonthlyCostCeilingUsd > 0
+        && UserTokensPer24Hours > 0 && UserTokensPer24Hours <= GlobalTokensPer24Hours;
 
     /// <summary>Gets the monthly ceiling in micro-dollars.</summary>
     public long MonthlyCostCeilingMicroUsd => (long)(MonthlyCostCeilingUsd * 1_000_000m);
@@ -64,7 +75,11 @@ public enum AiUsageReservationOutcome
     /// <summary>The owner already has the maximum number of concurrent reservations.</summary>
     ConcurrencyExhausted,
     /// <summary>The deployment's monthly provider spend ceiling would be exceeded.</summary>
-    MonthlyCostExhausted
+    MonthlyCostExhausted,
+    /// <summary>The deployment's token limit for the last 24 hours would be exceeded.</summary>
+    GlobalTokenWindowExhausted,
+    /// <summary>The owner's token limit for the last 24 hours would be exceeded.</summary>
+    UserTokenWindowExhausted
 }
 
 /// <summary>Typed result of a reservation attempt.</summary>

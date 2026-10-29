@@ -38,6 +38,8 @@ public sealed class AiUsageLedgerRecord
     public DateTimeOffset? ClosedAt { get; set; }
     /// <summary>Gets or sets the estimated provider cost (micro-dollars) held against the monthly ceiling while reserved.</summary>
     public long EstimatedCostMicroUsd { get; set; }
+    /// <summary>Gets or sets the estimated provider tokens held against the 24-hour token windows while reserved.</summary>
+    public int EstimatedTokens { get; set; }
     /// <summary>Gets or sets the real provider cost (micro-dollars) once the call closed; null before PLAN-0040.</summary>
     public long? CostMicroUsd { get; set; }
     /// <summary>Gets or sets the summed provider latency in milliseconds.</summary>

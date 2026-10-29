@@ -18,6 +18,10 @@ namespace Cocinaris.Modules.Ai.Abstractions;
 /// Provider cost held against the monthly ceiling while the operation runs (PLAN-0040): two
 /// attempts at the primary model's price with a full-length answer, rounded up.
 /// </param>
+/// <param name="EstimatedTokens">
+/// Provider tokens held against the rolling 24-hour token windows while the operation runs: two
+/// attempts, each with a full prompt and a full-length answer.
+/// </param>
 public sealed record AiOperationDefinition(
     string Operation,
     string WorkflowVersion,
@@ -28,7 +32,8 @@ public sealed record AiOperationDefinition(
     int EstimatedUsageUnits,
     int ContextBudgetCharacters,
     int MaxOutputTokens = 4096,
-    long EstimatedCostMicroUsd = 5_000);
+    long EstimatedCostMicroUsd = 5_000,
+    int EstimatedTokens = 20_000);
 
 /// <summary>
 /// Immutable in-process registry of AI Gateway operations. Registration happens once at startup;
@@ -53,8 +58,8 @@ public sealed class AiOperationRegistry
     /// <summary>Creates the default registry containing the recipe generation operations used by PLAN-0028.</summary>
     public static AiOperationRegistry CreateDefault() => new(
     [
-        new AiOperationDefinition(SuggestCandidates, "recipe-suggest-candidates.v1", "0.3", PreferNonThinking: true, TimeoutSeconds: 30, MaxRepairAttempts: 1, EstimatedUsageUnits: 3, ContextBudgetCharacters: 12_000, MaxOutputTokens: 4096, EstimatedCostMicroUsd: 3_000),
-        new AiOperationDefinition(ExpandSelected, "recipe-expand-selected.v1", "0.3", PreferNonThinking: true, TimeoutSeconds: 45, MaxRepairAttempts: 1, EstimatedUsageUnits: 5, ContextBudgetCharacters: 12_000, MaxOutputTokens: 6144, EstimatedCostMicroUsd: 5_000)
+        new AiOperationDefinition(SuggestCandidates, "recipe-suggest-candidates.v1", "0.3", PreferNonThinking: true, TimeoutSeconds: 30, MaxRepairAttempts: 1, EstimatedUsageUnits: 3, ContextBudgetCharacters: 12_000, MaxOutputTokens: 4096, EstimatedCostMicroUsd: 3_000, EstimatedTokens: 14_000),
+        new AiOperationDefinition(ExpandSelected, "recipe-expand-selected.v1", "0.3", PreferNonThinking: true, TimeoutSeconds: 45, MaxRepairAttempts: 1, EstimatedUsageUnits: 5, ContextBudgetCharacters: 12_000, MaxOutputTokens: 6144, EstimatedCostMicroUsd: 5_000, EstimatedTokens: 18_000)
     ]);
 
     /// <summary>Attempts to resolve a registered operation definition.</summary>
