@@ -134,6 +134,21 @@ Define retention separately for:
 
 `Indefinite` is not an acceptable undocumented default.
 
+## Ingredient identity
+
+PLAN-0055 ([ADR-0010](../architecture/decisions/0010-ingredient-identity-catalog-embeddings-pgvector.md)) adds global tables in the `ingredients` schema. They are shared by all users and not part of any one user's data:
+
+| Table | Holds | Personal data | Retention |
+| --- | --- | --- | --- |
+| `catalog_items`, `catalog_vectors` | Curated project catalog and its vectors | None | While the catalog exists |
+| `aliases` | Normalized ingredient name → catalog ingredient | None: no owner; a name is a food word, not linked to who typed it | Indefinite as reference data; a wrong alias is deleted by the owner |
+| `text_embeddings` | Vector by SHA-256 of space and exact text | None: no owner and no text | Indefinite as a cache; may be truncated at any time |
+| `resolution_queue` | Normalized and exact name, owner while pending, best candidate | Owner id only while the name is pending; cleared when decided | Pending names: until decided (minutes). Unresolved names: exact text without owner, kept so a later catalog can re-check them |
+
+Only single ingredient names are sent to the embedding provider (OpenRouter, `data_collection: "deny"`, provider order pinned), never notes, recipes, allergies, or profiles.
+
+Account deletion does not need to remove alias or cache rows, because they hold no owner. A pending queue row with the deleted owner is cleared when the job decides it. Deletion should also clear it directly once the deletion workflow is implemented.
+
 ## AI processing
 
 - send only context required for the requested operation;

@@ -1,3 +1,4 @@
+using Cocinaris.Modules.Ingredients;
 using Cocinaris.Modules.Inventory.Application;
 using Cocinaris.Modules.Recipes.Application;
 
@@ -43,8 +44,8 @@ public sealed record ShoppingItemView(string ItemKey, string DisplayName, string
 /// <remarks>
 /// <list type="bullet">
 /// <item>Quantities scale like the cooking proposal (<see cref="RecipeIngredientReader.Scale"/>).</item>
-/// <item>Pantry lots are matched by normalized product name (case, accents, and spacing ignored) and
-/// unit. An ingredient taken from a specific lot is matched by that lot's product name. Each new
+/// <item>Pantry lots are matched by catalog ingredient or, failing that, normalized product name
+/// (case, accents, and spacing ignored), and by unit (PLAN-0055). An ingredient taken from a specific lot is matched by that lot's product name. Each new
 /// lot has its own product, so product identifiers cannot be compared across lots.</item>
 /// <item>The pantry is allocated meal by meal in plan order, so an early meal uses stock before a
 /// later one, and the later one shows what it still needs.</item>
@@ -59,15 +60,17 @@ public static class ShoppingProjector
     /// <param name="meals">Meals still to cook, already in plan order.</param>
     /// <param name="lots">The owner's active lots.</param>
     /// <param name="checkedKeys">Item keys the owner checked off.</param>
-    public static IReadOnlyList<ShoppingItemView> Build(IReadOnlyList<ShoppingMeal> meals, IReadOnlyList<InventoryLotReadModel> lots, IReadOnlySet<string> checkedKeys)
+    /// <param name="matchKeys">Ingredient matching keys (PLAN-0055); names only when null.</param>
+    public static IReadOnlyList<ShoppingItemView> Build(IReadOnlyList<ShoppingMeal> meals, IReadOnlyList<InventoryLotReadModel> lots, IReadOnlySet<string> checkedKeys, IngredientMatchKeys? matchKeys = null)
     {
+        matchKeys ??= IngredientMatchKeys.NamesOnly;
         var measured = lots.Where(lot => lot.MeasuredValue is > 0 && lot.MeasuredUnit is not null).ToList();
         var lotById = measured.ToDictionary(lot => lot.LotId);
         var stock = new Dictionary<string, decimal>(StringComparer.Ordinal);
         var estimated = new HashSet<string>(StringComparer.Ordinal);
         foreach (var lot in measured)
         {
-            var key = Key(lot.ProductName, lot.MeasuredUnit!);
+            var key = Key(lot.ProductName, lot.MeasuredUnit!, matchKeys);
             stock[key] = stock.GetValueOrDefault(key) + lot.MeasuredValue!.Value;
             if (lot.QuantityIsEstimate)
             {
@@ -92,7 +95,7 @@ public static class ShoppingProjector
                 var name = ingredient.LotId is { } lotId && lotById.TryGetValue(lotId, out var linked) && linked.MeasuredUnit == unit
                     ? linked.ProductName
                     : ingredient.Name;
-                var key = Key(name, unit);
+                var key = Key(name, unit, matchKeys);
                 if (!items.TryGetValue(key, out var item))
                 {
                     items[key] = item = new Accumulator(key, name.Trim(), unit);
@@ -125,12 +128,13 @@ public static class ShoppingProjector
     /// <summary>Normalizes a product name for matching (see <see cref="RecipeIngredientReader.NormalizeName"/>).</summary>
     public static string NormalizeName(string name) => RecipeIngredientReader.NormalizeName(name);
 
-    /// <summary>Item key: normalized name (at most 120 characters) and canonical unit.</summary>
-    public static string Key(string name, string unit)
-    {
-        var normalized = NormalizeName(name);
-        return (normalized.Length > 120 ? normalized[..120] : normalized) + "|" + unit;
-    }
+    /// <summary>
+    /// Item key: the catalog ingredient (PLAN-0055) or the normalized name (at most 120
+    /// characters), and the canonical unit. A name that resolves after a line was checked off gets
+    /// a new key, so that one check mark is lost once; nothing else changes.
+    /// </summary>
+    public static string Key(string name, string unit, IngredientMatchKeys? matchKeys = null) =>
+        (matchKeys ?? IngredientMatchKeys.NamesOnly).Key(name) + "|" + unit;
 
     private sealed class Accumulator(string key, string displayName, string unit)
     {

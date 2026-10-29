@@ -149,6 +149,10 @@ fi
 if grep -q '^KITCHENFLOW_' "$ENV_FILE"; then
   problems+=("$ENV_FILE still uses KITCHENFLOW_* keys; rename them to COCINARIS_* (runbook: rename migration)")
 fi
+# PLAN-0055: migrations need pgvector, which is a separate server package (contrib provides pg_trgm).
+if ! runuser -u postgres -- psql -d "$DATABASE" -tAc "SELECT 1 FROM pg_available_extensions WHERE name = 'vector'" | grep -q 1; then
+  problems+=("PostgreSQL has no pgvector extension; install the postgresql-<major>-pgvector package (runbook: pgvector)")
+fi
 
 if [[ $DRY_RUN -eq 1 ]]; then
   for problem in "${problems[@]}"; do log "a real deploy would stop here: $problem"; done
@@ -192,6 +196,11 @@ SQL
 log "stopping $SERVICE and taking a backup"
 systemctl stop "$SERVICE"
 systemctl start "$BACKUP_SERVICE"
+# Extensions are created by the superuser: the owner role may not have CREATE on the database,
+# and the migration's own CREATE EXTENSION IF NOT EXISTS is then a no-op. Idempotent.
+log "ensuring database extensions vector and pg_trgm"
+runuser -u postgres -- psql -d "$DATABASE" -v ON_ERROR_STOP=1 -q \
+  -c "CREATE EXTENSION IF NOT EXISTS vector" -c "CREATE EXTENSION IF NOT EXISTS pg_trgm"
 log "applying migrations as $OWNER_ROLE"
 # EF writes a UTF-8 BOM that psql would treat as part of the first statement.
 { echo "SET ROLE $OWNER_ROLE;"; sed '1s/^\xEF\xBB\xBF//' "$RELEASE/migrations.sql"; } \
