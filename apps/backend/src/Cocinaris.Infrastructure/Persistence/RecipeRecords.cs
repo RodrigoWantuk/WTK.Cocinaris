@@ -129,4 +129,6 @@ public sealed class RecipeExecutionRecord
     public string? Notes { get; set; }
     /// <summary>Gets or sets the optimistic-concurrency token.</summary>
     public Guid Version { get; set; }
+    /// <summary>Gets or sets the menu entry the session was started from; cleared if the entry is removed.</summary>
+    public Guid? MenuEntryId { get; set; }
 }

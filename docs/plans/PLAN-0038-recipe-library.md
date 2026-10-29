@@ -1,13 +1,13 @@
 # PLAN-0038: Recipe Library — Manual Recipes, Revisions, Derived Recipes, Favorites, and History
 
-- **Status:** In Progress
+- **Status:** Completed
 - **Type:** Implementation
 - **Priority:** High
 - **Owner:** Claude Code (claimed 2026-10-29)
 - **Created:** 2026-10-29
 - **Last updated:** 2026-10-29
-- **Branch:** `agent/plan-0038-recipe-library`
-- **Pull request:** Draft, opened after this commit
+- **Branch:** `agent/plan-0038-recipe-library` (merged and deleted)
+- **Pull request:** Merged via [PR #51](https://github.com/RodrigoWantuk/WTK.Cocinaris/pull/51) at `d85d301`
 - **Roadmap entry:** [`PLAN-0031-amendment-2026-10-28-coverage-review.md`](PLAN-0031-amendment-2026-10-28-coverage-review.md) (PLAN-0038: what PLAN-0028 did not deliver)
 - **Related documents:** `docs/domain/recipes-and-cooking.md` (recipe identity, revisions and derived recipes, favorites, execution-local state, history), [PLAN-0042](PLAN-0042-guided-cooking-execution-and-reconciliation.md) Phase 2
 
@@ -115,7 +115,7 @@ It also delivers the finalization half of PLAN-0042 Phase 2: after cooking, the 
 - [x] History shows revisions (with "after cooking" when they came from a session) and finished cooking sessions.
 - [x] Another user gets 404 for every read and mutation.
 - [x] The browser journey passes through the proxy replica (`scripts/e2e/library-journey.mjs`, 10/10).
-- [ ] Deployed to the owner host.
+- [x] Deployed to the owner host (`main` at `d85d301`, release `20261029T112958Z-d85d301ed2f6`).
 
 ## Execution state
 
@@ -147,3 +147,7 @@ It also delivers the finalization half of PLAN-0042 Phase 2: after cooking, the 
 - Claimed and delivered the plan in one run, after PR #50 was merged and `main` was deployed.
 - Kept `IRecipeStore` for cook-now and cooking. Added `IRecipeLibraryStore` for library reads and edits, so the AI path did not change. Removed the unused cook-now list method and its projection.
 - Found during the browser journey that library list errors showed the AI-unavailable message. Added `recipeLibraryErrorKey` for library reads and edits.
+
+### 2026-10-29T12:40:00Z — Claude Code
+
+- The owner merged PR #51 (`d85d301`), and `main` was deployed. Acceptance criteria are met, and the plan is completed. Remaining library ideas (collections, AI re-generation as a revision) need their own plans if wanted.

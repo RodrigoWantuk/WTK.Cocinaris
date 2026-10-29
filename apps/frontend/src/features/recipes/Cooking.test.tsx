@@ -19,6 +19,9 @@ import { CookingPage } from "./CookingPage";
 import { parseNormalizedRecipeJson } from "./parseNormalizedRecipe";
 import { RecipeProvider } from "./RecipeProvider";
 import { executionStubs } from "./testExecutionStubs";
+import { createUnavailablePlanningRepository } from "@/adapters/live/livePlanningRepository";
+import { PlanningProvider } from "@/features/planning/PlanningProvider";
+import { localIsoDate } from "@/features/planning/planningDates";
 
 const RECIPE_JSON = JSON.stringify({
   recipe: {
@@ -274,15 +277,40 @@ describe("today page", () => {
       listRecipes: async () => {
         throw new RecipeApiError("unavailable", "down", 503);
       },
+      startExecution: vi.fn(async () => execution()),
     });
+    const getToday = vi.fn(async () => [
+      {
+        menuId: "menu-1",
+        menuName: "Semana",
+        entry: {
+          entryId: "entry-1",
+          recipeId: "recipe-2",
+          recipeName: "Feijoada",
+          revisionNumber: 1,
+          revisionPinned: false,
+          plannedDate: "2026-11-02",
+          mealType: "dinner",
+          servings: 4,
+          status: "planned",
+          executionId: null,
+        },
+      },
+    ]);
+    const planning = {
+      ...createUnavailablePlanningRepository(),
+      getToday,
+    };
     render(
       <ProductionI18nProvider initialLocale="en">
         <SessionProvider adapter={createSessionAdapter()}>
           <InventoryProvider repository={inventory}>
             <RecipeProvider repository={recipes}>
-              <MemoryRouter>
-                <TodayPage />
-              </MemoryRouter>
+              <PlanningProvider repository={planning}>
+                <MemoryRouter>
+                  <TodayPage />
+                </MemoryRouter>
+              </PlanningProvider>
             </RecipeProvider>
           </InventoryProvider>
         </SessionProvider>
@@ -303,5 +331,24 @@ describe("today page", () => {
       "href",
       "/app/receitas/gerar",
     );
+
+    // The accepted menu's meal comes first, for the browser's local day, and cooking it links the session.
+    const menuEntry = await screen.findByTestId("today-menu-entry");
+    expect(menuEntry).toHaveTextContent("Feijoada · Dinner");
+    expect(getToday).toHaveBeenCalledWith(localIsoDate(), expect.anything());
+    expect(
+      screen
+        .getByTestId("today-menu")
+        .compareDocumentPosition(screen.getByTestId("today-cooking")) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    await userEvent
+      .setup()
+      .click(within(menuEntry).getByTestId("today-menu-cook"));
+    expect(recipes.startExecution).toHaveBeenCalledWith("recipe-2", {
+      csrfToken: expect.any(String),
+      servings: 4,
+      menuEntryId: "entry-1",
+    });
   });
 });

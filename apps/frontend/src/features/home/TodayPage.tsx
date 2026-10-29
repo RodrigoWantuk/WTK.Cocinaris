@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import type { InventoryLotView } from "@/adapters/live/inventoryTypes";
 import { useProductionI18n } from "@/app/i18n/ProductionI18nProvider";
 import { useSession } from "@/app/session/SessionProvider";
@@ -11,6 +11,10 @@ import type {
 import { AttentionBadge } from "@/features/inventory/AttentionBadge";
 import { useInventoryRepository } from "@/features/inventory/InventoryProvider";
 import { useRecipeRepository } from "@/features/recipes/RecipeProvider";
+import type { TodayMenuEntry } from "@/contracts/planning";
+import { usePlanningRepository } from "@/features/planning/PlanningProvider";
+import { localIsoDate } from "@/features/planning/planningDates";
+import { mealTypeLabel } from "@/features/recipes/recipeLabels";
 import { buildHomeGreeting, readBrowserTimeZone } from "./dayPart";
 
 type Source<T> =
@@ -34,16 +38,28 @@ function useSource<T>(load: (signal: AbortSignal) => Promise<T[]>): Source<T> {
 }
 
 /**
- * Production "Hoje" (PLAN-0021 deterministic tiers, PLAN-0042 resume). Every section reads an
- * authoritative source independently: in-progress cooking, the inventory attention list, and saved
- * recipes. None of them mutates state, and a failed source hides only its own section's content.
- * The menu tier waits for PLAN-0029; nothing here is a fixture.
+ * Production "Hoje" (PLAN-0021 deterministic tiers, PLAN-0042 resume, PLAN-0029 menu). Every
+ * section reads an authoritative source independently: the accepted menu's meals for the owner's
+ * current day (first, as the home suggestion order requires), in-progress cooking, the inventory
+ * attention list, and saved recipes. Reading mutates nothing, and a failed source hides only its
+ * own section's content. Nothing here is a fixture.
  */
 export function TodayPage() {
   const { t } = useProductionI18n();
   const { session } = useSession();
   const recipes = useRecipeRepository();
   const inventory = useInventoryRepository();
+  const planning = usePlanningRepository();
+  const navigate = useNavigate();
+  const [startingEntry, setStartingEntry] = useState<string | null>(null);
+  const [menuError, setMenuError] = useState(false);
+
+  const menu = useSource<TodayMenuEntry>(
+    useMemo(
+      () => (signal: AbortSignal) => planning.getToday(localIsoDate(), signal),
+      [planning],
+    ),
+  );
 
   const cooking = useSource<RecipeExecutionSummary>(
     useMemo(
@@ -63,6 +79,28 @@ export function TodayPage() {
       [recipes],
     ),
   );
+
+  // Cooking a menu meal links the session to it, so the menu shows it as cooked afterwards.
+  const cookMenuEntry = async (item: TodayMenuEntry) => {
+    if (item.entry.status === "cooking" && item.entry.executionId) {
+      navigate(`/app/receitas/cozinhar/${item.entry.executionId}`);
+      return;
+    }
+    if (!session.csrfToken) return;
+    setStartingEntry(item.entry.entryId);
+    setMenuError(false);
+    try {
+      const execution = await recipes.startExecution(item.entry.recipeId, {
+        csrfToken: session.csrfToken,
+        servings: item.entry.servings,
+        menuEntryId: item.entry.entryId,
+      });
+      navigate(`/app/receitas/cozinhar/${execution.executionId}`);
+    } catch {
+      setMenuError(true);
+      setStartingEntry(null);
+    }
+  };
 
   const greeting = buildHomeGreeting({
     displayName:
@@ -85,6 +123,64 @@ export function TodayPage() {
         </p>
         <h1 className="font-display text-3xl">{t("home.primaryQuestion")}</h1>
       </header>
+
+      {menu.status === "ready" && menu.items.length > 0 ? (
+        <section
+          aria-labelledby="today-menu"
+          data-testid="today-menu"
+          className="rounded-lg border border-border p-4"
+        >
+          <h2 id="today-menu" className="font-display text-xl">
+            {t("today.menu.title")}
+          </h2>
+          <ul className="mt-2 space-y-2">
+            {menu.items.map((item) => (
+              <li
+                key={item.entry.entryId}
+                data-testid="today-menu-entry"
+                className="flex flex-wrap items-center justify-between gap-2"
+              >
+                <span>
+                  <span className="font-medium">{item.entry.recipeName}</span>
+                  <span className="text-sm text-muted-foreground">
+                    {" "}
+                    ·{" "}
+                    {item.entry.plannedDate === null
+                      ? t("today.menu.flexible")
+                      : item.entry.mealType
+                        ? mealTypeLabel(t, item.entry.mealType)
+                        : t("today.menu.today")}
+                  </span>
+                </span>
+                <span className="flex gap-2">
+                  <Button
+                    size="sm"
+                    data-testid="today-menu-cook"
+                    disabled={startingEntry !== null || !session.csrfToken}
+                    onClick={() => void cookMenuEntry(item)}
+                  >
+                    {t(
+                      item.entry.status === "cooking"
+                        ? "today.cooking.resume"
+                        : "recipes.detail.cook",
+                    )}
+                  </Button>
+                  <Button asChild size="sm" variant="ghost">
+                    <Link to={`/app/cardapio/${item.menuId}`}>
+                      {t("today.menu.open")}
+                    </Link>
+                  </Button>
+                </span>
+              </li>
+            ))}
+          </ul>
+          {menuError ? (
+            <p role="alert" className="mt-2 text-sm text-destructive">
+              {t("planning.error.cook")}
+            </p>
+          ) : null}
+        </section>
+      ) : null}
 
       {cooking.status === "ready" && cooking.items.length > 0 ? (
         <section

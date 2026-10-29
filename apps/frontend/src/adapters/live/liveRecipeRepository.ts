@@ -249,7 +249,8 @@ function mapExecutionSummary(dto: ExecutionSummaryDto): RecipeExecutionSummary {
   };
 }
 
-function assertData<T>(
+/** Asserts a successful payload; shared with the planning adapter. */
+export function assertData<T>(
   data: T | undefined,
   response: Response,
 ): asserts data is T {
@@ -262,7 +263,8 @@ function assertData<T>(
   }
 }
 
-async function throwForFailure(
+/** Maps Problem Details to {@link RecipeApiError}; shared with the planning adapter. */
+export async function throwForFailure(
   response: Response,
   fallback: string,
   // openapi-fetch has already consumed the error body; pass its parsed value.
@@ -332,7 +334,8 @@ async function throwForFailure(
   });
 }
 
-function wrapAbort(err: unknown): never {
+/** Rethrows boundary errors and maps aborts and network failures; shared with the planning adapter. */
+export function wrapAbort(err: unknown): never {
   if (err instanceof RecipeApiError) throw err;
   if (err instanceof DOMException && err.name === "AbortError") {
     throw new RecipeApiError("cancelled", "Request cancelled.", 0);
@@ -675,7 +678,10 @@ export function createLiveRecipeRepository(options?: {
       }
     },
 
-    async startExecution(recipeId, { csrfToken, servings, signal }) {
+    async startExecution(
+      recipeId,
+      { csrfToken, servings, menuEntryId, signal },
+    ) {
       try {
         const { data, error, response } = await client.POST(
           "/api/v1/recipes/{recipeId}/executions",
@@ -684,7 +690,10 @@ export function createLiveRecipeRepository(options?: {
               path: { recipeId },
               header: { "X-CSRF-TOKEN": csrfToken },
             },
-            body: { servings: servings ?? null },
+            body: {
+              servings: servings ?? null,
+              menuEntryId: menuEntryId ?? null,
+            },
             signal,
             credentials: "include",
           },

@@ -4,6 +4,7 @@ import type { ContextualHomeAdapter } from "@/contracts/contextualHome";
 import type { InventoryRepository } from "@/adapters/live/inventoryTypes";
 import type { ProfileRepository } from "@/contracts/profile";
 import type { RecipeRepository } from "@/contracts/recipes";
+import type { PlanningRepository } from "@/contracts/planning";
 import type { AdultDeclarationPolicy } from "@/features/profile/adultDeclarationPolicy";
 import type { SessionAdapter } from "@/app/session/types";
 import type { FrontendMode } from "./mode";
@@ -23,6 +24,8 @@ export interface FrontendRuntime {
    * Prototype must use an unavailable stub — never mock recipe fixtures on production routes.
    */
   recipeRepository: RecipeRepository;
+  /** Live menu planning and shopping repository (PLAN-0029); prototype uses an unavailable stub. */
+  planningRepository: PlanningRepository;
   preparationRouteRepository: PreparationRouteRepository;
   /**
    * Contextual home sources. Production uses unavailable until PLAN-0021.

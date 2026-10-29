@@ -11,6 +11,7 @@
     <ProjectReference Include="../Cocinaris.Modules.Ai/Cocinaris.Modules.Ai.csproj" />
     <ProjectReference Include="../Cocinaris.Modules.Identity/Cocinaris.Modules.Identity.csproj" />
     <ProjectReference Include="../Cocinaris.Modules.Inventory/Cocinaris.Modules.Inventory.csproj" />
+    <ProjectReference Include="../Cocinaris.Modules.Planning/Cocinaris.Modules.Planning.csproj" />
     <ProjectReference Include="../Cocinaris.Modules.Profiles/Cocinaris.Modules.Profiles.csproj" />
     <ProjectReference Include="../Cocinaris.Modules.Recipes/Cocinaris.Modules.Recipes.csproj" />
   </ItemGroup>

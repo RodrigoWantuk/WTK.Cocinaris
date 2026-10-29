@@ -2,6 +2,7 @@ import { UnavailablePreparationRouteRepository } from "@/adapters/live/unavailab
 import { createUnavailableContextualHomeAdapter } from "@/adapters/live/unavailableContextualHomeAdapter";
 import { createLiveInventoryRepository } from "@/adapters/live/liveInventoryRepository";
 import { createLiveRecipeRepository } from "@/adapters/live/liveRecipeRepository";
+import { createLivePlanningRepository } from "@/adapters/live/livePlanningRepository";
 import { createLiveProfileRepository } from "@/adapters/live/profile/liveProfileRepository";
 import { createUnavailableAdultDeclarationPolicy } from "@/features/profile/adultDeclarationPolicy";
 import { createBffSessionAdapter } from "@/app/session/bffSessionAdapter";
@@ -18,6 +19,7 @@ export function createProductionRuntime(): FrontendRuntime {
     sessionAdapter: createBffSessionAdapter(),
     inventoryRepository: createLiveInventoryRepository(),
     recipeRepository: createLiveRecipeRepository(),
+    planningRepository: createLivePlanningRepository(),
     preparationRouteRepository: new UnavailablePreparationRouteRepository(),
     contextualHomeAdapter: createUnavailableContextualHomeAdapter(),
     profileRepository: createLiveProfileRepository(),

@@ -353,6 +353,125 @@ namespace Cocinaris.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Cocinaris.Infrastructure.Persistence.MenuEntryRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("CreationKey")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("MealType")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<Guid>("MenuPlanId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("OwnerUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int?>("PinnedRevisionNumber")
+                        .HasColumnType("integer");
+
+                    b.Property<DateOnly?>("PlannedDate")
+                        .HasColumnType("date");
+
+                    b.Property<Guid>("RecipeId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Servings")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MenuPlanId", "OwnerUserId");
+
+                    b.HasIndex("OwnerUserId", "CreationKey")
+                        .IsUnique();
+
+                    b.HasIndex("RecipeId", "OwnerUserId");
+
+                    b.HasIndex("OwnerUserId", "MenuPlanId", "PlannedDate");
+
+                    b.ToTable("menu_entries", "planning", t =>
+                        {
+                            t.HasCheckConstraint("ck_menu_entries_meal_type", "\"MealType\" IS NULL OR \"MealType\" IN ('breakfast', 'lunch', 'dinner', 'snack')");
+
+                            t.HasCheckConstraint("ck_menu_entries_pinned_revision", "\"PinnedRevisionNumber\" IS NULL OR \"PinnedRevisionNumber\" >= 1");
+
+                            t.HasCheckConstraint("ck_menu_entries_servings", "\"Servings\" BETWEEN 1 AND 24");
+
+                            t.HasCheckConstraint("ck_menu_entries_status", "\"Status\" IN ('Planned', 'Skipped')");
+                        });
+                });
+
+            modelBuilder.Entity("Cocinaris.Infrastructure.Persistence.MenuPlanRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("AcceptedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("CreationKey")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateOnly>("EndDate")
+                        .HasColumnType("date");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<Guid>("OwnerUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateOnly>("StartDate")
+                        .HasColumnType("date");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OwnerUserId", "CreationKey")
+                        .IsUnique();
+
+                    b.HasIndex("OwnerUserId", "Status", "StartDate");
+
+                    b.ToTable("menu_plans", "planning", t =>
+                        {
+                            t.HasCheckConstraint("ck_menu_plans_accepted", "\"Status\" <> 'Accepted' OR \"AcceptedAt\" IS NOT NULL");
+
+                            t.HasCheckConstraint("ck_menu_plans_period", "\"EndDate\" >= \"StartDate\" AND \"EndDate\" - \"StartDate\" < 31");
+
+                            t.HasCheckConstraint("ck_menu_plans_status", "\"Status\" IN ('Draft', 'Accepted', 'Archived')");
+                        });
+                });
+
             modelBuilder.Entity("Cocinaris.Infrastructure.Persistence.PreferenceEntryRecord", b =>
                 {
                     b.Property<Guid>("Id")
@@ -683,6 +802,9 @@ namespace Cocinaris.Infrastructure.Persistence.Migrations
                     b.Property<Guid?>("InventoryBatchId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("MenuEntryId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("Notes")
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)");
@@ -718,6 +840,8 @@ namespace Cocinaris.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("MenuEntryId");
 
                     b.HasIndex("OwnerUserId", "RecipeId")
                         .IsUnique()
@@ -964,6 +1088,30 @@ namespace Cocinaris.Infrastructure.Persistence.Migrations
 
                             t.HasCheckConstraint("ck_recipe_revisions_source_candidate_id", "\"SourceCandidateId\" IS NULL OR length(btrim(\"SourceCandidateId\")) > 0");
                         });
+                });
+
+            modelBuilder.Entity("Cocinaris.Infrastructure.Persistence.ShoppingCheckRecord", b =>
+                {
+                    b.Property<Guid>("MenuPlanId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ItemKey")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTimeOffset>("CheckedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("OwnerUserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("MenuPlanId", "ItemKey");
+
+                    b.HasIndex("OwnerUserId");
+
+                    b.HasIndex("MenuPlanId", "OwnerUserId");
+
+                    b.ToTable("shopping_checks", "planning");
                 });
 
             modelBuilder.Entity("Cocinaris.Infrastructure.Persistence.TransactionRecord", b =>
@@ -1363,6 +1511,38 @@ namespace Cocinaris.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Cocinaris.Infrastructure.Persistence.MenuEntryRecord", b =>
+                {
+                    b.HasOne("Cocinaris.Modules.Identity.InternalUser", null)
+                        .WithMany()
+                        .HasForeignKey("OwnerUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Cocinaris.Infrastructure.Persistence.MenuPlanRecord", null)
+                        .WithMany()
+                        .HasForeignKey("MenuPlanId", "OwnerUserId")
+                        .HasPrincipalKey("Id", "OwnerUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Cocinaris.Infrastructure.Persistence.RecipeRecord", null)
+                        .WithMany()
+                        .HasForeignKey("RecipeId", "OwnerUserId")
+                        .HasPrincipalKey("Id", "OwnerUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Cocinaris.Infrastructure.Persistence.MenuPlanRecord", b =>
+                {
+                    b.HasOne("Cocinaris.Modules.Identity.InternalUser", null)
+                        .WithMany()
+                        .HasForeignKey("OwnerUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Cocinaris.Infrastructure.Persistence.PreferenceEntryRecord", b =>
                 {
                     b.HasOne("Cocinaris.Infrastructure.Persistence.UserProfileRecord", null)
@@ -1468,6 +1648,11 @@ namespace Cocinaris.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("Cocinaris.Infrastructure.Persistence.RecipeExecutionRecord", b =>
                 {
+                    b.HasOne("Cocinaris.Infrastructure.Persistence.MenuEntryRecord", null)
+                        .WithMany()
+                        .HasForeignKey("MenuEntryId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("Cocinaris.Modules.Identity.InternalUser", null)
                         .WithMany()
                         .HasForeignKey("OwnerUserId")
@@ -1530,6 +1715,22 @@ namespace Cocinaris.Infrastructure.Persistence.Migrations
                         .HasForeignKey("RecipeId", "OwnerUserId")
                         .HasPrincipalKey("Id", "OwnerUserId")
                         .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Cocinaris.Infrastructure.Persistence.ShoppingCheckRecord", b =>
+                {
+                    b.HasOne("Cocinaris.Modules.Identity.InternalUser", null)
+                        .WithMany()
+                        .HasForeignKey("OwnerUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Cocinaris.Infrastructure.Persistence.MenuPlanRecord", null)
+                        .WithMany()
+                        .HasForeignKey("MenuPlanId", "OwnerUserId")
+                        .HasPrincipalKey("Id", "OwnerUserId")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 

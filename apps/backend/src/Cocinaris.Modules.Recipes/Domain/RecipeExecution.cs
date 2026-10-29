@@ -68,9 +68,15 @@ public sealed class RecipeExecution
     /// <summary>Gets the optimistic-concurrency token, replaced on every state change.</summary>
     public Guid Version { get; private set; }
 
+    /// <summary>
+    /// Gets the menu entry this cooking session was started from (PLAN-0029), if any. The planning
+    /// module reads it to show the entry as cooking or cooked; it never affects reconciliation.
+    /// </summary>
+    public Guid? MenuEntryId { get; private init; }
+
     /// <summary>Starts cooking a recipe revision.</summary>
     /// <exception cref="ArgumentException">Thrown when identity or servings are invalid.</exception>
-    public static RecipeExecution Start(Guid ownerUserId, Guid recipeId, int revisionNumber, int servings, DateTimeOffset now)
+    public static RecipeExecution Start(Guid ownerUserId, Guid recipeId, int revisionNumber, int servings, DateTimeOffset now, Guid? menuEntryId = null)
     {
         if (ownerUserId == Guid.Empty || recipeId == Guid.Empty || revisionNumber < 1 || servings is < 1 or > 24)
         {
@@ -87,12 +93,13 @@ public sealed class RecipeExecution
             Status = RecipeExecutionStatus.InProgress,
             StartedAt = now,
             UpdatedAt = now,
-            Version = Guid.NewGuid()
+            Version = Guid.NewGuid(),
+            MenuEntryId = menuEntryId
         };
     }
 
     /// <summary>Restores a persisted execution without exposing persistence types to the domain.</summary>
-    public static RecipeExecution Restore(Guid id, Guid ownerUserId, Guid recipeId, int revisionNumber, int servings, RecipeExecutionStatus status, DateTimeOffset startedAt, DateTimeOffset updatedAt, DateTimeOffset? finishedAt, Guid? inventoryBatchId, Guid? completionKey, int? rating, string? notes, Guid version) => new()
+    public static RecipeExecution Restore(Guid id, Guid ownerUserId, Guid recipeId, int revisionNumber, int servings, RecipeExecutionStatus status, DateTimeOffset startedAt, DateTimeOffset updatedAt, DateTimeOffset? finishedAt, Guid? inventoryBatchId, Guid? completionKey, int? rating, string? notes, Guid version, Guid? menuEntryId = null) => new()
     {
         Id = id,
         OwnerUserId = ownerUserId,
@@ -107,7 +114,8 @@ public sealed class RecipeExecution
         CompletionKey = completionKey,
         Rating = rating,
         Notes = notes,
-        Version = version
+        Version = version,
+        MenuEntryId = menuEntryId
     };
 
     /// <summary>Records completion. Only an in-progress execution can complete.</summary>

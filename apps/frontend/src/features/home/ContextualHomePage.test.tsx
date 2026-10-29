@@ -1,3 +1,4 @@
+import { createUnavailablePlanningRepository } from "@/adapters/live/livePlanningRepository";
 import { render, screen, waitFor, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
@@ -52,6 +53,7 @@ function renderHome(options?: {
     recipeRepository: {
       listRecipes: async () => [],
     } as unknown as FrontendRuntime["recipeRepository"],
+    planningRepository: createUnavailablePlanningRepository(),
     preparationRouteRepository: new UnavailablePreparationRouteRepository(),
     contextualHomeAdapter: homeAdapter,
     profileRepository: {} as unknown as FrontendRuntime["profileRepository"],

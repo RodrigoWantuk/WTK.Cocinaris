@@ -10,6 +10,7 @@ import { profileCatalogs } from "./profileUiCatalog";
 import { recipesCatalogs } from "./recipesCatalog";
 import { cookingCatalogs } from "./cookingCatalog";
 import { libraryCatalogs } from "./libraryCatalog";
+import { planningCatalogs } from "./planningCatalog";
 
 export const PRODUCTION_LOCALES = ["pt-BR", "en", "es"] as const;
 export type ProductionLocale = (typeof PRODUCTION_LOCALES)[number];
@@ -158,6 +159,7 @@ const catalogs: Record<ProductionLocale, Catalog> = {
     ...recipesCatalogs["pt-BR"],
     ...cookingCatalogs["pt-BR"],
     ...libraryCatalogs["pt-BR"],
+    ...planningCatalogs["pt-BR"],
   },
   en: {
     ...sharedShell.en,
@@ -168,6 +170,7 @@ const catalogs: Record<ProductionLocale, Catalog> = {
     ...recipesCatalogs.en,
     ...cookingCatalogs.en,
     ...libraryCatalogs.en,
+    ...planningCatalogs.en,
   },
   es: {
     ...sharedShell.es,
@@ -178,6 +181,7 @@ const catalogs: Record<ProductionLocale, Catalog> = {
     ...recipesCatalogs.es,
     ...cookingCatalogs.es,
     ...libraryCatalogs.es,
+    ...planningCatalogs.es,
   },
 };
 
