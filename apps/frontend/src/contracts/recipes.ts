@@ -143,10 +143,19 @@ export interface ExecutionProposalLine {
   requiredQuantity: number;
   /** Lot canonical unit: `Gram`, `Milliliter`, or `Unit`. */
   unit: string;
-  /** `ready`, `insufficient`, `lot_unavailable`, or `not_tracked`. */
+  /** `ready`, `insufficient`, `protected`, `lot_unavailable`, or `not_tracked`. */
   status: string;
   lotId: string | null;
   proposedQuantity: number | null;
+  /** Quantity of the lot the owner protected; never proposed (PLAN-0029 Phase 3). */
+  protectedQuantity: number;
+  /** Other menu meals counting on the same lot. */
+  reservedElsewhere: Array<{
+    menuEntryId: string;
+    recipeName: string;
+    plannedDate: string | null;
+    quantity: number;
+  }>;
 }
 
 /** An active measured pantry lot the cook can pick for any line. */
@@ -158,6 +167,12 @@ export interface ExecutionPantryLot {
   storageLocation: string;
   /** Lot version read with the proposal; completion fails if the lot changed. */
   version: string;
+  /** Quantity the owner protected. */
+  protectedQuantity: number;
+  /** Quantity reserved for other menu meals. */
+  reservedQuantity: number;
+  /** The other menu meals counting on the lot. */
+  reservedFor: ExecutionProposalLine["reservedElsewhere"];
 }
 
 /** One recipe execution; `proposal` is present while in progress. */

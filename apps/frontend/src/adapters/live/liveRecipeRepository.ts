@@ -225,6 +225,14 @@ function mapExecution(dto: ExecutionDto): RecipeExecution {
               line.proposedQuantity === undefined
                 ? null
                 : asFiniteNumber(line.proposedQuantity, "proposedQuantity"),
+            protectedQuantity: Number(line.protectedQuantity ?? 0),
+            reservedElsewhere: (line.reservedElsewhere ?? []).map((item) => ({
+              menuEntryId: String(item.menuEntryId),
+              recipeName: String(item.recipeName),
+              plannedDate:
+                typeof item.plannedDate === "string" ? item.plannedDate : null,
+              quantity: Number(item.quantity),
+            })),
           })),
           pantryLots: (proposal.pantryLots ?? []).map((lot) => ({
             lotId: assertString(lot.lotId, "lotId"),
@@ -233,6 +241,15 @@ function mapExecution(dto: ExecutionDto): RecipeExecution {
             unit: String(lot.unit),
             storageLocation: String(lot.storageLocation),
             version: assertString(lot.version, "version"),
+            protectedQuantity: Number(lot.protectedQuantity ?? 0),
+            reservedQuantity: Number(lot.reservedQuantity ?? 0),
+            reservedFor: (lot.reservedFor ?? []).map((item) => ({
+              menuEntryId: String(item.menuEntryId),
+              recipeName: String(item.recipeName),
+              plannedDate:
+                typeof item.plannedDate === "string" ? item.plannedDate : null,
+              quantity: Number(item.quantity),
+            })),
           })),
         }
       : null,

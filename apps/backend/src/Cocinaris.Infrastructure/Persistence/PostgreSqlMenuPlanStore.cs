@@ -34,6 +34,38 @@ public sealed class PostgreSqlMenuPlanStore(ApplicationDbContext database) : IMe
     }
 
     /// <inheritdoc />
+    public async Task<IReadOnlyList<MenuPlan>> ListAcceptedFromAsync(Guid ownerUserId, DateOnly from, CancellationToken cancellationToken)
+    {
+        var records = await database.MenuPlans.AsNoTracking()
+            .Where(item => item.OwnerUserId == ownerUserId && item.Status == nameof(MenuPlanStatus.Accepted) && item.EndDate >= from)
+            .OrderBy(item => item.StartDate).ThenBy(item => item.CreatedAt)
+            .ToListAsync(cancellationToken);
+        return records.Select(ToDomain).ToList();
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<LotProtection>> ListProtectionsAsync(Guid ownerUserId, CancellationToken cancellationToken)
+    {
+        var records = await database.LotProtections.AsNoTracking().Where(item => item.OwnerUserId == ownerUserId).ToListAsync(cancellationToken);
+        return records.Select(item => LotProtection.Restore(item.OwnerUserId, item.LotId, item.Whole, item.MinimumQuantity, item.UpdatedAt)).ToList();
+    }
+
+    /// <inheritdoc />
+    public async Task SetProtectionAsync(LotProtection protection, CancellationToken cancellationToken) =>
+        // Upsert keeps a repeated or concurrent request from failing on the primary key.
+        await database.Database.ExecuteSqlInterpolatedAsync(
+            $"""
+            INSERT INTO planning.lot_protections ("OwnerUserId", "LotId", "Whole", "MinimumQuantity", "UpdatedAt")
+            VALUES ({protection.OwnerUserId}, {protection.LotId}, {protection.Whole}, {protection.MinimumQuantity}, {protection.UpdatedAt})
+            ON CONFLICT ("OwnerUserId", "LotId") DO UPDATE SET "Whole" = EXCLUDED."Whole", "MinimumQuantity" = EXCLUDED."MinimumQuantity", "UpdatedAt" = EXCLUDED."UpdatedAt"
+            """,
+            cancellationToken);
+
+    /// <inheritdoc />
+    public async Task RemoveProtectionAsync(Guid ownerUserId, Guid lotId, CancellationToken cancellationToken) =>
+        await database.LotProtections.Where(item => item.OwnerUserId == ownerUserId && item.LotId == lotId).ExecuteDeleteAsync(cancellationToken);
+
+    /// <inheritdoc />
     public async Task<MenuPlan?> FindAsync(Guid ownerUserId, Guid planId, CancellationToken cancellationToken)
     {
         var record = await database.MenuPlans.AsNoTracking().SingleOrDefaultAsync(item => item.OwnerUserId == ownerUserId && item.Id == planId, cancellationToken);
@@ -164,7 +196,7 @@ public sealed class PostgreSqlMenuPlanStore(ApplicationDbContext database) : IMe
         record.Id, record.OwnerUserId, record.CreationKey, record.Name, record.StartDate, record.EndDate, Enum.Parse<MenuPlanStatus>(record.Status), record.CreatedAt, record.UpdatedAt, record.AcceptedAt);
 
     private static MenuEntry ToDomain(MenuEntryRecord record) => MenuEntry.Restore(
-        record.Id, record.MenuPlanId, record.OwnerUserId, record.CreationKey, record.RecipeId, record.PinnedRevisionNumber, record.PlannedDate, record.MealType, record.Servings, Enum.Parse<MenuEntryStatus>(record.Status), record.CreatedAt, record.UpdatedAt);
+        record.Id, record.MenuPlanId, record.OwnerUserId, record.CreationKey, record.RecipeId, record.PinnedRevisionNumber, record.PlannedDate, record.MealType, record.Servings, Enum.Parse<MenuEntryStatus>(record.Status), record.CreatedAt, record.UpdatedAt, record.ReserveIngredients);
 
     private static MenuPlanRecord ToRecord(MenuPlan plan) => new()
     {
@@ -192,6 +224,7 @@ public sealed class PostgreSqlMenuPlanStore(ApplicationDbContext database) : IMe
         MealType = entry.MealType,
         Servings = entry.Servings,
         Status = entry.Status.ToString(),
+        ReserveIngredients = entry.ReserveIngredients,
         CreatedAt = entry.CreatedAt,
         UpdatedAt = entry.UpdatedAt
     };

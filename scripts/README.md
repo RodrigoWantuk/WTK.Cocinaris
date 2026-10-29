@@ -65,3 +65,11 @@ commands, deployment evidence, forward-repair policy, and troubleshooting.
   - cooks the meal from "Hoje" and checks that it is marked cooked and left "Hoje".
 
   Names are unique per run. Same password variable; apply migrations to the development database first.
+- `e2e/reservations-journey.mjs` (PLAN-0029 Phase 3) seeds a 500 g lot, two recipes of 300 g each, and an accepted menu with both. It then checks:
+  - the meals' readiness;
+  - the lot page's reservations;
+  - a 100 g protection widening the shortfall;
+  - the cooking review warning that names the planned meals;
+  - that nothing changed physically.
+
+  Same password variable.

@@ -5,7 +5,7 @@ import { useSession } from "@/app/session/SessionProvider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FeatureUnavailable } from "@/components/runtime/FeatureUnavailable";
-import type { Menu, MenuEntry } from "@/contracts/planning";
+import type { Menu, MenuEntry, MenuEntryInput } from "@/contracts/planning";
 import { RecipeApiError, type RecipeSummary } from "@/contracts/recipes";
 import { useRecipeRepository } from "@/features/recipes/RecipeProvider";
 import { MEAL_TYPES, mealTypeLabel } from "@/features/recipes/recipeLabels";
@@ -16,6 +16,7 @@ import {
   localIsoDate,
 } from "./planningDates";
 import { usePlanningRepository } from "./PlanningProvider";
+import { formatLocaleDecimal } from "@/lib/localeDecimal";
 
 const FLEXIBLE = "flexible";
 
@@ -303,18 +304,14 @@ function EntryRow({
   editing: boolean;
   onEdit: () => void;
   onCook: () => void;
-  onChange: (input: {
-    plannedDate: string | null;
-    mealType: string | null;
-    servings: number;
-    status: string;
-  }) => Promise<void>;
+  onChange: (input: MenuEntryInput) => Promise<void>;
   onRemove: () => void;
 }) {
   const { t, locale } = useProductionI18n();
   const [day, setDay] = useState(entry.plannedDate ?? FLEXIBLE);
   const [meal, setMeal] = useState(entry.mealType ?? "");
   const [servings, setServings] = useState(String(entry.servings));
+  const [reserve, setReserve] = useState(entry.reserveIngredients);
   const done = entry.status === "cooked";
   const input = (status: string) => ({
     plannedDate: entry.plannedDate,
@@ -345,6 +342,7 @@ function EntryRow({
               .filter(Boolean)
               .join(" · ")}
           </p>
+          <Readiness entry={entry} />
         </div>
         {editable ? (
           <div className="flex flex-wrap gap-1">
@@ -422,6 +420,7 @@ function EntryRow({
               mealType: meal || null,
               servings: portions,
               status: entry.status === "skipped" ? "skipped" : "planned",
+              reserveIngredients: reserve,
             });
           }}
         >
@@ -454,9 +453,62 @@ function EntryRow({
           <Button type="submit" size="sm" disabled={busy}>
             {t("planning.save")}
           </Button>
+          <label className="flex items-center gap-2 text-xs text-muted-foreground sm:col-span-4">
+            <input
+              type="checkbox"
+              className="h-4 w-4"
+              data-testid="menu-entry-reserve"
+              checked={reserve}
+              onChange={(event) => setReserve(event.target.checked)}
+            />
+            {t("planning.field.reserve")}
+          </label>
         </form>
       ) : null}
     </li>
+  );
+}
+
+/**
+ * Whether a meal's pantry ingredients are covered (PLAN-0029 Phase 3). On a menu in use the
+ * quantities are reserved; on a draft this simulates accepting it after the menus in use.
+ */
+function Readiness({ entry }: { entry: MenuEntry }) {
+  const { t, locale } = useProductionI18n();
+  if (entry.status === "cooked" || entry.status === "skipped") return null;
+  if (!entry.reserveIngredients) {
+    return (
+      <p
+        className="text-xs text-muted-foreground"
+        data-testid="menu-entry-readiness"
+      >
+        {t("planning.readiness.released")}
+      </p>
+    );
+  }
+  if (!entry.readiness) return null;
+  if (entry.readiness.readiness === "ready") {
+    return (
+      <p className="text-xs text-primary" data-testid="menu-entry-readiness">
+        {t("planning.readiness.ready")}
+      </p>
+    );
+  }
+  const unitKey: Record<string, string> = {
+    Gram: "recipes.unit.g",
+    Milliliter: "recipes.unit.ml",
+    Unit: "recipes.unit.unit",
+  };
+  const items = entry.readiness.missing
+    .map(
+      (item) =>
+        `${item.name} ${formatLocaleDecimal(item.quantity, locale)} ${t(unitKey[item.unit] ?? "recipes.unit.unit")}`,
+    )
+    .join(", ");
+  return (
+    <p className="text-xs text-destructive" data-testid="menu-entry-readiness">
+      {t("planning.readiness.missing", { items })}
+    </p>
   );
 }
 

@@ -34,7 +34,7 @@ Language and detail cannot be checked deterministically. They are recorded as ev
 | --- | --- | --- |
 | 1 | Start a recipe execution explicitly; cooking view with stage checklist; deterministic, editable completion proposal from the pinned revision and the pantry; completion that consumes the confirmed lots and stores leftovers in one database transaction; abandonment; resume from the home | PLAN-0028, PLAN-0023 preparation contract, PLAN-0037 |
 | 2 | Execution-local substitutions and notes; save changes as a new revision or a derived recipe at finalization (finalization delivered with PLAN-0038; substitutions during cooking remain) | PLAN-0038 |
-| 3 | Menu-entry executions (delivered with PLAN-0029 Phase 1: `menuEntryId` on start), reservation release, preparation-route due windows | PLAN-0029 |
+| 3 | Menu-entry executions (delivered with PLAN-0029 Phase 1: `menuEntryId` on start); reservations and protections in the proposal (delivered with PLAN-0029 Phase 3; reservations are derived, so a cooked meal releases them by no longer counting); preparation-route due windows | PLAN-0029 |
 | 4 | Stage detail levels by profile, sensory references, timers | Phase 1 |
 
 Text troubleshooting is PLAN-0045.

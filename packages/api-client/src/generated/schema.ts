@@ -333,6 +333,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/planning/protections/{lotId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** PUT /api/v1/planning/protections/{lotId} */
+        put: operations["putApiV1PlanningProtectionsLotId"];
+        post?: never;
+        /** DELETE /api/v1/planning/protections/{lotId} */
+        delete: operations["deleteApiV1PlanningProtectionsLotId"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/planning/reservations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** GET /api/v1/planning/reservations */
+        get: operations["getApiV1PlanningReservations"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/planning/today": {
         parameters: {
             query?: never;
@@ -813,6 +848,8 @@ export interface components {
              * @description Day inside the period, or null for flexible.
              */
             plannedDate: null | string;
+            /** @description Whether the meal reserves pantry quantity; unchanged when omitted. */
+            reserveIngredients?: null | boolean;
             /**
              * Format: int32
              * @description Portions, 1 to 24.
@@ -981,6 +1018,23 @@ export interface components {
             /** @enum {string} */
             state: "LikelyDiscard" | "CheckCondition" | "UsePriority" | "UseSoon" | "EstimateUncertain" | "Normal";
         };
+        /** @description One lot with its protection and the meals counting on it; quantities in Unit. */
+        LotCommitmentResponse: {
+            /** Format: double */
+            freeQuantity: number | string;
+            /** Format: uuid */
+            lotId: string;
+            productName: string;
+            /** Format: double */
+            protectedQuantity: number | string;
+            protection: null | components["schemas"]["LotProtectionRequest"];
+            /** Format: double */
+            quantity: number | string;
+            reservations: components["schemas"]["LotReservationResponse"][];
+            /** Format: double */
+            reservedQuantity: number | string;
+            unit: string;
+        };
         /** @description Returns one immutable lifecycle transaction or a safe metadata-correction audit projection.
          *     Metadata projections expose only changed field names and never values, notes, tokens, or other
          *     private request content. */
@@ -1012,6 +1066,16 @@ export interface components {
             /** Format: date-time */
             thawedAt: null | string;
         };
+        /** @description Body (and projection) of a lot protection. */
+        LotProtectionRequest: {
+            /** @description `whole` or `minimum`. */
+            kind: null | string;
+            /**
+             * Format: double
+             * @description Quantity to keep, in the lot's unit, for `minimum`.
+             */
+            minimumQuantity: null | number | string;
+        };
         /** @description Returns preparation batches that consumed or produced one owned lot. Each direction returns at
          *     most fifty batches; its truncation flag is true when additional older relationships exist. */
         LotProvenanceResponse: {
@@ -1021,6 +1085,16 @@ export interface components {
             lotId: string;
             producedBy: components["schemas"]["PreparationResponse"][];
             producedByTruncated: boolean;
+        };
+        /** @description Quantity of a lot reserved for one meal. */
+        LotReservationResponse: {
+            /** Format: uuid */
+            menuEntryId: string;
+            /** Format: date */
+            plannedDate: null | string;
+            /** Format: double */
+            quantity: number | string;
+            recipeName: string;
         };
         /** @description Returns the current representation of an inventory lot. */
         LotResponse: {
@@ -1057,6 +1131,13 @@ export interface components {
             resultingState: "AsAcquired" | "Prepared" | "Frozen" | "Thawing" | "Thawed";
             resultingStorageLocation: string;
         };
+        /** @description A meal's readiness: `ready` or `missing`, with what is missing. */
+        MealReadinessResponse: {
+            /** Format: uuid */
+            entryId: string;
+            missing: components["schemas"]["MissingIngredientResponse"][];
+            readiness: string;
+        };
         /** @description One meal. Status is `planned`, `skipped`, `cooking`, or
          *     `cooked`; the last two come from the cooking session started from it
          *     (ExecutionId). */
@@ -1068,9 +1149,11 @@ export interface components {
             mealType: null | string;
             /** Format: date */
             plannedDate: null | string;
+            readiness: null | components["schemas"]["MealReadinessResponse"];
             /** Format: uuid */
             recipeId: string;
             recipeName: string;
+            reserveIngredients: boolean;
             /** Format: int32 */
             revisionNumber: number | string;
             revisionPinned: boolean;
@@ -1108,6 +1191,13 @@ export interface components {
             status: string;
             /** Format: date-time */
             updatedAt: string;
+        };
+        /** @description An ingredient a meal still lacks. */
+        MissingIngredientResponse: {
+            name: string;
+            /** Format: double */
+            quantity: number | string;
+            unit: string;
         };
         /**
          * @description Explicit preference or restriction command action.
@@ -1529,7 +1619,12 @@ export interface components {
             lotId: string;
             productName: string;
             /** Format: double */
+            protectedQuantity: number | string;
+            /** Format: double */
             quantity: number | string;
+            reservedFor: components["schemas"]["RecipeExecutionReservationResponse"][];
+            /** Format: double */
+            reservedQuantity: number | string;
             storageLocation: string;
             unit: string;
             /** Format: uuid */
@@ -1545,7 +1640,10 @@ export interface components {
             /** Format: double */
             proposedQuantity: null | number | string;
             /** Format: double */
+            protectedQuantity: number | string;
+            /** Format: double */
             requiredQuantity: number | string;
+            reservedElsewhere: components["schemas"]["RecipeExecutionReservationResponse"][];
             status: string;
             unit: string;
         };
@@ -1553,6 +1651,16 @@ export interface components {
         RecipeExecutionProposalResponse: {
             lines: components["schemas"]["RecipeExecutionProposalLineResponse"][];
             pantryLots: components["schemas"]["RecipeExecutionPantryLotResponse"][];
+        };
+        /** @description Quantity of a lot another menu meal counts on. */
+        RecipeExecutionReservationResponse: {
+            /** Format: uuid */
+            menuEntryId: string;
+            /** Format: date */
+            plannedDate: null | string;
+            /** Format: double */
+            quantity: number | string;
+            recipeName: string;
         };
         /** @description One recipe execution. `status` is `InProgress`, `Completed`, or `Abandoned`; `proposal` is present while in progress. */
         RecipeExecutionResponse: {
@@ -1714,6 +1822,13 @@ export interface components {
              * @description Instant of the last revision.
              */
             updatedAt: string;
+        };
+        /** @description Pantry commitments from From; read-only, never changes physical quantity. */
+        ReservationsResponse: {
+            /** Format: date */
+            from: string;
+            lots: components["schemas"]["LotCommitmentResponse"][];
+            meals: components["schemas"]["MealReadinessResponse"][];
         };
         /** @description Body for saving an edit as a new revision. */
         ReviseRecipeRequest: {
@@ -3622,6 +3737,172 @@ export interface operations {
             };
             /** @description The request content type is not supported. */
             415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    putApiV1PlanningProtectionsLotId: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Required CSRF token issued by GET /api/v1/session. */
+                "X-CSRF-TOKEN": string;
+            };
+            path: {
+                lotId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LotProtectionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReservationsResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description The request content type is not supported. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    deleteApiV1PlanningProtectionsLotId: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Required CSRF token issued by GET /api/v1/session. */
+                "X-CSRF-TOKEN": string;
+            };
+            path: {
+                lotId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReservationsResponse"];
+                };
+            };
+            /** @description The request or CSRF token is invalid. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    getApiV1PlanningReservations: {
+        parameters: {
+            query?: {
+                from?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReservationsResponse"];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
                 headers: {
                     [name: string]: unknown;
                 };

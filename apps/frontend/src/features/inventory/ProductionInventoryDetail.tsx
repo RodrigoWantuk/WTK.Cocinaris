@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { useInventoryRepository } from "./InventoryProvider";
 import { formatQuantityLabel } from "./quantityDisplay";
 import { LotTransitionPanel } from "./LotTransitionPanel";
+import { LotCommitmentsPanel } from "@/features/planning/LotCommitmentsPanel";
 import { AttentionBadge } from "./AttentionBadge";
 import {
   formatHistoryTimestamp,
@@ -524,6 +525,8 @@ export function ProductionInventoryDetail() {
           {transitionError}
         </p>
       )}
+
+      <LotCommitmentsPanel lot={lot} />
 
       {lot.quantity.kind === "measured" && (
         <section className="space-y-3 rounded-xl border p-4">

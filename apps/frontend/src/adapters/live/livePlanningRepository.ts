@@ -4,7 +4,9 @@ import type {
   Menu,
   MenuEntry,
   MenuSummary,
+  MealReadiness,
   PlanningRepository,
+  Reservations,
   ShoppingList,
 } from "@/contracts/planning";
 import { assertData, throwForFailure, wrapAbort } from "./liveRecipeRepository";
@@ -13,6 +15,52 @@ type MenuDto = components["schemas"]["MenuPlanResponse"];
 type EntryDto = components["schemas"]["MenuEntryResponse"];
 type SummaryDto = components["schemas"]["MenuPlanSummaryResponse"];
 type ShoppingDto = components["schemas"]["ShoppingListResponse"];
+type ReservationsDto = components["schemas"]["ReservationsResponse"];
+type ReadinessDto = components["schemas"]["MealReadinessResponse"];
+
+function mapReadiness(dto: ReadinessDto): MealReadiness {
+  return {
+    entryId: String(dto.entryId),
+    readiness: String(dto.readiness),
+    missing: (dto.missing ?? []).map((item) => ({
+      name: String(item.name),
+      unit: String(item.unit),
+      quantity: num(item.quantity),
+    })),
+  };
+}
+
+function mapReservations(dto: ReservationsDto): Reservations {
+  return {
+    from: String(dto.from),
+    lots: (dto.lots ?? []).map((lot) => ({
+      lotId: String(lot.lotId),
+      productName: String(lot.productName),
+      unit: String(lot.unit),
+      quantity: num(lot.quantity),
+      protectedQuantity: num(lot.protectedQuantity),
+      reservedQuantity: num(lot.reservedQuantity),
+      freeQuantity: num(lot.freeQuantity),
+      protection: lot.protection
+        ? {
+            kind: String(lot.protection.kind),
+            minimumQuantity:
+              lot.protection.minimumQuantity === null ||
+              lot.protection.minimumQuantity === undefined
+                ? null
+                : num(lot.protection.minimumQuantity),
+          }
+        : null,
+      reservations: (lot.reservations ?? []).map((item) => ({
+        menuEntryId: String(item.menuEntryId),
+        recipeName: String(item.recipeName),
+        plannedDate: text(item.plannedDate),
+        quantity: num(item.quantity),
+      })),
+    })),
+    meals: (dto.meals ?? []).map(mapReadiness),
+  };
+}
 
 const num = (value: number | string) => Number(value);
 const text = (value: unknown): string | null =>
@@ -30,6 +78,8 @@ function mapEntry(dto: EntryDto): MenuEntry {
     servings: num(dto.servings),
     status: String(dto.status),
     executionId: text(dto.executionId),
+    reserveIngredients: dto.reserveIngredients !== false,
+    readiness: dto.readiness ? mapReadiness(dto.readiness) : null,
   };
 }
 
@@ -281,6 +331,46 @@ export function createLivePlanningRepository(options?: {
         "Unable to update the shopping list.",
         () => undefined,
       ),
+    getReservations: (from, signal) =>
+      run(
+        () =>
+          client.GET("/api/v1/planning/reservations", {
+            params: { query: { from } },
+            signal,
+            ...include,
+          }),
+        "Unable to load reservations.",
+        mapReservations,
+      ),
+    protectLot: (lotId, protection, { csrfToken, signal }) =>
+      run(
+        () =>
+          client.PUT("/api/v1/planning/protections/{lotId}", {
+            params: {
+              path: { lotId },
+              header: { "X-CSRF-TOKEN": csrfToken },
+            },
+            body: protection,
+            signal,
+            ...include,
+          }),
+        "Unable to protect the item.",
+        mapReservations,
+      ),
+    unprotectLot: (lotId, { csrfToken, signal }) =>
+      run(
+        () =>
+          client.DELETE("/api/v1/planning/protections/{lotId}", {
+            params: {
+              path: { lotId },
+              header: { "X-CSRF-TOKEN": csrfToken },
+            },
+            signal,
+            ...include,
+          }),
+        "Unable to remove the protection.",
+        mapReservations,
+      ),
     getToday: (date, signal) =>
       run(
         () =>
@@ -321,6 +411,9 @@ export function createUnavailablePlanningRepository(): PlanningRepository {
     removeEntry: fail,
     getShopping: fail,
     setChecked: fail,
+    getReservations: fail,
+    protectLot: fail,
+    unprotectLot: fail,
     getToday: fail,
   };
 }
