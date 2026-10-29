@@ -127,6 +127,7 @@ Modules/
   Accounts
   Profiles
   Inventory
+  Ingredients   (canonical ingredient identity, PLAN-0055 / ADR-0010)
   Recipes
   Cooking
   Planning

@@ -42,9 +42,9 @@ Steps performed:
 3. Generate EF Core's idempotent migration script.
 4. Install the frontend with the frozen lockfile, build in production mode, and run the build-mode guard.
 5. Refuse to publish if `index.html` loads any script or stylesheet from another origin.
-6. Pre-flight: the installed unit must start `Cocinaris.Api.dll`, and the environment file must not contain `KITCHENFLOW_*` keys.
+6. Pre-flight: the installed unit must start `Cocinaris.Api.dll`, the environment file must not contain `KITCHENFLOW_*` keys, and PostgreSQL must offer the `vector` extension ([pgvector](#pgvector)).
 7. Stop the service and take a backup.
-8. Apply migrations as `cocinaris_owner`, then grant `cocinaris_app` USAGE and DML on every schema the owner role owns, including schemas a migration has just created (`recipes` and `ai` arrive this way), and set matching default privileges. The grant step is idempotent.
+8. Create the `vector` and `pg_trgm` extensions as the superuser (idempotent), then apply migrations as `cocinaris_owner`, then grant `cocinaris_app` USAGE and DML on every schema the owner role owns, including schemas a migration has just created (`recipes` and `ai` arrive this way), and set matching default privileges. The grant step is idempotent.
 9. Switch the `api` and `web` symlinks, start the service, and wait for `/health/ready`.
 10. Prune old releases.
 
@@ -102,7 +102,7 @@ Rename any dashboard or alert that uses `kitchenflow.*` metric names.
 
 ## First install on a new host
 
-1. Install .NET 10.0.302 to `/opt/dotnet` (`dotnet-install.sh --version 10.0.302 --install-dir /opt/dotnet --no-path`), Node.js 24 to `/opt/node24` (checksum-verified tarball, then `corepack enable --install-directory /opt/node24/bin`), PostgreSQL, and Caddy.
+1. Install .NET 10.0.302 to `/opt/dotnet` (`dotnet-install.sh --version 10.0.302 --install-dir /opt/dotnet --no-path`), Node.js 24 to `/opt/node24` (checksum-verified tarball, then `corepack enable --install-directory /opt/node24/bin`), PostgreSQL with pgvector (`postgresql-<major>-pgvector`, see [pgvector](#pgvector)), and Caddy.
 2. `useradd --system --no-create-home --shell /usr/sbin/nologin wtk-cocinaris`.
 3. Create `/etc/wtk-cocinaris/api.env` from `api.env.example` (`chown root:wtk-cocinaris`, `chmod 0640`).
 4. Database: create role `cocinaris_owner` (NOLOGIN) and `cocinaris_app` (LOGIN, random password), and database `cocinaris` owned by `cocinaris_owner`. The deploy script grants `cocinaris_app` USAGE plus DML on every schema owned by `cocinaris_owner` after each migration run; `COCINARIS_APP_ROLE` overrides the role name.
@@ -120,10 +120,30 @@ Rename any dashboard or alert that uses `kitchenflow.*` metric names.
    - the daily limits are `Ai__Images__UserDailyImages` (default 10) and `Ai__Images__GlobalDailyImages` (default 100);
    - files are kept in `/var/lib/wtk-cocinaris/media/thumbnails` (the service state directory), or in `Ai__Images__StoragePath`. The deploy database backup does not include them; a lost file shows the placeholder until the asset row is reset to `Pending`, which costs one new image;
    - while disabled, recipes show a placeholder and existing images are still served.
+
+   Optional ingredient embeddings (PLAN-0055, [ADR-0010](../architecture/decisions/0010-ingredient-identity-catalog-embeddings-pgvector.md)):
+   - set `Ai__Embeddings__Enabled=true` together with the same `Ai__Providers__OpenRouter__ApiKey`;
+   - names in recipes and the pantry are linked to catalog ingredients with OpenRouter `qwen/qwen3-embedding-8b` (about US$ 0.0000001 per new name), and the calls count toward the same monthly ceiling;
+   - curated names and near-identical spellings work without it.
+
+   Review learned links and unresolved names with `sudo scripts/ops/ingredient-identity-report.sh`. The guide is in [`docs/ai/ingredient-identity.md`](../ai/ingredient-identity.md#operations).
 6. Register an OIDC client with redirect URI `https://<host>/signin-oidc` and sign-out callback `https://<host>/signout-callback-oidc`; put authority, client ID and secret in the environment file.
 7. Add the `Caddyfile.cocinaris` block with the real host name, then `caddy validate` and `systemctl reload caddy`.
 8. Point DNS at the host. With a proxying CDN, create the record **before** the proxy first requests a certificate. If the certificate attempt ran before DNS existed, `systemctl reload caddy` retries immediately (the CDN shows HTTP 525 until then).
 9. `sudo scripts/deploy/deploy-linux-host.sh --install-units`.
+
+## pgvector
+
+Since PLAN-0055 the migrations need two PostgreSQL extensions:
+
+- `vector` (pgvector), a separate package;
+- `pg_trgm`, part of PostgreSQL contrib.
+
+On Debian install the package that matches the server's major version, for example `apt-get install postgresql-17-pgvector` (installed on the owner host on 2026-10-30, pgvector 0.8.0). No restart is needed.
+
+The deploy script runs `CREATE EXTENSION IF NOT EXISTS` for both as the `postgres` superuser before migrations, because `cocinaris_owner` may lack `CREATE` on the database. It refuses to deploy while `vector` is not available. Development and tests use the image `pgvector/pgvector:0.8.7-pg18-trixie`.
+
+Restoring a backup on another server needs the same package; otherwise the restore fails at `CREATE EXTENSION vector`.
 
 ## Operations
 

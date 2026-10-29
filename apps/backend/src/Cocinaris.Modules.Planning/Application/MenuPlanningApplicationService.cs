@@ -1,4 +1,5 @@
 using Cocinaris.Modules.Identity;
+using Cocinaris.Modules.Ingredients;
 using Cocinaris.Modules.Inventory.Application;
 using Cocinaris.Modules.Planning.Domain;
 using Cocinaris.Modules.Recipes.Application;
@@ -146,6 +147,7 @@ public sealed class MenuPlanningApplicationService(
     IRecipeLibraryStore recipes,
     IRecipeExecutionStore executions,
     IInventoryLotReadStore inventory,
+    IIngredientMatching matching,
     TimeProvider timeProvider)
 {
     private const int MaxPantryLots = 500;
@@ -384,7 +386,8 @@ public sealed class MenuPlanningApplicationService(
                 ? lot with { MeasuredValue = Math.Max(0, value - commitment.ProtectedQuantity - commitment.Reservations.Sum(item => item.Quantity)) }
                 : lot)
             .ToList();
-        var items = ShoppingProjector.Build(meals, usable, await store.ListCheckedAsync(user.Id, plan.Id, cancellationToken));
+        var keys = await MatchKeysAsync(user.Id, lots, meals.Select(meal => meal.NormalizedRecipeJson), cancellationToken);
+        var items = ShoppingProjector.Build(meals, usable, await store.ListCheckedAsync(user.Id, plan.Id, cancellationToken), keys);
         return RecipeApplicationResult<ShoppingListView>.Succeeded(new ShoppingListView(plan.Id, start, meals.Count, items));
     }
 
@@ -576,8 +579,13 @@ public sealed class MenuPlanningApplicationService(
             .Select(item => new ReservingMeal(item.View.EntryId, item.View.RecipeName, item.View.PlannedDate, item.View.Servings, item.Content!.Servings, item.Content.NormalizedRecipeJson))
             .ToList();
         var protections = await store.ListProtectionsAsync(ownerUserId, cancellationToken);
-        return (ReservationProjector.Build(meals, lots, protections), protections);
+        var keys = await MatchKeysAsync(ownerUserId, lots, meals.Select(meal => meal.NormalizedRecipeJson), cancellationToken);
+        return (ReservationProjector.Build(meals, lots, protections, keys), protections);
     }
+
+    /// <summary>Matching keys for the pantry's product names and the meals' ingredient names (PLAN-0055).</summary>
+    private Task<IngredientMatchKeys> MatchKeysAsync(Guid ownerUserId, IReadOnlyList<InventoryLotReadModel> lots, IEnumerable<string> recipeJson, CancellationToken cancellationToken) =>
+        matching.KeysAsync(ownerUserId, lots.Select(lot => lot.ProductName).Concat(recipeJson.SelectMany(json => RecipeIngredientReader.Read(json).Select(ingredient => ingredient.Name))), cancellationToken);
 
     // The server does not know the owner's time zone. A meal keeps its reservation until its day
     // has ended everywhere (UTC-12), so a meal is never released early; one missed yesterday may

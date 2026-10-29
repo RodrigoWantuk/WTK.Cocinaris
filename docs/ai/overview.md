@@ -130,6 +130,8 @@ The following remain user- and time-specific:
 
 Private context is never reused across users.
 
+Ingredient identity ([`ingredient-identity.md`](ingredient-identity.md), PLAN-0055) is the first shared, non-private layer. Ingredient names resolve to a curated catalog once for all users. Embeddings are reused only for the exact same text. Recipe-idea reuse and dish-image reuse by similarity build on these canonical ingredients.
+
 ## Operation classes
 
 ### Interactive

@@ -26,6 +26,7 @@ Do not rewrite accepted history. Add a note or superseding ADR.
 | [0007](0007-frontend-platform-monorepo-and-generation-tooling.md) | React/TypeScript frontend; monorepo `apps/frontend` authority; Emergent/Lovable optional | Accepted |
 | [0008](0008-frontend-toolchain-vite.md) | Vite and Vitest replace Create React App + CRACO (amends ADR-0007) | Accepted |
 | [0009](0009-recipe-ai-provider-deepseek-v4-flash.md) | Recipe AI provider DeepSeek V4 Flash with one fallback model and a monthly spend ceiling | Accepted |
+| [0010](0010-ingredient-identity-catalog-embeddings-pgvector.md) | Ingredient identity: curated catalog, exact-text embedding cache, OpenRouter Qwen3 Embedding, pgvector | Accepted |
 
 ## Future decision backlog
 
