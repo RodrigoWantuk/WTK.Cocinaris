@@ -449,7 +449,7 @@ export function ProfilePreferencesPage() {
                 <select
                   id="profile-preferences-catalog-select"
                   data-testid="profile-preferences-catalog-select"
-                  className="flex h-9 rounded-md border border-input bg-transparent px-3 text-sm"
+                  className="flex h-9 rounded-xl border border-input bg-background px-3 text-[15px]"
                   value={catalogCode}
                   disabled={!canMutate}
                   onChange={(event) => setCatalogCode(event.target.value)}

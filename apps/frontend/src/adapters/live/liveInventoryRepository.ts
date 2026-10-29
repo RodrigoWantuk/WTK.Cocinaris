@@ -58,6 +58,7 @@ export function mapQuantity(q: QuantityDto): InventoryQuantity {
       kind: "measured",
       value,
       unit: q.unit as "Gram" | "Milliliter" | "Unit",
+      ...(q.estimated ? { estimated: true as const } : {}),
     };
   }
 
@@ -118,6 +119,7 @@ function toQuantityRequest(
       measuredValue: quantity.value,
       unit: quantity.unit,
       availabilityState: null,
+      ...(quantity.estimated ? { estimated: true } : {}),
     };
   }
   return {

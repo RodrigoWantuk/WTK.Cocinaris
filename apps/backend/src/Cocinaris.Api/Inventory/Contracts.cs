@@ -1,7 +1,7 @@
 namespace Cocinaris.Api.Inventory;
 
 /// <summary>Represents exactly one inventory quantity mode supplied by an API client.</summary>
-public sealed record QuantityRequest(decimal? MeasuredValue, string? Unit, string? AvailabilityState);
+public sealed record QuantityRequest(decimal? MeasuredValue, string? Unit, string? AvailabilityState, bool? Estimated = null);
 
 /// <summary>Creates one manually entered, user-owned inventory lot.</summary>
 public sealed record CreateLotRequest(string ProductName, QuantityRequest Quantity, string StorageLocation, string? CustomLocation, string? PackageState, DateOnly? PrintedExpirationDate, string? Notes);
@@ -10,7 +10,7 @@ public sealed record CreateLotRequest(string ProductName, QuantityRequest Quanti
 public sealed record UpdateLotRequest(string? ProductName, string StorageLocation, string? CustomLocation, string? PackageState, DateOnly? PrintedExpirationDate, string? Notes);
 
 /// <summary>Records an explicit immutable inventory adjustment.</summary>
-public sealed record AdjustmentRequest(string Type, decimal? Value, string? AvailabilityState, string? ReasonCode, string? Note);
+public sealed record AdjustmentRequest(string Type, decimal? Value, string? AvailabilityState, string? ReasonCode, string? Note, bool? Estimated = null);
 
 /// <summary>
 /// Applies one lifecycle transition. A quantity in the lot's unit makes it partial: that quantity
@@ -37,7 +37,7 @@ public sealed record LotLifecycleResponse(string State, DateTimeOffset? OpenedAt
 public sealed record LotTransitionResponse(string Kind, string PreviousState, string ResultingState, string PreviousStorageLocation, string ResultingStorageLocation, Guid? RelatedLotId);
 
 /// <summary>Returns a measured or qualitative quantity without mixing the two modes.</summary>
-public sealed record QuantityResponse(decimal? MeasuredValue, string? Unit, string? AvailabilityState);
+public sealed record QuantityResponse(decimal? MeasuredValue, string? Unit, string? AvailabilityState, bool Estimated = false);
 
 /// <summary>
 /// Returns one immutable lifecycle transaction or a safe metadata-correction audit projection.

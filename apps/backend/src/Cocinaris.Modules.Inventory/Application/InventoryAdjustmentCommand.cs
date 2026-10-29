@@ -14,6 +14,9 @@ public sealed record InventoryAdjustmentCommand(
     string ReasonCode,
     string? Note)
 {
+    /// <summary>For a correction, whether the resulting value is the owner's approximation (PLAN-0054).</summary>
+    public bool Estimated { get; init; }
+
     /// <summary>
     /// Validates and normalizes an adjustment received from an adapter.
     /// </summary>

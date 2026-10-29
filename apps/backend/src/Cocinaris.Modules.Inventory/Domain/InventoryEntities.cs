@@ -196,13 +196,28 @@ public sealed class InventoryLot
     }
 
     /// <summary>Applies a measured consume, discard, or resulting-quantity correction.</summary>
+    /// <remarks>
+    /// Consuming or discarding more than an estimated quantity empties the lot: the estimate was the
+    /// owner's guess, and the real use is better evidence. Against an exact quantity it fails. A
+    /// correction replaces the value and states whether the new value is an estimate.
+    /// </remarks>
+    /// <param name="type">Consume, Discard, PreparationInputConsumed, or Correct.</param>
+    /// <param name="value">Quantity used, or the resulting quantity for a correction.</param>
+    /// <param name="reasonCode">Non-localized reason retained in history.</param>
+    /// <param name="note">Optional private note retained in history.</param>
+    /// <param name="idempotencyKey">Client command key retained in history.</param>
+    /// <param name="now">UTC instant of the adjustment.</param>
+    /// <param name="correctionIsEstimate">For a correction, whether the resulting value is an estimate; ignored otherwise.</param>
+    /// <returns>The immutable transaction.</returns>
+    /// <exception cref="InvalidOperationException">Thrown when the lot is not measured or the value is invalid.</exception>
     public InventoryTransaction AdjustMeasured(
         InventoryTransactionType type,
         decimal value,
         string? reasonCode,
         string? note,
         Guid? idempotencyKey,
-        DateTimeOffset now)
+        DateTimeOffset now,
+        bool correctionIsEstimate = false)
     {
         EnsureActive();
         if (Quantity is not LotQuantity.Measured previous)
@@ -219,13 +234,15 @@ public sealed class InventoryLot
         {
             InventoryTransactionType.Consume or InventoryTransactionType.Discard or InventoryTransactionType.PreparationInputConsumed when value <= previous.Value =>
                 previous.Value - value,
+            InventoryTransactionType.Consume or InventoryTransactionType.Discard or InventoryTransactionType.PreparationInputConsumed when previous.IsEstimate =>
+                0m,
             InventoryTransactionType.Consume or InventoryTransactionType.Discard or InventoryTransactionType.PreparationInputConsumed =>
                 throw new InvalidOperationException("The adjustment cannot exceed the current measured quantity."),
             InventoryTransactionType.Correct => value,
             _ => throw new InvalidOperationException("The adjustment type is not valid for a measured quantity.")
         };
 
-        var resulting = new LotQuantity.Measured(result, previous.Unit);
+        var resulting = new LotQuantity.Measured(result, previous.Unit, type == InventoryTransactionType.Correct ? correctionIsEstimate : previous.IsEstimate);
         Quantity = resulting;
         Touch(now);
         return InventoryTransaction.Create(Id, OwnerUserId, type, previous, resulting, reasonCode, note, idempotencyKey, now);
@@ -309,8 +326,8 @@ public sealed class InventoryLot
         }
 
         var (storage, lifecycle, packageState) = PlanTransition(kind, targetStorage, now);
-        var remaining = new LotQuantity.Measured(previous.Value - quantity, previous.Unit);
-        var derived = Create(OwnerUserId, ProductId, new LotQuantity.Measured(quantity, previous.Unit), storage, packageState, PrintedExpiration, Notes, now, lifecycle with { ParentLotId = Id });
+        var remaining = new LotQuantity.Measured(previous.Value - quantity, previous.Unit, previous.IsEstimate);
+        var derived = Create(OwnerUserId, ProductId, new LotQuantity.Measured(quantity, previous.Unit, previous.IsEstimate), storage, packageState, PrintedExpiration, Notes, now, lifecycle with { ParentLotId = Id });
         Quantity = remaining;
         Touch(now);
         var sourceTransaction = InventoryTransaction.Create(Id, OwnerUserId, InventoryTransactionType.TransitionSplit, previous, remaining, null, null, idempotencyKey, now, new LotTransitionDetail(kind, Lifecycle.State, Lifecycle.State, Storage.Location, Storage.Location, derived.Id));

@@ -606,7 +606,7 @@ export function RecipeEditorPage({ mode }: { mode: RecipeEditorMode }) {
                   </label>
                   <select
                     id={`${row.key}-unit`}
-                    className="h-10 w-full rounded-md border border-input bg-background px-2 text-sm"
+                    className="h-11 w-full rounded-xl border border-input bg-background px-3 text-[15px]"
                     value={row.unit}
                     onChange={(event) =>
                       updateIngredient(index, { unit: event.target.value })

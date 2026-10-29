@@ -349,6 +349,9 @@ namespace Cocinaris.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("ProductId")
                         .HasColumnType("uuid");
 
+                    b.Property<bool>("QuantityIsEstimate")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("StorageLocation")
                         .IsRequired()
                         .HasMaxLength(30)
@@ -381,6 +384,8 @@ namespace Cocinaris.Infrastructure.Persistence.Migrations
                     b.ToTable("lots", "inventory", t =>
                         {
                             t.HasCheckConstraint("ck_lots_availability_state", "\"AvailabilityState\" IS NULL OR \"AvailabilityState\" IN ('Available', 'Low', 'Unavailable')");
+
+                            t.HasCheckConstraint("ck_lots_estimate_measured", "NOT \"QuantityIsEstimate\" OR \"MeasuredValue\" IS NOT NULL");
 
                             t.HasCheckConstraint("ck_lots_expiration_provenance", "(\"PrintedExpirationDate\" IS NULL AND \"ExpirationProvenance\" IS NULL) OR (\"PrintedExpirationDate\" IS NOT NULL AND \"ExpirationProvenance\" IS NOT NULL AND \"ExpirationProvenance\" = 'UserEntered')");
 

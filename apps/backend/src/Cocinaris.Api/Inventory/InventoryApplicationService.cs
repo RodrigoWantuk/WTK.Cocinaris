@@ -54,7 +54,7 @@ public sealed class InventoryApplicationService(
     public async Task<IResult> CreateAsync(CreateLotRequest request, HttpRequest requestContext, CancellationToken cancellationToken)
     {
         var key = Guid.TryParse(requestContext.Headers["Idempotency-Key"], out var parsed) ? parsed : (Guid?)null;
-        var command = new CreateInventoryLotCommand(request.ProductName, request.Quantity?.MeasuredValue, request.Quantity?.Unit, request.Quantity?.AvailabilityState, request.StorageLocation, request.CustomLocation, request.PackageState, request.PrintedExpirationDate, request.Notes, key, requestContext.HttpContext.TraceIdentifier);
+        var command = new CreateInventoryLotCommand(request.ProductName, request.Quantity?.MeasuredValue, request.Quantity?.Unit, request.Quantity?.AvailabilityState, request.StorageLocation, request.CustomLocation, request.PackageState, request.PrintedExpirationDate, request.Notes, key, requestContext.HttpContext.TraceIdentifier, request.Quantity?.Estimated == true);
         return ToLotResult("create", await createLot.CreateAsync(command, cancellationToken), requestContext.HttpContext.TraceIdentifier);
     }
 
@@ -69,7 +69,7 @@ public sealed class InventoryApplicationService(
     public async Task<IResult> AdjustAsync(Guid lotId, AdjustmentRequest request, HttpRequest requestContext, CancellationToken cancellationToken)
     {
         var key = Guid.TryParse(requestContext.Headers["Idempotency-Key"], out var parsed) ? parsed : (Guid?)null;
-        var command = new AdjustInventoryLotCommand(lotId, request.Type, request.Value, request.AvailabilityState, request.ReasonCode, request.Note, key, ReadPrecondition(lotId, requestContext), requestContext.HttpContext.TraceIdentifier);
+        var command = new AdjustInventoryLotCommand(lotId, request.Type, request.Value, request.AvailabilityState, request.ReasonCode, request.Note, key, ReadPrecondition(lotId, requestContext), requestContext.HttpContext.TraceIdentifier, request.Estimated == true);
         return ToLotResult("adjust", await adjustLot.AdjustAsync(command, cancellationToken), requestContext.HttpContext.TraceIdentifier);
     }
 
@@ -136,7 +136,7 @@ public sealed class InventoryApplicationService(
     }
     // Idempotency replays stored before lifecycle support carry no lifecycle; those lots were AsAcquired.
     private static LotLifecycleResponse ToLifecycle(InventoryLifecycleView? lifecycle) => lifecycle is null ? new LotLifecycleResponse("AsAcquired", null, null, null, null, null) : new LotLifecycleResponse(lifecycle.State, lifecycle.OpenedAt, lifecycle.FrozenAt, lifecycle.ThawStartedAt, lifecycle.ThawedAt, lifecycle.ParentLotId);
-    private static QuantityResponse? ToQuantity(InventoryQuantity? quantity) => quantity is null ? null : new QuantityResponse(quantity.MeasuredValue, quantity.Unit, quantity.AvailabilityState);
+    private static QuantityResponse? ToQuantity(InventoryQuantity? quantity) => quantity is null ? null : new QuantityResponse(quantity.MeasuredValue, quantity.Unit, quantity.AvailabilityState, quantity.Estimated);
     private PreparationResponse ToPreparationResponse(PreparationBatchView item) => new(item.BatchId, item.SourceType, item.OutputProductId, item.OutputProductName, ToQuantity(item.DeclaredYield)!, item.PreparedAt, item.Inputs.Select(input => new PreparationInputResponse(input.LotId, ToQuantity(input.ConsumedQuantity)!)).ToList(), item.Outputs.Select(output => new PreparationOutputResponse(ToResponse(output.Lot), new PreparedLotMetadataResponse(output.PreparedMetadata.BatchId, output.PreparedMetadata.LifecycleState, output.PreparedMetadata.PreparedAt, output.PreparedMetadata.ShelfLifeDate, output.PreparedMetadata.ShelfLifeSource, output.PreparedMetadata.ShelfLifeConfidence, output.PreparedMetadata.ShelfLifeConditions))).ToList(), item.CreatedAt);
 
     private IResult ToLotResult(string operation, InventoryApplicationResult<InventoryLotView> result, string traceId)

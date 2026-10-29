@@ -1,5 +1,3 @@
-using System.Globalization;
-using System.Text;
 using Cocinaris.Modules.Inventory.Application;
 using Cocinaris.Modules.Recipes.Application;
 
@@ -118,36 +116,8 @@ public static class ShoppingProjector
             .ToList();
     }
 
-    /// <summary>Normalizes a product name for matching: trimmed, lower case, accents removed, single spaces.</summary>
-    public static string NormalizeName(string name)
-    {
-        var decomposed = name.Trim().ToLowerInvariant().Normalize(NormalizationForm.FormD);
-        var builder = new StringBuilder(decomposed.Length);
-        var space = false;
-        foreach (var character in decomposed)
-        {
-            if (CharUnicodeInfo.GetUnicodeCategory(character) == UnicodeCategory.NonSpacingMark)
-            {
-                continue;
-            }
-
-            if (char.IsWhiteSpace(character))
-            {
-                space = builder.Length > 0;
-                continue;
-            }
-
-            if (space)
-            {
-                builder.Append(' ');
-                space = false;
-            }
-
-            builder.Append(character);
-        }
-
-        return builder.ToString().Normalize(NormalizationForm.FormC);
-    }
+    /// <summary>Normalizes a product name for matching (see <see cref="RecipeIngredientReader.NormalizeName"/>).</summary>
+    public static string NormalizeName(string name) => RecipeIngredientReader.NormalizeName(name);
 
     /// <summary>Item key: normalized name (at most 120 characters) and canonical unit.</summary>
     public static string Key(string name, string unit)

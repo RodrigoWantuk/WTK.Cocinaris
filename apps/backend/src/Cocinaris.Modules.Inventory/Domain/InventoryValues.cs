@@ -192,8 +192,13 @@ public abstract record LotQuantity
         /// <summary>Creates a persisted nonnegative measured quantity with canonical precision.</summary>
         /// <param name="value">Nonnegative quantity with at most three decimal places.</param>
         /// <param name="unit">Defined canonical unit.</param>
+        /// <param name="isEstimate">
+        /// Whether the value is the owner's approximation ("half a package") rather than a count or
+        /// weighing (PLAN-0054 Phase 2). An estimate is used like any measured value, but
+        /// consumption beyond it empties the lot instead of failing.
+        /// </param>
         /// <exception cref="ArgumentOutOfRangeException">Thrown when value, precision, or unit is invalid.</exception>
-        public Measured(decimal value, CanonicalUnit unit)
+        public Measured(decimal value, CanonicalUnit unit, bool isEstimate = false)
         {
             if (value < 0m || value > MaximumMeasuredValue || decimal.Round(value, 3) != value)
             {
@@ -207,6 +212,7 @@ public abstract record LotQuantity
 
             Value = value;
             Unit = unit;
+            IsEstimate = isEstimate;
         }
 
         /// <summary>Gets the canonical decimal quantity.</summary>
@@ -214,6 +220,9 @@ public abstract record LotQuantity
 
         /// <summary>Gets the canonical unit.</summary>
         public CanonicalUnit Unit { get; }
+
+        /// <summary>Gets whether <see cref="Value"/> is an approximation by the owner.</summary>
+        public bool IsEstimate { get; }
     }
 
     /// <summary>Qualitative availability quantity.</summary>
@@ -239,8 +248,9 @@ public abstract record LotQuantity
     /// <param name="value">Positive decimal value with at most three decimal places.</param>
     /// <param name="unit">Canonical measured unit.</param>
     /// <param name="quantity">Validated quantity when successful.</param>
+    /// <param name="isEstimate">Whether the value is the owner's approximation.</param>
     /// <returns><see langword="true"/> when the measured quantity is valid.</returns>
-    public static bool TryCreateMeasured(decimal value, CanonicalUnit unit, out LotQuantity? quantity)
+    public static bool TryCreateMeasured(decimal value, CanonicalUnit unit, out LotQuantity? quantity, bool isEstimate = false)
     {
         if (value <= 0m || value > MaximumMeasuredValue || decimal.Round(value, 3) != value)
         {
@@ -248,7 +258,7 @@ public abstract record LotQuantity
             return false;
         }
 
-        quantity = new Measured(value, unit);
+        quantity = new Measured(value, unit, isEstimate);
         return true;
     }
 

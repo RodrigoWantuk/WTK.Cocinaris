@@ -702,7 +702,7 @@ export function ProfileEquipmentPage() {
           <select
             id="profile-equipment-catalog-select"
             data-testid="profile-equipment-catalog-select"
-            className="flex h-9 rounded-md border border-input bg-transparent px-3 text-sm"
+            className="flex h-9 rounded-xl border border-input bg-background px-3 text-[15px]"
             value={pendingCode}
             disabled={!canMutate}
             onChange={(event) => setPendingCode(event.target.value)}

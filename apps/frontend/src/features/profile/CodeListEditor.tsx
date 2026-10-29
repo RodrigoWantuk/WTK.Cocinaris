@@ -95,7 +95,7 @@ export function CodeListEditor({
           aria-label={`${label}: ${t("profile.data.addListItem")}`}
           aria-describedby={errorMessage ? `code-list-${id}-error` : undefined}
           // Long catalog labels must not widen the page on narrow screens.
-          className="flex h-9 w-full min-w-0 max-w-full rounded-md border border-input bg-transparent px-3 text-sm sm:w-auto"
+          className="flex h-9 w-full min-w-0 max-w-full rounded-xl border border-input bg-background px-3 text-[15px] sm:w-auto"
           value={pendingCode}
           disabled={disabled}
           onChange={(event) => setPendingCode(event.target.value)}

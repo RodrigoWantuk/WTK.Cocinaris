@@ -539,7 +539,7 @@ export function ProductionInventoryDetail() {
             </span>
             <select
               data-testid="inventory-adjust-type"
-              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+              className="flex h-11 w-full rounded-xl border border-input bg-background px-3 text-[15px]"
               value={measuredAction}
               disabled={busy}
               onChange={(event) =>
@@ -600,7 +600,7 @@ export function ProductionInventoryDetail() {
             </span>
             <select
               data-testid="inventory-availability"
-              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+              className="flex h-11 w-full rounded-xl border border-input bg-background px-3 text-[15px]"
               value={availability}
               disabled={busy || !session.csrfToken}
               onChange={(event) =>

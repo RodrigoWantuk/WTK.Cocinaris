@@ -17,7 +17,7 @@ internal static class InventoryRecordMapper
 
     public static InventoryLot ToDomain(LotRecord item)
     {
-        var quantity = item.MeasuredValue is { } value ? new LotQuantity.Measured(value, Enum.Parse<CanonicalUnit>(item.MeasuredUnit!)) : LotQuantity.FromAvailability(Enum.Parse<AvailabilityState>(item.AvailabilityState!));
+        var quantity = item.MeasuredValue is { } value ? new LotQuantity.Measured(value, Enum.Parse<CanonicalUnit>(item.MeasuredUnit!), item.QuantityIsEstimate) : LotQuantity.FromAvailability(Enum.Parse<AvailabilityState>(item.AvailabilityState!));
         LotStorage.TryCreate(Enum.Parse<StorageLocation>(item.StorageLocation), item.CustomLocation, out var storage);
         PrivateNotes.TryCreate(item.Notes, out var notes);
         var lifecycle = new LotLifecycle(Enum.Parse<LotLifecycleState>(item.LifecycleState), item.OpenedAt, item.FrozenAt, item.ThawStartedAt, item.ThawedAt, item.ParentLotId);
@@ -33,6 +33,7 @@ internal static class InventoryRecordMapper
         ProductId = item.ProductId,
         MeasuredValue = item.Quantity is LotQuantity.Measured measured ? measured.Value : null,
         MeasuredUnit = item.Quantity is LotQuantity.Measured measuredUnit ? measuredUnit.Unit.ToString() : null,
+        QuantityIsEstimate = item.Quantity is LotQuantity.Measured { IsEstimate: true },
         AvailabilityState = item.Quantity is LotQuantity.Availability availability ? availability.State.ToString() : null,
         StorageLocation = item.Storage.Location.ToString(),
         CustomLocation = item.Storage.CustomLocation,

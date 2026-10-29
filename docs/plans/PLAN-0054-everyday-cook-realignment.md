@@ -1,0 +1,123 @@
+# PLAN-0054: Everyday-Cook Realignment — Design System, Easy Pantry, Dual Measures, Beginner Cooking, Shared Household
+
+- **Status:** In Progress
+- **Type:** Implementation (product realignment)
+- **Priority:** Highest (runs before the pending phases of PLAN-0029, PLAN-0037, PLAN-0042, PLAN-0045)
+- **Owner:** Claude Code (claimed 2026-10-29)
+- **Created:** 2026-10-29
+- **Last updated:** 2026-10-29
+- **Branch:** `agent/plan-0054-everyday-cook-realignment` (Phase 0)
+- **Pull request:** Draft, opened after this commit
+- **Decisions:** [`docs/product/everyday-cook-realignment-2026-10-29.md`](../product/everyday-cook-realignment-2026-10-29.md)
+- **Audit:** [`docs/design/ux-audit-2026-10-29.md`](../design/ux-audit-2026-10-29.md)
+- **Design proposal:** design canvas "Cocinaris — nova direção de design" (private claude.ai artifact, owner's account: https://claude.ai/artifact/N7grShNyoauYepVVjN7mEs)
+
+## Objective
+
+Make Cocinaris work for an average person, living alone or in a household, with little cooking experience, in Western countries. Keep the precise path for people who weigh everything.
+
+## Phases (ordered for flow; owner: "faça como achar mais fluido")
+
+| Phase | Outcome | Why in this order |
+| --- | --- | --- |
+| 0 | Owner decisions recorded, audit, design-direction proposal, two defects fixed | Nothing else should be built before the direction is agreed |
+| 1 | Design system and app shell | Every later phase builds screens; doing them in the old look means redoing them |
+| 2 | Easy pantry | Exact or approximate amounts, quick add with region staples and several items in a row, places in everyday words; suggestions, menus, reservations and shopping use approximate amounts too |
+| 3 | Dual measures | Household measure and metric shown together from one deterministic conversion table (density and piece weight per ingredient class), validated for compatibility; imperial and °F by region; the model proposes a measure, deterministic code checks it |
+| 4 | Beginner cooking mode | One step per screen, timers, kept-awake screen, preparation first, "how it should look", one-tap completion with optional edits; help for a missing ingredient or a problem (absorbs the start of PLAN-0045 and the PLAN-0042 Phase 2 substitutions) |
+| 5 | Shared household | Superseding ADR for ownership (`AGENTS.md` §4), members with age and restrictions, invitations, a shared pantry, menu, and shopping list for the household (grouped by store section, everything checked put into the pantry at once), and migration of existing single-owner data |
+| 6 | Onboarding and region | First value in about two minutes: who eats at home, what you have (staples by region); region in the AI context (cuisine, ingredient availability, meal patterns) |
+| 7 | Validation | The owner's exhaustive test with a repository checklist, fixes, then a test script for three external people and the findings |
+
+Phase 5 is large and changes the data model. It follows Phases 1–4 because those change screens the household will reuse, and the ADR can be prepared in parallel. If the owner wants the household earlier, Phase 5 moves up; nothing in Phases 1–4 blocks it.
+
+## Phase 0 scope delivered
+
+- **Decision record.** The owner decisions are recorded verbatim, with their consequences for existing plans.
+- **Audit.** Every production screen was captured (phone and desktop) and reviewed. The findings are in the audit document.
+- **Design proposal.** A design canvas with the proposed system (palette, type, components, principles) and five phone screens in the new direction: Hoje, Despensa with quick add (amount as Cheio/Metade/Pouco/Exato), Receita with both measures and "Tem", Cozinhar step by step, and the household's Compras grouped by store section.
+- **Defect: cooking review.** The cooking proposal now matches ingredients without their own lot to pantry lots by normalized name and unit. Manually written recipes therefore propose the pantry items. The normalization is shared, through `RecipeIngredientReader.NormalizeName`, by the proposal, the shopping list, and reservations.
+- **Defect: menu copy.** The "in use" hint no longer says nothing is reserved.
+
+## Acceptance criteria (Phase 0)
+
+- [x] Owner decisions recorded in the repository with their effect on other plans.
+- [x] Audit of every production screen with concrete findings.
+- [x] Design-direction proposal the owner can react to.
+- [x] Both audit defects fixed, with a test for the name match.
+- [x] Owner reaction to the design direction. The first direction felt like "um sistema". The owner approved direction 2 (white, near-black pills, Inter, rows instead of boxes, four tabs plus "+", the menu inside Hoje): "Vamos fechar assim por hora, ficou bem melhor já."
+
+## Phase 1 scope delivered
+
+- **Design system.** The rules are written in [`docs/design/design-system.md`](../design/design-system.md).
+  - Tokens for light and dark live in `index.css`. Tailwind now has `success` and `warning` colors; the existing `bg-warning/10`-style classes were silently no-ops before.
+  - The font is Inter, self-hosted. Lora and Manrope were removed.
+  - Buttons are pills with no shadows. Inputs and selects are 44px with 15px text. Cards have no shadow.
+- **Shell.**
+  - `AppNavigation` is a bottom bar on phones and inline in the header from `md`, with Hoje, Despensa, "+", Receitas, and Compras.
+  - `AccountMenu` holds Perfil, the language, and Sair.
+  - The header has no blur.
+  - The new `/app/compras` route (`ShoppingHubPage`) opens the list of the current menu: the accepted menu covering today, else the next accepted one, else a current draft. With no menu, it links to the menu page.
+- **Screens.** The pantry and shopping lists are rows instead of boxes. The pantry attention panel uses the amber tint. All native selects and inputs use the new size.
+- **Not yet moved:** Hoje, the recipe page, the menu page, and the profile still use their boxed sections. Phase 2 rewrites the pantry and the add flow, and Phase 4 rewrites recipe and cooking, so those screens move to the row pattern when they are rebuilt, not twice.
+
+## Phase 2 scope delivered (first part: approximate amounts and quick add)
+
+- **Estimated amounts.** A measured lot can be marked as an estimate. The rules are in [`docs/domain/inventory-lifecycle.md`](../domain/inventory-lifecycle.md#implemented-estimated-amounts-plan-0054-phase-2):
+  - Full, about half, or a little of a stated package size becomes an estimate.
+  - Without a package size, the choice becomes `Available` or `Low`.
+  - Consumption beyond an estimate empties the lot.
+  - A correction states whether its value is an estimate.
+- **Implementation.**
+  - Domain: `LotQuantity.Measured.IsEstimate`.
+  - Migration: `AddLotQuantityEstimate`, which adds a boolean column defaulting to false and a check constraint.
+  - API: `quantity.estimated` on create and on lot responses, and `estimated` on Correct adjustments. The OpenAPI contract and the generated client were regenerated.
+- **Add screen.**
+  - The questions use everyday words: "O que você tem?", "Quanto?" (Exato, Cheio, Metade, Pouco, Sem quantidade), and "Onde fica?" (Armário, Geladeira, Freezer, Outro).
+  - Common items are one tap, with their usual unit and place. The list follows the interface language until Phase 6 adds the region.
+  - A live hint shows the estimate ("Cerca de 500 g").
+  - "Salvar e adicionar outro" stays on the form for the next item.
+  - Package, date, and notes fold under "Mais detalhes".
+- **Pantry list.** An estimate shows as "~500 g". The copy says "itens" and "Adicionar" instead of "lote".
+- **Not yet done:**
+  - The lot detail's correction has no "this is an estimate" choice yet; the API supports it.
+  - The menu, shopping, and AI context do not show or receive the estimate mark; they use the value.
+  - Hoje, recipe, and menu screens still have their boxed sections (Phase 4 rebuilds recipe and cooking).
+
+## Execution state
+
+- **Current run delivery target:** Phase 2 (estimated amounts and quick add).
+- **Current checkpoint:** Phase 2 first part delivered as above.
+- **Validation:**
+  - **Backend unit tests:** the inventory domain and application tests pass (21), including the new estimate tests (consumption beyond an estimate; correction and split keep or set the mark).
+  - **Backend integration tests:** `InventoryLifecycleTransitionApiTests` and `PostgreSqlMigrationTests` pass (28) against PostgreSQL. The new test covers create, consumption past the estimate, rejecting `estimated` on Discard, and an exact correction.
+  - **Frontend:** typecheck is clean, and Vitest passes 55 files and 450 tests, including the half-package, little-without-size, and add-another cases.
+  - **Build:** the frontend build passes. OpenAPI lint shows the 6 known warnings.
+  - **Visual check:** the add screen and the pantry list were captured on the replica.
+- **Not run:** the full backend suites.
+- **Exact next action:** finish Phase 2.
+  - Add the estimate choice to the lot detail's correction.
+  - Show "~" in the shopping list's "tem" and in the menu reservations.
+  - Pass the estimate mark to the AI context.
+
+  Then Phase 3: dual measures.
+- **Blockers:** none.
+
+## Progress log
+
+### 2026-10-29T17:40:00Z — Claude Code
+
+- Recorded the owner's decisions after the flow review, audited every screen, and published the design proposal.
+- Fixed the two audit defects.
+
+### 2026-10-29T21:30:00Z — Claude Code
+
+- The owner approved design direction 2.
+- Delivered Phase 1: the tokens, Inter, the pill primitives, the bottom and inline navigation, the account menu, and the Compras hub, with the pantry and shopping lists as rows.
+- Added the success and warning Tailwind colors and the design-system document.
+- Frontend tests pass (447), the guards pass, and the build passes.
+
+### 2026-10-29T23:10:00Z — Claude Code
+
+- Phase 2 first part: approximate pantry amounts end to end (domain, migration, API, client), a quick add screen in everyday words with common items, and save-and-add-another. The pantry list now shows "~" for estimates.
+- Backend tests pass: 21 unit and 28 integration. Frontend tests pass: 450.

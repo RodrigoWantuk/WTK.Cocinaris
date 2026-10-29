@@ -74,6 +74,21 @@ public sealed class ReservationProjectorTests
         Assert.Equal(("protected", (decimal?)null), (blocked.Lines.Single().Status, blocked.Lines.Single().ProposedQuantity));
     }
 
+    [Fact]
+    public void TheProposalMatchesAnIngredientWithoutItsOwnLotByNameAndUnit()
+    {
+        var eggs = Lot("Ovos", 6m, "Unit");
+        var milk = Lot("Leite", 1000m, "Gram");
+        var json = "{\"ingredients\":[" + Ingredient("i1", "additional", " OVOS ", 2, "unit") + "," + Ingredient("i2", "additional", "Leite", 200, "ml") + "," + Ingredient("i3", "assumption", "Sal", 5, "g") + "]}";
+
+        var lines = RecipeExecutionApplicationService.BuildProposal(json, 1, 1, [eggs, milk]).Lines;
+
+        Assert.Equal(("ready", eggs.LotId, 2m), (lines[0].Status, lines[0].LotId, lines[0].ProposedQuantity));
+        // Milk is stocked in grams; a recipe in millilitres is not matched to it.
+        Assert.Equal(("not_tracked", (Guid?)null), (lines[1].Status, lines[1].LotId));
+        Assert.Equal("not_tracked", lines[2].Status);
+    }
+
     private static ReservingMeal Meal(string name, int day, params string[] ingredients) =>
         new(Guid.NewGuid(), name, new DateOnly(2026, 11, day), 2, 2, "{\"ingredients\":[" + string.Join(",", ingredients) + "]}");
 

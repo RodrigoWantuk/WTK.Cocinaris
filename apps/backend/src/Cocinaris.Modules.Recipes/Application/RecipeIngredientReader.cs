@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.Text;
 using System.Text.Json;
 
 namespace Cocinaris.Modules.Recipes.Application;
@@ -61,6 +63,41 @@ public static class RecipeIngredientReader
     {
         var scaled = lotUnit == "Unit" ? Math.Ceiling(quantity * scale) : Math.Round(quantity * scale, 0, MidpointRounding.AwayFromZero);
         return Math.Max(scaled, lotUnit == "Unit" ? 1 : 0.001m);
+    }
+
+    /// <summary>
+    /// Normalizes a product name for matching an ingredient to pantry lots: trimmed, lower case,
+    /// accents removed, single spaces. Shared by the cooking proposal, the shopping list, and menu
+    /// reservations so all three match the same way.
+    /// </summary>
+    public static string NormalizeName(string name)
+    {
+        var decomposed = name.Trim().ToLowerInvariant().Normalize(NormalizationForm.FormD);
+        var builder = new StringBuilder(decomposed.Length);
+        var space = false;
+        foreach (var character in decomposed)
+        {
+            if (CharUnicodeInfo.GetUnicodeCategory(character) == UnicodeCategory.NonSpacingMark)
+            {
+                continue;
+            }
+
+            if (char.IsWhiteSpace(character))
+            {
+                space = builder.Length > 0;
+                continue;
+            }
+
+            if (space)
+            {
+                builder.Append(' ');
+                space = false;
+            }
+
+            builder.Append(character);
+        }
+
+        return builder.ToString().Normalize(NormalizationForm.FormC);
     }
 
     private static string? Text(JsonElement item, string name) => item.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String ? value.GetString() : null;

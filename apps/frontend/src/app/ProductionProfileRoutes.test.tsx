@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import ProductionApp from "./ProductionApp";
 import { PRODUCTION_LOCALE_STORAGE_KEY } from "./i18n/productionCatalog";
 
@@ -141,13 +141,15 @@ describe("Production profile routes", () => {
       "href",
       "/app/despensa",
     );
+    // Profile lives in the account menu (PLAN-0054 Phase 1).
+    fireEvent.click(screen.getByTestId("production-account-menu"));
     expect(screen.getByTestId("production-nav-perfil")).toHaveAttribute(
       "href",
       "/app/perfil",
     );
-    expect(screen.getByTestId("production-nav-perfil")).toHaveAttribute(
-      "aria-current",
-      "page",
+    expect(screen.getByTestId("production-account-menu")).toHaveAttribute(
+      "aria-expanded",
+      "true",
     );
   });
 

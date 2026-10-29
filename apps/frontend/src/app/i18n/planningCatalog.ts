@@ -103,9 +103,20 @@ export const REQUIRED_PLANNING_I18N_KEYS = [
   "planning.ai.asking",
   "planning.ai.choose",
   "planning.ai.saving",
+  "nav.add",
+  "nav.shopping",
+  "account.menu",
+  "shopping.hub.empty",
+  "shopping.hub.plan",
 ] as const;
 
 const ptBR: Record<string, string> = {
+  "nav.add": "Adicionar",
+  "nav.shopping": "Compras",
+  "account.menu": "Conta, perfil e idioma",
+  "shopping.hub.empty":
+    "A lista de compras sai do cardápio: planeje algumas refeições e ela se monta sozinha com o que falta.",
+  "shopping.hub.plan": "Planejar refeições",
   "planning.ai.open": "Sugerir com IA",
   "planning.ai.hint":
     "A IA sugere três pratos para este dia usando só o que a despensa tem livre e evitando repetir o que já está no cardápio.",
@@ -173,7 +184,7 @@ const ptBR: Record<string, string> = {
   "planning.statusHint.draft":
     "Rascunho: as refeições ainda não aparecem no Hoje, e a lista de compras é só uma simulação. Use o cardápio quando estiver pronto.",
   "planning.statusHint.accepted":
-    "Em uso: as refeições do dia aparecem no Hoje. Você pode mudar qualquer refeição; nada é reservado na despensa.",
+    "Em uso: as refeições do dia aparecem no Hoje, e o que já está na despensa fica reservado para elas. Você pode mudar qualquer refeição.",
   "planning.statusHint.archived": "Arquivado: só para consulta.",
   "planning.accept": "Usar este cardápio",
   "planning.archive": "Arquivar",
@@ -224,6 +235,12 @@ const ptBR: Record<string, string> = {
 };
 
 const en: Record<string, string> = {
+  "nav.add": "Add",
+  "nav.shopping": "Shopping",
+  "account.menu": "Account, profile, and language",
+  "shopping.hub.empty":
+    "The shopping list comes from the menu: plan a few meals and it fills itself with what is missing.",
+  "shopping.hub.plan": "Plan meals",
   "planning.ai.open": "Suggest with AI",
   "planning.ai.hint":
     "The AI suggests three dishes for this day, using only what the pantry has free and avoiding what is already on the menu.",
@@ -287,7 +304,7 @@ const en: Record<string, string> = {
   "planning.statusHint.draft":
     "Draft: the meals do not appear on Today yet, and the shopping list is only a simulation. Start using the menu when it is ready.",
   "planning.statusHint.accepted":
-    "In use: each day's meals appear on Today. You can change any meal; nothing is reserved in the pantry.",
+    "In use: each day's meals appear on Today, and what is already in the pantry is set aside for them. You can change any meal.",
   "planning.statusHint.archived": "Archived: read-only.",
   "planning.accept": "Use this menu",
   "planning.archive": "Archive",
@@ -338,6 +355,12 @@ const en: Record<string, string> = {
 };
 
 const es: Record<string, string> = {
+  "nav.add": "Añadir",
+  "nav.shopping": "Compras",
+  "account.menu": "Cuenta, perfil e idioma",
+  "shopping.hub.empty":
+    "La lista de la compra sale del menú: planifica algunas comidas y se arma sola con lo que falta.",
+  "shopping.hub.plan": "Planificar comidas",
   "planning.ai.open": "Sugerir con IA",
   "planning.ai.hint":
     "La IA sugiere tres platos para este día usando solo lo que la despensa tiene libre y evitando repetir lo que ya está en el menú.",
@@ -404,7 +427,7 @@ const es: Record<string, string> = {
   "planning.statusHint.draft":
     "Borrador: las comidas aún no aparecen en Hoy, y la lista de la compra es solo una simulación. Usa el menú cuando esté listo.",
   "planning.statusHint.accepted":
-    "En uso: las comidas del día aparecen en Hoy. Puedes cambiar cualquier comida; no se reserva nada en la despensa.",
+    "En uso: las comidas del día aparecen en Hoy, y lo que ya está en la despensa queda reservado para ellas. Puedes cambiar cualquier comida.",
   "planning.statusHint.archived": "Archivado: solo lectura.",
   "planning.accept": "Usar este menú",
   "planning.archive": "Archivar",

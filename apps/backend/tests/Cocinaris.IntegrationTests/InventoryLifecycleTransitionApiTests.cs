@@ -216,6 +216,47 @@ public sealed class InventoryLifecycleTransitionApiTests : IAsyncLifetime
         return session.GetProperty("csrfToken").GetString()!;
     }
 
+    [Fact]
+    public async Task AnEstimatedLotIsStoredReturnedAndEmptiedByConsumptionBeyondIt()
+    {
+        using var client = Client("estimate-user");
+        var csrf = await CsrfAsync(client);
+        using var create = new HttpRequestMessage(HttpMethod.Post, "/api/v1/inventory/lots")
+        {
+            Content = JsonContent.Create(new { productName = "Rice", quantity = new { measuredValue = 500, unit = "Gram", estimated = true }, storageLocation = "Pantry" })
+        };
+        create.Headers.Add("X-CSRF-TOKEN", csrf);
+        create.Headers.Add("Idempotency-Key", Guid.NewGuid().ToString());
+        var created = await client.SendAsync(create);
+        Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+        var lot = await created.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.True(lot.GetProperty("quantity").GetProperty("estimated").GetBoolean());
+        var lotId = lot.GetProperty("lotId").GetGuid();
+
+        var consumed = await AdjustAsync(client, csrf, lotId, created.Headers.ETag!.Tag, new { type = "Consume", value = 700, reasonCode = "meal" });
+        Assert.Equal(HttpStatusCode.OK, consumed.StatusCode);
+        var afterConsume = await consumed.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(0m, afterConsume.GetProperty("quantity").GetProperty("measuredValue").GetDecimal());
+
+        var rejected = await AdjustAsync(client, csrf, lotId, consumed.Headers.ETag!.Tag, new { type = "Discard", value = 1, reasonCode = "waste", estimated = true });
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, rejected.StatusCode);
+
+        var corrected = await AdjustAsync(client, csrf, lotId, consumed.Headers.ETag!.Tag, new { type = "Correct", value = 420, reasonCode = "weighed" });
+        Assert.Equal(HttpStatusCode.OK, corrected.StatusCode);
+        var listed = await client.GetFromJsonAsync<JsonElement>($"/api/v1/inventory/lots/{lotId}");
+        Assert.False(listed.GetProperty("quantity").GetProperty("estimated").GetBoolean());
+        Assert.Equal(420m, listed.GetProperty("quantity").GetProperty("measuredValue").GetDecimal());
+    }
+
+    private static async Task<HttpResponseMessage> AdjustAsync(HttpClient client, string csrf, Guid lotId, string etag, object body)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, $"/api/v1/inventory/lots/{lotId}/adjustments") { Content = JsonContent.Create(body) };
+        request.Headers.Add("X-CSRF-TOKEN", csrf);
+        request.Headers.Add("Idempotency-Key", Guid.NewGuid().ToString());
+        request.Headers.TryAddWithoutValidation("If-Match", etag);
+        return await client.SendAsync(request);
+    }
+
     private static async Task<(Guid LotId, string ETag)> CreateLotAsync(HttpClient client, string csrf, decimal value, string storage, string? packageState, string unit = "Gram")
     {
         using var request = new HttpRequestMessage(HttpMethod.Post, "/api/v1/inventory/lots")

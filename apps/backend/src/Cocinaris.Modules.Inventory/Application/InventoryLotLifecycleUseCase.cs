@@ -21,7 +21,7 @@ public sealed class InventoryLotLifecycleUseCase
         {
             InventoryTransactionType.Consume => lot.AdjustMeasured(InventoryTransactionType.Consume, command.Value!.Value, command.ReasonCode, command.Note, idempotencyKey, occurredAt),
             InventoryTransactionType.Discard => lot.AdjustMeasured(InventoryTransactionType.Discard, command.Value!.Value, command.ReasonCode, command.Note, idempotencyKey, occurredAt),
-            InventoryTransactionType.Correct => lot.AdjustMeasured(InventoryTransactionType.Correct, command.Value!.Value, command.ReasonCode, command.Note, idempotencyKey, occurredAt),
+            InventoryTransactionType.Correct => lot.AdjustMeasured(InventoryTransactionType.Correct, command.Value!.Value, command.ReasonCode, command.Note, idempotencyKey, occurredAt, command.Estimated),
             InventoryTransactionType.AvailabilityChanged => lot.ChangeAvailability(command.AvailabilityState!.Value, command.ReasonCode, command.Note, idempotencyKey, occurredAt),
             _ => throw new InvalidOperationException("The adjustment is invalid for this lot.")
         };
