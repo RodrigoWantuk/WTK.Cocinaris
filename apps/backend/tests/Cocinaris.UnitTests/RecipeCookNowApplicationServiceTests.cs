@@ -275,8 +275,8 @@ public sealed class RecipeCookNowApplicationServiceTests
 
     private sealed class EmptyRecipeContextAssembler : IRecipeContextAssembler
     {
-        public Task<RecipeSuggestRequestContext> AssembleSuggestContextAsync(Guid ownerUserId, string requestId, int contextBudgetCharacters, CancellationToken cancellationToken) =>
-            Task.FromResult(new RecipeSuggestRequestContext(requestId, [], [], new RecipeUserPresets(2, [], [], []), new RecipeExecutionContext("cook_now", null)));
+        public Task<RecipeSuggestRequestContext> AssembleSuggestContextAsync(Guid ownerUserId, string requestId, int contextBudgetCharacters, CancellationToken cancellationToken, MenuPlanningTarget? menuTarget = null) =>
+            Task.FromResult(new RecipeSuggestRequestContext(requestId, [], [], new RecipeUserPresets(menuTarget?.Servings ?? 2, [], [], []), new RecipeExecutionContext(menuTarget is null ? "cook_now" : "menu_planning", null, menuTarget?.PlannedDate, menuTarget?.MealType, menuTarget?.AlreadyPlannedRecipeNames)));
 
         public Task<RecipeExpandRequestContext> AssembleExpandContextAsync(Guid ownerUserId, string requestId, SuggestCandidate selectedCandidate, int contextBudgetCharacters, CancellationToken cancellationToken) =>
             Task.FromResult(new RecipeExpandRequestContext(

@@ -1480,6 +1480,47 @@
         ],
         "type": "object"
       },
+      "MenuPlanningSlotRequest": {
+        "description": "A slot of an owned menu.",
+        "properties": {
+          "mealType": {
+            "description": "`breakfast`, `lunch`, `dinner`, `snack`, or null.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "menuId": {
+            "description": "Menu.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "plannedDate": {
+            "description": "Day inside the menu's period, or null for flexible.",
+            "format": "date",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "servings": {
+            "description": "Portions, 1 to 24.",
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ]
+          }
+        },
+        "required": [
+          "menuId",
+          "plannedDate",
+          "mealType",
+          "servings"
+        ],
+        "type": "object"
+      },
       "MissingIngredientResponse": {
         "description": "An ingredient a meal still lacks.",
         "properties": {
@@ -3763,6 +3804,26 @@
           "timesCooked",
           "lastCookedAt",
           "lastRating"
+        ],
+        "type": "object"
+      },
+      "RequestCandidatesRequest": {
+        "description": "Optional body for requesting candidates; without it the request is cook-now.",
+        "properties": {
+          "menuPlanning": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/MenuPlanningSlotRequest",
+                "description": "Menu slot to plan (PLAN-0029 Phase 2)."
+              }
+            ]
+          }
+        },
+        "required": [
+          "menuPlanning"
         ],
         "type": "object"
       },
@@ -10294,6 +10355,22 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "$ref": "#/components/schemas/RequestCandidatesRequest"
+                  }
+                ]
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "content": {
@@ -10338,6 +10415,16 @@
             },
             "description": "Authentication is required."
           },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
           "409": {
             "content": {
               "application/problem+json": {
@@ -10347,6 +10434,29 @@
               }
             },
             "description": "Conflict"
+          },
+          "415": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "unsupportedMediaType": {
+                    "summary": "The request content type is unsupported.",
+                    "value": {
+                      "detail": "The request content type is not supported.",
+                      "errorCode": "unsupported_media_type",
+                      "status": 415,
+                      "title": "Unsupported Media Type",
+                      "traceId": "00-00000000000000000000000000000000-0000000000000000-00",
+                      "type": "about:blank"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request content type is not supported."
           },
           "422": {
             "content": {

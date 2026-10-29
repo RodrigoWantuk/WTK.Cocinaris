@@ -984,7 +984,7 @@ namespace Cocinaris.Infrastructure.Persistence.Migrations
 
                     b.ToTable("generation_sessions", "recipes", t =>
                         {
-                            t.HasCheckConstraint("ck_generation_sessions_execution_mode", "\"ExecutionMode\" IN ('cook_now')");
+                            t.HasCheckConstraint("ck_generation_sessions_execution_mode", "\"ExecutionMode\" IN ('cook_now', 'menu_planning')");
 
                             t.HasCheckConstraint("ck_generation_sessions_status", "\"Status\" IN ('AwaitingCandidates', 'CandidatesReady', 'Expanding', 'Selected', 'Failed')");
                         });

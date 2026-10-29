@@ -56,13 +56,18 @@ public sealed class RecipeGenerationSession
     /// <summary>Gets the instant after which the session may no longer be acted upon.</summary>
     public DateTimeOffset ExpiresAt { get; private init; }
 
-    /// <summary>Creates a new cook-now generation session for the client-supplied idempotency key.</summary>
-    public static RecipeGenerationSession Create(Guid ownerUserId, Guid idempotencyKey, DateTimeOffset now) => new()
+    /// <summary>Creates a generation session for the client-supplied idempotency key.</summary>
+    /// <param name="ownerUserId">Owner.</param>
+    /// <param name="idempotencyKey">Client replay key.</param>
+    /// <param name="now">Creation instant.</param>
+    /// <param name="executionMode"><c>cook_now</c>, or <c>menu_planning</c> for a menu slot (PLAN-0029 Phase 2).</param>
+    /// <exception cref="ArgumentException">The mode is not supported.</exception>
+    public static RecipeGenerationSession Create(Guid ownerUserId, Guid idempotencyKey, DateTimeOffset now, string executionMode = "cook_now") => new()
     {
         Id = Guid.NewGuid(),
         OwnerUserId = ownerUserId,
         IdempotencyKey = idempotencyKey,
-        ExecutionMode = "cook_now",
+        ExecutionMode = executionMode is "cook_now" or "menu_planning" ? executionMode : throw new ArgumentException("Unsupported execution mode.", nameof(executionMode)),
         Status = RecipeGenerationSessionStatus.AwaitingCandidates,
         CreatedAt = now,
         UpdatedAt = now,

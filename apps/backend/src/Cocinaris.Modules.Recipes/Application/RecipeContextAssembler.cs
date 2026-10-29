@@ -11,7 +11,7 @@ namespace Cocinaris.Modules.Recipes.Application;
 /// state through the Inventory and Profiles modules' own application read boundaries. It never
 /// queries persistence directly; it depends only on the read ports those modules already expose.
 /// </summary>
-public sealed class RecipeContextAssembler(IInventoryLotReadStore inventoryReadStore, IProfileReadStore profileReadStore) : IRecipeContextAssembler
+public sealed class RecipeContextAssembler(IInventoryLotReadStore inventoryReadStore, IProfileReadStore profileReadStore, IPantryCommitmentLookup commitments) : IRecipeContextAssembler
 {
     /// <summary>Maximum number of on-hand inventory items considered per request before budget-based truncation.</summary>
     private const int MaxInventoryItemsConsidered = 60;
@@ -23,11 +23,31 @@ public sealed class RecipeContextAssembler(IInventoryLotReadStore inventoryReadS
     private const int DefaultServings = 2;
 
     /// <inheritdoc />
-    public async Task<RecipeSuggestRequestContext> AssembleSuggestContextAsync(Guid ownerUserId, string requestId, int contextBudgetCharacters, CancellationToken cancellationToken)
+    public async Task<RecipeSuggestRequestContext> AssembleSuggestContextAsync(Guid ownerUserId, string requestId, int contextBudgetCharacters, CancellationToken cancellationToken, MenuPlanningTarget? menuTarget = null)
     {
         var (inventoryItems, equipment, presets) = await AssembleSharedAsync(ownerUserId, cancellationToken);
-        var bounded = BoundBySuggestBudget(inventoryItems, equipment, contextBudgetCharacters);
-        return new RecipeSuggestRequestContext(requestId, bounded.InventoryItems, bounded.Equipment, presets, new RecipeExecutionContext("cook_now", AvailableLeadMinutes: null));
+        if (menuTarget is null)
+        {
+            var cookNow = BoundBySuggestBudget(inventoryItems, equipment, contextBudgetCharacters);
+            return new RecipeSuggestRequestContext(requestId, cookNow.InventoryItems, cookNow.Equipment, presets, new RecipeExecutionContext("cook_now", AvailableLeadMinutes: null));
+        }
+
+        // A planned meal may only count on stock nobody else counts on: physical quantity minus
+        // protections and other meals' reservations (PLAN-0029 Phase 3). Fully committed lots are omitted.
+        var committed = await commitments.GetAsync(ownerUserId, cancellationToken);
+        var free = inventoryItems
+            .Select(item => Guid.TryParseExact(item.ItemId, "n", out var lotId) && committed.TryGetValue(lotId, out var commitment)
+                ? item with { Quantity = item.Quantity - commitment.ProtectedQuantity - commitment.Reservations.Sum(reservation => reservation.Quantity) }
+                : item)
+            .Where(item => item.Quantity > 0)
+            .ToList();
+        var bounded = BoundBySuggestBudget(free, equipment, contextBudgetCharacters);
+        return new RecipeSuggestRequestContext(
+            requestId,
+            bounded.InventoryItems,
+            bounded.Equipment,
+            presets with { Servings = menuTarget.Servings },
+            new RecipeExecutionContext("menu_planning", AvailableLeadMinutes: null, menuTarget.PlannedDate, menuTarget.MealType, menuTarget.AlreadyPlannedRecipeNames.Take(20).ToList()));
     }
 
     /// <inheritdoc />

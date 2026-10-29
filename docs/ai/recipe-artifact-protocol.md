@@ -78,6 +78,16 @@ Both operations also state the output language and the instruction style (added 
 
 The model never guesses timezone or silently changes the requested meal. A `cook_now` candidate is invalid when soaking, thawing, marinating, fermentation, cooling or another blocking preparation exceeds the available lead window.
 
+## Menu planning requests (PLAN-0029 Phase 2)
+
+For `menu_planning`, `executionContext` adds:
+- `plannedDate`;
+- `targetMealType`;
+- `alreadyPlannedRecipeNames`, at most 20;
+- a `planningRule` asking for dishes unlike the planned ones.
+
+The recommended strategy set is `on_hand_first`, `planned_purchase_reuse`, and `exploratory`. `availabilitySnapshot` quantities already exclude protections and other meals' reservations.
+
 ## Output language and detail checks (PLAN-0040)
 
 The request's `outputLanguage` and `instructionStyle` are enforced as far as deterministic code can, after schema and semantic validation (`RecipeOutputQuality`).

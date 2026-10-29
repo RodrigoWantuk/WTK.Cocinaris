@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using Cocinaris.Api.Observability;
 using Cocinaris.Api.Services;
+using Cocinaris.Modules.Planning.Application;
 using Cocinaris.Modules.Recipes.Application;
 using Microsoft.AspNetCore.Antiforgery;
 
@@ -13,10 +14,11 @@ public static class RecipeEndpoints
     public static RouteGroupBuilder MapRecipeEndpoints(this RouteGroupBuilder group)
     {
         group.AddEndpointFilter(ValidateCsrfAsync);
-        group.MapPost("/generation-sessions", (RecipeApiService service, HttpRequest request, CancellationToken cancellationToken) => service.RequestCandidatesAsync(request, cancellationToken))
+        group.MapPost("/generation-sessions", (RecipeApiService service, RequestCandidatesRequest? body, HttpRequest request, CancellationToken cancellationToken) => service.RequestCandidatesAsync(body, request, cancellationToken))
             .RequireRateLimiting("mutation")
             .Produces<RecipeGenerationSessionResponse>(StatusCodes.Status200OK)
             .ProducesProblem(400)
+            .ProducesProblem(404)
             .ProducesProblem(409)
             .ProducesProblem(422)
             .ProducesProblem(503);
@@ -58,12 +60,47 @@ public static class RecipeEndpoints
 }
 
 /// <summary>HTTP transport adapter for cook-now recipe application commands and queries.</summary>
-public sealed class RecipeApiService(RecipeCookNowApplicationService application)
+public sealed class RecipeApiService(RecipeCookNowApplicationService application, MenuPlanningApplicationService planning)
 {
-    /// <summary>Creates a generation session and requests three validated cook-now candidates.</summary>
-    public async Task<IResult> RequestCandidatesAsync(HttpRequest request, CancellationToken cancellationToken)
+    private const int MaxPlannedNames = 20;
+
+    /// <summary>
+    /// Creates a generation session and requests three validated candidates: cook-now, or for a
+    /// menu slot when <paramref name="body"/> names one (PLAN-0029 Phase 2). The menu is resolved
+    /// here, owner-scoped, so the names of meals already planned come from the backend.
+    /// </summary>
+    public async Task<IResult> RequestCandidatesAsync(RequestCandidatesRequest? body, HttpRequest request, CancellationToken cancellationToken)
     {
-        var command = new RequestCandidatesCommand(ParseIdempotencyKey(request), request.HttpContext.TraceIdentifier, RequestLanguage(request));
+        MenuPlanningTarget? target = null;
+        if (body?.MenuPlanning is { } slot)
+        {
+            var menu = await planning.GetAsync(slot.MenuId, cancellationToken);
+            if (menu.Problem is not null || menu.Value is null)
+            {
+                return Problem("resource_not_found", "The menu was not found.", StatusCodes.Status404NotFound, request.HttpContext.TraceIdentifier);
+            }
+
+            var plan = menu.Value;
+            var invalid = slot.Servings is < 1 or > 24 ? "servings"
+                : slot.PlannedDate is { } day && (day < plan.StartDate || day > plan.EndDate) ? "plannedDate"
+                : slot.MealType is not null and not ("breakfast" or "lunch" or "dinner" or "snack") ? "mealType"
+                : plan.Status == "archived" ? "menuId"
+                : null;
+            if (invalid is not null)
+            {
+                return Problem("validation_failed", "The menu slot is invalid.", StatusCodes.Status400BadRequest, request.HttpContext.TraceIdentifier, new Dictionary<string, string[]> { [invalid] = ["The menu slot is invalid."] });
+            }
+
+            var names = plan.Entries
+                .Where(entry => entry.Status != "skipped" && entry.RecipeName.Length > 0)
+                .Select(entry => entry.RecipeName)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Take(MaxPlannedNames)
+                .ToList();
+            target = new MenuPlanningTarget(slot.PlannedDate, slot.MealType, slot.Servings, names);
+        }
+
+        var command = new RequestCandidatesCommand(ParseIdempotencyKey(request), request.HttpContext.TraceIdentifier, RequestLanguage(request), target);
         var result = await application.RequestCandidatesAsync(command, cancellationToken);
         return ToResult(result, request.HttpContext.TraceIdentifier, ToResponse);
     }
@@ -180,6 +217,17 @@ public sealed class RecipeApiService(RecipeCookNowApplicationService application
         return Results.Problem(detail: detail, statusCode: statusCode, extensions: extensions);
     }
 }
+
+/// <summary>Optional body for requesting candidates; without it the request is cook-now.</summary>
+/// <param name="MenuPlanning">Menu slot to plan (PLAN-0029 Phase 2).</param>
+public sealed record RequestCandidatesRequest(MenuPlanningSlotRequest? MenuPlanning);
+
+/// <summary>A slot of an owned menu.</summary>
+/// <param name="MenuId">Menu.</param>
+/// <param name="PlannedDate">Day inside the menu's period, or null for flexible.</param>
+/// <param name="MealType"><c>breakfast</c>, <c>lunch</c>, <c>dinner</c>, <c>snack</c>, or null.</param>
+/// <param name="Servings">Portions, 1 to 24.</param>
+public sealed record MenuPlanningSlotRequest(Guid MenuId, DateOnly? PlannedDate, string? MealType, int Servings);
 
 /// <summary>HTTP body for selecting one cook-now candidate.</summary>
 /// <param name="CandidateId">Stable candidate identifier from the generation session.</param>

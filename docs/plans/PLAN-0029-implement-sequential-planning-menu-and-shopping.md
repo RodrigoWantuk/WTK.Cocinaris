@@ -102,6 +102,23 @@ Turn saved recipes into a menu the owner can use, and derive the shopping list f
 - [x] The browser journey passes through the proxy replica (`scripts/e2e/planning-journey.mjs`, 7/7).
 - [x] Deployed to the owner host (`main` at `3efb214`, release `20261029T121152Z-3efb214135dc`).
 
+## Phase 2 scope delivered (AI suggestions for a menu slot)
+
+1. **Request.** On any day of an editable menu, or on "Sem dia definido", "Sugerir com IA" asks `recipe.suggest_candidates.v1` for three candidates in `executionMode: menu_planning`. The request carries the planned date, the meal type, the servings, and the names of meals already on the menu (skipped ones excluded, at most 20).
+   - **Menu resolved server-side.** The API resolves the menu owner-scoped (404 for another owner) and validates the slot: date inside the period, a known meal, servings 1–24, and a menu that is not archived. The names therefore come from the backend.
+   - **Strategies.** The envelope's strategy set for `menu_planning` is `on_hand_first`, `planned_purchase_reuse`, and `exploratory`; the existing semantic validator rejects the cook-now-only strategy.
+   - **Planning rule.** The request tells the model to differ in dish format, technique, and main ingredient from the meals already planned.
+2. **Free stock only.** The context assembler subtracts protections and other meals' reservations (`IPantryCommitmentLookup`) from pantry quantities, and omits lots that are fully committed. A planned meal can never be suggested stock another meal counts on.
+3. **Choosing.** Choosing a candidate expands and saves it like any cook-now selection: same idempotency, the same output language and detail checks, and the same token windows and spend ceiling. The menu then adds it to the slot. If the add fails, choosing again replays the same selection and retries the add, so no duplicate recipe is created.
+4. **Sessions.** Migration `AllowMenuPlanningSessions` widens the session mode check to `cook_now` and `menu_planning`. The down migration would fail once `menu_planning` sessions exist; the migration is forward-only.
+5. **Model policy.** Menu suggestions use thinking disabled, like cook-now. In the PLAN-0022 samples, thinking-high returned truncated JSON, and the panel already shows that suggestions can take up to a minute.
+
+### Not delivered in Phase 2
+
+- Planning several slots in one request ("fill the week"). Slots are planned one by one, which keeps each suggestion aware of the reservations created by the previous choice (sequential planning).
+- Regenerating only some of the candidates, or keeping rejection reasons across rounds.
+- Planned purchases as `planned_purchase` availability.
+
 ## Phase 3 scope delivered (reservations and protections)
 
 Phase 3 ran before Phase 2. Without it, two cooking sessions could count on the same pantry item, which was the weak point left after Phase 1. Phase 2 also depends on PLAN-0040.
@@ -143,24 +160,23 @@ Phase 3 ran before Phase 2. Without it, two cooking sessions could count on the 
 
 ## Execution state
 
-- **Current run delivery target:** Phase 3 complete, in one PR from fresh `main`.
-- **Current checkpoint:** Phase 3 implemented and validated as below. Deploy after the commit, then open the draft PR.
+- **Current run delivery target:** Phase 2, in one PR from fresh `main`, after the 24-hour token windows (PR #55).
+- **Current checkpoint:** Phase 2 implemented and validated as below. Deploy after the commit, then open the draft PR.
 - **Validation (lean, targeted):**
-  - **Backend unit tests:** `ReservationProjectorTests` (3 new), `ShoppingProjectorTests`, and `RecipeExecutionTests` pass.
-  - **Backend integration tests:** the `RecipeExecutionApiTests` partial class, with the new end-to-end `ReservationApiTests`, `PlanningApiTests`, and `PostgreSqlMigrationTests`: 27 pass. A rerun of the three affected tests after the last DTO change also passed.
+  - **Backend integration tests:** 47 pass. They include the new `MenuSlotSuggestionsSeeOnlyFreeStockAndThePlannedMeals`, which uses a derived test host with the fake provider. It covers:
+    - the slot, the planned names, and only the 200 g of free stock reaching the provider;
+    - the menu strategy set;
+    - the selection and adding to the menu;
+    - a slot outside the period (400);
+    - another owner's menu (404).
+
+    The fake provider now follows `menu_planning` (strategy and target meal), as a real model must.
+  - **Backend unit tests:** the recipe and AI suites pass after the assembler and command changes.
   - **Backend formatting:** `dotnet format --verify-no-changes` is clean.
-  - **OpenAPI:** exported and lint-valid; the 6 `no-ambiguous-paths` warnings are the pre-existing ones. The client was regenerated.
-  - **Frontend tests:** all feature, app, and adapter suites pass (45 files, 357 tests). They include new planning tests for readiness, release, and protection, and the cooking warning.
-  - **Frontend static checks:** typecheck, ESLint, and Prettier are clean, the guards pass, and the build passes.
-  - **Browser journeys through the replica:**
-    - `reservations-journey.mjs`: 6/6;
-    - `planning-journey.mjs`: 7/7;
-    - `cooking-journey.mjs`: 5/5.
-- **Not run:** the full suites, the smoke matrix, and the full local gates (owner direction: lean validation).
-- **Exact next action:** Deploy, then open the draft PR. After merge, the candidates are:
-  - Phase 2 (AI planning), once PLAN-0040 hardening is done;
-  - Phase 4 (package sizes and purchase impact);
-  - the PLAN-0042 Phase 2 remainder (substitutions recorded during cooking).
+  - **OpenAPI:** exported, adding the optional request body; lint is valid. The client was regenerated.
+  - **Frontend:** the planning, recipe, adapter, and app suites pass (143 tests), including the new AI-slot test. Typecheck and ESLint are clean, the guards pass, and the build passes.
+- **Not run:** a live provider call (no key in the agent environment), a browser journey for this flow (the replica does not call the AI provider), the full suites, and the full local gates.
+- **Exact next action:** Deploy, then open the draft PR. After merge, the owner tries "Sugerir com IA" on a menu day. Then the candidates are Phase 4 (package sizes and purchase impact) or the PLAN-0042 Phase 2 remainder.
 - **Blockers:** None.
 
 ## Progress log
@@ -199,3 +215,8 @@ Phase 3 ran before Phase 2. Without it, two cooking sessions could count on the 
   - **Adding the meal.** The selected candidate is expanded as today; the frontend then adds the recipe to the menu slot.
   - **Schema.** Widen `ck_generation_sessions_execution_mode` to include `menu_planning`.
   - **Model policy.** Non-thinking, because the PLAN-0022 thinking-high samples returned truncated JSON.
+
+### 2026-10-29T16:30:00Z — Claude Code
+
+- The owner merged PR #55 (`59cfcb3`), and `main` was deployed.
+- Delivered Phase 2 on `agent/plan-0029-phase-2-ai-menu`: slot-by-slot AI suggestions from free stock, with the menu resolved server-side.

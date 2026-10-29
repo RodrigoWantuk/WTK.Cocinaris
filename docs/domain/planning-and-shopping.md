@@ -22,7 +22,8 @@ A menu entry is an intention, shortcut, and source of preparation or purchase ac
   - No package size is assumed.
   - A check mark is only remembered. "Comprei" records the purchase as a pantry lot through the normal inventory command, and the list is recalculated.
 - **Reservations and readiness (Phase 3).** A menu in use reserves pantry quantity for its meals still to cook. The reservations are derived, and a meal's reservations can be released. Each meal shows whether its pantry ingredients are covered or what it lacks; a draft shows the same as a simulation. A menu's shopping list counts only stock that is neither protected nor reserved by other menus in use. See `inventory-lifecycle.md` for protections.
-- **Not yet.** AI-generated plans, package remainders, planned-versus-actual purchase impact, and reminders.
+- **AI suggestions per slot (Phase 2).** On a menu day, the AI suggests three dishes for that date, meal, and servings. It sees only pantry stock that no other meal counts on and the names of meals already planned, so the suggestions differ from them. Nothing enters the menu until the owner chooses. Slots are planned one at a time, so each choice updates the reservations the next suggestion sees.
+- **Not yet.** Planning several slots in one request, package remainders, planned-versus-actual purchase impact, and reminders.
 
 ## Planning states
 
