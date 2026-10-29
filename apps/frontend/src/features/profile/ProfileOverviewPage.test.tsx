@@ -1,5 +1,6 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import { ProfileOverviewPage } from "./ProfileOverviewPage";
+import { createSyntheticAdultDeclarationPolicy } from "./adultDeclarationPolicy";
 import {
   createAbsentProfileSnapshot,
   createCompleteness,
@@ -57,6 +58,7 @@ describe("ProfileOverviewPage", () => {
         repository: createMockProfileRepo({
           getProfile: vi.fn(async () => pending),
         }),
+        adultPolicy: createSyntheticAdultDeclarationPolicy(),
         children: <ProfileOverviewPage />,
       }),
     );
@@ -64,6 +66,30 @@ describe("ProfileOverviewPage", () => {
     expect(
       await screen.findByTestId("profile-overview-adult-declaration"),
     ).toHaveTextContent("Not declared yet");
+  });
+
+  it("hides the adult confirmation while no terms are published to confirm", async () => {
+    const pending = createConfirmedProfileSnapshot();
+    pending.adultDeclaration = {
+      adultDeclared: null,
+      termsVersion: null,
+      privacyVersion: null,
+      acceptedAt: null,
+      state: "NotDeclared",
+    };
+    render(
+      renderProfileTree({
+        repository: createMockProfileRepo({
+          getProfile: vi.fn(async () => pending),
+        }),
+        children: <ProfileOverviewPage />,
+      }),
+    );
+
+    expect(await screen.findByTestId("profile-overview")).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("profile-overview-adult-declaration"),
+    ).not.toBeInTheDocument();
   });
 
   it("shows the not-started state when profileExists is false", async () => {

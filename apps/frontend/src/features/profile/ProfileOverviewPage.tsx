@@ -236,8 +236,9 @@ export function ProfileOverviewPage() {
       </div>
 
       {/* Owner decision 2026-10-28: the adult confirmation is asked once and then disappears;
-          the age requirement itself lives in the terms of use. */}
-      {adultKind !== "declared" && (
+          the age requirement itself lives in the terms of use. Without published terms there is
+          nothing to confirm, so the card stays hidden instead of becoming a permanent notice. */}
+      {adultKind !== "declared" && adultPolicy.available && (
         <div
           data-testid="profile-overview-adult-declaration"
           className="rounded-xl border border-border p-4"
@@ -256,14 +257,6 @@ export function ProfileOverviewPage() {
             {adultKind === "unknown" &&
               t("profile.overview.adultDeclaration.unknown")}
           </p>
-          {!adultPolicy.available && (
-            <p
-              className="mt-1 text-xs text-muted-foreground"
-              data-testid="profile-overview-adult-policy-unavailable"
-            >
-              {t("profile.overview.adultDeclaration.unavailable")}
-            </p>
-          )}
           {(declarationError || lastMutationError) && (
             <p
               role="alert"

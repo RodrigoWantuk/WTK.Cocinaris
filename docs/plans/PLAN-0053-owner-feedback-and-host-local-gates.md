@@ -40,6 +40,13 @@
    - the Caddy site block compresses only static files (repository template and live host; previous live file backed up under `/var/backups/wtk-cocinaris/`);
    - integration test `ApiResponsesForbidCachingAndTransformationSoProxiesKeepETags`.
 
+6. **Profile saving made predictable.** The data page's per-field button was labelled "Usar e salvar este padrão" but only filled the field; the section's Salvar button saved it. It is now "Usar este padrão". Each page states its rule in the subtitle:
+   - data: each section saves with its own Salvar button, nothing before;
+   - preferences: each item saves on add or remove;
+   - equipment: add, remove and reorder, then Salvar.
+7. **No permanent age card.** Without published terms the adult confirmation cannot be completed, and the overview showed "ainda não está disponível nesta versão" on every visit. The card now appears only when a confirmation is possible and pending.
+8. **Proxy replica check.** `scripts/e2e/proxy-replica.sh` runs the API behind a separate Caddy that uses the repository template, on `https://localhost:7443` with the OIDC fixture. `scripts/e2e/profile-journey.mjs` saves on every profile page through it. With the previous release's API and the previous template, the replica reproduced the defect: `/api/v1/profile` was compressed with ETag `"<token>-zstd"`, while the smaller preferences and equipment responses kept `"<token>"`, and the page reported "Não foi possível carregar seu perfil". With this branch, every step passes.
+
 ### Excluded
 
 - The PLAN-0005 headed-browser validation workflow (it needs Xvfb and a headed Firefox; it is run on demand with `scripts/plan-0005/`).
@@ -69,7 +76,7 @@ In §11, read "Do not merge failing checks" as "do not merge a head whose local 
 
 - **Current run delivery target:** All included items.
 - **Current checkpoint:** D-5 and D-6 implemented, and the frontend validated (Vitest 51 files / 423 tests, typecheck, lint, format, guards). The local gate script is written; the gitleaks false positive is allowlisted, and the full history scan is clean.
-- **Exact next action:** Deploy the ETag fix, verify headers through the CDN, then make profile saving consistent; run the local gates on the final head and open the draft PR.
+- **Exact next action:** Run `scripts/ci/run-local-gates.sh` on the final head, deploy, open the draft PR.
 - **Blockers:** `AGENTS.md` change awaits the owner.
 - **Working tree state:** Uncommitted, about to be committed.
 
@@ -84,3 +91,12 @@ In §11, read "Do not merge failing checks" as "do not merge a head whose local 
 
 - Diagnosed the owner's profile report: proxy compression altered or removed API ETags (verified at the origin: `"dmgu8eyhbvuouf"` uncompressed vs `"dmgu8eyhbvuouf-gzip"` compressed). Added the API cache header and limited Caddy compression to static files; the live Caddy reload was validated and other sites on the host still answer. Integration test class passes (5/5).
 - Mixed save behavior across profile pages (immediate list actions, per-form save buttons, a deferred equipment save) is reviewed next under this plan.
+
+### 2026-10-29T00:30:00Z — Claude Code
+
+- Resumed after a dropped connection.
+  - The interrupted deploy of `f9508da` had already switched the release and started the service; only old-release pruning did not run.
+  - Verified through the CDN: `/api` responses carry `Cache-Control: no-store, no-transform` and are not compressed.
+  - Removed the leftover gate worktree.
+- Reproduced the owner's profile failure in the proxy replica and verified the fix (details in item 8). The fix's header alone already prevents the defect behind the old template, because Caddy does not transform `no-transform` responses.
+- Implemented items 6 and 7 with tests. Frontend checks: Vitest 51 files / 424 tests, typecheck, lint, format.
