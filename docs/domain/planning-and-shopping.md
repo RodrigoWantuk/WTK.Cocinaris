@@ -1,13 +1,27 @@
 # Planning and Shopping
 
 - **Status:** Accepted
-- **Last updated:** 2026-07-30
+- **Last updated:** 2026-10-29
 
 ## Optional module rule
 
 Menu planning is optional. A user can start recipe selection and cooking at any time without an active menu plan.
 
 A menu entry is an intention, shortcut, and source of preparation or purchase actions. It is not an obligation.
+
+## Implemented (PLAN-0029 Phase 1)
+
+- **Menus.** A menu covers 1 to 31 days and is a draft, accepted ("em uso"), or archived (read-only). A draft is a simulation: its shopping list works, but its meals are not on the home page. Accepting creates no reservations yet.
+- **Meals.** A meal names a recipe, an optional day inside the period (none means "some time in the period"), an optional meal type, and servings. It follows the recipe's current revision; pinning exists in the API only. Every change touches one meal.
+- **Cooking from a meal.** Starting from a meal links the cooking session to it. The meal is "cooking" while the session runs and "cooked" once it completes; this state is derived from the session, never stored separately. Completion and inventory reconciliation are unchanged.
+- **Home.** "Hoje" lists the accepted menus' meals for the owner's current day (dated that day, or flexible), excluding skipped and cooked meals, as the first suggestion tier.
+- **Shopping.** The list is derived from the meals still to cook from the owner's current day and the current pantry.
+  - Quantities scale like the cooking proposal.
+  - Lots are matched by normalized name and unit, and the pantry is allocated meal by meal in plan order.
+  - Lines are required, assumed basics, optional, "you have it but it will run out", or already available.
+  - No package size is assumed.
+  - A check mark is only remembered. "Comprei" records the purchase as a pantry lot through the normal inventory command, and the list is recalculated.
+- **Not yet.** AI-generated plans, reservations, package remainders, planned-versus-actual purchase impact, readiness checks, and reminders.
 
 ## Planning states
 

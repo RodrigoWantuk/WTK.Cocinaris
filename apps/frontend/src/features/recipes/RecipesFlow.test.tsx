@@ -1,3 +1,4 @@
+import { createUnavailablePlanningRepository } from "@/adapters/live/livePlanningRepository";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
@@ -121,6 +122,7 @@ function renderGenerateTree(
     sessionAdapter,
     inventoryRepository: inventoryRepo,
     recipeRepository: recipeRepo,
+    planningRepository: createUnavailablePlanningRepository(),
     preparationRouteRepository: new UnavailablePreparationRouteRepository(),
     contextualHomeAdapter: createUnavailableContextualHomeAdapter(),
     profileRepository: {} as FrontendRuntime["profileRepository"],

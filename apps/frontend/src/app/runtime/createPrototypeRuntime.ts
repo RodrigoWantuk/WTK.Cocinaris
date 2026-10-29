@@ -4,6 +4,7 @@ import { createMockContextualHomeAdapter } from "@/adapters/mock/contextual-home
 import { createLiveInventoryRepository } from "@/adapters/live/liveInventoryRepository";
 import { createLiveProfileRepository } from "@/adapters/live/profile/liveProfileRepository";
 import { createUnavailableRecipeRepository } from "@/adapters/live/unavailableRecipeRepository";
+import { createUnavailablePlanningRepository } from "@/adapters/live/livePlanningRepository";
 import { createSyntheticAdultDeclarationPolicy } from "@/features/profile/adultDeclarationPolicy";
 import { createMockSessionAdapter } from "@/app/session/mockSessionAdapter";
 import type { FrontendRuntime } from "./types";
@@ -24,6 +25,7 @@ export function createPrototypeRuntime(): FrontendRuntime {
     }),
     inventoryRepository: createLiveInventoryRepository(),
     recipeRepository: createUnavailableRecipeRepository(),
+    planningRepository: createUnavailablePlanningRepository(),
     preparationRouteRepository: sharedMockPreparationRouteRepository,
     contextualHomeAdapter: createMockContextualHomeAdapter({
       scenario: "default",

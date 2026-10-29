@@ -37,6 +37,20 @@ public sealed class PostgreSqlRecipeExecutionStore(ApplicationDbContext database
     }
 
     /// <inheritdoc />
+    public async Task<IReadOnlyList<RecipeExecution>> ListForMenuEntriesAsync(Guid ownerUserId, IReadOnlyCollection<Guid> menuEntryIds, CancellationToken cancellationToken)
+    {
+        if (menuEntryIds.Count == 0)
+        {
+            return [];
+        }
+
+        var records = await database.RecipeExecutions.AsNoTracking()
+            .Where(item => item.OwnerUserId == ownerUserId && item.MenuEntryId != null && menuEntryIds.Contains(item.MenuEntryId.Value))
+            .ToListAsync(cancellationToken);
+        return records.Select(ToDomain).ToList();
+    }
+
+    /// <inheritdoc />
     public async Task<RecipeDetail?> FindRevisionAsync(Guid ownerUserId, Guid recipeId, int revisionNumber, CancellationToken cancellationToken)
     {
         var revision = await database.RecipeRevisions.AsNoTracking().SingleOrDefaultAsync(item => item.OwnerUserId == ownerUserId && item.RecipeId == recipeId && item.RevisionNumber == revisionNumber, cancellationToken);
@@ -83,7 +97,7 @@ public sealed class PostgreSqlRecipeExecutionStore(ApplicationDbContext database
 
     private static RecipeExecution ToDomain(RecipeExecutionRecord record) => RecipeExecution.Restore(
         record.Id, record.OwnerUserId, record.RecipeId, record.RevisionNumber, record.Servings, Enum.Parse<RecipeExecutionStatus>(record.Status),
-        record.StartedAt, record.UpdatedAt, record.FinishedAt, record.InventoryBatchId, record.CompletionKey, record.Rating, record.Notes, record.Version);
+        record.StartedAt, record.UpdatedAt, record.FinishedAt, record.InventoryBatchId, record.CompletionKey, record.Rating, record.Notes, record.Version, record.MenuEntryId);
 
     private static RecipeExecutionRecord ToRecord(RecipeExecution execution) => new()
     {
@@ -100,7 +114,8 @@ public sealed class PostgreSqlRecipeExecutionStore(ApplicationDbContext database
         CompletionKey = execution.CompletionKey,
         Rating = execution.Rating,
         Notes = execution.Notes,
-        Version = execution.Version
+        Version = execution.Version,
+        MenuEntryId = execution.MenuEntryId
     };
 }
 

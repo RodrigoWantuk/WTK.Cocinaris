@@ -42,7 +42,7 @@ public sealed class RecipeExecutionApiService(RecipeExecutionApplicationService 
 {
     /// <summary>Starts cooking a recipe, or returns its in-progress execution.</summary>
     public async Task<IResult> StartAsync(Guid recipeId, StartRecipeExecutionRequest? body, HttpContext context, CancellationToken cancellationToken) =>
-        ToResult(await application.StartAsync(new StartRecipeExecutionCommand(recipeId, body?.Servings), cancellationToken), context.TraceIdentifier, ToResponse);
+        ToResult(await application.StartAsync(new StartRecipeExecutionCommand(recipeId, body?.Servings, body?.MenuEntryId), cancellationToken), context.TraceIdentifier, ToResponse);
 
     /// <summary>Gets one execution with its completion proposal.</summary>
     public async Task<IResult> GetAsync(Guid executionId, HttpContext context, CancellationToken cancellationToken) =>
@@ -108,7 +108,8 @@ public sealed class RecipeExecutionApiService(RecipeExecutionApplicationService 
 
 /// <summary>Optional body for starting an execution.</summary>
 /// <param name="Servings">Portions to cook, 1 to 24; the recipe's servings when omitted.</param>
-public sealed record StartRecipeExecutionRequest(int? Servings);
+/// <param name="MenuEntryId">Menu entry the session starts from (PLAN-0029); the entry then shows as cooking, and as cooked once completed.</param>
+public sealed record StartRecipeExecutionRequest(int? Servings, Guid? MenuEntryId = null);
 
 /// <summary>One confirmed lot consumption in the lot's canonical unit (<c>Gram</c>, <c>Milliliter</c>, <c>Unit</c>).</summary>
 /// <param name="LotId">Pantry lot.</param>

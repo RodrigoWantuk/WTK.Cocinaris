@@ -338,10 +338,18 @@ export interface RecipeRepository {
       signal?: AbortSignal;
     },
   ): Promise<RecipeDetail>;
-  /** Starts cooking, or returns the recipe's execution already in progress. */
+  /**
+   * Starts cooking, or returns the recipe's execution already in progress. `menuEntryId` links a
+   * new session to the menu meal it was started from (PLAN-0029).
+   */
   startExecution(
     recipeId: string,
-    options: { csrfToken: string; servings?: number; signal?: AbortSignal },
+    options: {
+      csrfToken: string;
+      servings?: number;
+      menuEntryId?: string;
+      signal?: AbortSignal;
+    },
   ): Promise<RecipeExecution>;
   getExecution(
     executionId: string,

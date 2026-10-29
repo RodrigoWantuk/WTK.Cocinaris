@@ -1,4 +1,5 @@
 using Cocinaris.Api.Inventory;
+using Cocinaris.Api.Planning;
 using Cocinaris.Api.Profiles;
 using Cocinaris.Api.Recipes;
 using Cocinaris.Api.Observability;
@@ -94,6 +95,7 @@ builder.Services.AddScoped<IGetProfileCompletenessUseCase, GetProfileCompletenes
 builder.Services.AddScoped<IGetProfileSessionProjectionUseCase, GetProfileSessionProjectionHandler>();
 builder.Services.AddScoped<ProfileApplicationService>();
 builder.Services.AddCocinarisRecipeAi(builder.Configuration, builder.Environment);
+builder.Services.AddCocinarisPlanning();
 builder.Services.AddAntiforgery(options => { options.HeaderName = "X-CSRF-TOKEN"; options.Cookie.Name = "__Host-cocinaris-antiforgery"; options.Cookie.Path = "/"; options.Cookie.SecurePolicy = CookieSecurePolicy.Always; });
 var dataProtection = builder.Services.AddDataProtection().SetApplicationName("Cocinaris");
 if (!string.IsNullOrWhiteSpace(dataProtectionOptions.KeyRingPath))
@@ -243,6 +245,7 @@ api.MapGet("/session", async (HttpContext context, IAntiforgery antiforgery, ICu
 api.MapGroup("/inventory").RequireAuthorization().MapInventoryEndpoints();
 api.MapGroup("/profile").RequireAuthorization().MapProfileEndpoints();
 api.MapGroup("/recipes").RequireAuthorization().MapRecipeEndpoints();
+api.MapGroup("/planning").RequireAuthorization().MapPlanningEndpoints();
 app.Run();
 
 /// <summary>Exposes the application entry point to the integration-test host.</summary>

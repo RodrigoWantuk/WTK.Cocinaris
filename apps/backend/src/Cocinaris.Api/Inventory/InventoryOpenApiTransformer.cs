@@ -111,11 +111,16 @@ internal static class InventoryOpenApiTransformer
                 }
 
                 var isLoginChallenge = path.Equals("/api/v1/auth/login", StringComparison.Ordinal) && method == HttpMethod.Post;
-                var stateChanging = !isLoginChallenge && (method == HttpMethod.Post || method == HttpMethod.Patch || method == HttpMethod.Delete);
+                var stateChanging = !isLoginChallenge && (method == HttpMethod.Post || method == HttpMethod.Put || method == HttpMethod.Patch || method == HttpMethod.Delete);
                 if (stateChanging)
                 {
                     operation.Parameters ??= [];
-                    operation.Parameters.Add(Header("X-CSRF-TOKEN", "Required CSRF token issued by GET /api/v1/session."));
+                    // The profile transformer declares its own PUT headers; never add a second copy.
+                    if (!operation.Parameters.Any(parameter => parameter.In == ParameterLocation.Header && parameter.Name == "X-CSRF-TOKEN"))
+                    {
+                        operation.Parameters.Add(Header("X-CSRF-TOKEN", "Required CSRF token issued by GET /api/v1/session."));
+                    }
+
                     EnsureProblemResponse(document, operation, "400", "The request or CSRF token is invalid.");
                 }
 
@@ -148,10 +153,13 @@ internal static class InventoryOpenApiTransformer
                 }
 
                 if (method == HttpMethod.Post
-                    && (path.Equals("/api/v1/recipes", StringComparison.Ordinal) || path.Equals("/api/v1/recipes/{recipeId}/derivations", StringComparison.Ordinal)))
+                    && (path.Equals("/api/v1/recipes", StringComparison.Ordinal)
+                        || path.Equals("/api/v1/recipes/{recipeId}/derivations", StringComparison.Ordinal)
+                        || path.Equals("/api/v1/planning/menus", StringComparison.Ordinal)
+                        || path.Equals("/api/v1/planning/menus/{menuId}/entries", StringComparison.Ordinal)))
                 {
                     operation.Parameters ??= [];
-                    operation.Parameters.Add(Header("Idempotency-Key", "Required UUID key; a retry with the same key returns the recipe it created."));
+                    operation.Parameters.Add(Header("Idempotency-Key", "Required UUID key; a retry with the same key returns what the first request created."));
                 }
 
                 if ((path.Equals("/api/v1/recipes/generation-sessions", StringComparison.Ordinal) && method == HttpMethod.Post)

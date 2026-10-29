@@ -5,6 +5,7 @@
     <Project Path="src/Cocinaris.Modules.Ai/Cocinaris.Modules.Ai.csproj" />
     <Project Path="src/Cocinaris.Modules.Identity/Cocinaris.Modules.Identity.csproj" />
     <Project Path="src/Cocinaris.Modules.Inventory/Cocinaris.Modules.Inventory.csproj" />
+    <Project Path="src/Cocinaris.Modules.Planning/Cocinaris.Modules.Planning.csproj" />
     <Project Path="src/Cocinaris.Modules.Profiles/Cocinaris.Modules.Profiles.csproj" />
     <Project Path="src/Cocinaris.Modules.Recipes/Cocinaris.Modules.Recipes.csproj" />
     <Project Path="src/Cocinaris.SharedKernel/Cocinaris.SharedKernel.csproj" />

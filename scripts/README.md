@@ -58,3 +58,10 @@ commands, deployment evidence, forward-repair policy, and troubleshooting.
   - creates a variation and archives it.
 
   It checks the history and the Favoritas and Arquivadas filters. It does not need the AI provider. Same password variable as the profile journey. Apply migrations to the development database first.
+- `e2e/planning-journey.mjs` (PLAN-0029) seeds a pantry lot and a recipe through the API, then in the browser:
+  - creates a menu and plans the recipe for today and tomorrow;
+  - accepts the menu and finds today's meal on "Hoje";
+  - checks the shopping list (700 g to buy) and records a purchase;
+  - cooks the meal from "Hoje" and checks that it is marked cooked and left "Hoje".
+
+  Names are unique per run. Same password variable; apply migrations to the development database first.

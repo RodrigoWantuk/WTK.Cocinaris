@@ -11,9 +11,10 @@ namespace Cocinaris.IntegrationTests;
 
 /// <summary>
 /// PLAN-0042 Phase 1 (cook a recipe and reconcile the pantry) and PLAN-0038 (recipe library) through
-/// the HTTP boundary against PostgreSQL. They share one container because the library tests cook too.
+/// the HTTP boundary against PostgreSQL, plus PLAN-0029 menus in <c>PlanningApiTests.cs</c>. They share
+/// one container because the library and planning tests cook too.
 /// </summary>
-public sealed class RecipeExecutionApiTests : IAsyncLifetime
+public sealed partial class RecipeExecutionApiTests : IAsyncLifetime
 {
     private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:18.4")
         .WithDatabase("cocinaris_recipe_execution")

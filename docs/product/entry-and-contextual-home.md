@@ -126,14 +126,15 @@ Time of day influences relevance and wording. It does not alter authoritative in
 
 ### Current production home (2026-10-29)
 
-The production "Hoje" page shows only live, authoritative sources, each loaded and failing independently (PLAN-0021 deterministic tiers, PLAN-0042):
+The production "Hoje" page shows only live, authoritative sources, each loaded and failing independently (PLAN-0021 deterministic tiers, PLAN-0042, PLAN-0029):
 
-1. **Cooking in progress.** Every recipe execution in progress, with "Continuar".
-2. **"O que cozinho agora?"** Opens the recipe suggestion flow, with a shortcut to add a pantry item.
-3. **"Use logo".** The five most urgent items of the inventory attention list (PLAN-0037), each with its advisory label and a link to the item.
-4. **"Suas receitas".** The three most recent saved recipes.
+1. **"No cardápio de hoje".** Meals of accepted menus for the owner's current day (PLAN-0029), with "Cozinhar agora" linked to the meal.
+2. **Cooking in progress.** Every recipe execution in progress, with "Continuar".
+3. **"O que cozinho agora?"** Opens the recipe suggestion flow, with a shortcut to add a pantry item.
+4. **"Use logo".** The five most urgent items of the inventory attention list (PLAN-0037), each with its advisory label and a link to the item.
+5. **"Suas receitas".** The three most recent saved recipes.
 
-The accepted-menu tier waits for PLAN-0029. The quick chooser and the AI-ranked recommendations wait for their own plans. The prototype keeps the full contextual-home presentation on mock adapters, and production never shows fixtures.
+The quick chooser and the AI-ranked recommendations wait for their own plans. The prototype keeps the full contextual-home presentation on mock adapters, and production never shows fixtures.
 
 ## Suggestion-source priority
 

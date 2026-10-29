@@ -71,6 +71,15 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
     /// <summary>Gets owner-scoped recipe execution records.</summary>
     public DbSet<RecipeExecutionRecord> RecipeExecutions => Set<RecipeExecutionRecord>();
 
+    /// <summary>Gets owner-scoped menu plans (PLAN-0029).</summary>
+    public DbSet<MenuPlanRecord> MenuPlans => Set<MenuPlanRecord>();
+
+    /// <summary>Gets menu entries.</summary>
+    public DbSet<MenuEntryRecord> MenuEntries => Set<MenuEntryRecord>();
+
+    /// <summary>Gets shopping lines checked off per plan.</summary>
+    public DbSet<ShoppingCheckRecord> ShoppingChecks => Set<ShoppingCheckRecord>();
+
     /// <inheritdoc />
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -413,6 +422,54 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             // At most one in-progress execution per recipe; starting again returns the existing one.
             entity.HasIndex(x => new { x.OwnerUserId, x.RecipeId }).IsUnique().HasFilter("\"Status\" = 'InProgress'");
             entity.HasIndex(x => new { x.OwnerUserId, x.Status, x.StartedAt });
+            // Removing a menu entry keeps the cooking history and only drops the link.
+            entity.HasOne<MenuEntryRecord>().WithMany().HasForeignKey(x => x.MenuEntryId).OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<MenuPlanRecord>(entity =>
+        {
+            entity.ToTable("menu_plans", "planning", table =>
+            {
+                table.HasCheckConstraint("ck_menu_plans_status", "\"Status\" IN ('Draft', 'Accepted', 'Archived')");
+                table.HasCheckConstraint("ck_menu_plans_period", "\"EndDate\" >= \"StartDate\" AND \"EndDate\" - \"StartDate\" < 31");
+                table.HasCheckConstraint("ck_menu_plans_accepted", "\"Status\" <> 'Accepted' OR \"AcceptedAt\" IS NOT NULL");
+            });
+            entity.HasKey(x => x.Id);
+            entity.HasAlternateKey(x => new { x.Id, x.OwnerUserId });
+            entity.Property(x => x.Name).HasMaxLength(80).IsRequired();
+            entity.Property(x => x.Status).HasMaxLength(20).IsRequired();
+            entity.HasOne<InternalUser>().WithMany().HasForeignKey(x => x.OwnerUserId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasIndex(x => new { x.OwnerUserId, x.CreationKey }).IsUnique();
+            entity.HasIndex(x => new { x.OwnerUserId, x.Status, x.StartDate });
+        });
+
+        modelBuilder.Entity<MenuEntryRecord>(entity =>
+        {
+            entity.ToTable("menu_entries", "planning", table =>
+            {
+                table.HasCheckConstraint("ck_menu_entries_status", "\"Status\" IN ('Planned', 'Skipped')");
+                table.HasCheckConstraint("ck_menu_entries_servings", "\"Servings\" BETWEEN 1 AND 24");
+                table.HasCheckConstraint("ck_menu_entries_meal_type", "\"MealType\" IS NULL OR \"MealType\" IN ('breakfast', 'lunch', 'dinner', 'snack')");
+                table.HasCheckConstraint("ck_menu_entries_pinned_revision", "\"PinnedRevisionNumber\" IS NULL OR \"PinnedRevisionNumber\" >= 1");
+            });
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Status).HasMaxLength(20).IsRequired();
+            entity.Property(x => x.MealType).HasMaxLength(20);
+            // Both foreign keys include the owner, so an entry can only point at the owner's plan and recipe.
+            entity.HasOne<MenuPlanRecord>().WithMany().HasForeignKey(x => new { x.MenuPlanId, x.OwnerUserId }).HasPrincipalKey(x => new { x.Id, x.OwnerUserId }).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne<RecipeRecord>().WithMany().HasForeignKey(x => new { x.RecipeId, x.OwnerUserId }).HasPrincipalKey(x => new { x.Id, x.OwnerUserId }).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne<InternalUser>().WithMany().HasForeignKey(x => x.OwnerUserId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasIndex(x => new { x.OwnerUserId, x.CreationKey }).IsUnique();
+            entity.HasIndex(x => new { x.OwnerUserId, x.MenuPlanId, x.PlannedDate });
+        });
+
+        modelBuilder.Entity<ShoppingCheckRecord>(entity =>
+        {
+            entity.ToTable("shopping_checks", "planning");
+            entity.HasKey(x => new { x.MenuPlanId, x.ItemKey });
+            entity.Property(x => x.ItemKey).HasMaxLength(200);
+            entity.HasOne<MenuPlanRecord>().WithMany().HasForeignKey(x => new { x.MenuPlanId, x.OwnerUserId }).HasPrincipalKey(x => new { x.Id, x.OwnerUserId }).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<InternalUser>().WithMany().HasForeignKey(x => x.OwnerUserId).OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<RecipeGenerationSessionRecord>(entity =>

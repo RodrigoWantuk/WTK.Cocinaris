@@ -12,6 +12,9 @@ public interface IRecipeExecutionStore
     /// <summary>Finds one owned execution, or null without disclosing another owner's execution.</summary>
     Task<RecipeExecution?> FindAsync(Guid ownerUserId, Guid executionId, CancellationToken cancellationToken);
 
+    /// <summary>Lists the owner's executions started from any of the given menu entries (PLAN-0029).</summary>
+    Task<IReadOnlyList<RecipeExecution>> ListForMenuEntriesAsync(Guid ownerUserId, IReadOnlyCollection<Guid> menuEntryIds, CancellationToken cancellationToken);
+
     /// <summary>Finds the owner's in-progress execution of a recipe, if any.</summary>
     Task<RecipeExecution?> FindInProgressAsync(Guid ownerUserId, Guid recipeId, CancellationToken cancellationToken);
 
@@ -43,7 +46,10 @@ public interface IRecipeExecutionTransaction : IAsyncDisposable
 }
 
 /// <summary>Starts an execution with the given portions (the revision's servings when null).</summary>
-public sealed record StartRecipeExecutionCommand(Guid RecipeId, int? Servings);
+/// <param name="RecipeId">Recipe to cook.</param>
+/// <param name="Servings">Portions to cook.</param>
+/// <param name="MenuEntryId">Menu entry the session starts from; recorded only on a new execution.</param>
+public sealed record StartRecipeExecutionCommand(Guid RecipeId, int? Servings, Guid? MenuEntryId = null);
 
 /// <summary>One lot quantity the user confirms as used, in the lot's canonical unit, with the lot version read.</summary>
 public sealed record ExecutionConsumptionCommand(Guid LotId, decimal Quantity, string Unit, Guid Version);
@@ -116,7 +122,7 @@ public sealed class RecipeExecutionApplicationService(
             return RecipeApplicationResult<RecipeExecutionView>.Succeeded(await ViewAsync(existing, user.Id, cancellationToken));
         }
 
-        var execution = RecipeExecution.Start(user.Id, recipe.RecipeId, recipe.RevisionNumber, command.Servings ?? recipe.Servings, timeProvider.GetUtcNow());
+        var execution = RecipeExecution.Start(user.Id, recipe.RecipeId, recipe.RevisionNumber, command.Servings ?? recipe.Servings, timeProvider.GetUtcNow(), command.MenuEntryId);
         await store.AddAsync(execution, cancellationToken);
         return RecipeApplicationResult<RecipeExecutionView>.Succeeded(await ViewAsync(execution, user.Id, cancellationToken), RecipeApplicationSuccess.Created);
     }
@@ -291,11 +297,10 @@ public sealed class RecipeExecutionApplicationService(
         var byId = measured.ToDictionary(lot => lot.LotId);
         var scale = (decimal)servings / Math.Max(1, recipeServings);
         var lines = new List<ExecutionProposalLineView>();
-        foreach (var ingredient in ReadIngredients(normalizedRecipeJson))
+        foreach (var ingredient in RecipeIngredientReader.Read(normalizedRecipeJson))
         {
-            var unit = ToLotUnit(ingredient.Unit);
-            var required = unit == "Unit" ? Math.Ceiling(ingredient.Quantity * scale) : Math.Round(ingredient.Quantity * scale, 0, MidpointRounding.AwayFromZero);
-            required = Math.Max(required, unit == "Unit" ? 1 : 0.001m);
+            var unit = RecipeIngredientReader.ToLotUnit(ingredient.Unit);
+            var required = RecipeIngredientReader.Scale(ingredient.Quantity, unit, scale);
             if (ingredient.SourceType != "inventory")
             {
                 lines.Add(new(ingredient.Id, ingredient.Name, ingredient.Optional, required, unit, "not_tracked", null, null));
@@ -319,38 +324,6 @@ public sealed class RecipeExecutionApplicationService(
         return new ExecutionProposalView(lines, pantry);
     }
 
-    private sealed record Ingredient(string Id, string Name, string SourceType, Guid? LotId, decimal Quantity, string Unit, bool Optional);
-
-    private static IEnumerable<Ingredient> ReadIngredients(string json)
-    {
-        // The revision was schema-validated before it was saved; this read stays defensive so a
-        // malformed row degrades to an empty proposal instead of failing the cooking page.
-        JsonDocument document;
-        try { document = JsonDocument.Parse(json); } catch (JsonException) { yield break; }
-        using (document)
-        {
-            var root = document.RootElement;
-            if (root.ValueKind == JsonValueKind.Object && root.TryGetProperty("recipe", out var recipe)) { root = recipe; }
-            if (root.ValueKind != JsonValueKind.Object || !root.TryGetProperty("ingredients", out var items) || items.ValueKind != JsonValueKind.Array) { yield break; }
-            foreach (var item in items.EnumerateArray())
-            {
-                if (item.ValueKind != JsonValueKind.Object || !item.TryGetProperty("requiredQuantity", out var quantity) || quantity.ValueKind != JsonValueKind.Number) { continue; }
-                Guid? lotId = item.TryGetProperty("inventoryItemId", out var reference) && reference.ValueKind == JsonValueKind.String && Guid.TryParse(reference.GetString(), out var parsed) ? parsed : null;
-                yield return new Ingredient(
-                    Text(item, "ingredientId") ?? string.Empty,
-                    Text(item, "displayName") ?? string.Empty,
-                    Text(item, "sourceType") ?? "assumption",
-                    lotId,
-                    quantity.GetDecimal(),
-                    Text(item, "unit") ?? "unit",
-                    item.TryGetProperty("optional", out var optional) && optional.ValueKind == JsonValueKind.True);
-            }
-        }
-    }
-
-    private static string? Text(JsonElement item, string name) => item.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String ? value.GetString() : null;
-
-    private static string ToLotUnit(string recipeUnit) => recipeUnit switch { "g" => "Gram", "ml" => "Milliliter", _ => "Unit" };
 
     private static RecipeApplicationResult<T> Failure<T>(string code, string detail, string? field = null) =>
         RecipeApplicationResult<T>.Failure(code, detail, field is null ? null : new Dictionary<string, string[]> { [field] = [detail] });

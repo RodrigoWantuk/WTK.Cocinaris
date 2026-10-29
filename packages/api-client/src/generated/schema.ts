@@ -194,6 +194,162 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/planning/menus": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** GET /api/v1/planning/menus */
+        get: operations["getApiV1PlanningMenus"];
+        put?: never;
+        /** POST /api/v1/planning/menus */
+        post: operations["postApiV1PlanningMenus"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/planning/menus/{menuId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** GET /api/v1/planning/menus/{menuId} */
+        get: operations["getApiV1PlanningMenusMenuId"];
+        /** PUT /api/v1/planning/menus/{menuId} */
+        put: operations["putApiV1PlanningMenusMenuId"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/planning/menus/{menuId}/acceptance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** POST /api/v1/planning/menus/{menuId}/acceptance */
+        post: operations["postApiV1PlanningMenusMenuIdAcceptance"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/planning/menus/{menuId}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** POST /api/v1/planning/menus/{menuId}/archive */
+        post: operations["postApiV1PlanningMenusMenuIdArchive"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/planning/menus/{menuId}/entries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** POST /api/v1/planning/menus/{menuId}/entries */
+        post: operations["postApiV1PlanningMenusMenuIdEntries"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/planning/menus/{menuId}/entries/{entryId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** PUT /api/v1/planning/menus/{menuId}/entries/{entryId} */
+        put: operations["putApiV1PlanningMenusMenuIdEntriesEntryId"];
+        post?: never;
+        /** DELETE /api/v1/planning/menus/{menuId}/entries/{entryId} */
+        delete: operations["deleteApiV1PlanningMenusMenuIdEntriesEntryId"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/planning/menus/{menuId}/shopping": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** GET /api/v1/planning/menus/{menuId}/shopping */
+        get: operations["getApiV1PlanningMenusMenuIdShopping"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/planning/menus/{menuId}/shopping/checks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** PUT /api/v1/planning/menus/{menuId}/shopping/checks */
+        put: operations["putApiV1PlanningMenusMenuIdShoppingChecks"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/planning/today": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** GET /api/v1/planning/today */
+        get: operations["getApiV1PlanningToday"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/profile": {
         parameters: {
             query?: never;
@@ -594,6 +750,31 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** @description Body for adding a recipe to a menu. */
+        AddMenuEntryRequest: {
+            /** @description `breakfast`, `lunch`, `dinner`, `snack`, or null. */
+            mealType: null | string;
+            /**
+             * @description Pin the current revision instead of following later edits.
+             * @default false
+             */
+            pinRevision: boolean;
+            /**
+             * Format: date
+             * @description Day inside the period, or null for "some time in the period".
+             */
+            plannedDate: null | string;
+            /**
+             * Format: uuid
+             * @description Owned recipe.
+             */
+            recipeId: string;
+            /**
+             * Format: int32
+             * @description Portions, 1 to 24; the recipe's servings when null.
+             */
+            servings: null | number | string;
+        };
         /** @description Records an explicit immutable inventory adjustment. */
         AdjustmentRequest: {
             availabilityState: null | string;
@@ -622,6 +803,38 @@ export interface components {
         /** @description Lots that need attention, most urgent first; at most 100. */
         AttentionListResponse: {
             items: components["schemas"]["LotResponse"][];
+        };
+        /** @description Body for changing a menu entry; every field is replaced. */
+        ChangeMenuEntryRequest: {
+            /** @description Meal, or null. */
+            mealType: null | string;
+            /**
+             * Format: date
+             * @description Day inside the period, or null for flexible.
+             */
+            plannedDate: null | string;
+            /**
+             * Format: int32
+             * @description Portions, 1 to 24.
+             */
+            servings: number | string;
+            /** @description `planned` or `skipped`. */
+            status: null | string;
+        };
+        /** @description Body for renaming a menu or changing its period. */
+        ChangeMenuPlanRequest: {
+            /**
+             * Format: date
+             * @description Last day; dated meals must still fit.
+             */
+            endDate: null | string;
+            /** @description Name, at most 80 characters. */
+            name: null | string;
+            /**
+             * Format: date
+             * @description First day.
+             */
+            startDate: null | string;
         };
         /** @description Completion body. Every field is the user's confirmed choice; none is inferred server-side. */
         CompleteRecipeExecutionRequest: {
@@ -656,6 +869,21 @@ export interface components {
             quantity: components["schemas"]["QuantityRequest"];
             /** @enum {string} */
             storageLocation: "Pantry" | "Refrigerator" | "Freezer" | "Other";
+        };
+        /** @description Body for creating a draft menu. */
+        CreateMenuPlanRequest: {
+            /**
+             * Format: date
+             * @description Last day, inclusive; at most 31 days in all.
+             */
+            endDate: null | string;
+            /** @description Optional name, at most 80 characters. */
+            name: null | string;
+            /**
+             * Format: date
+             * @description First day.
+             */
+            startDate: null | string;
         };
         /** @description Body for writing a recipe from scratch. */
         CreateRecipeRequest: {
@@ -828,6 +1056,58 @@ export interface components {
             /** @enum {string} */
             resultingState: "AsAcquired" | "Prepared" | "Frozen" | "Thawing" | "Thawed";
             resultingStorageLocation: string;
+        };
+        /** @description One meal. Status is `planned`, `skipped`, `cooking`, or
+         *     `cooked`; the last two come from the cooking session started from it
+         *     (ExecutionId). */
+        MenuEntryResponse: {
+            /** Format: uuid */
+            entryId: string;
+            /** Format: uuid */
+            executionId: null | string;
+            mealType: null | string;
+            /** Format: date */
+            plannedDate: null | string;
+            /** Format: uuid */
+            recipeId: string;
+            recipeName: string;
+            /** Format: int32 */
+            revisionNumber: number | string;
+            revisionPinned: boolean;
+            /** Format: int32 */
+            servings: number | string;
+            status: string;
+        };
+        /** @description A menu with its meals, ordered by day (flexible last) and meal. */
+        MenuPlanResponse: {
+            /** Format: date-time */
+            acceptedAt: null | string;
+            /** Format: date */
+            endDate: string;
+            entries: components["schemas"]["MenuEntryResponse"][];
+            /** Format: uuid */
+            menuId: string;
+            name: string;
+            /** Format: date */
+            startDate: string;
+            status: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        /** @description Menu list row; Status is `draft`, `accepted`, or `archived`. */
+        MenuPlanSummaryResponse: {
+            /** Format: date */
+            endDate: string;
+            /** Format: int32 */
+            entryCount: number | string;
+            /** Format: uuid */
+            menuId: string;
+            name: string;
+            /** Format: date */
+            startDate: string;
+            status: string;
+            /** Format: date-time */
+            updatedAt: string;
         };
         /**
          * @description Explicit preference or restriction command action.
@@ -1472,13 +1752,93 @@ export interface components {
             /** Format: uuid */
             userId: string;
         };
+        /** @description Body (and response) for checking a shopping line. */
+        ShoppingCheckRequest: {
+            /** @description Whether the line is checked off. */
+            checked: boolean;
+            /** @description Item key from the shopping list. */
+            itemKey: null | string;
+        };
+        /** @description One shopping line; quantities are in Unit (`Gram`, `Milliliter`, `Unit`). */
+        ShoppingItemResponse: {
+            /**
+             * Format: double
+             * @description What the pantry holds now.
+             */
+            availableQuantity: number | string;
+            /** @description `required`, `assumed`, `optional`, `runs_out`, or `available`. */
+            category: string;
+            /** @description Whether the owner checked it off. */
+            checked: boolean;
+            /** @description Name shown. */
+            displayName: string;
+            /** @description Key to check the line off. */
+            itemKey: string;
+            /**
+             * Format: double
+             * @description What the meals need in all.
+             */
+            requiredQuantity: number | string;
+            /**
+             * Format: double
+             * @description What is left to buy, never negative; no package size is assumed.
+             */
+            toBuyQuantity: number | string;
+            /** @description Canonical unit. */
+            unit: string;
+            /** @description Meals that need it. */
+            uses: components["schemas"]["ShoppingUseResponse"][];
+        };
+        /** @description A menu's shopping list. Read-only: it never reserves or changes the pantry. */
+        ShoppingListResponse: {
+            /**
+             * Format: date
+             * @description First day considered.
+             */
+            from: string;
+            /** @description Lines, ordered by category and name. */
+            items: components["schemas"]["ShoppingItemResponse"][];
+            /**
+             * Format: int32
+             * @description Meals still to cook that were included.
+             */
+            mealCount: number | string;
+            /**
+             * Format: uuid
+             * @description Menu.
+             */
+            menuId: string;
+        };
+        /** @description One meal that needs a shopping line. */
+        ShoppingUseResponse: {
+            /** Format: uuid */
+            entryId: string;
+            optional: boolean;
+            /** Format: date */
+            plannedDate: null | string;
+            /** Format: double */
+            quantity: number | string;
+            recipeName: string;
+        };
         /** @description Optional body for starting an execution. */
         StartRecipeExecutionRequest: {
+            /**
+             * Format: uuid
+             * @description Menu entry the session starts from (PLAN-0029); the entry then shows as cooking, and as cooked once completed.
+             */
+            menuEntryId?: null | string;
             /**
              * Format: int32
              * @description Portions to cook, 1 to 24; the recipe's servings when omitted.
              */
             servings: null | number | string;
+        };
+        /** @description A meal of an accepted menu for the requested day. */
+        TodayMenuEntryResponse: {
+            entry: components["schemas"]["MenuEntryResponse"];
+            /** Format: uuid */
+            menuId: string;
+            menuName: string;
         };
         /** @description Applies one lifecycle transition. A quantity in the lot's unit makes it partial: that quantity
          *     moves into a new derived lot that takes the transition, and the source keeps the remainder. */
@@ -2529,6 +2889,806 @@ export interface operations {
             };
         };
     };
+    getApiV1PlanningMenus: {
+        parameters: {
+            query?: {
+                archived?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MenuPlanSummaryResponse"][];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    postApiV1PlanningMenus: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Required CSRF token issued by GET /api/v1/session. */
+                "X-CSRF-TOKEN": string;
+                /** @description Required UUID key; a retry with the same key returns what the first request created. */
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateMenuPlanRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MenuPlanResponse"];
+                };
+            };
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MenuPlanResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description The request content type is not supported. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    getApiV1PlanningMenusMenuId: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                menuId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MenuPlanResponse"];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    putApiV1PlanningMenusMenuId: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Required CSRF token issued by GET /api/v1/session. */
+                "X-CSRF-TOKEN": string;
+            };
+            path: {
+                menuId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangeMenuPlanRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MenuPlanResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description The request content type is not supported. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    postApiV1PlanningMenusMenuIdAcceptance: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Required CSRF token issued by GET /api/v1/session. */
+                "X-CSRF-TOKEN": string;
+            };
+            path: {
+                menuId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MenuPlanResponse"];
+                };
+            };
+            /** @description The request or CSRF token is invalid. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    postApiV1PlanningMenusMenuIdArchive: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Required CSRF token issued by GET /api/v1/session. */
+                "X-CSRF-TOKEN": string;
+            };
+            path: {
+                menuId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MenuPlanResponse"];
+                };
+            };
+            /** @description The request or CSRF token is invalid. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    postApiV1PlanningMenusMenuIdEntries: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Required CSRF token issued by GET /api/v1/session. */
+                "X-CSRF-TOKEN": string;
+                /** @description Required UUID key; a retry with the same key returns what the first request created. */
+                "Idempotency-Key": string;
+            };
+            path: {
+                menuId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddMenuEntryRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MenuPlanResponse"];
+                };
+            };
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MenuPlanResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description The request content type is not supported. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    putApiV1PlanningMenusMenuIdEntriesEntryId: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Required CSRF token issued by GET /api/v1/session. */
+                "X-CSRF-TOKEN": string;
+            };
+            path: {
+                menuId: string;
+                entryId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangeMenuEntryRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MenuPlanResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description The request content type is not supported. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    deleteApiV1PlanningMenusMenuIdEntriesEntryId: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Required CSRF token issued by GET /api/v1/session. */
+                "X-CSRF-TOKEN": string;
+            };
+            path: {
+                menuId: string;
+                entryId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MenuPlanResponse"];
+                };
+            };
+            /** @description The request or CSRF token is invalid. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    getApiV1PlanningMenusMenuIdShopping: {
+        parameters: {
+            query?: {
+                from?: string;
+            };
+            header?: never;
+            path: {
+                menuId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShoppingListResponse"];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    putApiV1PlanningMenusMenuIdShoppingChecks: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Required CSRF token issued by GET /api/v1/session. */
+                "X-CSRF-TOKEN": string;
+            };
+            path: {
+                menuId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ShoppingCheckRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShoppingCheckRequest"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description The request content type is not supported. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    getApiV1PlanningToday: {
+        parameters: {
+            query?: {
+                date?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TodayMenuEntryResponse"][];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
     getApiV1Profile: {
         parameters: {
             query?: never;
@@ -2582,10 +3742,10 @@ export interface operations {
         parameters: {
             query?: never;
             header: {
-                /** @description Required for updates after the first create. Omit on the first profile create. Use the ETag from GET when a profile already exists. */
-                "If-Match"?: string;
                 /** @description Required CSRF token issued by GET /api/v1/session. */
                 "X-CSRF-TOKEN": string;
+                /** @description Required for updates after the first create. Omit on the first profile create. Use the ETag from GET when a profile already exists. */
+                "If-Match"?: string;
             };
             path?: never;
             cookie?: never;
@@ -2906,10 +4066,10 @@ export interface operations {
         parameters: {
             query?: never;
             header: {
-                /** @description Required for updates after the first create. Omit on the first profile create. Use the ETag from GET when a profile already exists. */
-                "If-Match"?: string;
                 /** @description Required CSRF token issued by GET /api/v1/session. */
                 "X-CSRF-TOKEN": string;
+                /** @description Required for updates after the first create. Omit on the first profile create. Use the ETag from GET when a profile already exists. */
+                "If-Match"?: string;
             };
             path?: never;
             cookie?: never;
@@ -3058,10 +4218,10 @@ export interface operations {
         parameters: {
             query?: never;
             header: {
-                /** @description Required for updates after the first create. Omit on the first profile create. Use the ETag from GET when a profile already exists. */
-                "If-Match"?: string;
                 /** @description Required CSRF token issued by GET /api/v1/session. */
                 "X-CSRF-TOKEN": string;
+                /** @description Required for updates after the first create. Omit on the first profile create. Use the ETag from GET when a profile already exists. */
+                "If-Match"?: string;
             };
             path?: never;
             cookie?: never;
@@ -3214,7 +4374,7 @@ export interface operations {
             header: {
                 /** @description Required CSRF token issued by GET /api/v1/session. */
                 "X-CSRF-TOKEN": string;
-                /** @description Required UUID key; a retry with the same key returns the recipe it created. */
+                /** @description Required UUID key; a retry with the same key returns what the first request created. */
                 "Idempotency-Key": string;
             };
             path?: never;
@@ -3947,7 +5107,7 @@ export interface operations {
             header: {
                 /** @description Required CSRF token issued by GET /api/v1/session. */
                 "X-CSRF-TOKEN": string;
-                /** @description Required UUID key; a retry with the same key returns the recipe it created. */
+                /** @description Required UUID key; a retry with the same key returns what the first request created. */
                 "Idempotency-Key": string;
             };
             path: {

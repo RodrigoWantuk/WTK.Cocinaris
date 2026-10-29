@@ -110,11 +110,11 @@ Represent:
   The sections are composed in the frontend from existing owner-scoped endpoints. No new aggregate endpoint was needed, and the plan allows either approach.
 - **Remaining:**
   - confirmed-profile fit and the quick chooser;
-  - the accepted-menu tier (needs PLAN-0029);
   - AI-ranked suggestions through the gateway;
   - source freshness and telemetry codes.
 - **Validation:** `Cooking.test.tsx` covers the home page: resume, attention, and recipe sources, with one failing source isolated. The app shell and home route tests pass, and the home section of the browser journey passes.
-- **Exact next action:** After PLAN-0029 publishes the accepted-menu read contract, add the menu tier; the confirmed-profile tier can go first.
+- **Menu tier (PLAN-0029 Phase 1, on `agent/plan-0029-menu-and-shopping`):** "No cardápio de hoje" is now the first section. It reads `GET /api/v1/planning/today?date=` with the browser's local day, cooks a meal linked to its menu entry, and degrades independently; `Cooking.test.tsx` covers its order and the linked start.
+- **Exact next action:** The confirmed-profile tier and the quick chooser.
 - **Blockers:** The menu tier depends on PLAN-0029.
 
 ## Progress log
@@ -126,3 +126,7 @@ Represent:
 ### 2026-10-29T05:10:00Z — Claude Code
 
 - Delivered the deterministic tiers with PLAN-0042 Phase 1, following the owner's end-to-end direction. Production `/app/hoje` no longer renders the permanent "unavailable" contextual home.
+
+### 2026-10-29T12:40:00Z — Claude Code
+
+- The deterministic tiers were merged via PR #50. The accepted-menu tier was delivered with PLAN-0029 Phase 1.

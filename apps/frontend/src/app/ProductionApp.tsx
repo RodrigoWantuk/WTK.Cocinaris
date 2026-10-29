@@ -22,6 +22,10 @@ import { ProductionInventoryList } from "@/features/inventory/ProductionInventor
 import { ProductionInventoryDetail } from "@/features/inventory/ProductionInventoryDetail";
 import { ProductionInventoryForm } from "@/features/inventory/ProductionInventoryForm";
 import { RecipeProvider } from "@/features/recipes/RecipeProvider";
+import { PlanningProvider } from "@/features/planning/PlanningProvider";
+import { MenusPage } from "@/features/planning/MenusPage";
+import { MenuPage } from "@/features/planning/MenuPage";
+import { ShoppingPage } from "@/features/planning/ShoppingPage";
 import { RecipesListPage } from "@/features/recipes/RecipesListPage";
 import { RecipeGeneratePage } from "@/features/recipes/RecipeGeneratePage";
 import { TodayPage } from "@/features/home/TodayPage";
@@ -157,6 +161,7 @@ const PRIMARY_NAV_ITEMS = [
   { to: "/app/hoje", key: "home", testId: "production-nav-home" },
   { to: "/app/despensa", key: "inventory", testId: "production-nav-despensa" },
   { to: "/app/receitas", key: "recipes", testId: "production-nav-receitas" },
+  { to: "/app/cardapio", key: "planning", testId: "production-nav-cardapio" },
   { to: "/app/perfil", key: "profile", testId: "production-nav-perfil" },
 ] as const;
 
@@ -167,6 +172,7 @@ function PrimaryNav() {
     home: t("nav.home"),
     inventory: t("inventory.title"),
     recipes: t("nav.recipes"),
+    planning: t("nav.planning"),
     profile: t("nav.profile"),
   };
   return (
@@ -221,6 +227,10 @@ export function pageTitleKeyFor(pathname: string): string {
     return "page.title.recipeVariation";
   if (/^\/app\/receitas\/[^/]+\/versoes\//.test(pathname))
     return "page.title.recipeRevision";
+  if (pathname === "/app/cardapio") return "page.title.planning";
+  if (/^\/app\/cardapio\/[^/]+\/compras$/.test(pathname))
+    return "page.title.shopping";
+  if (pathname.startsWith("/app/cardapio/")) return "page.title.menu";
   if (pathname.startsWith("/app/receitas/cozinhar/"))
     return "page.title.cooking";
   if (pathname.startsWith("/app/receitas/")) return "page.title.recipeDetail";
@@ -367,7 +377,9 @@ function SessionScopedRoutes({ children }: { children: ReactNode }) {
     <SessionProvider adapter={runtime.sessionAdapter}>
       <InventoryProvider repository={runtime.inventoryRepository}>
         <RecipeProvider repository={runtime.recipeRepository}>
-          {children}
+          <PlanningProvider repository={runtime.planningRepository}>
+            {children}
+          </PlanningProvider>
         </RecipeProvider>
       </InventoryProvider>
     </SessionProvider>
@@ -493,6 +505,9 @@ function createProductionRouter() {
         { path: "despensa/:lotId", element: <ProductionInventoryDetail /> },
         { path: "receitas", element: <RecipesListPage /> },
         { path: "receitas/gerar", element: <RecipeGeneratePage /> },
+        { path: "cardapio", element: <MenusPage /> },
+        { path: "cardapio/:menuId", element: <MenuPage /> },
+        { path: "cardapio/:menuId/compras", element: <ShoppingPage /> },
         { path: "receitas/nova", element: <RecipeEditorPage mode="new" /> },
         { path: "receitas/:recipeId", element: <RecipeDetailPage /> },
         {
