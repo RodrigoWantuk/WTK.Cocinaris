@@ -7,7 +7,7 @@
 - **Created:** 2026-10-29
 - **Last updated:** 2026-10-29
 - **Branch:** `agent/plan-0054-everyday-cook-realignment` (Phase 0)
-- **Pull request:** Draft, opened after this commit
+- **Pull request:** #57 squash-merged at the Phase 2a head (`1cb3970`, merge `6c8f56c`); the later commits (Phase 2b, 3, 4) are delivered unchanged in draft PR #58 from `agent/plan-0054-phases-2-4-and-plan-0030`
 - **Decisions:** [`docs/product/everyday-cook-realignment-2026-10-29.md`](../product/everyday-cook-realignment-2026-10-29.md)
 - **Audit:** [`docs/design/ux-audit-2026-10-29.md`](../design/ux-audit-2026-10-29.md)
 - **Design proposal:** design canvas "Cocinaris — nova direção de design" (private claude.ai artifact, owner's account: https://claude.ai/artifact/N7grShNyoauYepVVjN7mEs)
@@ -155,3 +155,7 @@ Phase 5 is large and changes the data model. It follows Phases 1–4 because tho
 - Phase 4: guided cooking (preparation, one step per screen with a timer, wake lock, resume, one-tap finish) and the recipe page in the row style.
 - Fixed a resume defect found by the new test.
 - Frontend tests pass: 461.
+
+### 2026-10-30 — Claude Code
+
+- PR #57 was squash-merged at its Phase 2a head (`1cb3970`), so the commits for Phase 2b, Phase 3, Phase 4, and PLAN-0030 never reached `main`. They were rebased unchanged onto `main` (the tree is identical to the former branch head `1f6093a`) as `agent/plan-0054-phases-2-4-and-plan-0030`, in draft PR #58. Next: the owner tests and merges PR #58; Phase 5 is unchanged.

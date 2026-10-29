@@ -7,7 +7,7 @@
 - **Created:** 2026-08-05
 - **Last updated:** 2026-10-30
 - **Branch:** `agent/plan-0054-everyday-cook-realignment`. It is delivered with PLAN-0054 because it rebuilds the same recipe screens, and stacking a second branch on an unmerged PR would conflict.
-- **Pull request:** #57 (draft, with PLAN-0054)
+- **Pull request:** #58 (draft). It was pushed to the #57 branch after #57 was squash-merged at an earlier head, so it is delivered in #58 together with PLAN-0054 Phases 2b–4.
 - **Policy:** [`docs/ai/recipe-thumbnail-generation.md`](../ai/recipe-thumbnail-generation.md)
 - **Related amendment:** [`PLAN-0008-amendment-recipe-thumbnail-policy.md`](PLAN-0008-amendment-recipe-thumbnail-policy.md)
 
@@ -116,3 +116,4 @@ Implement the complete optional recipe thumbnail vertical slice as specified by 
 
 - Implemented recipe thumbnails with OpenRouter FLUX 3 Image Klein at 16:9, tier 768 (1024 × 576), following the owner's decision. Delivered the cache, queue, job, budget, storage, serving, and frontend.
 - Changed the prompt to `recipe-thumbnail-style-v2` at the owner's request. It now asks for a natural, photorealistic photograph of home-cooked food with soft daylight, true colors, and real textures, and it rules out illustrated, 3D-rendered, over-saturated, or artificially perfect looks. The style version is part of the render key, so no `v1` image is reused. Validation: `RecipeThumbnailTests` (unit) pass. Next: deploy with the branch, then the owner adds the OpenRouter key.
+- Delivery moved to draft PR #58, because PR #57 was squash-merged before these commits were pushed. The content is unchanged.
