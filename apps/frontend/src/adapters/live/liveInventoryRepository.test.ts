@@ -22,6 +22,7 @@ describe("mapQuantity", () => {
         measuredValue: null,
         unit: null,
         availabilityState: null,
+        estimated: false,
       }),
     ).toThrow(/Malformed qualitative/);
     expect(() =>

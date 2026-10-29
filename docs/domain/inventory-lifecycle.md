@@ -42,6 +42,19 @@ Canonical calculable units are grams, milliliters, and units. Display units may 
 
 Package fractions may be accepted by the UI only when the package size is known or confirmed. The system must not pretend that an unknown package fraction is an exact mass or volume.
 
+### Implemented estimated amounts (PLAN-0054 Phase 2)
+
+The owner decided that an amount can be exact or approximate: "Se a pessoa sabe ou pesou exatamente quanto tem, excelente, se não, pode colocar um pouco ou 'meia embalagem'."
+
+- **Estimate mark.** A measured quantity carries `IsEstimate` (API `quantity.estimated`). It is set when the owner states a share of a package (full, about half, a little) together with the package size. The estimate is the size times 1, 0.5, or 0.25. Counts round to whole units, at least one.
+- **No package size.** Nothing is estimated. "Full" and "about half" record the availability `Available`, and "a little" records `Low`. An unknown package fraction never becomes a number.
+- **Using an estimate.** Suggestions, menus, reservations, shopping, and cooking read the estimated value like any measured value.
+- **Consumption beyond an estimate.** Consuming, discarding, or preparation consumption beyond an estimate empties the lot to zero instead of failing, because the real use is better evidence than the guess. Against an exact quantity the same request is still rejected.
+- **Corrections.** A correction states whether the new value is an estimate (`estimated` on a `Correct` adjustment). Without it, the corrected value is exact. Other adjustment types reject `estimated`.
+- **Partial transitions.** Both parts of a partial transition keep the source's mark.
+- **Storage.** The mark is stored on the lot (`inventory.lots.QuantityIsEstimate`, constrained to measured lots), not in transaction history.
+- **Display.** The interface shows an estimate with a leading "~".
+
 ## Shelf-life evidence
 
 Shelf life is not one field. The system represents evidence and conditions.

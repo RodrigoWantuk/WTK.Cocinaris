@@ -249,7 +249,7 @@ public sealed class PreparedComponentApplicationWorkflow(ICurrentUserAccessor cu
                 return Failure("domain_rule_violated", "Input consumption must use the parent lot's measured canonical unit.", "inputs", "Input consumption must use the parent lot's measured canonical unit.");
             }
 
-            if (consumed > measured.Value)
+            if (consumed > measured.Value && !measured.IsEstimate)
             {
                 return Failure("domain_rule_violated", "The adjustment cannot exceed the current measured quantity.", "inputs", "The adjustment cannot exceed the current measured quantity.");
             }

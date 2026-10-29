@@ -200,7 +200,7 @@ public sealed class PostgreSqlInventoryPreparationStore(ApplicationDbContext dat
     }
 
     private static PreparationOutputView ToOutputView(LotRecord lot, string productName, PreparedLotRecord prepared) =>
-        new(new InventoryLotView(lot.Id, lot.ProductId, productName, new InventoryQuantity(lot.MeasuredValue, lot.MeasuredUnit, lot.AvailabilityState), lot.StorageLocation, lot.CustomLocation, lot.PackageState, lot.PrintedExpirationDate, lot.Notes, lot.ConcurrencyToken, lot.CreatedAt, lot.UpdatedAt), new PreparedLotMetadataView(prepared.BatchId, prepared.LifecycleState, prepared.PreparedAt, prepared.ShelfLifeDate, prepared.ShelfLifeSource, prepared.ShelfLifeConfidence, prepared.ShelfLifeConditions));
+        new(new InventoryLotView(lot.Id, lot.ProductId, productName, new InventoryQuantity(lot.MeasuredValue, lot.MeasuredUnit, lot.AvailabilityState, lot.QuantityIsEstimate), lot.StorageLocation, lot.CustomLocation, lot.PackageState, lot.PrintedExpirationDate, lot.Notes, lot.ConcurrencyToken, lot.CreatedAt, lot.UpdatedAt), new PreparedLotMetadataView(prepared.BatchId, prepared.LifecycleState, prepared.PreparedAt, prepared.ShelfLifeDate, prepared.ShelfLifeSource, prepared.ShelfLifeConfidence, prepared.ShelfLifeConditions));
 
     private static InventoryQuantity ToDeclaredYield(PreparationBatchRecord batch) => new(batch.DeclaredYieldMeasuredValue, batch.DeclaredYieldMeasuredUnit, batch.DeclaredYieldAvailabilityState);
 

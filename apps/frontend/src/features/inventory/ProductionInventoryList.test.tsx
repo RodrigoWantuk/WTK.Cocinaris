@@ -47,7 +47,7 @@ describe("ProductionInventoryList", () => {
       }),
     );
     expect(await screen.findByTestId("inventory-empty")).toHaveTextContent(
-      /No lots yet/,
+      /Nothing here yet/,
     );
 
     await user.type(screen.getByTestId("inventory-search"), "zzz");

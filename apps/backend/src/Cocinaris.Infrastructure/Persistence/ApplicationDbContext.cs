@@ -116,6 +116,7 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             {
                 table.HasCheckConstraint("ck_lots_quantity_mode", "(\"MeasuredValue\" IS NOT NULL AND \"MeasuredUnit\" IS NOT NULL AND \"AvailabilityState\" IS NULL) OR (\"MeasuredValue\" IS NULL AND \"MeasuredUnit\" IS NULL AND \"AvailabilityState\" IS NOT NULL)");
                 table.HasCheckConstraint("ck_lots_measured_value", "\"MeasuredValue\" IS NULL OR \"MeasuredValue\" >= 0");
+                table.HasCheckConstraint("ck_lots_estimate_measured", "NOT \"QuantityIsEstimate\" OR \"MeasuredValue\" IS NOT NULL");
                 table.HasCheckConstraint("ck_lots_measured_unit", "\"MeasuredUnit\" IS NULL OR \"MeasuredUnit\" IN ('Gram', 'Milliliter', 'Unit')");
                 table.HasCheckConstraint("ck_lots_availability_state", "\"AvailabilityState\" IS NULL OR \"AvailabilityState\" IN ('Available', 'Low', 'Unavailable')");
                 table.HasCheckConstraint("ck_lots_storage", "(\"StorageLocation\" IN ('Pantry', 'Refrigerator', 'Freezer') AND \"CustomLocation\" IS NULL) OR (\"StorageLocation\" = 'Other' AND \"CustomLocation\" IS NOT NULL AND length(btrim(\"CustomLocation\")) > 0)");
@@ -544,6 +545,8 @@ public sealed class LotRecord
     public decimal? MeasuredValue { get; set; }
     /// <summary>Gets or sets the canonical unit when <see cref="MeasuredValue"/> is present.</summary>
     public string? MeasuredUnit { get; set; }
+    /// <summary>Gets or sets whether <see cref="MeasuredValue"/> is the owner's approximation (PLAN-0054); always false without a measured value.</summary>
+    public bool QuantityIsEstimate { get; set; }
     /// <summary>Gets or sets the qualitative availability state when the lot is not measured.</summary>
     public string? AvailabilityState { get; set; }
     /// <summary>Gets or sets the required storage location.</summary>

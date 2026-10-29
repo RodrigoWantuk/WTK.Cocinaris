@@ -16,6 +16,8 @@ export type InventoryQuantity =
       kind: "measured";
       value: number;
       unit: MeasuredUnit;
+      /** The owner's approximation ("half a package"), not a count or weighing (PLAN-0054). Absent means exact. */
+      estimated?: true;
     }
   | {
       kind: "qualitative";

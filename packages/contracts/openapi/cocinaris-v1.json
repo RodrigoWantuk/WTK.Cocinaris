@@ -57,6 +57,12 @@
               "string"
             ]
           },
+          "estimated": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
           "note": {
             "type": [
               "null",
@@ -2585,6 +2591,12 @@
               }
             ]
           },
+          "estimated": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
           "measuredValue": {
             "format": "decimal",
             "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
@@ -2656,6 +2668,10 @@
                 "type": "null"
               }
             ]
+          },
+          "estimated": {
+            "default": false,
+            "type": "boolean"
           },
           "measuredValue": {
             "format": "decimal",

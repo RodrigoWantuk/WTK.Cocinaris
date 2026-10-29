@@ -813,6 +813,7 @@ export interface components {
         /** @description Records an explicit immutable inventory adjustment. */
         AdjustmentRequest: {
             availabilityState: null | string;
+            estimated?: null | boolean;
             note: null | string;
             reasonCode: null | string;
             /** @enum {string} */
@@ -1447,6 +1448,7 @@ export interface components {
         /** @description Represents exactly one inventory quantity mode supplied by an API client. */
         QuantityRequest: {
             availabilityState?: ("Available" | "Low" | "Unavailable") | null;
+            estimated?: null | boolean;
             /** Format: decimal */
             measuredValue?: null | number;
             unit?: ("Gram" | "Milliliter" | "Unit") | null;
@@ -1459,6 +1461,8 @@ export interface components {
         /** @description Returns a measured or qualitative quantity without mixing the two modes. */
         QuantityResponse: {
             availabilityState?: ("Available" | "Low" | "Unavailable") | null;
+            /** @default false */
+            estimated: boolean;
             /** Format: decimal */
             measuredValue?: null | number;
             unit?: ("Gram" | "Milliliter" | "Unit") | null;

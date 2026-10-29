@@ -81,6 +81,38 @@ public sealed class InventoryDomainTests
     }
 
     [Fact]
+    public void ConsumingBeyondAnEstimateEmptiesTheLotAndKeepsTheEstimateMark()
+    {
+        var now = new DateTimeOffset(2026, 10, 29, 0, 0, 0, TimeSpan.Zero);
+        Assert.True(LotStorage.TryCreate(StorageLocation.Pantry, null, out var storage));
+        var lot = InventoryLot.Create(Guid.NewGuid(), Guid.NewGuid(), new LotQuantity.Measured(500m, CanonicalUnit.Gram, isEstimate: true), storage!, null, null, null, now);
+
+        var partial = lot.AdjustMeasured(InventoryTransactionType.Consume, 180m, "meal", null, Guid.NewGuid(), now.AddMinutes(1));
+        var beyond = lot.AdjustMeasured(InventoryTransactionType.Consume, 400m, "meal", null, Guid.NewGuid(), now.AddMinutes(2));
+
+        Assert.Equal(new LotQuantity.Measured(320m, CanonicalUnit.Gram, isEstimate: true), partial.ResultingQuantity);
+        Assert.Equal(new LotQuantity.Measured(0m, CanonicalUnit.Gram, isEstimate: true), beyond.ResultingQuantity);
+    }
+
+    [Fact]
+    public void ACorrectionStatesWhetherTheNewValueIsAnEstimate()
+    {
+        var now = new DateTimeOffset(2026, 10, 29, 0, 0, 0, TimeSpan.Zero);
+        Assert.True(LotStorage.TryCreate(StorageLocation.Pantry, null, out var storage));
+        var lot = InventoryLot.Create(Guid.NewGuid(), Guid.NewGuid(), new LotQuantity.Measured(500m, CanonicalUnit.Gram, isEstimate: true), storage!, null, null, null, now);
+
+        lot.AdjustMeasured(InventoryTransactionType.Correct, 432m, "weighed", null, Guid.NewGuid(), now.AddMinutes(1));
+        Assert.False(Assert.IsType<LotQuantity.Measured>(lot.Quantity).IsEstimate);
+
+        lot.AdjustMeasured(InventoryTransactionType.Correct, 250m, "looked", null, Guid.NewGuid(), now.AddMinutes(2), correctionIsEstimate: true);
+        Assert.True(Assert.IsType<LotQuantity.Measured>(lot.Quantity).IsEstimate);
+
+        var (derived, _, _) = lot.SplitTransition(LotTransitionKind.Freeze, 100m, null, Guid.NewGuid(), now.AddMinutes(3));
+        Assert.True(Assert.IsType<LotQuantity.Measured>(derived.Quantity).IsEstimate);
+        Assert.True(Assert.IsType<LotQuantity.Measured>(lot.Quantity).IsEstimate);
+    }
+
+    [Fact]
     public void CorrectionCanSetMeasuredQuantityToZeroWithoutChangingItsUnit()
     {
         var now = new DateTimeOffset(2026, 7, 28, 0, 0, 0, TimeSpan.Zero);

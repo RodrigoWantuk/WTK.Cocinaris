@@ -18,8 +18,25 @@ import {
 } from "@/lib/localeDecimal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  estimateFromPackage,
+  formatQuantityLabel,
+  type PackageFraction,
+} from "./quantityDisplay";
+import { staplesFor } from "./pantryStaples";
 
-type Mode = "measured" | "qualitative";
+/**
+ * How the owner states the amount: exactly, as a share of a package (an estimate), or with no
+ * amount at all (PLAN-0054 Phase 2: "se não, pode colocar um pouco ou 'meia embalagem'").
+ */
+type Mode = "measured" | PackageFraction | "qualitative";
+const MODES: readonly Mode[] = [
+  "measured",
+  "full",
+  "half",
+  "little",
+  "qualitative",
+];
 const CUSTOM_LOCATION_MAX = 80;
 
 type EditLoadStatus =
@@ -78,6 +95,30 @@ function buildNormalizedCreateCommand(
       value: parsed.value,
       unit: input.unit,
     };
+  } else if (input.quantityMode !== "qualitative") {
+    // Without a package size there is nothing to take a share of, so the lot only records that
+    // there is some (or, for "a little", that it is running low).
+    if (!input.amount.trim()) {
+      quantity = {
+        kind: "qualitative",
+        availability: input.quantityMode === "little" ? "Low" : "Available",
+      };
+    } else {
+      const parsed = parseLocaleDecimal(input.amount, locale);
+      if (!parsed.ok) {
+        return { ok: false, errorKey: "inventory.error.invalidDecimal" };
+      }
+      quantity = {
+        kind: "measured",
+        value: estimateFromPackage(
+          parsed.value,
+          input.unit,
+          input.quantityMode,
+        ),
+        unit: input.unit,
+        estimated: true,
+      };
+    }
   } else {
     quantity = {
       kind: "qualitative",
@@ -163,6 +204,9 @@ export function ProductionInventoryForm({ mode }: { mode: "create" | "edit" }) {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [conflict, setConflict] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [lastSaved, setLastSaved] = useState<string | null>(null);
+  /** Set by "save and add another": stay on the form for the next item instead of opening the lot. */
+  const addAnotherRef = useRef(false);
   /** Logical create attempt — form lifetime only; never persisted to storage. */
   const createAttemptRef = useRef<CreateAttempt | null>(null);
 
@@ -313,6 +357,15 @@ export function ProductionInventoryForm({ mode }: { mode: "create" | "edit" }) {
           idempotencyKey,
         });
         createAttemptRef.current = null;
+        if (addAnotherRef.current) {
+          setLastSaved(created.productName);
+          setProductName("");
+          setAmount("");
+          setNotes("");
+          setPrintedDate("");
+          setPackageState("");
+          return;
+        }
         navigate(`/app/despensa/${created.lotId}`);
       } catch (err) {
         if (
@@ -490,6 +543,26 @@ export function ProductionInventoryForm({ mode }: { mode: "create" | "edit" }) {
   }
 
   const editReady = mode !== "edit" || editLoadStatus === "ready";
+  const staples = staplesFor(locale);
+  const isPackageShare =
+    quantityMode !== "measured" && quantityMode !== "qualitative";
+  const estimateHint = (() => {
+    if (!isPackageShare) return null;
+    if (!amount.trim()) return t("inventory.estimate.noSize");
+    const parsed = parseLocaleDecimal(amount, locale as SupportedDecimalLocale);
+    if (!parsed.ok) return null;
+    // The hint already says "about", so the amount is shown without the "~" estimate mark.
+    const label = formatQuantityLabel(
+      {
+        kind: "measured",
+        value: estimateFromPackage(parsed.value, unit, quantityMode),
+        unit,
+      },
+      locale as SupportedDecimalLocale,
+      t as (key: string) => string,
+    );
+    return t("inventory.estimate.hint").replace("{amount}", label);
+  })();
 
   return (
     <form
@@ -515,8 +588,20 @@ export function ProductionInventoryForm({ mode }: { mode: "create" | "edit" }) {
         </div>
       )}
 
+      {lastSaved && (
+        <p
+          role="status"
+          data-testid="inventory-saved-another"
+          className="status-pill status-success"
+        >
+          {t("inventory.savedAnother").replace("{name}", lastSaved)}
+        </p>
+      )}
+
       <label className="block space-y-1">
-        <span>{t("inventory.fields.productName")}</span>
+        <span className="font-semibold">
+          {t("inventory.fields.productName")}
+        </span>
         <Input
           data-testid="inventory-product-name"
           value={productName}
@@ -526,37 +611,70 @@ export function ProductionInventoryForm({ mode }: { mode: "create" | "edit" }) {
           aria-invalid={Boolean(fieldErrors.productName)}
         />
       </label>
+      {mode === "create" && !productName.trim() && (
+        <div
+          className="flex flex-wrap gap-2"
+          role="group"
+          aria-label={t("inventory.staples.label")}
+          data-testid="inventory-staples"
+        >
+          {staples.map((staple) => (
+            <button
+              key={staple.name}
+              type="button"
+              disabled={busy}
+              onClick={() => {
+                setProductName(staple.name);
+                setUnit(staple.unit);
+                setStorage(staple.storage);
+              }}
+              className="h-9 rounded-full border border-border px-3 text-sm font-medium hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              {staple.name}
+            </button>
+          ))}
+        </div>
+      )}
 
       {mode === "create" && (
         <>
           <fieldset className="space-y-2">
-            <legend>{t("inventory.fields.quantityMode")}</legend>
-            <label className="mr-4 inline-flex items-center gap-2">
-              <input
-                type="radio"
-                name="qty-mode"
-                checked={quantityMode === "measured"}
-                disabled={busy}
-                onChange={() => setQuantityMode("measured")}
-              />
-              {t("inventory.quantityMode.measured")}
-            </label>
-            <label className="inline-flex items-center gap-2">
-              <input
-                type="radio"
-                name="qty-mode"
-                checked={quantityMode === "qualitative"}
-                disabled={busy}
-                onChange={() => setQuantityMode("qualitative")}
-              />
-              {t("inventory.quantityMode.qualitative")}
-            </label>
+            <legend className="mb-2 font-semibold">
+              {t("inventory.fields.quantityMode")}
+            </legend>
+            <div className="flex flex-wrap gap-2">
+              {MODES.map((option) => (
+                <label
+                  key={option}
+                  className={`relative inline-flex h-11 cursor-pointer items-center rounded-full px-4 text-[15px] font-semibold focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 ${
+                    quantityMode === option
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-secondary text-secondary-foreground"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="qty-mode"
+                    className="sr-only"
+                    data-testid={`inventory-qty-${option}`}
+                    checked={quantityMode === option}
+                    disabled={busy}
+                    onChange={() => setQuantityMode(option)}
+                  />
+                  {t(`inventory.quantityMode.${option}`)}
+                </label>
+              ))}
+            </div>
           </fieldset>
 
-          {quantityMode === "measured" ? (
+          {quantityMode !== "qualitative" ? (
             <div className="flex flex-wrap gap-2">
               <label className="min-w-[8rem] flex-1 space-y-1">
-                <span>{t("inventory.fields.amount")}</span>
+                <span>
+                  {isPackageShare
+                    ? t("inventory.fields.packageSize")
+                    : t("inventory.fields.amount")}
+                </span>
                 <Input
                   data-testid="inventory-amount"
                   value={amount}
@@ -582,6 +700,14 @@ export function ProductionInventoryForm({ mode }: { mode: "create" | "edit" }) {
                   <option value="Unit">{t("inventory.unit.Unit")}</option>
                 </select>
               </label>
+              {estimateHint && (
+                <p
+                  data-testid="inventory-estimate-hint"
+                  className="w-full text-sm text-muted-foreground"
+                >
+                  {estimateHint}
+                </p>
+              )}
             </div>
           ) : (
             <label className="block space-y-1">
@@ -607,26 +733,36 @@ export function ProductionInventoryForm({ mode }: { mode: "create" | "edit" }) {
         </>
       )}
 
-      <label className="block space-y-1">
-        <span>{t("inventory.fields.location")}</span>
-        <select
-          data-testid="inventory-location"
-          className="flex h-11 w-full rounded-xl border border-input bg-background px-3 text-[15px]"
-          value={storageLocation}
-          disabled={busy || !editReady}
-          onChange={(event) =>
-            setStorage(event.target.value as StorageLocation)
-          }
-        >
+      <fieldset className="space-y-2">
+        <legend className="mb-2 font-semibold">
+          {t("inventory.fields.location")}
+        </legend>
+        <div className="flex flex-wrap gap-2">
           {(["Pantry", "Refrigerator", "Freezer", "Other"] as const).map(
             (loc) => (
-              <option key={loc} value={loc}>
+              <label
+                key={loc}
+                className={`relative inline-flex h-11 cursor-pointer items-center rounded-full px-4 text-[15px] font-semibold focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 ${
+                  storageLocation === loc
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-secondary text-secondary-foreground"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="storage-location"
+                  className="sr-only"
+                  data-testid={`inventory-location-${loc}`}
+                  checked={storageLocation === loc}
+                  disabled={busy || !editReady}
+                  onChange={() => setStorage(loc)}
+                />
                 {t(`inventory.location.${loc}`)}
-              </option>
+              </label>
             ),
           )}
-        </select>
-      </label>
+        </div>
+      </fieldset>
 
       {storageLocation === "Other" && (
         <label className="block space-y-1">
@@ -655,47 +791,58 @@ export function ProductionInventoryForm({ mode }: { mode: "create" | "edit" }) {
         </label>
       )}
 
-      <label className="block space-y-1">
-        <span>{t("inventory.fields.packageState")}</span>
-        <select
-          className="flex h-11 w-full rounded-xl border border-input bg-background px-3 text-[15px]"
-          value={packageState}
-          disabled={busy || !editReady}
-          onChange={(event) =>
-            setPackageState(event.target.value as PackageState | "")
-          }
-        >
-          <option value="">{t("inventory.fields.none")}</option>
-          <option value="Sealed">{t("inventory.package.Sealed")}</option>
-          <option value="Opened">{t("inventory.package.Opened")}</option>
-          <option value="Unknown">{t("inventory.package.Unknown")}</option>
-        </select>
-      </label>
+      <details
+        className="group space-y-4"
+        open={mode === "edit" ? true : undefined}
+        data-testid="inventory-more-details"
+      >
+        <summary className="cursor-pointer text-[15px] font-semibold text-muted-foreground">
+          {t("inventory.moreDetails")}
+        </summary>
+        <div className="mt-4 space-y-4">
+          <label className="block space-y-1">
+            <span>{t("inventory.fields.packageState")}</span>
+            <select
+              className="flex h-11 w-full rounded-xl border border-input bg-background px-3 text-[15px]"
+              value={packageState}
+              disabled={busy || !editReady}
+              onChange={(event) =>
+                setPackageState(event.target.value as PackageState | "")
+              }
+            >
+              <option value="">{t("inventory.fields.none")}</option>
+              <option value="Sealed">{t("inventory.package.Sealed")}</option>
+              <option value="Opened">{t("inventory.package.Opened")}</option>
+              <option value="Unknown">{t("inventory.package.Unknown")}</option>
+            </select>
+          </label>
 
-      <label className="block space-y-1">
-        <span>{t("inventory.fields.printedDate")}</span>
-        <Input
-          data-testid="inventory-printed-date-input"
-          type="text"
-          inputMode="numeric"
-          placeholder="YYYY-MM-DD"
-          value={printedDate}
-          disabled={busy || !editReady}
-          onChange={(event) => setPrintedDate(event.target.value)}
-        />
-        <span className="block text-xs text-muted-foreground">
-          {t("inventory.printedDateDisclaimer")}
-        </span>
-      </label>
+          <label className="block space-y-1">
+            <span>{t("inventory.fields.printedDate")}</span>
+            <Input
+              data-testid="inventory-printed-date-input"
+              type="text"
+              inputMode="numeric"
+              placeholder="YYYY-MM-DD"
+              value={printedDate}
+              disabled={busy || !editReady}
+              onChange={(event) => setPrintedDate(event.target.value)}
+            />
+            <span className="block text-xs text-muted-foreground">
+              {t("inventory.printedDateDisclaimer")}
+            </span>
+          </label>
 
-      <label className="block space-y-1">
-        <span>{t("inventory.fields.notes")}</span>
-        <Input
-          value={notes}
-          disabled={busy || !editReady}
-          onChange={(event) => setNotes(event.target.value)}
-        />
-      </label>
+          <label className="block space-y-1">
+            <span>{t("inventory.fields.notes")}</span>
+            <Input
+              value={notes}
+              disabled={busy || !editReady}
+              onChange={(event) => setNotes(event.target.value)}
+            />
+          </label>
+        </div>
+      </details>
 
       {fieldError && (
         <p role="alert" data-testid="inventory-form-error">
@@ -708,9 +855,25 @@ export function ProductionInventoryForm({ mode }: { mode: "create" | "edit" }) {
           type="submit"
           data-testid="inventory-save"
           disabled={busy || !session.csrfToken || !editReady}
+          onClick={() => {
+            addAnotherRef.current = false;
+          }}
         >
           {t("inventory.actions.save")}
         </Button>
+        {mode === "create" && (
+          <Button
+            type="submit"
+            variant="secondary"
+            data-testid="inventory-save-another"
+            disabled={busy || !session.csrfToken}
+            onClick={() => {
+              addAnotherRef.current = true;
+            }}
+          >
+            {t("inventory.actions.saveAnother")}
+          </Button>
+        )}
         <Button asChild type="button" variant="secondary">
           <Link
             to={mode === "edit" ? `/app/despensa/${lotId}` : "/app/despensa"}

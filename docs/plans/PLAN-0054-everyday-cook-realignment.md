@@ -61,21 +61,46 @@ Phase 5 is large and changes the data model. It follows Phases 1–4 because tho
 - **Screens.** The pantry and shopping lists are rows instead of boxes. The pantry attention panel uses the amber tint. All native selects and inputs use the new size.
 - **Not yet moved:** Hoje, the recipe page, the menu page, and the profile still use their boxed sections. Phase 2 rewrites the pantry and the add flow, and Phase 4 rewrites recipe and cooking, so those screens move to the row pattern when they are rebuilt, not twice.
 
+## Phase 2 scope delivered (first part: approximate amounts and quick add)
+
+- **Estimated amounts.** A measured lot can be marked as an estimate. The rules are in [`docs/domain/inventory-lifecycle.md`](../domain/inventory-lifecycle.md#implemented-estimated-amounts-plan-0054-phase-2):
+  - Full, about half, or a little of a stated package size becomes an estimate.
+  - Without a package size, the choice becomes `Available` or `Low`.
+  - Consumption beyond an estimate empties the lot.
+  - A correction states whether its value is an estimate.
+- **Implementation.**
+  - Domain: `LotQuantity.Measured.IsEstimate`.
+  - Migration: `AddLotQuantityEstimate`, which adds a boolean column defaulting to false and a check constraint.
+  - API: `quantity.estimated` on create and on lot responses, and `estimated` on Correct adjustments. The OpenAPI contract and the generated client were regenerated.
+- **Add screen.**
+  - The questions use everyday words: "O que você tem?", "Quanto?" (Exato, Cheio, Metade, Pouco, Sem quantidade), and "Onde fica?" (Armário, Geladeira, Freezer, Outro).
+  - Common items are one tap, with their usual unit and place. The list follows the interface language until Phase 6 adds the region.
+  - A live hint shows the estimate ("Cerca de 500 g").
+  - "Salvar e adicionar outro" stays on the form for the next item.
+  - Package, date, and notes fold under "Mais detalhes".
+- **Pantry list.** An estimate shows as "~500 g". The copy says "itens" and "Adicionar" instead of "lote".
+- **Not yet done:**
+  - The lot detail's correction has no "this is an estimate" choice yet; the API supports it.
+  - The menu, shopping, and AI context do not show or receive the estimate mark; they use the value.
+  - Hoje, recipe, and menu screens still have their boxed sections (Phase 4 rebuilds recipe and cooking).
+
 ## Execution state
 
-- **Current run delivery target:** Phase 1.
-- **Current checkpoint:** Phase 1 delivered as above, with the limits noted.
+- **Current run delivery target:** Phase 2 (estimated amounts and quick add).
+- **Current checkpoint:** Phase 2 first part delivered as above.
 - **Validation:**
-  - **Frontend:** typecheck is clean. Vitest passes: 55 files, 447 tests. The shell tests were updated for the account menu and the `/app/compras` route. Prettier is clean on `src`.
-  - **Guards:** ts-only, interactive-nesting, production-isolation, build-mode, and third-party-html pass.
-  - **Build:** passes.
-  - **Visual check:** phone and desktop captures through the local proxy replica covered Hoje, Despensa, Receita, the menu, Compras, and the account menu.
-- **Not run:** the backend suites (no backend change in Phase 1).
-- **Exact next action:** Phase 2, the easy pantry.
-  - The amount can be exact or approximate (Cheio, Metade, Pouco). An approximate amount is stored with low confidence and a nominal value derived from the package size.
-  - A quick-add sheet behind "+" adds several items in a row, with region staples.
-  - Places are named in everyday words.
-  - Suggestions, menus, reservations, and shopping treat approximate amounts as estimates.
+  - **Backend unit tests:** the inventory domain and application tests pass (21), including the new estimate tests (consumption beyond an estimate; correction and split keep or set the mark).
+  - **Backend integration tests:** `InventoryLifecycleTransitionApiTests` and `PostgreSqlMigrationTests` pass (28) against PostgreSQL. The new test covers create, consumption past the estimate, rejecting `estimated` on Discard, and an exact correction.
+  - **Frontend:** typecheck is clean, and Vitest passes 55 files and 450 tests, including the half-package, little-without-size, and add-another cases.
+  - **Build:** the frontend build passes. OpenAPI lint shows the 6 known warnings.
+  - **Visual check:** the add screen and the pantry list were captured on the replica.
+- **Not run:** the full backend suites.
+- **Exact next action:** finish Phase 2.
+  - Add the estimate choice to the lot detail's correction.
+  - Show "~" in the shopping list's "tem" and in the menu reservations.
+  - Pass the estimate mark to the AI context.
+
+  Then Phase 3: dual measures.
 - **Blockers:** none.
 
 ## Progress log
@@ -91,3 +116,8 @@ Phase 5 is large and changes the data model. It follows Phases 1–4 because tho
 - Delivered Phase 1: the tokens, Inter, the pill primitives, the bottom and inline navigation, the account menu, and the Compras hub, with the pantry and shopping lists as rows.
 - Added the success and warning Tailwind colors and the design-system document.
 - Frontend tests pass (447), the guards pass, and the build passes.
+
+### 2026-10-29T23:10:00Z — Claude Code
+
+- Phase 2 first part: approximate pantry amounts end to end (domain, migration, API, client), a quick add screen in everyday words with common items, and save-and-add-another. The pantry list now shows "~" for estimates.
+- Backend tests pass: 21 unit and 28 integration. Frontend tests pass: 450.

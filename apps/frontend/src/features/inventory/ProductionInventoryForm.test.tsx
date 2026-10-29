@@ -71,6 +71,71 @@ describe("ProductionInventoryForm", () => {
     );
   });
 
+  it("creates an estimated lot from half of a package, in pt-BR", async () => {
+    const user = userEvent.setup();
+    const createLot = vi.fn(async (..._args: unknown[]) => sampleLot);
+    const repo = createMockInventoryRepo({ createLot });
+    renderForm("create", repo, "pt-BR");
+
+    await user.click(screen.getByRole("button", { name: "Arroz" }));
+    await user.click(screen.getByTestId("inventory-qty-half"));
+    await user.type(screen.getByTestId("inventory-amount"), "1000");
+    expect(screen.getByTestId("inventory-estimate-hint")).toHaveTextContent(
+      "Cerca de 500 g",
+    );
+    await user.click(screen.getByTestId("inventory-save"));
+
+    await waitFor(() => expect(createLot).toHaveBeenCalled());
+    expect(createLot.mock.calls[0][0]).toMatchObject({
+      productName: "Arroz",
+      quantity: { kind: "measured", value: 500, unit: "Gram", estimated: true },
+      storageLocation: "Pantry",
+    });
+  });
+
+  it("records only that there is a little when no package size is given", async () => {
+    const user = userEvent.setup();
+    const createLot = vi.fn(async (..._args: unknown[]) => sampleLot);
+    const repo = createMockInventoryRepo({ createLot });
+    renderForm("create", repo);
+
+    await user.type(screen.getByTestId("inventory-product-name"), "Flour");
+    await user.click(screen.getByTestId("inventory-qty-little"));
+    await user.click(screen.getByTestId("inventory-save"));
+
+    await waitFor(() => expect(createLot).toHaveBeenCalled());
+    expect(
+      (createLot.mock.calls[0][0] as { quantity: unknown }).quantity,
+    ).toEqual({
+      kind: "qualitative",
+      availability: "Low",
+    });
+  });
+
+  it("stays on the form after save and add another", async () => {
+    const user = userEvent.setup();
+    const createLot = vi.fn(async (..._args: unknown[]) => ({
+      ...sampleLot,
+      productName: "Eggs",
+    }));
+    const repo = createMockInventoryRepo({ createLot });
+    renderForm("create", repo);
+
+    await user.click(screen.getByRole("button", { name: "Eggs" }));
+    await user.type(screen.getByTestId("inventory-amount"), "6");
+    await user.click(screen.getByTestId("inventory-save-another"));
+
+    expect(
+      await screen.findByTestId("inventory-saved-another"),
+    ).toHaveTextContent("Eggs saved");
+    expect(screen.getByTestId("inventory-product-name")).toHaveValue("");
+    expect(createLot.mock.calls[0][0]).toMatchObject({
+      quantity: { kind: "measured", value: 6, unit: "Unit" },
+      storageLocation: "Refrigerator",
+    });
+    expect(screen.queryByText("detail")).toBeNull();
+  });
+
   it("requires custom location for Other and sends it on create", async () => {
     const user = userEvent.setup();
     const createLot = vi.fn(async () => sampleLot);
@@ -79,7 +144,7 @@ describe("ProductionInventoryForm", () => {
 
     await user.type(screen.getByTestId("inventory-product-name"), "Herbs");
     await user.type(screen.getByTestId("inventory-amount"), "1");
-    await user.selectOptions(screen.getByTestId("inventory-location"), "Other");
+    await user.click(screen.getByTestId("inventory-location-Other"));
     await user.click(screen.getByTestId("inventory-save"));
     expect(await screen.findByTestId("inventory-form-error")).toHaveTextContent(
       /custom location/i,
@@ -139,7 +204,7 @@ describe("ProductionInventoryForm", () => {
     renderForm("create", repo);
     await user.type(screen.getByTestId("inventory-product-name"), "X");
     await user.type(screen.getByTestId("inventory-amount"), "1");
-    await user.selectOptions(screen.getByTestId("inventory-location"), "Other");
+    await user.click(screen.getByTestId("inventory-location-Other"));
     await user.type(screen.getByTestId("inventory-custom-location"), "bad");
     await user.click(screen.getByTestId("inventory-save"));
     expect(await screen.findByTestId("inventory-form-error")).toHaveTextContent(
@@ -244,20 +309,16 @@ describe("ProductionInventoryForm", () => {
 
     await user.type(screen.getByTestId("inventory-product-name"), "Herbs");
     await user.type(screen.getByTestId("inventory-amount"), "5");
-    await user.click(
-      screen.getByRole("radio", { name: /qualitative|Qualitative/i }),
-    );
+    await user.click(screen.getByRole("radio", { name: /No amount/i }));
     await user.click(screen.getByTestId("inventory-save"));
     await screen.findByTestId("inventory-form-error");
     const firstKey = createLot.mock.calls[0][1].idempotencyKey;
 
     // Change measured fields while inactive, then return to qualitative.
-    await user.click(screen.getByRole("radio", { name: /measured|Measured/i }));
+    await user.click(screen.getByRole("radio", { name: /^Exact$/i }));
     await user.clear(screen.getByTestId("inventory-amount"));
     await user.type(screen.getByTestId("inventory-amount"), "999");
-    await user.click(
-      screen.getByRole("radio", { name: /qualitative|Qualitative/i }),
-    );
+    await user.click(screen.getByRole("radio", { name: /No amount/i }));
     await user.click(screen.getByTestId("inventory-save"));
     await waitFor(() => expect(createLot).toHaveBeenCalledTimes(2));
     expect(createLot.mock.calls[1][1].idempotencyKey).toBe(firstKey);
@@ -276,28 +337,24 @@ describe("ProductionInventoryForm", () => {
     const repo = createMockInventoryRepo({ createLot });
     renderForm("create", repo);
 
-    await user.click(
-      screen.getByRole("radio", { name: /qualitative|Qualitative/i }),
-    );
+    await user.click(screen.getByRole("radio", { name: /No amount/i }));
     await user.selectOptions(
       screen.getByLabelText(/Availability|Disponibilidad/i),
       "Low",
     );
-    await user.click(screen.getByRole("radio", { name: /measured|Measured/i }));
+    await user.click(screen.getByRole("radio", { name: /^Exact$/i }));
     await user.type(screen.getByTestId("inventory-product-name"), "Rice");
     await user.type(screen.getByTestId("inventory-amount"), "1");
     await user.click(screen.getByTestId("inventory-save"));
     await screen.findByTestId("inventory-form-error");
     const firstKey = createLot.mock.calls[0][1].idempotencyKey;
 
-    await user.click(
-      screen.getByRole("radio", { name: /qualitative|Qualitative/i }),
-    );
+    await user.click(screen.getByRole("radio", { name: /No amount/i }));
     await user.selectOptions(
       screen.getByLabelText(/Availability|Disponibilidad/i),
       "Unavailable",
     );
-    await user.click(screen.getByRole("radio", { name: /measured|Measured/i }));
+    await user.click(screen.getByRole("radio", { name: /^Exact$/i }));
     await user.click(screen.getByTestId("inventory-save"));
     await waitFor(() => expect(createLot).toHaveBeenCalledTimes(2));
     expect(createLot.mock.calls[1][1].idempotencyKey).toBe(firstKey);
