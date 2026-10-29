@@ -209,6 +209,11 @@ describe("cooking a recipe", () => {
       await screen.findByText("Junte o arroz e mexa por 2 minutos."),
     ).toBeInTheDocument();
     expect(screen.getByText(/grãos translúcidos/)).toBeInTheDocument();
+    const household = screen.getAllByTestId("recipe-ingredient-household");
+    expect(household.map((node) => node.textContent)).toEqual([
+      " · ≈ 1 cup",
+      " · ≈ ¾ teaspoon",
+    ]);
     await user.click(screen.getByRole("checkbox", { name: "Refogar" }));
     expect(localStorage.getItem("cocinaris.cooking.exec-1")).toContain("s:0");
 

@@ -1,5 +1,10 @@
 import { useProductionI18n } from "@/app/i18n/ProductionI18nProvider";
 import { formatLocaleDecimal } from "@/lib/localeDecimal";
+import {
+  formatKitchenAmount,
+  householdMeasure,
+  type MeasurePart,
+} from "@/lib/kitchenMeasures";
 import type {
   ParsedIngredient,
   ParsedNormalizedRecipe,
@@ -15,6 +20,36 @@ export function useRecipeQuantity() {
       ? t(`recipes.unit.${unit}`)
       : unit;
     return `${formatLocaleDecimal(ingredient.quantity, locale)} ${label}`.trim();
+  };
+}
+
+/**
+ * The household measure that accompanies a metric amount ("≈ 1 xícara", "2 colheres de sopa"),
+ * or an empty string when no compatible measure exists (see `lib/kitchenMeasures`).
+ */
+export function useHouseholdMeasure() {
+  const { t, locale } = useProductionI18n();
+  const part = ({ unit, amount }: MeasurePart) => {
+    if (unit === "pinch") return t("measure.pinch");
+    const n =
+      unit === "g"
+        ? formatLocaleDecimal(amount, locale)
+        : formatKitchenAmount(amount);
+    if (unit === "g") return t("measure.g", { n });
+    return t(`measure.${unit}.${amount <= 1 ? "one" : "many"}`, { n });
+  };
+  return (
+    ingredient: Pick<ParsedIngredient, "displayName" | "quantity" | "unit">,
+  ) => {
+    if (ingredient.quantity === undefined || !ingredient.unit) return "";
+    const measure = householdMeasure(
+      ingredient.displayName,
+      ingredient.quantity,
+      ingredient.unit,
+    );
+    if (!measure) return "";
+    const text = measure.parts.map(part).join(t("measure.join"));
+    return measure.approximate ? t("measure.approx", { measure: text }) : text;
   };
 }
 
@@ -40,6 +75,7 @@ export function RecipeContent({
 }) {
   const { t } = useProductionI18n();
   const quantity = useRecipeQuantity();
+  const household = useHouseholdMeasure();
   const box = (key: string, label: string) =>
     checkable ? (
       <input
@@ -63,6 +99,7 @@ export function RecipeContent({
           >
             {recipe.ingredients.map((ingredient, index) => {
               const amount = quantity(ingredient);
+              const kitchen = household(ingredient);
               const notes = [
                 ingredient.optional ? t("recipes.detail.optional") : null,
                 ingredient.sourceType === "additional"
@@ -85,6 +122,14 @@ export function RecipeContent({
                       {ingredient.displayName}
                     </span>
                     {amount ? ` — ${amount}` : ""}
+                    {kitchen ? (
+                      <span
+                        data-testid="recipe-ingredient-household"
+                        className="text-muted-foreground"
+                      >
+                        {` · ${kitchen}`}
+                      </span>
+                    ) : null}
                     {notes.length > 0 ? (
                       <span className="text-muted-foreground">
                         {" "}

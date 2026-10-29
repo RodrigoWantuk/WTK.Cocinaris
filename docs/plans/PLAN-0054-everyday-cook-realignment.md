@@ -87,15 +87,22 @@ Phase 5 is large and changes the data model. It follows Phases 1–4 because tho
   - Menu readiness and reservations use the estimated value without a mark; the lot itself shows "~".
   - Hoje, recipe, and menu screens keep their boxed sections until Phase 4.
 
+## Phase 3 scope delivered: dual measures
+
+- **Rules.** The rules are in [`docs/domain/kitchen-measures.md`](../domain/kitchen-measures.md). The conversion is deterministic (`lib/kitchenMeasures.ts`), uses a curated density and piece-weight table in pt, en, and es, and never stores kitchen measures.
+- **Recipe page and cooking view.** Every ingredient shows its metric amount and, when compatible, the kitchen measure ("180 g · ≈ 1 xícara").
+- **Editor.** The editor accepts xícara, colher de sopa, and colher de chá. A solid in the table is saved as grams through its density, so it still matches the pantry; a liquid or an unknown ingredient is saved as milliliters. A live hint shows the other measure.
+- **Change from the plan's wording.** No model proposes a measure, because the deterministic table makes that unnecessary.
+- **Not done:** imperial and °F wait for the region (Phase 6).
+
 ## Execution state
 
 - **Current run delivery target:** finish Phase 2, then Phases 3 and 4 (owner, 2026-10-29: "Conclua os itens 1, 2 e 3"). Dish images are out of this run; the owner is investigating the provider.
-- **Current checkpoint:** Phase 2 complete.
+- **Current checkpoint:** Phase 3 complete.
 - **Validation:**
-  - **Backend unit tests:** ShoppingProjector (3) and the AI envelope and contract tests (18) pass, including the estimate-mark cases.
-  - **Frontend:** typecheck is clean. Vitest passes 451 tests, including the estimated correction and the "~300 g" shopping text.
-  - **Contract:** OpenAPI was regenerated, and the client was synced.
-- **Exact next action:** Phase 3, dual measures.
+  - **Frontend:** typecheck and lint are clean, and Prettier and the five guards pass. Vitest passes 460 tests, including 8 conversion tests, the cooking view's household measures, and the editor's cup entry saved as 185 g.
+  - **Backend:** no change.
+- **Exact next action:** Phase 4, beginner cooking mode.
 - **Blockers:** none.
 
 ## Progress log
@@ -124,3 +131,8 @@ Phase 5 is large and changes the data model. It follows Phases 1–4 because tho
   - "~" in the shopping list;
   - the estimate mark in the AI suggest context.
 - Tests pass: backend 21 targeted, frontend 451.
+
+### 2026-10-30T00:30:00Z — Claude Code
+
+- Phase 3: household measures next to every metric recipe amount, and cups and spoons accepted in the editor and saved as grams or milliliters, from a deterministic curated table.
+- Frontend tests pass: 460.
