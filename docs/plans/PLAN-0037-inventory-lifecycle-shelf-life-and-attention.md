@@ -6,8 +6,8 @@
 - **Owner:** Claude Code (claimed 2026-10-28)
 - **Created:** 2026-10-28
 - **Last updated:** 2026-10-28
-- **Branch:** Phase 1 `agent/plan-0037-inventory-lifecycle` (merged, PR #47); Phase 2 `agent/plan-0037-phase-2-attention` (stacked on PR #48)
-- **Pull request:** Draft PR (opened after this commit)
+- **Branch:** Phase 1 `agent/plan-0037-inventory-lifecycle` (merged, PR #47); Phase 2 `agent/plan-0037-phase-2-attention` (draft PR #49 against `main`; PR #48 merged at `bc7ec04`)
+- **Pull request:** Phase 1 PR #47 (merged); Phase 2 draft PR #49
 - **Related documents:** `docs/domain/inventory-lifecycle.md`, `docs/product/initial-release.md` (Inventory), coverage review gaps G-01, G-02, G-03
 - **Dependencies:** PLAN-0033 (names), PLAN-0023 (prepared lots)
 
@@ -66,7 +66,7 @@ Refreezing a thawed lot is allowed. Food-safety guidance about it belongs to the
 
 - **Current run delivery target:** Phase 2.
 - **Current checkpoint:** Phase 1 implemented and validated on the owner host (see progress log).
-- **Exact next action:** Deploy this branch (owner standing instruction), open the draft PR, then start Phase 2 (shelf-life evidence and attention engine).
+- **Exact next action:** Owner reviews and merges PR #49; then Phase 3 (product culinary category and roles).
 - **Blockers:** None. GitHub Actions does not start jobs because the owner account is locked for billing (PR #46); validation runs on the owner host until the owner resolves it.
 - **Working tree state:** Phase 1 committed on `agent/plan-0037-inventory-lifecycle`.
 
@@ -109,3 +109,7 @@ Refreezing a thawed lot is allowed. Food-safety guidance about it belongs to the
   - typecheck, lint, interactive-nesting guard.
 - **Limitations:** a mutation response of a prepared lot omits its prepared shelf-life date until the next read. Rules are generic until Phase 3 adds product categories.
 - **Next action:** Phase 3, product culinary category and roles.
+
+### 2026-10-29T02:30:00Z — Claude Code
+
+- PR #48 was squash-merged (`bc7ec04`), which left PR #49 conflicting. Merged `main` into the Phase 2 branch (no force push); the only conflicts were the registry row and the integration test file, where `main` had the same content as the old base. Kept the branch versions. No code changed, no tests rerun.
