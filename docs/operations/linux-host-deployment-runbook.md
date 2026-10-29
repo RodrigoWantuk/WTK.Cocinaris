@@ -113,6 +113,13 @@ Rename any dashboard or alert that uses `kitchenflow.*` metric names.
    - list prices, `Ai__Pricing__Models__<model>__InputUsdPerMillion` and `__OutputUsdPerMillion`.
 
    Check spend, latency, and quality flags with `sudo scripts/ops/ai-usage-report.sh [ceiling-usd]`.
+
+   Optional recipe dish images (PLAN-0030):
+   - set `Ai__Images__Enabled=true` and `Ai__Providers__OpenRouter__ApiKey`;
+   - the images use OpenRouter FLUX 3 Image Klein at 16:9, tier `768` (1024 × 576, US$ 0.008 each), and count toward the same monthly ceiling;
+   - the daily limits are `Ai__Images__UserDailyImages` (default 10) and `Ai__Images__GlobalDailyImages` (default 100);
+   - files are kept in `/var/lib/wtk-cocinaris/media/thumbnails` (the service state directory), or in `Ai__Images__StoragePath`. The deploy database backup does not include them; a lost file shows the placeholder until the asset row is reset to `Pending`, which costs one new image;
+   - while disabled, recipes show a placeholder and existing images are still served.
 6. Register an OIDC client with redirect URI `https://<host>/signin-oidc` and sign-out callback `https://<host>/signout-callback-oidc`; put authority, client ID and secret in the environment file.
 7. Add the `Caddyfile.cocinaris` block with the real host name, then `caddy validate` and `systemctl reload caddy`.
 8. Point DNS at the host. With a proxying CDN, create the record **before** the proxy first requests a certificate. If the certificate attempt ran before DNS existed, `systemctl reload caddy` retries immediately (the CDN shows HTTP 525 until then).

@@ -126,6 +126,10 @@ describe("recipe library (PLAN-0038)", () => {
       createdAt: "2026-10-01T12:00:00Z",
       timesCooked: 3,
       lastRating: 4,
+      thumbnail: {
+        state: "ready",
+        url: "/api/v1/recipes/recipe-1/thumbnail?v=0123456789abcdef",
+      },
     });
     const listRecipes = vi.fn(async () => [row]);
     const setFavorite = vi.fn(async () => ({ ...DETAIL, isFavorite: true }));
@@ -134,6 +138,10 @@ describe("recipe library (PLAN-0038)", () => {
     const item = await screen.findByTestId("recipes-item-recipe-1");
     expect(item).toHaveTextContent("Lunch");
     expect(item).toHaveTextContent("Cooked 3× · rated 4");
+    expect(within(item).getByTestId("recipe-thumbnail-image")).toHaveAttribute(
+      "alt",
+      "Illustrative photo of Arroz de forno",
+    );
 
     await user.click(screen.getByTestId("recipes-favorite-recipe-1"));
     expect(setFavorite).toHaveBeenCalledWith("recipe-1", true, {

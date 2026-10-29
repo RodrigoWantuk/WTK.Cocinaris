@@ -83,6 +83,47 @@ describe("createLiveRecipeRepository", () => {
     expect(request.method).toBe("GET");
   });
 
+  it("accepts only this API's thumbnail path as an image URL", async () => {
+    const row = (id: string, thumbnail: unknown) => ({
+      recipeId: id,
+      name: "Dish",
+      mealTypes: [],
+      servings: 1,
+      createdAt: "2026-10-30T12:00:00Z",
+      revisionNumber: 1,
+      origin: "generated",
+      isFavorite: false,
+      archivedAt: null,
+      updatedAt: "2026-10-30T12:00:00Z",
+      timesCooked: 0,
+      lastCookedAt: null,
+      lastRating: null,
+      thumbnail,
+    });
+    const id = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
+    const fetchImpl = vi.fn(async () =>
+      jsonResponse([
+        row(id, {
+          state: "ready",
+          url: `/api/v1/recipes/${id}/thumbnail?v=0123456789abcdef`,
+        }),
+        row(id, { state: "ready", url: "https://attacker.example/x.png" }),
+        row(id, { state: "pending", url: null }),
+        row(id, undefined),
+      ]),
+    );
+    const items = await createLiveRecipeRepository({ fetchImpl }).listRecipes();
+    expect(items.map((item) => item.thumbnail)).toEqual([
+      {
+        state: "ready",
+        url: `/api/v1/recipes/${id}/thumbnail?v=0123456789abcdef`,
+      },
+      { state: "none", url: null },
+      { state: "pending", url: null },
+      { state: "none", url: null },
+    ]);
+  });
+
   it("posts generation sessions with CSRF and Idempotency-Key", async () => {
     const fetchImpl = vi.fn(async () =>
       jsonResponse({

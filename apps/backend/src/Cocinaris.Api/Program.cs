@@ -182,7 +182,13 @@ app.Use((context, next) =>
     {
         context.Response.OnStarting(() =>
         {
-            context.Response.Headers.CacheControl = "no-store, no-transform";
+            // A versioned, immutable image (recipe thumbnails, PLAN-0030) may stay in the owner's
+            // own browser cache; it has no ETag, so the concern above does not apply.
+            if (!context.Items.ContainsKey(Program.PrivateCacheableItem))
+            {
+                context.Response.Headers.CacheControl = "no-store, no-transform";
+            }
+
             return Task.CompletedTask;
         });
     }
@@ -248,5 +254,12 @@ api.MapGroup("/recipes").RequireAuthorization().MapRecipeEndpoints();
 api.MapGroup("/planning").RequireAuthorization().MapPlanningEndpoints();
 app.Run();
 
-/// <summary>Exposes the application entry point to the integration-test host.</summary>
-public partial class Program;
+/// <summary>API entry point; partial so the integration-test host can reach it.</summary>
+public partial class Program
+{
+    /// <summary>
+    /// <see cref="HttpContext.Items"/> key an endpoint sets when its response may be cached
+    /// privately (it sets its own <c>Cache-Control</c>) instead of the API's <c>no-store</c>.
+    /// </summary>
+    public const string PrivateCacheableItem = "cocinaris.private-cacheable";
+}

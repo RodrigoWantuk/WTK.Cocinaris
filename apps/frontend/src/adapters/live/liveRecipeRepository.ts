@@ -14,6 +14,7 @@ import {
   type RecipeHistory,
   type RecipeRepository,
   type RecipeSummary,
+  type RecipeThumbnail,
 } from "@/contracts/recipes";
 
 type CandidateDto = components["schemas"]["RecipeCandidateResponse"];
@@ -110,6 +111,22 @@ function mapSession(dto: SessionDto): RecipeGenerationSession {
   };
 }
 
+// The image URL comes from the API; only this API's own thumbnail path is accepted, so a
+// malformed or hostile value can never point an <img> elsewhere.
+const THUMBNAIL_PATH =
+  /^\/api\/v1\/recipes\/[0-9a-f-]{36}\/thumbnail\?(revision=\d+&)?v=[0-9a-f]{16}$/;
+
+function mapThumbnail(value: unknown): RecipeThumbnail {
+  const dto = (value ?? {}) as { state?: unknown; url?: unknown };
+  if (
+    dto.state === "ready" &&
+    typeof dto.url === "string" &&
+    THUMBNAIL_PATH.test(dto.url)
+  )
+    return { state: "ready", url: dto.url };
+  return { state: dto.state === "pending" ? "pending" : "none", url: null };
+}
+
 function mapSummary(dto: SummaryDto): RecipeSummary {
   return {
     recipeId: assertString(dto.recipeId, "recipeId"),
@@ -127,6 +144,7 @@ function mapSummary(dto: SummaryDto): RecipeSummary {
     timesCooked: asFiniteNumber(dto.timesCooked, "timesCooked"),
     lastCookedAt: text(dto.lastCookedAt),
     lastRating: count(dto.lastRating),
+    thumbnail: mapThumbnail(dto.thumbnail),
   };
 }
 
@@ -184,6 +202,7 @@ function mapDetail(dto: DetailDto): RecipeDetail {
     derivationReason: text(dto.derivationReason),
     revisionOrigin: assertString(dto.revisionOrigin, "revisionOrigin"),
     changeReason: text(dto.changeReason),
+    thumbnail: mapThumbnail(dto.thumbnail),
   };
 }
 

@@ -47,6 +47,9 @@ public sealed class AiOperationRegistry
     /// <summary>Stable registered name for selected-candidate expansion.</summary>
     public const string ExpandSelected = "recipe.expand_selected.v1";
 
+    /// <summary>Stable registered name for recipe thumbnail generation (PLAN-0030).</summary>
+    public const string ThumbnailGenerate = "recipe.thumbnail.generate.v1";
+
     private readonly Dictionary<string, AiOperationDefinition> _operations;
 
     /// <summary>Creates the registry from an explicit set of operation definitions.</summary>
@@ -59,7 +62,10 @@ public sealed class AiOperationRegistry
     public static AiOperationRegistry CreateDefault() => new(
     [
         new AiOperationDefinition(SuggestCandidates, "recipe-suggest-candidates.v1", "0.3", PreferNonThinking: true, TimeoutSeconds: 30, MaxRepairAttempts: 1, EstimatedUsageUnits: 3, ContextBudgetCharacters: 12_000, MaxOutputTokens: 4096, EstimatedCostMicroUsd: 3_000, EstimatedTokens: 14_000),
-        new AiOperationDefinition(ExpandSelected, "recipe-expand-selected.v1", "0.3", PreferNonThinking: true, TimeoutSeconds: 45, MaxRepairAttempts: 1, EstimatedUsageUnits: 5, ContextBudgetCharacters: 12_000, MaxOutputTokens: 6144, EstimatedCostMicroUsd: 5_000, EstimatedTokens: 18_000)
+        new AiOperationDefinition(ExpandSelected, "recipe-expand-selected.v1", "0.3", PreferNonThinking: true, TimeoutSeconds: 45, MaxRepairAttempts: 1, EstimatedUsageUnits: 5, ContextBudgetCharacters: 12_000, MaxOutputTokens: 6144, EstimatedCostMicroUsd: 5_000, EstimatedTokens: 18_000),
+        // One image per call, priced per image; the job reserves the configured image price instead
+        // of this estimate. Images use no text tokens, so they never count against the token windows.
+        new AiOperationDefinition(ThumbnailGenerate, "recipe-thumbnail-style-v1", "1", PreferNonThinking: true, TimeoutSeconds: 90, MaxRepairAttempts: 0, EstimatedUsageUnits: 1, ContextBudgetCharacters: 2_000, MaxOutputTokens: 0, EstimatedCostMicroUsd: 8_000, EstimatedTokens: 0)
     ]);
 
     /// <summary>Attempts to resolve a registered operation definition.</summary>

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useSession } from "@/app/session/SessionProvider";
+import { RecipeThumbnail } from "./RecipeThumbnail";
 import { RecipeContent } from "./RecipeContent";
 import { useRecipeRepository } from "./RecipeProvider";
 import {
@@ -196,6 +197,13 @@ export function RecipeDetailPage() {
 
   return (
     <div data-testid="recipes-detail" className="space-y-6">
+      {detail.thumbnail && detail.thumbnail.state !== "none" ? (
+        <RecipeThumbnail
+          thumbnail={detail.thumbnail}
+          name={detail.name}
+          disclose
+        />
+      ) : null}
       <div>
         <p className="text-sm text-muted-foreground">
           {t("recipes.detail.revision", { number: detail.revisionNumber })}
