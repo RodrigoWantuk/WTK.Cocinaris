@@ -95,15 +95,28 @@ Phase 5 is large and changes the data model. It follows Phases 1–4 because tho
 - **Change from the plan's wording.** No model proposes a measure, because the deterministic table makes that unnecessary.
 - **Not done:** imperial and °F wait for the region (Phase 6).
 
+## Phase 4 scope delivered: beginner cooking mode
+
+- **Guided cooking.** The cooking view has a preparation screen, then one stage per screen with a progress bar, large text, "Como deve ficar", and a timer that beeps and vibrates. The screen is kept awake during preparation and the steps, and the step is resumed after a reload. The finish takes one tap (the proposal as is, leftover portions, a rating), and "Ajustar" opens the detailed review. The rules are in [`docs/domain/recipes-and-cooking.md`](../domain/recipes-and-cooking.md#guided-cooking-for-beginners-plan-0054-phase-4).
+- **Recipe page.** Ingredients are rows with both measures, the page shows the total time, and "Cozinhar agora" is large with the secondary actions smaller.
+- **Defect found and fixed.** A missing saved step would have resumed at step 1, because `Number(null)` is 0.
+- **Not done:**
+  - Help for a missing ingredient or a problem during cooking needs a governed AI operation (PLAN-0042 Phase 2, PLAN-0045).
+  - Dish images wait for the owner's provider decision (PLAN-0030).
+  - Hoje and the menu page keep their boxed sections.
+
 ## Execution state
 
-- **Current run delivery target:** finish Phase 2, then Phases 3 and 4 (owner, 2026-10-29: "Conclua os itens 1, 2 e 3"). Dish images are out of this run; the owner is investigating the provider.
-- **Current checkpoint:** Phase 3 complete.
+- **Current run delivery target:** finish Phase 2, then Phases 3 and 4 (owner, 2026-10-29). All three are delivered.
+- **Current checkpoint:** Phase 4 complete, with the limits above.
 - **Validation:**
-  - **Frontend:** typecheck and lint are clean, and Prettier and the five guards pass. Vitest passes 460 tests, including 8 conversion tests, the cooking view's household measures, and the editor's cup entry saved as 185 g.
-  - **Backend:** no change.
-- **Exact next action:** Phase 4, beginner cooking mode.
-- **Blockers:** none.
+  - **Frontend:** typecheck and lint are clean, and Prettier and the guards pass. Vitest passes 461 tests, including the new guided path (preparation, step and timer, one-tap finish with leftover and rating) and the overview and review paths.
+  - **Replica:** phone captures of the recipe page, preparation, step, and finish screens.
+  - **Backend:** no change in Phases 3–4.
+- **Exact next action:**
+  - The owner tests Phases 1–4 on production.
+  - Then Phase 5, the shared household: the superseding ADR for ownership (`AGENTS.md` §4) first, then members, invitations, and the shared pantry, menu, and shopping. Phase 5 needs owner review of the ADR before implementation.
+- **Blockers:** Phase 5 needs the owner's agreement with the ownership ADR.
 
 ## Progress log
 
@@ -136,3 +149,9 @@ Phase 5 is large and changes the data model. It follows Phases 1–4 because tho
 
 - Phase 3: household measures next to every metric recipe amount, and cups and spoons accepted in the editor and saved as grams or milliliters, from a deterministic curated table.
 - Frontend tests pass: 460.
+
+### 2026-10-30T01:20:00Z — Claude Code
+
+- Phase 4: guided cooking (preparation, one step per screen with a timer, wake lock, resume, one-tap finish) and the recipe page in the row style.
+- Fixed a resume defect found by the new test.
+- Frontend tests pass: 461.

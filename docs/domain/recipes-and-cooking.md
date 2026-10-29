@@ -129,6 +129,17 @@ The checklist informs and offers adaptations but does not arbitrarily block cont
 - **Saving changes after cooking (Phase 2, with PLAN-0038).** The finished screen offers "Salvar ajustes na receita" (next revision) and "Criar variação" (derived recipe). The editor shows the session's notes and rating, and the result records the session. Nothing changes the saved recipe unless the owner saves. Substitutions recorded during cooking are not yet implemented.
 - **Abandonment.** Ends the execution without touching inventory.
 
+### Guided cooking for beginners (PLAN-0054 Phase 4)
+
+- **Preparation first.** The cooking view opens on "Antes de começar": every ingredient with its metric amount and kitchen measure (see [`kitchen-measures.md`](kitchen-measures.md)), a check for each one set out, and the equipment.
+- **One stage per screen.** Each stage has a progress bar ("Passo 2 de 5"), large instruction text, and the doneness cues as "Como deve ficar". A stage with a passive time (or else an active time) offers a timer. The timer counts against a target time, so it stays right in a throttled background tab, and it ends with a beep and a vibration where the device allows them.
+- **Screen kept awake.** The Screen Wake Lock is requested during preparation and the steps, and it is requested again when the page becomes visible. Where the browser refuses or lacks it, nothing breaks.
+- **Resuming.** The current step is kept in browser storage per execution, like the checklist, and reopening the cooking view resumes there. Both are cleared on completion or abandonment.
+- **One-tap finish.** "Bom apetite!" lists what leaves the pantry (the backend proposal as is). It offers "Sobrou?" (no, or 1 to 3 portions, stored in the refrigerator) and "Como ficou?" (rating 2, 4, or 5), and "Concluir" commits through the same atomic completion. "Usei diferente? Ajustar" opens the detailed review (lots, quantities, leftovers with place and date, rating, notes).
+- **Full view.** "Ver receita inteira" keeps the earlier checklist view.
+- **Recipe page.** Ingredients are rows showing both measures, the page shows the total time (work plus waiting), and "Cozinhar agora" is the main action.
+- **Not yet implemented:** help during cooking for a missing ingredient or a problem (substitutions, PLAN-0042 Phase 2 and PLAN-0045). It needs a governed AI operation and comes in a later phase.
+
 ## Stage-based instructions
 
 Instructions are divided into stages. The profile determines a default detail level; the recipe AI request carries it as `instructionStyle` (see `docs/ai/recipe-artifact-protocol.md`). Every stage can request more explanation independently.

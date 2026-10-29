@@ -95,7 +95,11 @@ export function RecipeContent({
             {t("recipes.detail.ingredients")}
           </h2>
           <ul
-            className={`mt-2 space-y-1 text-sm ${checkable ? "" : "list-disc pl-5"}`}
+            className={
+              checkable
+                ? "mt-2 space-y-1 text-sm"
+                : "mt-2 divide-y divide-border border-y border-border"
+            }
           >
             {recipe.ingredients.map((ingredient, index) => {
               const amount = quantity(ingredient);
@@ -107,14 +111,46 @@ export function RecipeContent({
                   : null,
               ].filter(Boolean);
               const label = `${ingredient.displayName}${amount ? ` — ${amount}` : ""}`;
+              const key =
+                ingredient.ingredientId ?? `${ingredient.displayName}-${index}`;
+              if (!checkable) {
+                // Reading view (PLAN-0054 design system): one row per ingredient, the name on
+                // the left and both measures on the right.
+                return (
+                  <li
+                    key={key}
+                    data-testid="recipe-ingredient"
+                    className="flex items-baseline justify-between gap-4 py-3"
+                  >
+                    <span>
+                      <span className="text-[17px] font-semibold">
+                        {ingredient.displayName}
+                      </span>
+                      {notes.length > 0 ? (
+                        <span className="block text-sm text-muted-foreground">
+                          {notes.join(", ")}
+                        </span>
+                      ) : null}
+                    </span>
+                    <span className="shrink-0 text-right">
+                      <span className="block">{amount}</span>
+                      {kitchen ? (
+                        <span
+                          data-testid="recipe-ingredient-household"
+                          className="block text-sm text-muted-foreground"
+                        >
+                          {kitchen}
+                        </span>
+                      ) : null}
+                    </span>
+                  </li>
+                );
+              }
               return (
                 <li
-                  key={
-                    ingredient.ingredientId ??
-                    `${ingredient.displayName}-${index}`
-                  }
+                  key={key}
                   data-testid="recipe-ingredient"
-                  className={checkable ? "flex gap-2" : undefined}
+                  className="flex gap-2"
                 >
                   {box(`i:${index}`, label)}
                   <span>
