@@ -11,6 +11,12 @@ public static class InventoryEndpoints
     public static RouteGroupBuilder MapInventoryEndpoints(this RouteGroupBuilder group)
     {
         group.AddEndpointFilter(ValidateCsrfAsync);
+        group.AddEndpointFilter(async (context, next) =>
+        {
+            await context.HttpContext.RequestServices.GetRequiredService<InventoryCalendar>().ResolveAsync(context.HttpContext.RequestAborted);
+            return await next(context);
+        });
+        group.MapGet("/attention", (InventoryApplicationService service, HttpContext context, CancellationToken cancellationToken) => service.AttentionAsync(context, cancellationToken)).Produces<AttentionListResponse>();
         group.MapGet("/lots", (InventoryApplicationService service, int? pageSize, string? status, string? storageLocation, string? search, string? cursor, HttpContext context, CancellationToken cancellationToken) => service.ListAsync(pageSize, status, storageLocation, search, cursor, context, cancellationToken)).Produces<ListLotsResponse>().ProducesProblem(400);
         group.MapPost("/lots", (InventoryApplicationService service, CreateLotRequest request, HttpRequest requestContext, CancellationToken cancellationToken) => service.CreateAsync(request, requestContext, cancellationToken)).RequireRateLimiting("mutation").Produces<LotResponse>(StatusCodes.Status201Created).ProducesProblem(400).ProducesProblem(409).ProducesProblem(422);
         group.MapGet("/lots/{lotId:guid}", (InventoryApplicationService service, Guid lotId, HttpContext context, CancellationToken cancellationToken) => service.GetAsync(lotId, context, cancellationToken)).Produces<LotResponse>().ProducesProblem(404);

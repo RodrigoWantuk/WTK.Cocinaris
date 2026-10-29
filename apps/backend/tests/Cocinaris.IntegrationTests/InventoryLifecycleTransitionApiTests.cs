@@ -167,6 +167,42 @@ public sealed class InventoryLifecycleTransitionApiTests : IAsyncLifetime
         Assert.True(problem.Headers.CacheControl!.NoTransform);
     }
 
+    [Fact]
+    public async Task AttentionListsOnlyLotsNeedingAttentionMostUrgentFirst()
+    {
+        using var client = Client("attention-user");
+        var csrf = await CsrfAsync(client);
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        async Task<Guid> Create(string name, DateOnly? printed)
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Post, "/api/v1/inventory/lots")
+            {
+                Content = JsonContent.Create(new { productName = name, quantity = new { measuredValue = 1, unit = "Unit" }, storageLocation = "Refrigerator", printedExpirationDate = printed })
+            };
+            request.Headers.Add("X-CSRF-TOKEN", csrf);
+            request.Headers.Add("Idempotency-Key", Guid.NewGuid().ToString());
+            var response = await client.SendAsync(request);
+            Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+            return (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("lotId").GetGuid();
+        }
+
+        var soon = await Create("Yogurt", today.AddDays(1));
+        var old = await Create("Cream", today.AddDays(-10));
+        await Create("Rice", null);
+        await Create("Cheese", today.AddDays(30));
+
+        var attention = await client.GetFromJsonAsync<JsonElement>("/api/v1/inventory/attention");
+        var items = attention.GetProperty("items").EnumerateArray().ToList();
+        Assert.Equal([old, soon], items.Select(item => item.GetProperty("lotId").GetGuid()));
+        Assert.Equal("LikelyDiscard", items[0].GetProperty("attention").GetProperty("state").GetString());
+        Assert.Equal("UsePriority", items[1].GetProperty("attention").GetProperty("state").GetString());
+        Assert.Equal("PrintedDate", items[1].GetProperty("attention").GetProperty("evidence").GetString());
+
+        var lot = await client.GetFromJsonAsync<JsonElement>($"/api/v1/inventory/lots/{soon}");
+        Assert.Equal("UsePriority", lot.GetProperty("attention").GetProperty("state").GetString());
+        Assert.Contains("date_today_or_tomorrow", lot.GetProperty("attention").GetProperty("reasons").EnumerateArray().Select(reason => reason.GetString()));
+    }
+
     private HttpClient Client(string subject)
     {
         var client = _factory.CreateClient(new WebApplicationFactoryClientOptions { BaseAddress = new Uri("https://localhost"), HandleCookies = true });

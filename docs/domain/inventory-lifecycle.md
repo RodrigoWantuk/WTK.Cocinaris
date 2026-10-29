@@ -84,6 +84,22 @@ The UI may derive states such as:
 
 These are advisory. The user chooses and confirms the action.
 
+### Implemented attention rules (PLAN-0037 Phase 2)
+
+The backend computes attention at read time, in the calendar of the time zone saved in the user's profile (UTC when none is saved). Nothing is stored or enforced. Each result carries a state, an optional estimated use-by date, its strongest evidence and stable reason codes.
+
+| Situation | Evidence | Result |
+|---|---|---|
+| In the freezer | Curated rule | `normal`; `check condition` after 180 days frozen (quality, not safety). The printed date stops counting. |
+| Thawing or thawed outside the refrigerator | Curated rule | `check condition` |
+| Thawing or thawed in the refrigerator | Curated rule: thaw date + 2 days, or the printed date when it is earlier | date classification below |
+| Prepared lot with a recorded shelf-life date | Prepared record | date classification |
+| Printed date | Printed date | date classification. An opened package whose result would be `normal` becomes `estimate uncertain`, because the date describes the sealed package. |
+| No date, opened | Unknown | `estimate uncertain` |
+| No date, sealed or unknown | Unknown | `normal` (pantry staples are not flagged) |
+
+The date classification uses the days left until the estimate: more than 7 days past means `likely discard`; any past date means `check condition`; today or tomorrow means `use with priority`; up to 4 days means `use soon`; otherwise `normal`. Product categories (Phase 3) will refine these generic rules. The interface always shows that this is guidance and that the user should check the food.
+
 ## Lifecycle transitions
 
 Transitions include, where applicable:

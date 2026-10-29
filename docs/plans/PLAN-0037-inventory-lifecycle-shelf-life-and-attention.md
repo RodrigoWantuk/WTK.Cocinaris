@@ -6,7 +6,7 @@
 - **Owner:** Claude Code (claimed 2026-10-28)
 - **Created:** 2026-10-28
 - **Last updated:** 2026-10-28
-- **Branch:** `agent/plan-0037-inventory-lifecycle` (based on `main` after PR #46)
+- **Branch:** Phase 1 `agent/plan-0037-inventory-lifecycle` (merged, PR #47); Phase 2 `agent/plan-0037-phase-2-attention` (stacked on PR #48)
 - **Pull request:** Draft PR (opened after this commit)
 - **Related documents:** `docs/domain/inventory-lifecycle.md`, `docs/product/initial-release.md` (Inventory), coverage review gaps G-01, G-02, G-03
 - **Dependencies:** PLAN-0033 (names), PLAN-0023 (prepared lots)
@@ -20,8 +20,8 @@ Make inventory lots follow the accepted food lifecycle instead of only quantity 
 | Phase | Outcome | State |
 |---|---|---|
 | 1 | Lifecycle transitions: lifecycle state and timestamps on lots, `Open`, `Move`, `Freeze`, `StartThaw`, `CompleteThaw`, partial transitions creating a derived lot with provenance, immutable history, API, contract, production UI, tests | This run |
-| 2 | Shelf-life evidence and attention: evidence priority (printed date, user override, curated rule, unknown), a small curated deterministic rule table keyed by product category, storage, package and lifecycle state, attention states (`normal`, `use soon`, `use with priority`, `check condition`, `estimate uncertain`, `likely discard`) with explanations, pantry attention view | Next |
-| 3 | Product identity: culinary category and roles on products, used by Phase 2 rules and later by planning | Next |
+| 2 | Shelf-life evidence and attention: evidence priority (printed date, prepared record, curated rule, unknown), deterministic generic rules by storage, package and lifecycle state, attention states with explanations, pantry attention view | Delivered (this run) |
+| 3 | Product identity: culinary category and roles on products, used to refine Phase 2 rules and later by planning | Next |
 
 ## Phase 1 scope
 
@@ -64,7 +64,7 @@ Refreezing a thawed lot is allowed. Food-safety guidance about it belongs to the
 
 ## Execution state
 
-- **Current run delivery target:** Phase 1.
+- **Current run delivery target:** Phase 2.
 - **Current checkpoint:** Phase 1 implemented and validated on the owner host (see progress log).
 - **Exact next action:** Deploy this branch (owner standing instruction), open the draft PR, then start Phase 2 (shelf-life evidence and attention engine).
 - **Blockers:** None. GitHub Actions does not start jobs because the owner account is locked for billing (PR #46); validation runs on the owner host until the owner resolves it.
@@ -91,3 +91,21 @@ Refreezing a thawed lot is allowed. Food-safety guidance about it belongs to the
   - Frontend: lint, typecheck, guards, Vitest 51 files / 420 tests (10 new), production build, build-mode guard.
 - **Failures fixed during validation:** the generated migration lost EF's UTF-8 BOM after an edit, which the format gate rejected; restored with `dotnet format`.
 - **Not run:** browser smoke (it covers the prototype journeys this phase does not change). GitHub Actions cannot run until the owner clears the billing lock.
+
+### 2026-10-29T02:10:00Z — Claude Code (Phase 2)
+
+- **Checkpoint:** Phase 2 delivered.
+  - `InventoryAttentionAdvisor` holds the deterministic rules in the Inventory module; the rules are documented in `docs/domain/inventory-lifecycle.md`.
+  - `GET /api/v1/inventory/attention` returns at most 100 results from the 500 most recently updated active lots, most urgent and earliest-dated first.
+  - Every lot response carries `attention`, evaluated at response time. `InventoryCalendar` resolves "today" in the profile time zone.
+  - Prepared lots use their recorded shelf-life date (read-time join).
+  - Frontend: `AttentionBadge`; a "Precisa de atenção" panel above the pantry list (hidden on failure); a detailed explanation and a "guidance only, check the food" note on the lot detail; pt-BR, en and es texts.
+  - No migration.
+- **Validation (lean, owner instruction 2026-10-29):**
+  - unit 106 (13 new advisor tests, including time-zone date boundaries);
+  - integration class `InventoryLifecycleTransitionApiTests` 6/6 (new attention endpoint test);
+  - OpenAPI export and lint; API client regenerated;
+  - frontend tests of the affected areas: 15 files / 129 tests (4 new);
+  - typecheck, lint, interactive-nesting guard.
+- **Limitations:** a mutation response of a prepared lot omits its prepared shelf-life date until the next read. Rules are generic until Phase 3 adds product categories.
+- **Next action:** Phase 3, product culinary category and roles.

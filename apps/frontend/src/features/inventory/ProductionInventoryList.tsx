@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useInventoryRepository } from "./InventoryProvider";
 import { formatQuantityLabel } from "./quantityDisplay";
+import { AttentionBadge } from "./AttentionBadge";
 import { localizeInventoryKey } from "./inventoryLabels";
 import type { InventoryLotView } from "@/adapters/live/inventoryTypes";
 import { InventoryApiError } from "@/adapters/live/inventoryTypes";
@@ -46,7 +47,19 @@ export function ProductionInventoryList() {
     "loading",
   );
   const [error, setError] = useState<string | null>(null);
+  const [attention, setAttention] = useState<InventoryLotView[] | null>(null);
   const requestIdRef = useRef(0);
+
+  // The attention panel is advisory and independent of the filters: a failure hides it
+  // instead of blocking the pantry list.
+  useEffect(() => {
+    const controller = new AbortController();
+    repo
+      .listAttention(controller.signal)
+      .then(setAttention)
+      .catch(() => setAttention(null));
+    return () => controller.abort();
+  }, [repo]);
   const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
@@ -167,6 +180,35 @@ export function ProductionInventoryList() {
           </Link>
         </Button>
       </div>
+
+      {attention && attention.length > 0 && (
+        <section
+          data-testid="inventory-attention-panel"
+          aria-labelledby="inventory-attention-title"
+          className="space-y-2 rounded-xl border border-border p-4"
+        >
+          <h2 id="inventory-attention-title" className="font-medium">
+            {t("inventory.attention.title")}
+          </h2>
+          <ul className="space-y-2">
+            {attention.map((item) => (
+              <li key={item.lotId}>
+                <Link
+                  to={`/app/despensa/${item.lotId}`}
+                  data-testid={`inventory-attention-link-${item.lotId}`}
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-lg px-2 py-1 hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <span className="text-sm">{item.productName}</span>
+                  <AttentionBadge attention={item.attention} />
+                </Link>
+              </li>
+            ))}
+          </ul>
+          <p className="text-xs text-muted-foreground">
+            {t("inventory.attention.disclaimer")}
+          </p>
+        </section>
+      )}
 
       <form
         className="flex flex-wrap gap-2"
@@ -308,6 +350,9 @@ export function ProductionInventoryList() {
                   t,
                 )}
               </p>
+              <div className="mt-2">
+                <AttentionBadge attention={item.attention} />
+              </div>
             </Link>
           </li>
         ))}

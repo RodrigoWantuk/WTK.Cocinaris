@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { useInventoryRepository } from "./InventoryProvider";
 import { formatQuantityLabel } from "./quantityDisplay";
 import { LotTransitionPanel } from "./LotTransitionPanel";
+import { AttentionBadge } from "./AttentionBadge";
 import {
   formatHistoryTimestamp,
   localizeInventoryKey,
@@ -478,6 +479,17 @@ export function ProductionInventoryDetail() {
           <dd>{lot.notes || t("inventory.fields.none")}</dd>
         </div>
       </dl>
+      {lot.attention && lot.attention.state !== "Normal" && (
+        <section
+          data-testid="inventory-detail-attention"
+          className="space-y-2 rounded-xl border border-border p-4"
+        >
+          <AttentionBadge attention={lot.attention} detailed />
+          <p className="text-xs text-muted-foreground">
+            {t("inventory.attention.disclaimer")}
+          </p>
+        </section>
+      )}
       {/* Outside the <dl>: a definition list may only contain term/description groups. */}
       <p className="text-xs text-muted-foreground">
         {t("inventory.printedDateDisclaimer")}

@@ -38,6 +38,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/inventory/attention": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** GET /api/v1/inventory/attention */
+        get: operations["getApiV1InventoryAttention"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/inventory/lots": {
         parameters: {
             query?: never;
@@ -414,6 +431,10 @@ export interface components {
             privacyVersion: null | string;
             termsVersion: string;
         };
+        /** @description Lots that need attention, most urgent first; at most 100. */
+        AttentionListResponse: {
+            items: components["schemas"]["LotResponse"][];
+        };
         /** @description Cooking context transport DTO. */
         CookingContextDto: {
             cleanupTolerance: components["schemas"]["ProfileFieldDtoOfstring"];
@@ -505,6 +526,17 @@ export interface components {
             items: components["schemas"]["LotResponse"][];
             nextCursor: null | string;
         };
+        /** @description Advisory attention for a lot, evaluated at response time in the user's time zone. It explains
+         *     itself with stable reason codes and never claims that food is safe. */
+        LotAttentionResponse: {
+            /** Format: date */
+            estimatedUseBy: null | string;
+            /** @enum {string} */
+            evidence: "PrintedDate" | "PreparedRecord" | "CuratedRule" | "Unknown";
+            reasons: string[];
+            /** @enum {string} */
+            state: "LikelyDiscard" | "CheckCondition" | "UsePriority" | "UseSoon" | "EstimateUncertain" | "Normal";
+        };
         /** @description Returns one immutable lifecycle transaction or a safe metadata-correction audit projection.
          *     Metadata projections expose only changed field names and never values, notes, tokens, or other
          *     private request content. */
@@ -548,6 +580,7 @@ export interface components {
         };
         /** @description Returns the current representation of an inventory lot. */
         LotResponse: {
+            attention: components["schemas"]["LotAttentionResponse"];
             /** Format: date-time */
             createdAt: string;
             customLocation: null | string;
@@ -984,6 +1017,44 @@ export interface operations {
                 };
             };
             /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    getApiV1InventoryAttention: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttentionListResponse"];
+                };
+            };
+            /** @description Authentication is required. */
             401: {
                 headers: {
                     [name: string]: unknown;

@@ -99,6 +99,14 @@ function mapLot(dto: LotDto, etag: string | null): InventoryLotView {
       thawedAt: dto.lifecycle?.thawedAt ?? null,
       parentLotId: dto.lifecycle?.parentLotId ?? null,
     },
+    attention: dto.attention
+      ? {
+          state: dto.attention.state,
+          estimatedUseBy: dto.attention.estimatedUseBy ?? null,
+          evidence: dto.attention.evidence,
+          reasons: [...dto.attention.reasons],
+        }
+      : undefined,
   };
 }
 
@@ -362,6 +370,18 @@ export function createLiveInventoryRepository(options?: {
       }
       assertData(data, response);
       return mapLot(data, readEtag(response) ?? data.version);
+    },
+
+    async listAttention(signal) {
+      const { data, error, response } = await client.GET(
+        "/api/v1/inventory/attention",
+        { signal, credentials: "include" },
+      );
+      if (!response.ok || !data) {
+        await throwForFailure(response, "Unable to load attention.", error);
+      }
+      assertData(data, response);
+      return data.items.map((item) => mapLot(item, item.version));
     },
 
     async transitionLot(

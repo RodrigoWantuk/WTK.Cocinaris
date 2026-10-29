@@ -16,6 +16,7 @@ export function createMockInventoryRepo(
     updateLot: vi.fn(),
     adjustLot: vi.fn(),
     transitionLot: vi.fn(),
+    listAttention: vi.fn(async () => []),
     deleteLot: vi.fn(),
     getHistory: vi.fn(async () => []),
     ...overrides,
