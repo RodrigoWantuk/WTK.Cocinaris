@@ -19,7 +19,7 @@ namespace Cocinaris.IntegrationTests;
 /// <summary>PLAN-0037 Phase 1: lifecycle transitions through the HTTP boundary against PostgreSQL.</summary>
 public sealed class InventoryLifecycleTransitionApiTests : IAsyncLifetime
 {
-    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:18.4")
+    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder(TestImages.PostgreSql)
         .WithDatabase("cocinaris_lifecycle")
         .WithUsername("cocinaris_test")
         .WithPassword("development-only-test-password")

@@ -22,7 +22,7 @@ namespace Cocinaris.IntegrationTests;
 
 public sealed class ApiAuthenticationTests : IAsyncLifetime
 {
-    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:18.4")
+    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder(TestImages.PostgreSql)
         .WithDatabase("cocinaris_api_test")
         .WithUsername("cocinaris_test")
         .WithPassword("development-only-test-password")

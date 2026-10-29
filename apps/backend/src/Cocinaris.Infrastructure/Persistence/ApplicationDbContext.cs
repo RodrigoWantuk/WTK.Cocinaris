@@ -86,6 +86,18 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
     /// <summary>Gets generated recipe images and their generation jobs (PLAN-0030).</summary>
     public DbSet<RecipeThumbnailRecord> RecipeThumbnails => Set<RecipeThumbnailRecord>();
 
+    /// <summary>Gets the database copy of the curated ingredient catalog (PLAN-0055).</summary>
+    public DbSet<IngredientCatalogItemRecord> IngredientCatalogItems => Set<IngredientCatalogItemRecord>();
+
+    /// <summary>Gets normalized names linked to catalog ingredients.</summary>
+    public DbSet<IngredientAliasRecord> IngredientAliases => Set<IngredientAliasRecord>();
+
+    /// <summary>Gets names queued for resolution or left unresolved.</summary>
+    public DbSet<IngredientResolutionRecord> IngredientResolutions => Set<IngredientResolutionRecord>();
+
+    /// <summary>Gets the catalog sync state.</summary>
+    public DbSet<IngredientCatalogStateRecord> IngredientCatalogState => Set<IngredientCatalogStateRecord>();
+
     /// <inheritdoc />
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -499,6 +511,55 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             entity.Property(x => x.MediaType).HasMaxLength(32);
             entity.Property(x => x.FailureCode).HasMaxLength(40);
             entity.HasIndex(x => new { x.State, x.NextAttemptAt });
+        });
+
+        // Ingredient identity (PLAN-0055). The vector tables ingredients.text_embeddings and
+        // ingredients.catalog_vectors use pgvector and are created and queried with SQL only, so
+        // they are not part of this model.
+        modelBuilder.Entity<IngredientCatalogItemRecord>(entity =>
+        {
+            entity.ToTable("catalog_items", "ingredients");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).ValueGeneratedNever();
+            entity.Property(x => x.Slug).HasMaxLength(80);
+            entity.Property(x => x.Category).HasMaxLength(40);
+            entity.Property(x => x.NamesJson).HasColumnType("jsonb");
+            entity.HasIndex(x => x.Slug).IsUnique();
+        });
+
+        modelBuilder.Entity<IngredientAliasRecord>(entity =>
+        {
+            entity.ToTable("aliases", "ingredients", table =>
+                table.HasCheckConstraint("ck_ingredient_aliases_method", "\"Method\" IN ('Catalog', 'Trigram', 'Embedding')"));
+            entity.HasKey(x => x.NormalizedText);
+            entity.Property(x => x.NormalizedText).HasMaxLength(120);
+            entity.Property(x => x.Method).HasMaxLength(16);
+            entity.Property(x => x.Evaluation).HasMaxLength(300);
+            entity.HasOne<IngredientCatalogItemRecord>().WithMany().HasForeignKey(x => x.IngredientId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasIndex(x => x.IngredientId);
+        });
+
+        modelBuilder.Entity<IngredientResolutionRecord>(entity =>
+        {
+            entity.ToTable("resolution_queue", "ingredients", table =>
+                table.HasCheckConstraint("ck_ingredient_resolution_state", "\"State\" IN ('Pending', 'Working', 'Unresolved')"));
+            entity.HasKey(x => x.NormalizedText);
+            entity.Property(x => x.NormalizedText).HasMaxLength(120);
+            entity.Property(x => x.ExactText).HasMaxLength(120);
+            entity.Property(x => x.State).HasMaxLength(16);
+            entity.Property(x => x.Evaluation).HasMaxLength(300);
+            entity.Property(x => x.Reason).HasMaxLength(40);
+            // No foreign key to identity.users: the owner is transient and cleared when a name is decided.
+            entity.HasIndex(x => new { x.State, x.NextAttemptAt });
+        });
+
+        modelBuilder.Entity<IngredientCatalogStateRecord>(entity =>
+        {
+            entity.ToTable("catalog_state", "ingredients", table => table.HasCheckConstraint("ck_ingredient_catalog_state_single", "\"Id\" = 1"));
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).ValueGeneratedNever();
+            entity.Property(x => x.CatalogVersion).HasMaxLength(60);
+            entity.Property(x => x.Evaluation).HasMaxLength(300);
         });
 
         modelBuilder.Entity<ShoppingCheckRecord>(entity =>

@@ -658,6 +658,7 @@
           "Cocinaris.Infrastructure": "[1.0.0, )",
           "Cocinaris.Modules.Ai": "[1.0.0, )",
           "Cocinaris.Modules.Identity": "[1.0.0, )",
+          "Cocinaris.Modules.Ingredients": "[1.0.0, )",
           "Cocinaris.Modules.Inventory": "[1.0.0, )",
           "Cocinaris.Modules.Planning": "[1.0.0, )",
           "Cocinaris.Modules.Profiles": "[1.0.0, )",
@@ -676,6 +677,7 @@
         "dependencies": {
           "Cocinaris.Modules.Ai": "[1.0.0, )",
           "Cocinaris.Modules.Identity": "[1.0.0, )",
+          "Cocinaris.Modules.Ingredients": "[1.0.0, )",
           "Cocinaris.Modules.Inventory": "[1.0.0, )",
           "Cocinaris.Modules.Planning": "[1.0.0, )",
           "Cocinaris.Modules.Profiles": "[1.0.0, )",
@@ -696,6 +698,14 @@
           "Cocinaris.SharedKernel": "[1.0.0, )"
         }
       },
+      "cocinaris.modules.ingredients": {
+        "type": "Project",
+        "dependencies": {
+          "Cocinaris.Modules.Ai": "[1.0.0, )",
+          "Cocinaris.Modules.Identity": "[1.0.0, )",
+          "Cocinaris.SharedKernel": "[1.0.0, )"
+        }
+      },
       "cocinaris.modules.inventory": {
         "type": "Project",
         "dependencies": {
@@ -707,6 +717,7 @@
         "type": "Project",
         "dependencies": {
           "Cocinaris.Modules.Identity": "[1.0.0, )",
+          "Cocinaris.Modules.Ingredients": "[1.0.0, )",
           "Cocinaris.Modules.Inventory": "[1.0.0, )",
           "Cocinaris.Modules.Recipes": "[1.0.0, )",
           "Cocinaris.SharedKernel": "[1.0.0, )"
@@ -724,6 +735,7 @@
         "dependencies": {
           "Cocinaris.Modules.Ai": "[1.0.0, )",
           "Cocinaris.Modules.Identity": "[1.0.0, )",
+          "Cocinaris.Modules.Ingredients": "[1.0.0, )",
           "Cocinaris.Modules.Inventory": "[1.0.0, )",
           "Cocinaris.Modules.Profiles": "[1.0.0, )",
           "Cocinaris.SharedKernel": "[1.0.0, )"

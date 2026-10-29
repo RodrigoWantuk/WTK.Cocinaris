@@ -20,7 +20,7 @@ namespace Cocinaris.IntegrationTests;
 /// <summary>OpenAPI truthfulness, owner isolation, CSRF, and empty-profile semantics for profile endpoints.</summary>
 public sealed class ProfileContractAndSecurityTests : IAsyncLifetime
 {
-    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:18.4")
+    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder(TestImages.PostgreSql)
         .WithDatabase("cocinaris_profile_contract")
         .WithUsername("cocinaris_test")
         .WithPassword("development-only-test-password")

@@ -1,4 +1,5 @@
 using Cocinaris.Api.Inventory;
+using Cocinaris.Api.Ingredients;
 using Cocinaris.Api.Planning;
 using Cocinaris.Api.Profiles;
 using Cocinaris.Api.Recipes;
@@ -96,6 +97,7 @@ builder.Services.AddScoped<IGetProfileSessionProjectionUseCase, GetProfileSessio
 builder.Services.AddScoped<ProfileApplicationService>();
 builder.Services.AddCocinarisRecipeAi(builder.Configuration, builder.Environment);
 builder.Services.AddCocinarisPlanning();
+builder.Services.AddCocinarisIngredients(builder.Configuration, builder.Environment);
 builder.Services.AddAntiforgery(options => { options.HeaderName = "X-CSRF-TOKEN"; options.Cookie.Name = "__Host-cocinaris-antiforgery"; options.Cookie.Path = "/"; options.Cookie.SecurePolicy = CookieSecurePolicy.Always; });
 var dataProtection = builder.Services.AddDataProtection().SetApplicationName("Cocinaris");
 if (!string.IsNullOrWhiteSpace(dataProtectionOptions.KeyRingPath))

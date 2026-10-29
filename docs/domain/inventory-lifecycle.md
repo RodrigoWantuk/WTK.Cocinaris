@@ -179,7 +179,7 @@ The system must detect over-reservation and explain the conflict.
 
 ### Implemented reservations and locks (PLAN-0029 Phase 3)
 
-- **Reservations are derived.** Accepted menu meals still to cook reserve pantry quantity in plan order. They use the lot the recipe was written for first, then lots with the same normalized name and unit, earliest printed or prepared date first. They are recomputed on every read and never change physical quantity.
+- **Reservations are derived.** Accepted menu meals still to cook reserve pantry quantity in plan order. They use the lot the recipe was written for first, then lots of the same catalog ingredient or normalized name and the same unit (PLAN-0055), earliest printed or prepared date first. They are recomputed on every read and never change physical quantity.
 - **Locks are planning-owned protections.**
   - The owner can protect a whole lot or keep a minimum quantity.
   - Protected quantity is set aside before reservations and never proposed for cooking.

@@ -36,6 +36,7 @@ Host specifics, verified 2026-10-28:
 | .NET | SDK 10.0.302 at `/opt/dotnet`, not on the default `PATH`: `export PATH=/opt/dotnet:$PATH DOTNET_ROOT=/opt/dotnet` |
 | Node.js | 24.x at `/opt/node24` with Yarn 1.22.22 through Corepack. The system Node.js 20 stays for other services: `export PATH=/opt/node24/bin:$PATH` |
 | Docker | Debian `docker.io` and `docker-compose` (Compose v2). The daemon runs with `"iptables": false` and `"ip6tables": false` in `/etc/docker/daemon.json`, so the host firewall, forwarding and VPN routing are never modified. Containers publish ports through the userland proxy on `127.0.0.1` only and do not need outbound access. |
+| pgvector | The deployment's PostgreSQL 17 has `postgresql-17-pgvector` (installed 2026-10-30, PLAN-0055); the development stack and Testcontainers use `pgvector/pgvector:0.8.7-pg18-trixie`. Existing `cocinaris-postgres` volumes keep working: the image is PostgreSQL 18 with the extension added. |
 | PostgreSQL clash | The host runs PostgreSQL on 5432 for the deployment. Start the development stack with `COCINARIS_DEV_POSTGRES_PORT=55432` and point `COCINARIS_DB_CONNECTION` at port 55432. |
 | Browsers | Playwright Chromium for the pinned Playwright version (`npx playwright install chromium`) plus its system libraries |
 | Memory | 3.8 GiB total. The OIDC fixture (Keycloak) and Testcontainers fit, but stop the compose stack after use (`docker compose -f infrastructure/compose/compose.dev.yml down`) |
@@ -161,7 +162,7 @@ If someone intentionally runs Keycloak outside a container, current official Key
 
 | Service | Initial pinned target | Required by | Default host port | Notes |
 |---|---|---|---:|---|
-| PostgreSQL | `postgres:18.4` | PLAN-0003, PLAN-0005 | 5432 | One server may host separate `cocinaris` and `keycloak` development databases |
+| PostgreSQL | `pgvector/pgvector:0.8.7-pg18-trixie` (PostgreSQL 18 with pgvector; `postgres:18.4` before PLAN-0055) | PLAN-0003, PLAN-0005, PLAN-0055 | 5432 | One server may host separate `cocinaris` and `keycloak` development databases |
 | Keycloak | `quay.io/keycloak/keycloak:26.7.0` | PLAN-0003, PLAN-0004, PLAN-0005 | 8080 | Development mode only locally; import versioned Cocinaris realm |
 
 ### Recommended development observability
