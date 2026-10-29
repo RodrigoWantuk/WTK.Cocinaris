@@ -1,7 +1,7 @@
 # Recipe Thumbnail Generation and Cache Policy
 
-- **Status:** Ready for owner acceptance and implementation planning
-- **Last updated:** 2026-08-02
+- **Status:** Implemented in PLAN-0030 (2026-10-30), with the owner's provider decision below
+- **Last updated:** 2026-10-30
 - **Parent plan:** [`PLAN-0008`](../plans/PLAN-0008-define-lean-launch-ai-economics.md)
 - **Plan amendment:** [`PLAN-0008 recipe-thumbnail amendment`](../plans/PLAN-0008-amendment-recipe-thumbnail-policy.md)
 - **Recipe contract owner:** [`PLAN-0017`](../plans/PLAN-0017-define-ai-recipe-artifact-protocol.md), merged through PR #31
@@ -108,6 +108,22 @@ The descriptor must not include:
 - invented garnish, side dishes, brands, packaging, tableware, or restaurant styling.
 
 A descriptor rejected by deterministic validation cannot be sent to the image provider. The recipe remains valid and uses the placeholder path.
+
+## Provider decision (owner, 2026-10-30)
+
+The owner chose OpenRouter's **FLUX 3 Image Klein** (`black-forest-labs/flux-3-image-klein`) at 16:9, 1024 × 576, "por causa do preço". It replaces the Gemini candidate below, which is kept for history.
+
+| Parameter | Value | Rule |
+|---|---|---|
+| Endpoint | `POST https://openrouter.ai/api/v1/images` | Through `OpenRouterImageProvider` only |
+| Model | `black-forest-labs/flux-3-image-klein` | Configuration (`Ai:Images:Model`) |
+| Size tier | `768` | About 768 × 768 pixels of area: 768² = 1024 × 576 |
+| Aspect ratio | `16:9` | Together with the tier, 1024 × 576 |
+| Price | US$ 0.008 per image (tier 768, read 2026-10-30) | Reserved before the call, settled at the reported cost |
+| Images per call | 1 | `n: 1` |
+| Retries | One, 10 minutes later, for transient failures only | Owned by the job; the adapter never retries |
+
+The API takes no explicit pixel size. The job reads the real size from the returned bytes and records any deviation from 1024 × 576. Implementation details, storage, serving, quotas, and limits are in [`PLAN-0030`](../plans/PLAN-0030-implement-recipe-thumbnail-generation.md). The storage is the host's state directory behind a replaceable port, not an S3-compatible store, because the deployment is a single host.
 
 ## Initial provider candidate
 

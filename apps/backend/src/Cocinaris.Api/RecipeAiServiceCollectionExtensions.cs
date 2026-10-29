@@ -1,8 +1,10 @@
 using Cocinaris.Infrastructure.Persistence;
 using Cocinaris.Modules.Ai.Abstractions;
+using Cocinaris.Modules.Ai.Images;
 using Cocinaris.Modules.Ai.Providers;
 using Cocinaris.Modules.Ai.Usage;
 using Cocinaris.Modules.Recipes.Application;
+using Cocinaris.Modules.Recipes.Thumbnails;
 using Cocinaris.Api.Recipes;
 using Microsoft.Extensions.Options;
 
@@ -53,7 +55,12 @@ public static class RecipeAiServiceCollectionExtensions
         services.AddScoped<IRecipeExecutionUnitOfWork, PostgreSqlRecipeExecutionUnitOfWork>();
         services.AddScoped<RecipeExecutionApplicationService>();
         services.AddScoped<RecipeExecutionApiService>();
-        services.AddScoped<RecipeLibraryApplicationService>();
+        services.AddScoped(provider => new RecipeLibraryApplicationService(
+            provider.GetRequiredService<Cocinaris.Modules.Identity.ICurrentUserAccessor>(),
+            provider.GetRequiredService<IRecipeLibraryStore>(),
+            provider.GetRequiredService<IRecipeExecutionStore>(),
+            provider.GetRequiredService<TimeProvider>(),
+            provider.GetRequiredService<RecipeThumbnailService>()));
         services.AddScoped<RecipeLibraryApiService>();
 
         var deepSeekSection = configuration.GetSection("Ai:Providers:DeepSeek");
@@ -83,6 +90,69 @@ public static class RecipeAiServiceCollectionExtensions
             services.AddSingleton<IAiProvider, UnavailableAiProvider>();
         }
 
+        AddRecipeThumbnails(services, configuration, environment);
         return services;
+    }
+
+    /// <summary>
+    /// Registers recipe thumbnails (PLAN-0030): the policy under <c>Ai:Images</c>, the OpenRouter
+    /// provider when enabled with a key (a fake in Testing), the file store, and the background job.
+    /// With generation disabled, existing images are still served and new ones are not queued.
+    /// </summary>
+    private static void AddRecipeThumbnails(IServiceCollection services, IConfiguration configuration, IHostEnvironment environment)
+    {
+        services.AddOptions<RecipeThumbnailOptions>()
+            .Bind(configuration.GetSection("Ai:Images"))
+            .Validate(options => options.IsValid(), "Recipe thumbnail options must be positive and coherent.")
+            .ValidateOnStart();
+        services.AddSingleton(provider => provider.GetRequiredService<IOptions<RecipeThumbnailOptions>>().Value);
+        services.AddOptions<OpenRouterOptions>().Bind(configuration.GetSection("Ai:Providers:OpenRouter"));
+        services.AddScoped<IRecipeThumbnailStore, PostgreSqlRecipeThumbnailStore>();
+        services.AddSingleton<IRecipeThumbnailFileStore>(provider =>
+        {
+            var configured = provider.GetRequiredService<RecipeThumbnailOptions>().StoragePath;
+            // systemd's StateDirectory sets STATE_DIRECTORY; development keeps files in .local-data.
+            var root = !string.IsNullOrWhiteSpace(configured)
+                ? configured
+                : Environment.GetEnvironmentVariable("STATE_DIRECTORY") is { Length: > 0 } state
+                    ? Path.Combine(state.Split(':')[0], "media", "thumbnails")
+                    : Path.Combine(environment.ContentRootPath, ".local-data", "media", "thumbnails");
+            return new FileSystemRecipeThumbnailFileStore(root);
+        });
+
+        var images = configuration.GetSection("Ai:Images");
+        var apiKey = configuration.GetValue<string>("Ai:Providers:OpenRouter:ApiKey");
+        if (environment.IsEnvironment("Testing"))
+        {
+            services.AddSingleton<IImageGenerationProvider>(provider =>
+            {
+                var options = provider.GetRequiredService<RecipeThumbnailOptions>();
+                return new FakeImageProvider(options.ExpectedWidth, options.ExpectedHeight);
+            });
+        }
+        else if (images.GetValue("Enabled", false) && !string.IsNullOrWhiteSpace(apiKey))
+        {
+            services.AddHttpClient("cocinaris-openrouter", (provider, client) =>
+            {
+                client.BaseAddress = new Uri(provider.GetRequiredService<IOptions<OpenRouterOptions>>().Value.BaseUrl);
+                client.Timeout = TimeSpan.FromSeconds(provider.GetRequiredService<RecipeThumbnailOptions>().TimeoutSeconds);
+            });
+            services.AddScoped<IImageGenerationProvider>(provider => new OpenRouterImageProvider(
+                provider.GetRequiredService<IHttpClientFactory>().CreateClient("cocinaris-openrouter"),
+                provider.GetRequiredService<IOptions<OpenRouterOptions>>().Value,
+                provider.GetRequiredService<RecipeThumbnailOptions>().Model));
+        }
+
+        services.AddScoped(provider => new RecipeThumbnailService(
+            provider.GetRequiredService<IRecipeThumbnailStore>(),
+            provider.GetRequiredService<IRecipeThumbnailFileStore>(),
+            provider.GetService<IImageGenerationProvider>(),
+            provider.GetRequiredService<AiUsageGovernor>(),
+            provider.GetRequiredService<RecipeThumbnailOptions>(),
+            provider.GetRequiredService<TimeProvider>()));
+        if (!environment.IsEnvironment("Testing"))
+        {
+            services.AddHostedService<RecipeThumbnailWorker>();
+        }
     }
 }

@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using Cocinaris.Modules.Recipes.Application;
+using Cocinaris.Modules.Recipes.Thumbnails;
 
 namespace Cocinaris.Api.Recipes;
 
@@ -24,6 +25,9 @@ public static class RecipeLibraryEndpoints
             .ProducesProblem(404);
         group.MapGet("/{recipeId:guid}/revisions/{revisionNumber:int}", (RecipeLibraryApiService service, Guid recipeId, int revisionNumber, HttpContext context, CancellationToken cancellationToken) => service.GetAsync(recipeId, revisionNumber, context, cancellationToken))
             .Produces<RecipeDetailResponse>()
+            .ProducesProblem(404);
+        group.MapGet("/{recipeId:guid}/thumbnail", (RecipeLibraryApiService service, Guid recipeId, int? revision, HttpContext context, CancellationToken cancellationToken) => service.GetThumbnailAsync(recipeId, revision, context, cancellationToken))
+            .Produces(StatusCodes.Status200OK, contentType: "image/png")
             .ProducesProblem(404);
         group.MapGet("/{recipeId:guid}/history", (RecipeLibraryApiService service, Guid recipeId, HttpContext context, CancellationToken cancellationToken) => service.GetHistoryAsync(recipeId, context, cancellationToken))
             .Produces<RecipeHistoryResponse>()
@@ -63,6 +67,24 @@ public sealed class RecipeLibraryApiService(RecipeLibraryApplicationService appl
     /// <summary>Gets a recipe at its current revision or at a given revision.</summary>
     public async Task<IResult> GetAsync(Guid recipeId, int? revisionNumber, HttpContext context, CancellationToken cancellationToken) =>
         ToResult(await application.GetAsync(recipeId, revisionNumber, cancellationToken), context.TraceIdentifier, ToResponse);
+
+    /// <summary>
+    /// Streams an owned recipe's dish image. The URL carries a version, so the browser may keep it,
+    /// but only privately: it sits behind the owner's session.
+    /// </summary>
+    public async Task<IResult> GetThumbnailAsync(Guid recipeId, int? revision, HttpContext context, CancellationToken cancellationToken)
+    {
+        var image = await application.OpenThumbnailAsync(recipeId, revision, cancellationToken);
+        if (image is not { } found)
+        {
+            return Results.Problem(detail: "The image was not found.", statusCode: StatusCodes.Status404NotFound, extensions: new Dictionary<string, object?> { ["errorCode"] = "resource_not_found", ["traceId"] = Activity.Current?.Id ?? context.TraceIdentifier });
+        }
+
+        context.Items[Program.PrivateCacheableItem] = true;
+        context.Response.Headers.CacheControl = "private, max-age=2592000, immutable";
+        context.Response.Headers.XContentTypeOptions = "nosniff";
+        return Results.Stream(found.Content, found.MediaType);
+    }
 
     /// <summary>Gets a recipe's revisions and finished cooking sessions.</summary>
     public async Task<IResult> GetHistoryAsync(Guid recipeId, HttpContext context, CancellationToken cancellationToken) =>
@@ -105,7 +127,14 @@ public sealed class RecipeLibraryApiService(RecipeLibraryApplicationService appl
             (content.Stages ?? []).Select(item => new RecipeDraftStage(item.StageId, item.Name ?? string.Empty, item.Instructions ?? string.Empty, item.ActiveMinutes, item.PassiveMinutes, item.SensoryCues)).ToList());
 
     private static RecipeSummaryResponse ToResponse(RecipeSummaryView view) => new(
-        view.RecipeId, view.Name, view.MealTypes, view.Servings, view.CreatedAt, view.RevisionNumber, view.Origin, view.IsFavorite, view.ArchivedAt, view.UpdatedAt, view.TimesCooked, view.LastCookedAt, view.LastRating);
+        view.RecipeId, view.Name, view.MealTypes, view.Servings, view.CreatedAt, view.RevisionNumber, view.Origin, view.IsFavorite, view.ArchivedAt, view.UpdatedAt, view.TimesCooked, view.LastCookedAt, view.LastRating, Thumbnail(view.RecipeId, null, view.Thumbnail));
+
+    private static RecipeThumbnailResponse Thumbnail(Guid recipeId, int? revisionNumber, RecipeThumbnailView? view) => view switch
+    {
+        { State: "ready", Version: { } version } => new RecipeThumbnailResponse("ready", $"/api/v1/recipes/{recipeId}/thumbnail?{(revisionNumber is { } number ? $"revision={number}&" : "")}v={version}"),
+        { State: "pending" } => new RecipeThumbnailResponse("pending", null),
+        _ => new RecipeThumbnailResponse("none", null)
+    };
 
     private static RecipeDetailResponse ToResponse(RecipeLibraryDetailView view) => new(
         view.RecipeId,
@@ -125,7 +154,8 @@ public sealed class RecipeLibraryApiService(RecipeLibraryApplicationService appl
         view.ParentRevisionNumber,
         view.DerivationReason,
         view.RevisionOrigin,
-        view.ChangeReason);
+        view.ChangeReason,
+        Thumbnail(view.RecipeId, view.RevisionNumber == view.CurrentRevisionNumber ? null : view.RevisionNumber, view.Thumbnail));
 
     private static IResult ToResult<TApp, THttp>(RecipeApplicationResult<TApp> result, string traceId, Func<TApp, THttp> map)
     {
