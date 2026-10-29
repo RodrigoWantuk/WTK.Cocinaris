@@ -70,6 +70,30 @@ export const REQUIRED_INVENTORY_I18N_KEYS = [
   "inventory.history.kind.Transaction",
   "inventory.adjustment.Initial",
   "inventory.adjustment.Deleted",
+  "inventory.attention.title",
+  "inventory.attention.empty",
+  "inventory.attention.disclaimer",
+  "inventory.attention.useBy",
+  "inventory.attention.state.LikelyDiscard",
+  "inventory.attention.state.CheckCondition",
+  "inventory.attention.state.UsePriority",
+  "inventory.attention.state.UseSoon",
+  "inventory.attention.state.EstimateUncertain",
+  "inventory.attention.state.Normal",
+  "inventory.attention.reason.printed_date",
+  "inventory.attention.reason.prepared_date",
+  "inventory.attention.reason.date_passed_long_ago",
+  "inventory.attention.reason.date_passed",
+  "inventory.attention.reason.date_today_or_tomorrow",
+  "inventory.attention.reason.date_soon",
+  "inventory.attention.reason.opened_after_printed_date",
+  "inventory.attention.reason.opened_without_date",
+  "inventory.attention.reason.no_date",
+  "inventory.attention.reason.frozen",
+  "inventory.attention.reason.frozen_long_time",
+  "inventory.attention.reason.thawed_in_refrigerator",
+  "inventory.attention.reason.thawing_outside_refrigerator",
+  "inventory.attention.reason.thawed_outside_refrigerator",
   "inventory.adjustment.LifecycleTransition",
   "inventory.adjustment.TransitionSplit",
   "inventory.adjustment.TransitionDerived",
@@ -215,6 +239,41 @@ const en: Record<InventoryI18nKey, string> = {
   "inventory.history.kind.Transaction": "Change",
   "inventory.adjustment.Initial": "Initial entry",
   "inventory.adjustment.Deleted": "Deleted",
+  "inventory.attention.title": "Needs attention",
+  "inventory.attention.empty": "Nothing needs attention right now.",
+  "inventory.attention.disclaimer":
+    "Guidance only, based on the dates and handling you recorded. Check the food before using it.",
+  "inventory.attention.useBy": "Use by {date}",
+  "inventory.attention.state.LikelyDiscard": "Probably no longer good",
+  "inventory.attention.state.CheckCondition": "Check before using",
+  "inventory.attention.state.UsePriority": "Use today or tomorrow",
+  "inventory.attention.state.UseSoon": "Use soon",
+  "inventory.attention.state.EstimateUncertain": "Uncertain estimate",
+  "inventory.attention.state.Normal": "No attention needed",
+  "inventory.attention.reason.printed_date": "Based on the printed date.",
+  "inventory.attention.reason.prepared_date":
+    "Based on the date recorded when it was prepared.",
+  "inventory.attention.reason.date_passed_long_ago":
+    "The date passed more than a week ago.",
+  "inventory.attention.reason.date_passed": "The date has passed.",
+  "inventory.attention.reason.date_today_or_tomorrow":
+    "The date is today or tomorrow.",
+  "inventory.attention.reason.date_soon": "The date is in a few days.",
+  "inventory.attention.reason.opened_after_printed_date":
+    "The printed date applies to the sealed package, and it is open.",
+  "inventory.attention.reason.opened_without_date":
+    "It is open and has no date.",
+  "inventory.attention.reason.no_date": "No date recorded.",
+  "inventory.attention.reason.frozen":
+    "Frozen: the printed date stops counting.",
+  "inventory.attention.reason.frozen_long_time":
+    "Frozen for more than six months; quality may have dropped.",
+  "inventory.attention.reason.thawed_in_refrigerator":
+    "Thawed in the refrigerator: use within two days.",
+  "inventory.attention.reason.thawing_outside_refrigerator":
+    "Thawing outside the refrigerator.",
+  "inventory.attention.reason.thawed_outside_refrigerator":
+    "Thawed and kept outside the refrigerator.",
   "inventory.adjustment.LifecycleTransition": "State change",
   "inventory.adjustment.TransitionSplit": "Part split off",
   "inventory.adjustment.TransitionDerived": "Created from another lot",
@@ -364,6 +423,41 @@ const ptBR: Record<InventoryI18nKey, string> = {
   "inventory.history.kind.Transaction": "Movimentação",
   "inventory.adjustment.Initial": "Registro inicial",
   "inventory.adjustment.Deleted": "Exclusão",
+  "inventory.attention.title": "Precisa de atenção",
+  "inventory.attention.empty": "Nada precisa de atenção agora.",
+  "inventory.attention.disclaimer":
+    "Apenas orientação, com base nas datas e no manuseio que você registrou. Confira o alimento antes de usar.",
+  "inventory.attention.useBy": "Usar até {date}",
+  "inventory.attention.state.LikelyDiscard": "Provavelmente não está mais bom",
+  "inventory.attention.state.CheckCondition": "Confira antes de usar",
+  "inventory.attention.state.UsePriority": "Use hoje ou amanhã",
+  "inventory.attention.state.UseSoon": "Use logo",
+  "inventory.attention.state.EstimateUncertain": "Estimativa incerta",
+  "inventory.attention.state.Normal": "Sem necessidade de atenção",
+  "inventory.attention.reason.printed_date": "Com base na data impressa.",
+  "inventory.attention.reason.prepared_date":
+    "Com base na data registrada no preparo.",
+  "inventory.attention.reason.date_passed_long_ago":
+    "A data passou há mais de uma semana.",
+  "inventory.attention.reason.date_passed": "A data já passou.",
+  "inventory.attention.reason.date_today_or_tomorrow":
+    "A data é hoje ou amanhã.",
+  "inventory.attention.reason.date_soon": "A data é daqui a poucos dias.",
+  "inventory.attention.reason.opened_after_printed_date":
+    "A data impressa vale para a embalagem fechada, e ela está aberta.",
+  "inventory.attention.reason.opened_without_date":
+    "Está aberto e não tem data.",
+  "inventory.attention.reason.no_date": "Nenhuma data registrada.",
+  "inventory.attention.reason.frozen":
+    "Congelado: a data impressa deixa de contar.",
+  "inventory.attention.reason.frozen_long_time":
+    "Congelado há mais de seis meses; a qualidade pode ter caído.",
+  "inventory.attention.reason.thawed_in_refrigerator":
+    "Descongelado na geladeira: use em até dois dias.",
+  "inventory.attention.reason.thawing_outside_refrigerator":
+    "Descongelando fora da geladeira.",
+  "inventory.attention.reason.thawed_outside_refrigerator":
+    "Descongelado e fora da geladeira.",
   "inventory.adjustment.LifecycleTransition": "Mudança de estado",
   "inventory.adjustment.TransitionSplit": "Parte separada",
   "inventory.adjustment.TransitionDerived": "Criado a partir de outro lote",
@@ -518,6 +612,41 @@ const es: Record<InventoryI18nKey, string> = {
   "inventory.history.kind.Transaction": "Movimiento",
   "inventory.adjustment.Initial": "Registro inicial",
   "inventory.adjustment.Deleted": "Eliminación",
+  "inventory.attention.title": "Necesita atención",
+  "inventory.attention.empty": "Nada necesita atención ahora.",
+  "inventory.attention.disclaimer":
+    "Solo orientación, según las fechas y la manipulación que registraste. Revisa el alimento antes de usarlo.",
+  "inventory.attention.useBy": "Usar antes del {date}",
+  "inventory.attention.state.LikelyDiscard": "Probablemente ya no está bueno",
+  "inventory.attention.state.CheckCondition": "Revisa antes de usar",
+  "inventory.attention.state.UsePriority": "Úsalo hoy o mañana",
+  "inventory.attention.state.UseSoon": "Úsalo pronto",
+  "inventory.attention.state.EstimateUncertain": "Estimación incierta",
+  "inventory.attention.state.Normal": "No necesita atención",
+  "inventory.attention.reason.printed_date": "Según la fecha impresa.",
+  "inventory.attention.reason.prepared_date":
+    "Según la fecha registrada al prepararlo.",
+  "inventory.attention.reason.date_passed_long_ago":
+    "La fecha pasó hace más de una semana.",
+  "inventory.attention.reason.date_passed": "La fecha ya pasó.",
+  "inventory.attention.reason.date_today_or_tomorrow":
+    "La fecha es hoy o mañana.",
+  "inventory.attention.reason.date_soon": "La fecha es en pocos días.",
+  "inventory.attention.reason.opened_after_printed_date":
+    "La fecha impresa vale para el envase cerrado, y está abierto.",
+  "inventory.attention.reason.opened_without_date":
+    "Está abierto y no tiene fecha.",
+  "inventory.attention.reason.no_date": "No hay fecha registrada.",
+  "inventory.attention.reason.frozen":
+    "Congelado: la fecha impresa deja de contar.",
+  "inventory.attention.reason.frozen_long_time":
+    "Congelado hace más de seis meses; la calidad puede haber bajado.",
+  "inventory.attention.reason.thawed_in_refrigerator":
+    "Descongelado en el refrigerador: úsalo en dos días como máximo.",
+  "inventory.attention.reason.thawing_outside_refrigerator":
+    "Descongelándose fuera del refrigerador.",
+  "inventory.attention.reason.thawed_outside_refrigerator":
+    "Descongelado y fuera del refrigerador.",
   "inventory.adjustment.LifecycleTransition": "Cambio de estado",
   "inventory.adjustment.TransitionSplit": "Parte separada",
   "inventory.adjustment.TransitionDerived": "Creado a partir de otro lote",

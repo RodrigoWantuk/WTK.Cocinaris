@@ -55,6 +55,7 @@ public sealed class InventoryApplicationUseCaseTests
     {
         public Task<InventoryLotReadModel?> FindActiveAsync(Guid ownerUserId, Guid lotId, CancellationToken cancellationToken) => Task.FromResult<InventoryLotReadModel?>(null);
         public Task<IReadOnlyList<InventoryHistoryReadModel>?> GetHistoryAsync(Guid ownerUserId, Guid lotId, CancellationToken cancellationToken) => Task.FromResult<IReadOnlyList<InventoryHistoryReadModel>?>(null);
+        public Task<IReadOnlyList<InventoryLotReadModel>> ListActiveAsync(Guid ownerUserId, int limit, CancellationToken cancellationToken) => Task.FromResult<IReadOnlyList<InventoryLotReadModel>>([]);
         public Task<InventoryLotReadPage> ListAsync(InventoryLotReadQuery query, CancellationToken cancellationToken) => Task.FromResult(new InventoryLotReadPage([], null));
     }
 

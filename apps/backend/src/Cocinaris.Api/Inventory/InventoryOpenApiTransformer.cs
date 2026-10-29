@@ -77,6 +77,8 @@ internal static class InventoryOpenApiTransformer
         ConfigureStringEnum(components, "LotTransitionResponse", "kind", false, "Open", "Move", "Freeze", "StartThaw", "CompleteThaw");
         ConfigureStringEnum(components, "LotTransitionResponse", "previousState", false, "AsAcquired", "Prepared", "Frozen", "Thawing", "Thawed");
         ConfigureStringEnum(components, "LotTransitionResponse", "resultingState", false, "AsAcquired", "Prepared", "Frozen", "Thawing", "Thawed");
+        ConfigureStringEnum(components, "LotAttentionResponse", "state", false, "LikelyDiscard", "CheckCondition", "UsePriority", "UseSoon", "EstimateUncertain", "Normal");
+        ConfigureStringEnum(components, "LotAttentionResponse", "evidence", false, "PrintedDate", "PreparedRecord", "CuratedRule", "Unknown");
         ConfigureQuantityModeSchema(components, "QuantityRequest");
         ConfigureQuantityModeSchema(components, "QuantityResponse");
 
@@ -317,7 +319,7 @@ internal static class InventoryOpenApiTransformer
         $$"""{"type":"about:blank","title":"{{ReasonPhrase(status)}}","status":{{status}},"detail":{{JsonSerializer.Serialize(detail)}},"errorCode":"{{errorCode}}","traceId":"00-00000000000000000000000000000000-0000000000000000-00"{{(errors is null ? string.Empty : $"," + "\"errors\":" + errors)}}}""";
 
     private static string LotExample(string version, decimal measuredValue = 500) =>
-        $$$"""{"lotId":"00000000-0000-0000-0000-000000000001","productId":"00000000-0000-0000-0000-000000000002","productName":"Red lentils","quantity":{"measuredValue":{{{measuredValue.ToString(System.Globalization.CultureInfo.InvariantCulture)}}},"unit":"Gram","availabilityState":null},"storageLocation":"Pantry","customLocation":null,"packageState":"Sealed","printedExpirationDate":"2026-12-31","notes":null,"version":"{{{version}}}","createdAt":"2026-07-31T00:00:00Z","updatedAt":"2026-07-31T00:00:00Z","lifecycle":{"state":"AsAcquired","openedAt":null,"frozenAt":null,"thawStartedAt":null,"thawedAt":null,"parentLotId":null}}""";
+        $$$"""{"lotId":"00000000-0000-0000-0000-000000000001","productId":"00000000-0000-0000-0000-000000000002","productName":"Red lentils","quantity":{"measuredValue":{{{measuredValue.ToString(System.Globalization.CultureInfo.InvariantCulture)}}},"unit":"Gram","availabilityState":null},"storageLocation":"Pantry","customLocation":null,"packageState":"Sealed","printedExpirationDate":"2026-12-31","notes":null,"version":"{{{version}}}","createdAt":"2026-07-31T00:00:00Z","updatedAt":"2026-07-31T00:00:00Z","lifecycle":{"state":"AsAcquired","openedAt":null,"frozenAt":null,"thawStartedAt":null,"thawedAt":null,"parentLotId":null},"attention":{"state":"Normal","estimatedUseBy":"2026-12-31","evidence":"PrintedDate","reasons":["printed_date"]}}""";
 
     private static string ReasonPhrase(int status) => status switch
     {

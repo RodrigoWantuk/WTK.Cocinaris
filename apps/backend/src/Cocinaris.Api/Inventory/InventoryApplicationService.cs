@@ -23,9 +23,18 @@ public sealed class InventoryApplicationService(
     IPrepareComponentsUseCase prepareComponents,
     IGetPreparationBatchUseCase getPreparation,
     IGetInventoryLotProvenanceUseCase getProvenance,
+    IGetInventoryAttentionUseCase attention,
+    InventoryCalendar calendar,
     IInventoryHttpTokenService tokens,
     InventoryMetrics metrics)
 {
+    /// <summary>Maps the attention query, evaluated in the user's calendar, to its transport result.</summary>
+    public async Task<IResult> AttentionAsync(HttpContext context, CancellationToken cancellationToken)
+    {
+        var items = await attention.GetAsync(calendar.Today, calendar.Zone, cancellationToken);
+        return Results.Json(new AttentionListResponse(items.Select(item => ToResponse(item.Lot, tokens.WriteVersion(item.Lot.LotId, item.Lot.ConcurrencyToken), item.Attention)).ToList()));
+    }
+
     /// <summary>Maps the lot-list query and its optional opaque cursor to a transport result.</summary>
     public async Task<IResult> ListAsync(int? pageSize, string? status, string? storageLocation, string? search, string? cursor, HttpContext context, CancellationToken cancellationToken)
     {
@@ -120,7 +129,11 @@ public sealed class InventoryApplicationService(
         ToResult(await getProvenance.GetAsync(lotId, cancellationToken), item => new LotProvenanceResponse(item.LotId, item.ConsumedBy.Select(ToPreparationResponse).ToList(), item.ConsumedByTruncated, item.ProducedBy.Select(ToPreparationResponse).ToList(), item.ProducedByTruncated), context.TraceIdentifier);
 
     private LotResponse ToResponse(InventoryLotView item) => ToResponse(item, tokens.WriteVersion(item.LotId, item.ConcurrencyToken));
-    private static LotResponse ToResponse(InventoryLotView item, string version) => new(item.LotId, item.ProductId, item.ProductName, ToQuantity(item.Quantity)!, item.StorageLocation, item.CustomLocation, item.PackageState, item.PrintedExpirationDate, item.Notes, version, item.CreatedAt, item.UpdatedAt, ToLifecycle(item.Lifecycle));
+    private LotResponse ToResponse(InventoryLotView item, string version, InventoryAttention? known = null)
+    {
+        var advice = known ?? InventoryAttentionAdvisor.Evaluate(InventoryLotApplicationWorkflow.ToAttentionFacts(item), calendar.Today, calendar.Zone);
+        return new(item.LotId, item.ProductId, item.ProductName, ToQuantity(item.Quantity)!, item.StorageLocation, item.CustomLocation, item.PackageState, item.PrintedExpirationDate, item.Notes, version, item.CreatedAt, item.UpdatedAt, ToLifecycle(item.Lifecycle), new LotAttentionResponse(advice.State.ToString(), advice.EstimatedUseBy, advice.Evidence.ToString(), advice.Reasons));
+    }
     // Idempotency replays stored before lifecycle support carry no lifecycle; those lots were AsAcquired.
     private static LotLifecycleResponse ToLifecycle(InventoryLifecycleView? lifecycle) => lifecycle is null ? new LotLifecycleResponse("AsAcquired", null, null, null, null, null) : new LotLifecycleResponse(lifecycle.State, lifecycle.OpenedAt, lifecycle.FrozenAt, lifecycle.ThawStartedAt, lifecycle.ThawedAt, lifecycle.ParentLotId);
     private static QuantityResponse? ToQuantity(InventoryQuantity? quantity) => quantity is null ? null : new QuantityResponse(quantity.MeasuredValue, quantity.Unit, quantity.AvailabilityState);

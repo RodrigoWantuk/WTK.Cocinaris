@@ -143,6 +143,7 @@ function inventoryWithLots(count: number): InventoryRepository {
     transitionLot: async () => {
       throw new Error("unused");
     },
+    listAttention: async () => [],
     deleteLot: async () => undefined,
     getHistory: async () => [],
   };

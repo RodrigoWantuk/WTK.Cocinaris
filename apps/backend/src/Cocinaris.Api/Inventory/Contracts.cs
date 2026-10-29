@@ -19,7 +19,16 @@ public sealed record AdjustmentRequest(string Type, decimal? Value, string? Avai
 public sealed record TransitionRequest(string Kind, QuantityRequest? Quantity, string? TargetStorageLocation, string? TargetCustomLocation);
 
 /// <summary>Returns the current representation of an inventory lot.</summary>
-public sealed record LotResponse(Guid LotId, Guid ProductId, string ProductName, QuantityResponse Quantity, string StorageLocation, string? CustomLocation, string? PackageState, DateOnly? PrintedExpirationDate, string? Notes, string Version, DateTimeOffset CreatedAt, DateTimeOffset UpdatedAt, LotLifecycleResponse Lifecycle);
+public sealed record LotResponse(Guid LotId, Guid ProductId, string ProductName, QuantityResponse Quantity, string StorageLocation, string? CustomLocation, string? PackageState, DateOnly? PrintedExpirationDate, string? Notes, string Version, DateTimeOffset CreatedAt, DateTimeOffset UpdatedAt, LotLifecycleResponse Lifecycle, LotAttentionResponse Attention);
+
+/// <summary>
+/// Advisory attention for a lot, evaluated at response time in the user's time zone. It explains
+/// itself with stable reason codes and never claims that food is safe.
+/// </summary>
+public sealed record LotAttentionResponse(string State, DateOnly? EstimatedUseBy, string Evidence, IReadOnlyList<string> Reasons);
+
+/// <summary>Lots that need attention, most urgent first; at most 100.</summary>
+public sealed record AttentionListResponse(IReadOnlyList<LotResponse> Items);
 
 /// <summary>Returns the lot's lifecycle state, the most recent instant of each transition, and its source lot when derived.</summary>
 public sealed record LotLifecycleResponse(string State, DateTimeOffset? OpenedAt, DateTimeOffset? FrozenAt, DateTimeOffset? ThawStartedAt, DateTimeOffset? ThawedAt, Guid? ParentLotId);

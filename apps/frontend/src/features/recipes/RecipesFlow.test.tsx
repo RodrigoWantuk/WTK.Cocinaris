@@ -85,6 +85,7 @@ function createInventoryStub(
     transitionLot: async () => {
       throw new Error("not used");
     },
+    listAttention: async () => [],
     deleteLot: async () => {
       throw new Error("not used");
     },

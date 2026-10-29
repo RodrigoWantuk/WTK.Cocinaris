@@ -75,6 +75,8 @@ builder.Services.AddScoped<IPrepareComponentsUseCase, PrepareComponentsHandler>(
 builder.Services.AddScoped<IGetPreparationBatchUseCase, GetPreparationBatchHandler>();
 builder.Services.AddScoped<IGetInventoryLotProvenanceUseCase, GetInventoryLotProvenanceHandler>();
 builder.Services.AddScoped<InventoryApplicationService>();
+builder.Services.AddScoped<InventoryCalendar>();
+builder.Services.AddScoped<IGetInventoryAttentionUseCase, GetInventoryAttentionHandler>();
 builder.Services.AddSingleton<InventoryLotLifecycleUseCase>();
 builder.Services.AddScoped<IProfileReadStore, PostgreSqlProfileReadStore>();
 builder.Services.AddScoped<IProfileWriteStore, PostgreSqlProfileWriteStore>();

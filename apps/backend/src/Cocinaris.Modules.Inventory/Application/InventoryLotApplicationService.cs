@@ -20,7 +20,8 @@ public sealed record InventoryQuantity(decimal? MeasuredValue, string? Unit, str
 public sealed record InventoryLotView(Guid LotId, Guid ProductId, string ProductName, InventoryQuantity Quantity, string StorageLocation, string? CustomLocation, string? PackageState, DateOnly? PrintedExpirationDate, string? Notes, Guid ConcurrencyToken, DateTimeOffset CreatedAt, DateTimeOffset UpdatedAt, InventoryLifecycleView? Lifecycle = null);
 
 /// <summary>Current lifecycle facts of a lot: state name, most recent transition instants, and parent lot.</summary>
-public sealed record InventoryLifecycleView(string State, DateTimeOffset? OpenedAt, DateTimeOffset? FrozenAt, DateTimeOffset? ThawStartedAt, DateTimeOffset? ThawedAt, Guid? ParentLotId);
+/// <remarks><see cref="PreparedShelfLifeDate"/> is filled on reads of prepared lots; mutation responses leave it null.</remarks>
+public sealed record InventoryLifecycleView(string State, DateTimeOffset? OpenedAt, DateTimeOffset? FrozenAt, DateTimeOffset? ThawStartedAt, DateTimeOffset? ThawedAt, Guid? ParentLotId, DateOnly? PreparedShelfLifeDate = null);
 
 /// <summary>Lifecycle facts of a transition history entry, with the related lot of a partial transition.</summary>
 public sealed record InventoryTransitionView(string Kind, string PreviousState, string ResultingState, string PreviousStorageLocation, string ResultingStorageLocation, Guid? RelatedLotId);
@@ -140,6 +141,16 @@ public interface ITransitionInventoryLotUseCase
 {
     /// <summary>Applies one idempotent whole or partial lifecycle transition under optimistic concurrency.</summary>
     Task<InventoryApplicationResult<InventoryLotView>> TransitionAsync(TransitionInventoryLotCommand command, CancellationToken cancellationToken);
+}
+
+/// <summary>Lists the lots that need attention, most urgent first (PLAN-0037 Phase 2).</summary>
+public interface IGetInventoryAttentionUseCase
+{
+    /// <summary>Evaluates every active, non-depleted lot of the current user and returns those not in the normal state.</summary>
+    /// <param name="today">Current calendar date in the user's time zone.</param>
+    /// <param name="timeZone">The user's time zone.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    Task<IReadOnlyList<(InventoryLotView Lot, InventoryAttention Attention)>> GetAsync(DateOnly today, TimeZoneInfo timeZone, CancellationToken cancellationToken);
 }
 
 /// <summary>Executes the owner-scoped soft-delete use case.</summary>
@@ -379,6 +390,36 @@ public sealed class InventoryLotApplicationWorkflow(
         return await MutateAsync(command.LotId, command.Precondition, command.CorrelationId, null, null, null, "inventory.lot.deleted", static (_, _) => "{}", cancellationToken, (lot, _, now) => lifecycleUseCase.Delete(lot, now), InventoryApplicationSuccess.Deleted);
     }
 
+    /// <summary>
+    /// Evaluates the attention state of the current user's active lots. The read is bounded by
+    /// <see cref="InventoryAttentionCandidateLimit"/> most recently updated lots and returns at most
+    /// <see cref="InventoryAttentionResultLimit"/> results, most urgent and earliest-dated first.
+    /// </summary>
+    public async Task<IReadOnlyList<(InventoryLotView Lot, InventoryAttention Attention)>> AttentionAsync(DateOnly today, TimeZoneInfo timeZone, CancellationToken cancellationToken)
+    {
+        var user = await currentUser.GetCurrentAsync(cancellationToken);
+        var lots = await readStore.ListActiveAsync(user.Id, InventoryAttentionCandidateLimit, cancellationToken);
+        return lots
+            .Select(ToView)
+            .Select(view => (Lot: view, Attention: InventoryAttentionAdvisor.Evaluate(ToAttentionFacts(view), today, timeZone)))
+            .Where(item => item.Attention.State != InventoryAttentionState.Normal)
+            .OrderBy(item => item.Attention.State)
+            .ThenBy(item => item.Attention.EstimatedUseBy ?? DateOnly.MaxValue)
+            .ThenBy(item => item.Lot.ProductName, StringComparer.CurrentCultureIgnoreCase)
+            .Take(InventoryAttentionResultLimit)
+            .ToList();
+    }
+
+    /// <summary>Maximum lots evaluated by <see cref="AttentionAsync"/>.</summary>
+    public const int InventoryAttentionCandidateLimit = 500;
+
+    /// <summary>Maximum attention results returned by <see cref="AttentionAsync"/>.</summary>
+    public const int InventoryAttentionResultLimit = 100;
+
+    /// <summary>Projects a lot view onto the facts the attention advisor evaluates.</summary>
+    public static InventoryAttentionFacts ToAttentionFacts(InventoryLotView lot) =>
+        new(lot.PrintedExpirationDate, lot.Lifecycle?.PreparedShelfLifeDate, lot.StorageLocation, lot.PackageState, lot.Lifecycle?.State ?? "AsAcquired", lot.Lifecycle?.FrozenAt, lot.Lifecycle?.ThawStartedAt, lot.Lifecycle?.ThawedAt);
+
     /// <summary>Lists immutable transaction history for one owner-scoped lot.</summary>
     public async Task<InventoryApplicationResult<IReadOnlyList<InventoryHistoryEntry>>> HistoryAsync(Guid lotId, CancellationToken cancellationToken)
     {
@@ -565,6 +606,13 @@ public sealed class TransitionInventoryLotHandler(InventoryLotApplicationWorkflo
 {
     /// <inheritdoc />
     public Task<InventoryApplicationResult<InventoryLotView>> TransitionAsync(TransitionInventoryLotCommand command, CancellationToken cancellationToken) => workflow.TransitionAsync(command, cancellationToken);
+}
+
+/// <summary>Concrete attention application handler.</summary>
+public sealed class GetInventoryAttentionHandler(InventoryLotApplicationWorkflow workflow) : IGetInventoryAttentionUseCase
+{
+    /// <inheritdoc />
+    public Task<IReadOnlyList<(InventoryLotView Lot, InventoryAttention Attention)>> GetAsync(DateOnly today, TimeZoneInfo timeZone, CancellationToken cancellationToken) => workflow.AttentionAsync(today, timeZone, cancellationToken);
 }
 
 /// <summary>Concrete soft-delete application handler.</summary>

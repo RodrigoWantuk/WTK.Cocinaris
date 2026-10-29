@@ -57,6 +57,32 @@ export interface LotTransitionFacts {
   relatedLotId: string | null;
 }
 
+export type AttentionState =
+  | "LikelyDiscard"
+  | "CheckCondition"
+  | "UsePriority"
+  | "UseSoon"
+  | "EstimateUncertain"
+  | "Normal";
+
+/**
+ * Advisory attention computed by the backend in the user's calendar (PLAN-0037 Phase 2). It is
+ * guidance with reasons, never a safety guarantee; the user decides.
+ */
+export interface LotAttention {
+  state: AttentionState | string;
+  /** Calendar date YYYY-MM-DD, or null when no date-based estimate exists. */
+  estimatedUseBy: string | null;
+  evidence:
+    | "PrintedDate"
+    | "PreparedRecord"
+    | "CuratedRule"
+    | "Unknown"
+    | string;
+  /** Stable reason codes, localized under `inventory.attention.reason.*`. */
+  reasons: string[];
+}
+
 export interface InventoryLotView {
   lotId: string;
   productId: string;
@@ -73,6 +99,8 @@ export interface InventoryLotView {
   createdAt: string;
   updatedAt: string;
   lifecycle: LotLifecycle;
+  /** Absent only when an older API did not send it. */
+  attention?: LotAttention;
 }
 
 export interface InventoryListPage {
@@ -202,6 +230,8 @@ export interface InventoryRepository {
       signal?: AbortSignal;
     },
   ): Promise<InventoryLotView>;
+  /** Lots needing attention, most urgent first (at most 100). */
+  listAttention(signal?: AbortSignal): Promise<InventoryLotView[]>;
   /** Applies a lifecycle transition and returns the source lot. */
   transitionLot(
     lotId: string,

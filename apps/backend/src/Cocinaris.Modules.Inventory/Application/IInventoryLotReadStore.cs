@@ -9,6 +9,9 @@ public interface IInventoryLotReadStore
     /// <summary>Returns a cursor page that is structurally scoped to one owner.</summary>
     Task<InventoryLotReadPage> ListAsync(InventoryLotReadQuery query, CancellationToken cancellationToken);
 
+    /// <summary>Returns up to <paramref name="limit"/> active, non-depleted lots of one owner, most recently updated first.</summary>
+    Task<IReadOnlyList<InventoryLotReadModel>> ListActiveAsync(Guid ownerUserId, int limit, CancellationToken cancellationToken);
+
     /// <summary>Returns immutable history for a lot only when the owner can observe that lot.</summary>
     Task<IReadOnlyList<InventoryHistoryReadModel>?> GetHistoryAsync(Guid ownerUserId, Guid lotId, CancellationToken cancellationToken);
 }
