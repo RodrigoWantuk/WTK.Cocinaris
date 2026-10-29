@@ -30,7 +30,7 @@ public sealed class PostgreSqlRecipeLibraryStore(ApplicationDbContext database) 
             database.RecipeRevisions.AsNoTracking().Where(item => item.OwnerUserId == ownerUserId),
             recipe => new { RecipeId = recipe.Id, Number = recipe.CurrentRevisionNumber },
             revision => new { revision.RecipeId, Number = revision.RevisionNumber },
-            (recipe, revision) => new { recipe, revision.Name, revision.MealTypesJson, revision.Servings });
+            (recipe, revision) => new { recipe, revision.Name, revision.MealTypesJson, revision.Servings, revision.ThumbnailVisualJson });
         if (query.Search is { } search)
         {
             var pattern = "%" + search.Replace("\\", "\\\\").Replace("%", "\\%").Replace("_", "\\_") + "%";
@@ -72,7 +72,8 @@ public sealed class PostgreSqlRecipeLibraryStore(ApplicationDbContext database) 
                 item.recipe.UpdatedAt,
                 found ? stat.Count : 0,
                 found ? stat.FinishedAt : null,
-                found ? stat.Rating : null);
+                found ? stat.Rating : null,
+                item.ThumbnailVisualJson);
         }).ToList();
     }
 

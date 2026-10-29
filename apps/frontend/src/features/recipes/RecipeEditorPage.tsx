@@ -23,6 +23,8 @@ import {
   type SupportedDecimalLocale,
 } from "@/lib/localeDecimal";
 import { parseNormalizedRecipeJson } from "./parseNormalizedRecipe";
+import { useHouseholdMeasure } from "./RecipeContent";
+import { toCanonicalAmount, type KitchenUnit } from "@/lib/kitchenMeasures";
 import { useRecipeRepository } from "./RecipeProvider";
 import { recipeLibraryErrorKey } from "./recipeErrors";
 import { MEAL_TYPES, mealTypeLabel } from "./recipeLabels";
@@ -85,6 +87,10 @@ const emptyStage = (): StageRow => ({
 });
 
 const UNITS = ["g", "ml", "unit"] as const;
+/** Kitchen measures accepted while editing; saved as grams or milliliters (PLAN-0054 Phase 3). */
+const KITCHEN_UNITS = ["cup", "tbsp", "tsp"] as const;
+const isKitchenUnit = (unit: string): unit is KitchenUnit =>
+  (KITCHEN_UNITS as readonly string[]).includes(unit);
 
 function draftFrom(
   detail: RecipeDetail,
@@ -163,14 +169,18 @@ function buildContent(
     if (!row.displayName.trim())
       errors[`ingredients[${index}].displayName`] = "editor.field.required";
     const parsed = parseLocaleDecimal(row.quantity, locale);
-    const quantity = parsed.ok ? parsed.value : NaN;
-    if (!(quantity > 0))
+    const entered = parsed.ok ? parsed.value : NaN;
+    if (!(entered > 0))
       errors[`ingredients[${index}].quantity`] = "editor.field.quantity";
+    const canonical =
+      isKitchenUnit(row.unit) && entered > 0
+        ? toCanonicalAmount(row.displayName, entered, row.unit)
+        : { quantity: entered, unit: row.unit };
     return {
       ingredientId: row.ingredientId,
       displayName: row.displayName.trim(),
-      quantity,
-      unit: row.unit,
+      quantity: canonical.quantity,
+      unit: canonical.unit,
       optional: row.optional,
     };
   });
@@ -617,8 +627,18 @@ export function RecipeEditorPage({ mode }: { mode: RecipeEditorMode }) {
                         {t(`recipes.unit.${unit}`)}
                       </option>
                     ))}
+                    {KITCHEN_UNITS.map((unit) => (
+                      <option key={unit} value={unit}>
+                        {t(`editor.unit.${unit}`)}
+                      </option>
+                    ))}
                   </select>
                 </div>
+                <MeasureHint
+                  name={row.displayName}
+                  quantity={row.quantity}
+                  unit={row.unit}
+                />
                 <label className="flex items-center gap-2 text-sm sm:pb-2">
                   <input
                     type="checkbox"
@@ -893,4 +913,42 @@ export function RecipeEditorPage({ mode }: { mode: RecipeEditorMode }) {
       </div>
     </form>
   );
+}
+
+/**
+ * The other measure of an ingredient row, live while typing: the kitchen measure of a metric
+ * amount ("≈ 1 xícara"), or what a kitchen measure is saved as ("salvo como ≈ 120 g").
+ */
+function MeasureHint({
+  name,
+  quantity,
+  unit,
+}: {
+  name: string;
+  quantity: string;
+  unit: string;
+}) {
+  const { t, locale } = useProductionI18n();
+  const household = useHouseholdMeasure();
+  const decimalLocale = locale as SupportedDecimalLocale;
+  const parsed = parseLocaleDecimal(quantity, decimalLocale);
+  if (!parsed.ok || !(parsed.value > 0)) return null;
+  let text: string;
+  if (isKitchenUnit(unit)) {
+    const canonical = toCanonicalAmount(name, parsed.value, unit);
+    const amount = `${formatLocaleDecimal(canonical.quantity, decimalLocale)} ${t(`recipes.unit.${canonical.unit}`)}`;
+    text = t("editor.unit.savedAs", {
+      amount: canonical.approximate ? `≈ ${amount}` : amount,
+    });
+  } else {
+    text = household({ displayName: name, quantity: parsed.value, unit });
+  }
+  return text ? (
+    <p
+      data-testid="editor-measure-hint"
+      className="text-xs text-muted-foreground sm:col-span-full"
+    >
+      {text}
+    </p>
+  ) : null;
 }

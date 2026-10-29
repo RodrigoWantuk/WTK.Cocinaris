@@ -126,6 +126,10 @@ describe("recipe library (PLAN-0038)", () => {
       createdAt: "2026-10-01T12:00:00Z",
       timesCooked: 3,
       lastRating: 4,
+      thumbnail: {
+        state: "ready",
+        url: "/api/v1/recipes/recipe-1/thumbnail?v=0123456789abcdef",
+      },
     });
     const listRecipes = vi.fn(async () => [row]);
     const setFavorite = vi.fn(async () => ({ ...DETAIL, isFavorite: true }));
@@ -134,6 +138,10 @@ describe("recipe library (PLAN-0038)", () => {
     const item = await screen.findByTestId("recipes-item-recipe-1");
     expect(item).toHaveTextContent("Lunch");
     expect(item).toHaveTextContent("Cooked 3× · rated 4");
+    expect(within(item).getByTestId("recipe-thumbnail-image")).toHaveAttribute(
+      "alt",
+      "Illustrative photo of Arroz de forno",
+    );
 
     await user.click(screen.getByTestId("recipes-favorite-recipe-1"));
     expect(setFavorite).toHaveBeenCalledWith("recipe-1", true, {
@@ -193,6 +201,42 @@ describe("recipe library (PLAN-0038)", () => {
     });
     expect(input.content.equipment).toEqual(["Travessa"]);
     expect(await screen.findByTestId("recipes-detail")).toBeInTheDocument();
+  });
+
+  it("accepts a kitchen measure and saves it in grams, showing both", async () => {
+    const user = userEvent.setup();
+    const reviseRecipe = vi.fn(async () => ({
+      ...DETAIL,
+      revisionNumber: 3,
+      currentRevisionNumber: 3,
+    }));
+    renderAt(repoWith({ reviseRecipe }), "/app/receitas/recipe-1/editar");
+
+    const ingredient = await screen.findByTestId("recipe-editor-ingredient");
+    const quantity = within(ingredient).getByLabelText("Quantity");
+    await user.clear(quantity);
+    await user.type(quantity, "250");
+    expect(screen.getByTestId("editor-measure-hint")).toHaveTextContent(
+      "≈ 1 ⅓ cups",
+    );
+    await user.selectOptions(within(ingredient).getByLabelText("Unit"), "cup");
+    await user.clear(quantity);
+    await user.type(quantity, "1");
+    expect(screen.getByTestId("editor-measure-hint")).toHaveTextContent(
+      "Saved as ≈ 185 g",
+    );
+    await user.type(screen.getByTestId("recipe-editor-reason"), "Cups");
+    await user.click(screen.getByTestId("recipe-editor-save"));
+
+    await waitFor(() => expect(reviseRecipe).toHaveBeenCalledTimes(1));
+    const [, input] = reviseRecipe.mock.calls[0] as unknown as [
+      string,
+      Parameters<RecipeRepository["reviseRecipe"]>[1],
+    ];
+    expect(input.content.ingredients[0]).toMatchObject({
+      quantity: 185,
+      unit: "g",
+    });
   });
 
   it("reports a stale edit instead of overwriting the newer revision", async () => {

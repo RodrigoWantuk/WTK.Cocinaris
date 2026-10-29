@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useSession } from "@/app/session/SessionProvider";
+import { RecipeThumbnail } from "./RecipeThumbnail";
 import { RecipeContent } from "./RecipeContent";
 import { useRecipeRepository } from "./RecipeProvider";
 import {
@@ -185,18 +186,38 @@ export function RecipeDetailPage() {
   }
 
   const isOldRevision = detail.revisionNumber !== detail.currentRevisionNumber;
+  // Work plus waiting time of every stage, so a beginner knows how long it takes before starting.
+  const totalMinutes = (parsed?.stages ?? []).reduce(
+    (sum, stage) =>
+      sum + (stage.activeMinutes ?? 0) + (stage.passiveMinutes ?? 0),
+    0,
+  );
   const date = (iso: string | null) =>
     iso ? formatRecipeDate(iso, locale) : "";
 
   return (
     <div data-testid="recipes-detail" className="space-y-6">
+      {detail.thumbnail && detail.thumbnail.state !== "none" ? (
+        <RecipeThumbnail
+          thumbnail={detail.thumbnail}
+          name={detail.name}
+          disclose
+        />
+      ) : null}
       <div>
         <p className="text-sm text-muted-foreground">
           {t("recipes.detail.revision", { number: detail.revisionNumber })}
         </p>
         <h1 className="font-display text-3xl">{detail.name}</h1>
         <p className="mt-2 text-muted-foreground">
-          {t("recipes.detail.servings", { count: detail.servings })}
+          {[
+            totalMinutes > 0
+              ? t("recipes.detail.totalTime", { minutes: totalMinutes })
+              : null,
+            t("recipes.detail.servings", { count: detail.servings }),
+          ]
+            .filter(Boolean)
+            .join(" · ")}
         </p>
         {detail.mealTypes.length > 0 ? (
           <p className="mt-1 text-sm text-muted-foreground">
@@ -255,6 +276,8 @@ export function RecipeDetailPage() {
           <div className="flex flex-wrap gap-2">
             <Button
               type="button"
+              size="lg"
+              className="w-full sm:w-auto"
               data-testid="recipes-detail-cook"
               disabled={busy || !session.csrfToken}
               onClick={() => void startCooking()}
@@ -264,6 +287,7 @@ export function RecipeDetailPage() {
             <Button
               type="button"
               variant="secondary"
+              size="sm"
               data-testid="recipes-detail-favorite"
               aria-pressed={detail.isFavorite}
               disabled={busy || !session.csrfToken}
@@ -279,6 +303,7 @@ export function RecipeDetailPage() {
             <Button
               asChild
               variant="secondary"
+              size="sm"
               data-testid="recipes-detail-edit"
             >
               <Link to={`/app/receitas/${detail.recipeId}/editar`}>
@@ -288,6 +313,7 @@ export function RecipeDetailPage() {
             <Button
               asChild
               variant="secondary"
+              size="sm"
               data-testid="recipes-detail-variation"
             >
               <Link to={`/app/receitas/${detail.recipeId}/variacao`}>
@@ -297,6 +323,7 @@ export function RecipeDetailPage() {
             <Button
               type="button"
               variant="ghost"
+              size="sm"
               data-testid="recipes-detail-archive"
               disabled={busy || !session.csrfToken}
               onClick={() => void organize("archive")}

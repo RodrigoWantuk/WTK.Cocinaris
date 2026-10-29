@@ -12,6 +12,12 @@ import {
 import { formatLocaleDecimal, parseLocaleDecimal } from "@/lib/localeDecimal";
 import { parseNormalizedRecipeJson } from "./parseNormalizedRecipe";
 import { RecipeContent } from "./RecipeContent";
+import {
+  FinishScreen,
+  PrepScreen,
+  StepScreen,
+  useWakeLock,
+} from "./CookingGuide";
 import { useRecipeRepository } from "./RecipeProvider";
 
 const STORAGE_PREFIX = "cocinaris.cooking.";
@@ -28,6 +34,32 @@ function readChecked(executionId: string): Set<string> {
     );
   } catch {
     return new Set();
+  }
+}
+
+/** The guided step the cook was on (-1: preparation), so a reload resumes there. */
+function readStep(executionId: string): number {
+  try {
+    const raw = localStorage.getItem(`${STORAGE_PREFIX}${executionId}.step`);
+    // Number(null) is 0, so a missing entry must be checked before parsing.
+    const value = raw === null ? NaN : Number(raw);
+    return Number.isInteger(value) && value >= 0 ? value : -1;
+  } catch {
+    return -1;
+  }
+}
+
+function writeStep(executionId: string, step: number | null) {
+  try {
+    if (step === null)
+      localStorage.removeItem(`${STORAGE_PREFIX}${executionId}.step`);
+    else
+      localStorage.setItem(
+        `${STORAGE_PREFIX}${executionId}.step`,
+        String(step),
+      );
+  } catch {
+    // Convenience only, like the checklist.
   }
 }
 
@@ -54,10 +86,14 @@ interface ReviewLine {
 }
 
 /**
- * Cooking view for one recipe execution (PLAN-0042): ingredient and stage checklists, then a
- * completion review in which the cook confirms what leaves the pantry. The proposal comes from the
- * backend and is only a starting point; nothing is deducted until the cook confirms, and the
- * backend commits the consumption, the leftovers, and the completion together.
+ * Cooking view for one recipe execution (PLAN-0042, guided since PLAN-0054 Phase 4).
+ *
+ * The cook goes through the preparation ("Antes de começar"), then one stage per screen with its
+ * look and a timer, and finishes with one tap ("Concluir") that uses the backend's proposal of
+ * what leaves the pantry. "Ajustar" opens the detailed review, and "Ver receita inteira" shows
+ * the full checklist view. The proposal is only a starting point: nothing is deducted until the
+ * cook confirms, and the backend commits the consumption, the leftovers, and the completion
+ * together. The screen is kept awake during preparation and the steps.
  */
 export function CookingPage() {
   const { executionId = "" } = useParams<{ executionId: string }>();
@@ -68,7 +104,10 @@ export function CookingPage() {
   const [status, setStatus] = useState<"loading" | "ready" | "error">(
     "loading",
   );
-  const [mode, setMode] = useState<"cooking" | "review">("cooking");
+  const [mode, setMode] = useState<
+    "prep" | "step" | "overview" | "finish" | "review"
+  >(() => (readStep(executionId) >= 0 ? "step" : "prep"));
+  const [step, setStep] = useState(() => Math.max(0, readStep(executionId)));
   const [checked, setChecked] = useState<Set<string>>(() =>
     readChecked(executionId),
   );
@@ -144,6 +183,19 @@ export function CookingPage() {
     [execution],
   );
 
+  useWakeLock(
+    status === "ready" &&
+      execution?.status === "InProgress" &&
+      (mode === "prep" || mode === "step"),
+  );
+
+  const goToStep = (next: number) => {
+    setStep(next);
+    setMode("step");
+    writeStep(executionId, next);
+    window.scrollTo?.({ top: 0 });
+  };
+
   const toggle = (key: string) =>
     setChecked((current) => {
       const next = new Set(current);
@@ -198,6 +250,7 @@ export function CookingPage() {
         { csrfToken: session.csrfToken, idempotencyKey: keyRef.current },
       );
       writeChecked(execution.executionId, null);
+      writeStep(execution.executionId, null);
       setExecution({ ...result, proposal: null });
       setDone({
         consumed: new Set(consumptions.map((item) => item.lotId)).size,
@@ -229,6 +282,7 @@ export function CookingPage() {
         csrfToken: session.csrfToken,
       });
       writeChecked(execution.executionId, null);
+      writeStep(execution.executionId, null);
       setExecution(result);
     } catch {
       setMessage("cooking.error.generic");
@@ -329,7 +383,102 @@ export function CookingPage() {
     );
   }
 
-  if (mode === "cooking") {
+  const guideLinks = (
+    <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm">
+      <button
+        type="button"
+        data-testid="cooking-overview"
+        className="font-semibold text-muted-foreground underline-offset-4 hover:underline"
+        onClick={() => setMode("overview")}
+      >
+        {t("cooking.guide.overview")}
+      </button>
+      <button
+        type="button"
+        data-testid="cooking-abandon"
+        className="font-semibold text-muted-foreground underline-offset-4 hover:underline"
+        disabled={busy}
+        onClick={() => void abandon()}
+      >
+        {t("cooking.abandon")}
+      </button>
+    </div>
+  );
+
+  if (parsed && mode === "prep") {
+    return (
+      <div data-testid="cooking-guided" className="space-y-6">
+        {header}
+        <PrepScreen
+          recipe={parsed}
+          checked={checked}
+          onToggle={toggle}
+          onStart={() =>
+            parsed.stages.length > 0 ? goToStep(0) : setMode("finish")
+          }
+        />
+        {guideLinks}
+      </div>
+    );
+  }
+
+  if (parsed && mode === "step" && parsed.stages[step]) {
+    return (
+      <div data-testid="cooking-guided" className="space-y-6">
+        <p className="text-sm text-muted-foreground">{execution.recipeName}</p>
+        <StepScreen
+          recipe={parsed}
+          index={step}
+          onPrevious={() => {
+            if (step === 0) {
+              setMode("prep");
+              writeStep(executionId, null);
+            } else goToStep(step - 1);
+          }}
+          onNext={() =>
+            step + 1 < parsed.stages.length
+              ? goToStep(step + 1)
+              : setMode("finish")
+          }
+        />
+        {guideLinks}
+      </div>
+    );
+  }
+
+  if (mode === "finish") {
+    return (
+      <div data-testid="cooking-guided" className="space-y-6">
+        <p className="text-sm text-muted-foreground">{execution.recipeName}</p>
+        <FinishScreen
+          usedNames={lines
+            .filter((line) => line.include)
+            .map((line) => line.name)}
+          servings={execution.servings}
+          leftoverPortions={leftover.enabled ? Number(leftover.portions) : 0}
+          onLeftover={(portions) =>
+            setLeftover({
+              ...leftover,
+              enabled: portions > 0,
+              portions: String(Math.max(1, portions)),
+            })
+          }
+          rating={rating}
+          onRating={setRating}
+          busy={busy}
+          canSubmit={Boolean(session.csrfToken)}
+          onDone={() => void confirm()}
+          onAdjust={() => {
+            setMessage(null);
+            setMode("review");
+          }}
+          message={message}
+        />
+      </div>
+    );
+  }
+
+  if (mode !== "review") {
     return (
       <div data-testid="cooking-page" className="space-y-6">
         {header}
@@ -348,10 +497,20 @@ export function CookingPage() {
           <Button
             type="button"
             data-testid="cooking-finish"
-            onClick={() => setMode("review")}
+            onClick={() => setMode("finish")}
           >
             {t("cooking.finish")}
           </Button>
+          {parsed ? (
+            <Button
+              type="button"
+              variant="secondary"
+              data-testid="cooking-guided-mode"
+              onClick={() => (step > 0 ? goToStep(step) : setMode("prep"))}
+            >
+              {t("cooking.guide.guided")}
+            </Button>
+          ) : null}
           <Button
             type="button"
             variant="secondary"
@@ -576,7 +735,7 @@ export function CookingPage() {
         <Button
           type="button"
           variant="secondary"
-          onClick={() => setMode("cooking")}
+          onClick={() => setMode("finish")}
         >
           {t("cooking.review.back")}
         </Button>

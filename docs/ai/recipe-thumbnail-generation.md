@@ -1,7 +1,7 @@
 # Recipe Thumbnail Generation and Cache Policy
 
-- **Status:** Ready for owner acceptance and implementation planning
-- **Last updated:** 2026-08-02
+- **Status:** Implemented in PLAN-0030 (2026-10-30), with the owner's provider decision below
+- **Last updated:** 2026-10-30
 - **Parent plan:** [`PLAN-0008`](../plans/PLAN-0008-define-lean-launch-ai-economics.md)
 - **Plan amendment:** [`PLAN-0008 recipe-thumbnail amendment`](../plans/PLAN-0008-amendment-recipe-thumbnail-policy.md)
 - **Recipe contract owner:** [`PLAN-0017`](../plans/PLAN-0017-define-ai-recipe-artifact-protocol.md), merged through PR #31
@@ -109,6 +109,22 @@ The descriptor must not include:
 
 A descriptor rejected by deterministic validation cannot be sent to the image provider. The recipe remains valid and uses the placeholder path.
 
+## Provider decision (owner, 2026-10-30)
+
+The owner chose OpenRouter's **FLUX 3 Image Klein** (`black-forest-labs/flux-3-image-klein`) at 16:9, 1024 × 576, "por causa do preço". It replaces the Gemini candidate below, which is kept for history.
+
+| Parameter | Value | Rule |
+|---|---|---|
+| Endpoint | `POST https://openrouter.ai/api/v1/images` | Through `OpenRouterImageProvider` only |
+| Model | `black-forest-labs/flux-3-image-klein` | Configuration (`Ai:Images:Model`) |
+| Size tier | `768` | About 768 × 768 pixels of area: 768² = 1024 × 576 |
+| Aspect ratio | `16:9` | Together with the tier, 1024 × 576 |
+| Price | US$ 0.008 per image (tier 768, read 2026-10-30) | Reserved before the call, settled at the reported cost |
+| Images per call | 1 | `n: 1` |
+| Retries | One, 10 minutes later, for transient failures only | Owned by the job; the adapter never retries |
+
+The API takes no explicit pixel size. The job reads the real size from the returned bytes and records any deviation from 1024 × 576. Implementation details, storage, serving, quotas, and limits are in [`PLAN-0030`](../plans/PLAN-0030-implement-recipe-thumbnail-generation.md). The storage is the host's state directory behind a replaceable port, not an S3-compatible store, because the deployment is a single host.
+
 ## Initial provider candidate
 
 The initial operation-specific candidate is **Nano Banana 2 Lite**, exposed through the Gemini API as:
@@ -162,7 +178,7 @@ The initial approved direction is:
 ### Canonical prompt template
 
 ```text
-Generate a realistic 16:9 recipe thumbnail showing one served plate of the following finished dish:
+Generate a natural, photorealistic 16:9 photograph of one served plate of the following finished dish:
 
 {appearanceDescription}
 
@@ -174,14 +190,16 @@ Texture and cooked-state cues: {textureAndDoneness}
 Garnish: {garnish}
 Dominant colors: {dominantColors}
 
-Use a modern wooden table and a light, predominantly white, softly blurred background. Keep the plate and food as the clear subject, with only a small margin outside the plate. Show the visible components and cooked states exactly as described. Do not add ingredients, garnish, side dishes, utensils, cutlery, napkins, hands, people, packaging, logos, labels, watermarks, or text. Do not imply nutrition, dietary suitability, restaurant quality, authenticity, freshness, doneness safety, or food-safety guarantees.
+Use a modern wooden table and a light, predominantly white, softly blurred background. Keep the plate and food as the clear subject, with only a small margin outside the plate. Make it look like a real photograph of home-cooked food: soft natural daylight, gentle shadows, true-to-life colors, real food textures with small natural imperfections, and a shallow depth of field. Avoid an illustrated, painted, cartoon, 3D-rendered, CGI, over-saturated, over-smoothed, glossy, or artificially perfect look. Show the visible components and cooked states exactly as described. Do not add ingredients, garnish, side dishes, utensils, cutlery, napkins, hands, people, packaging, logos, labels, watermarks, or text. Do not imply nutrition, dietary suitability, restaurant quality, authenticity, freshness, doneness safety, or food-safety guarantees.
 ```
 
-The initial template version is:
+The current template version is:
 
 ```text
-recipe-thumbnail-style-v1
+recipe-thumbnail-style-v2
 ```
+
+`v2` (2026-10-30, owner request) adds the natural-photography instruction and asks for a photorealistic photograph instead of a "realistic thumbnail". `v1` had neither. The version is part of the render key, so images rendered under `v1` are not reused for `v2`.
 
 Prompt wording may change only through evaluation and a prompt/style policy-version change.
 

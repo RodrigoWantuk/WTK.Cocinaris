@@ -34,6 +34,12 @@ export interface RecipeGenerationSession {
 export type RecipeOrigin = "generated" | "manual" | "derived" | string;
 
 /** Owned recipe library row (PLAN-0038). */
+/** A recipe's dish image (PLAN-0030); `url` is a same-origin API path when `ready`. */
+export interface RecipeThumbnail {
+  state: "ready" | "pending" | "none";
+  url: string | null;
+}
+
 export interface RecipeSummary {
   recipeId: string;
   name: string;
@@ -49,6 +55,7 @@ export interface RecipeSummary {
   timesCooked: number;
   lastCookedAt: string | null;
   lastRating: number | null;
+  thumbnail?: RecipeThumbnail;
 }
 
 /** One revision of an owned recipe with its library state. */
@@ -74,6 +81,7 @@ export interface RecipeDetail {
   /** `generated`, `manual`, `edited`, or `derived`. */
   revisionOrigin: string;
   changeReason: string | null;
+  thumbnail?: RecipeThumbnail;
 }
 
 /** Library filter; archived recipes are listed only on request. */

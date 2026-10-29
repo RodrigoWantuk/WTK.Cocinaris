@@ -151,6 +151,8 @@ export interface AdjustLotInput {
   availabilityState?: AvailabilityState | null;
   reasonCode?: string | null;
   note?: string | null;
+  /** For a correction only: the new value is the owner's approximation (PLAN-0054). */
+  estimated?: boolean;
 }
 
 /**

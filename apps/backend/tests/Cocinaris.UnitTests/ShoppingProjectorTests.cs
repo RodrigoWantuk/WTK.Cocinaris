@@ -20,12 +20,14 @@ public sealed class ShoppingProjectorTests
             Meal("Tutu", new DateOnly(2026, 10, 31), 2, 2, Ingredient("i1", "additional", " feijao   PRETO ", 200, "g"), Ingredient("i2", "assumption", "Sal", 5, "g"))
         };
 
-        var items = ShoppingProjector.Build(meals, [beans, Lot("Sal", 1000m, "Gram")], new HashSet<string>(["laranja|Unit"]));
+        var items = ShoppingProjector.Build(meals, [beans, Lot("Sal", 1000m, "Gram") with { QuantityIsEstimate = true }], new HashSet<string>(["laranja|Unit"]));
 
         var bean = items.Single(item => item.ItemKey == "feijao preto|Gram");
         Assert.Equal(("required", 450m, 300m, 150m), (bean.Category, bean.RequiredQuantity, bean.AvailableQuantity, bean.ToBuyQuantity));
         Assert.Equal(["Feijoada", "Tutu"], bean.Uses.Select(use => use.RecipeName));
         Assert.Equal("Feijão preto", bean.DisplayName);
+        Assert.False(bean.AvailableIsEstimate);
+        Assert.True(items.Single(item => item.ItemKey == "sal|Gram").AvailableIsEstimate);
         var orange = items.Single(item => item.ItemKey == "laranja|Unit");
         Assert.Equal(("required", 1m, true), (orange.Category, orange.ToBuyQuantity, orange.Checked));
         Assert.Equal(("available", 0m), (items.Single(item => item.ItemKey == "sal|Gram").Category, items.Single(item => item.ItemKey == "sal|Gram").ToBuyQuantity));

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import { RecipeThumbnail } from "./RecipeThumbnail";
 import { useRecipeRepository } from "./RecipeProvider";
 import { RecipeApiError, type RecipeSummary } from "@/contracts/recipes";
 import { useProductionI18n } from "@/app/i18n/ProductionI18nProvider";
@@ -241,19 +242,29 @@ export function RecipesListPage() {
                 <Link
                   to={`/app/receitas/${recipe.recipeId}`}
                   data-testid={`recipes-item-${recipe.recipeId}`}
-                  className="block flex-1 rounded-2xl p-4 hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="flex flex-1 items-center gap-4 rounded-2xl p-3 hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
-                  <h2 className="font-display text-xl">{recipe.name}</h2>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    {meta.join(" · ")}
-                  </p>
-                  {badge || recipe.archivedAt ? (
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {[badge, recipe.archivedAt ? t("library.archived") : null]
-                        .filter(Boolean)
-                        .join(" · ")}
+                  <RecipeThumbnail
+                    thumbnail={recipe.thumbnail ?? { state: "none", url: null }}
+                    name={recipe.name}
+                    className="w-28 shrink-0 sm:w-36"
+                  />
+                  <span className="min-w-0 flex-1">
+                    <h2 className="font-display text-xl">{recipe.name}</h2>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      {meta.join(" · ")}
                     </p>
-                  ) : null}
+                    {badge || recipe.archivedAt ? (
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {[
+                          badge,
+                          recipe.archivedAt ? t("library.archived") : null,
+                        ]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </p>
+                    ) : null}
+                  </span>
                 </Link>
                 {recipe.archivedAt ? null : (
                   <button

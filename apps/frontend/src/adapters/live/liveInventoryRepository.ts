@@ -350,6 +350,7 @@ export function createLiveInventoryRepository(options?: {
         availabilityState: input.availabilityState ?? null,
         reasonCode: input.reasonCode ?? null,
         note: input.note ?? null,
+        ...(input.estimated ? { estimated: true } : {}),
       };
       const { data, error, response } = await client.POST(
         "/api/v1/inventory/lots/{lotId}/adjustments",

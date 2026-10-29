@@ -155,7 +155,8 @@ public sealed class PlanningApiService(MenuPlanningApplicationService applicatio
                 item.AvailableQuantity,
                 item.ToBuyQuantity,
                 item.Checked,
-                item.Uses.Select(use => new ShoppingUseResponse(use.EntryId, use.RecipeName, use.PlannedDate, use.Quantity, use.Optional)).ToList())).ToList()));
+                item.Uses.Select(use => new ShoppingUseResponse(use.EntryId, use.RecipeName, use.PlannedDate, use.Quantity, use.Optional)).ToList(),
+                item.AvailableIsEstimate)).ToList()));
 
     /// <summary>Checks or unchecks a shopping line.</summary>
     public async Task<IResult> SetCheckedAsync(Guid menuId, ShoppingCheckRequest body, HttpContext context, CancellationToken cancellationToken) =>
@@ -312,7 +313,8 @@ public sealed record ShoppingListResponse(Guid MenuId, DateOnly From, int MealCo
 /// <param name="ToBuyQuantity">What is left to buy, never negative; no package size is assumed.</param>
 /// <param name="Checked">Whether the owner checked it off.</param>
 /// <param name="Uses">Meals that need it.</param>
-public sealed record ShoppingItemResponse(string ItemKey, string DisplayName, string Unit, string Category, decimal RequiredQuantity, decimal AvailableQuantity, decimal ToBuyQuantity, bool Checked, IReadOnlyList<ShoppingUseResponse> Uses);
+/// <param name="AvailableIsEstimate">Whether <paramref name="AvailableQuantity"/> includes an estimated pantry amount.</param>
+public sealed record ShoppingItemResponse(string ItemKey, string DisplayName, string Unit, string Category, decimal RequiredQuantity, decimal AvailableQuantity, decimal ToBuyQuantity, bool Checked, IReadOnlyList<ShoppingUseResponse> Uses, bool AvailableIsEstimate);
 
 /// <summary>One meal that needs a shopping line.</summary>
 public sealed record ShoppingUseResponse(Guid EntryId, string RecipeName, DateOnly? PlannedDate, decimal Quantity, bool Optional);

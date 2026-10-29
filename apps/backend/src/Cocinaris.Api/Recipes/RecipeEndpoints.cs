@@ -268,6 +268,7 @@ public sealed record RecipeCandidateResponse(
 /// <param name="TimesCooked">Completed cooking sessions.</param>
 /// <param name="LastCookedAt">Completion instant of the latest session.</param>
 /// <param name="LastRating">Rating given in the latest session, if any.</param>
+/// <param name="Thumbnail">Dish image of the current revision (PLAN-0030).</param>
 public sealed record RecipeSummaryResponse(
     Guid RecipeId,
     string Name,
@@ -281,7 +282,16 @@ public sealed record RecipeSummaryResponse(
     DateTimeOffset UpdatedAt,
     int TimesCooked,
     DateTimeOffset? LastCookedAt,
-    int? LastRating);
+    int? LastRating,
+    RecipeThumbnailResponse? Thumbnail = null);
+
+/// <summary>
+/// A recipe's dish image (PLAN-0030): <c>ready</c> with a same-origin <paramref name="Url"/>,
+/// <c>pending</c> while it is generated, or <c>none</c>, which shows the placeholder.
+/// </summary>
+/// <param name="State"><c>ready</c>, <c>pending</c>, or <c>none</c>.</param>
+/// <param name="Url">Image URL when ready; it changes when the image changes, so it may be cached.</param>
+public sealed record RecipeThumbnailResponse(string State, string? Url);
 
 /// <summary>HTTP projection of one revision of an owned recipe with its library state.</summary>
 /// <param name="RecipeId">Recipe identifier.</param>
@@ -302,6 +312,7 @@ public sealed record RecipeSummaryResponse(
 /// <param name="DerivationReason">How a derived recipe differs from its parent.</param>
 /// <param name="RevisionOrigin"><c>generated</c>, <c>manual</c>, <c>edited</c>, or <c>derived</c>.</param>
 /// <param name="ChangeReason">Reason given for an edited revision.</param>
+/// <param name="Thumbnail">Dish image of this revision (PLAN-0030).</param>
 public sealed record RecipeDetailResponse(
     Guid RecipeId,
     int RevisionNumber,
@@ -320,4 +331,5 @@ public sealed record RecipeDetailResponse(
     int? ParentRevisionNumber,
     string? DerivationReason,
     string RevisionOrigin,
-    string? ChangeReason);
+    string? ChangeReason,
+    RecipeThumbnailResponse? Thumbnail = null);

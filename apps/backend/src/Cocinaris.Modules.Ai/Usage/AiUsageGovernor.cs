@@ -31,6 +31,14 @@ public sealed class AiUsageGovernor(IAiUsageLedgerStore store, AiUsageOptions op
     public Task SettleAsync(Guid reservationId, int settledUnits, AiCallUsage usage, CancellationToken cancellationToken) =>
         store.SettleAsync(reservationId, settledUnits, usage, pricing.CostMicroUsd(usage.Model, usage.PromptTokens, usage.CompletionTokens), timeProvider.GetUtcNow(), cancellationToken);
 
+    /// <summary>Settles a priced-per-call operation (an image) at the cost the provider reported (PLAN-0030).</summary>
+    public Task SettleAtCostAsync(Guid reservationId, int settledUnits, AiCallUsage usage, long costMicroUsd, CancellationToken cancellationToken) =>
+        store.SettleAsync(reservationId, settledUnits, usage, costMicroUsd, timeProvider.GetUtcNow(), cancellationToken);
+
+    /// <summary>Releases a priced-per-call operation, recording what a billed but rejected result cost.</summary>
+    public Task ReleaseAtCostAsync(Guid reservationId, AiCallUsage? usage, long costMicroUsd, CancellationToken cancellationToken) =>
+        store.ReleaseAsync(reservationId, usage, costMicroUsd, timeProvider.GetUtcNow(), cancellationToken);
+
     /// <summary>Releases a reservation without usage credits; provider tokens spent on failed attempts are still costed.</summary>
     public Task ReleaseAsync(Guid reservationId, CancellationToken cancellationToken, AiCallUsage? usage = null) =>
         store.ReleaseAsync(reservationId, usage, usage is null ? 0 : pricing.CostMicroUsd(usage.Model, usage.PromptTokens, usage.CompletionTokens), timeProvider.GetUtcNow(), cancellationToken);

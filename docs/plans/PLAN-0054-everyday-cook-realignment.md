@@ -7,7 +7,7 @@
 - **Created:** 2026-10-29
 - **Last updated:** 2026-10-29
 - **Branch:** `agent/plan-0054-everyday-cook-realignment` (Phase 0)
-- **Pull request:** Draft, opened after this commit
+- **Pull request:** #57 squash-merged at the Phase 2a head (`1cb3970`, merge `6c8f56c`); the later commits (Phase 2b, 3, 4) are delivered unchanged in draft PR #58 from `agent/plan-0054-phases-2-4-and-plan-0030`
 - **Decisions:** [`docs/product/everyday-cook-realignment-2026-10-29.md`](../product/everyday-cook-realignment-2026-10-29.md)
 - **Audit:** [`docs/design/ux-audit-2026-10-29.md`](../design/ux-audit-2026-10-29.md)
 - **Design proposal:** design canvas "Cocinaris — nova direção de design" (private claude.ai artifact, owner's account: https://claude.ai/artifact/N7grShNyoauYepVVjN7mEs)
@@ -79,29 +79,44 @@ Phase 5 is large and changes the data model. It follows Phases 1–4 because tho
   - "Salvar e adicionar outro" stays on the form for the next item.
   - Package, date, and notes fold under "Mais detalhes".
 - **Pantry list.** An estimate shows as "~500 g". The copy says "itens" and "Adicionar" instead of "lote".
-- **Not yet done:**
-  - The lot detail's correction has no "this is an estimate" choice yet; the API supports it.
-  - The menu, shopping, and AI context do not show or receive the estimate mark; they use the value.
-  - Hoje, recipe, and menu screens still have their boxed sections (Phase 4 rebuilds recipe and cooking).
+- **Completed in the second part:**
+  - The lot detail's correction has the checkbox "É uma estimativa (não pesei nem contei)".
+  - The shopping list's "tem" shows "~" when a matched lot is an estimate (`availableIsEstimate`).
+  - The AI context marks estimated items with `quantityIsEstimate`, and the suggest policy then adds `estimatedQuantities`. Both are written only when an estimate exists, so exact envelopes are unchanged.
+- **Not done (accepted):**
+  - Menu readiness and reservations use the estimated value without a mark; the lot itself shows "~".
+  - Hoje, recipe, and menu screens keep their boxed sections until Phase 4.
+
+## Phase 3 scope delivered: dual measures
+
+- **Rules.** The rules are in [`docs/domain/kitchen-measures.md`](../domain/kitchen-measures.md). The conversion is deterministic (`lib/kitchenMeasures.ts`), uses a curated density and piece-weight table in pt, en, and es, and never stores kitchen measures.
+- **Recipe page and cooking view.** Every ingredient shows its metric amount and, when compatible, the kitchen measure ("180 g · ≈ 1 xícara").
+- **Editor.** The editor accepts xícara, colher de sopa, and colher de chá. A solid in the table is saved as grams through its density, so it still matches the pantry; a liquid or an unknown ingredient is saved as milliliters. A live hint shows the other measure.
+- **Change from the plan's wording.** No model proposes a measure, because the deterministic table makes that unnecessary.
+- **Not done:** imperial and °F wait for the region (Phase 6).
+
+## Phase 4 scope delivered: beginner cooking mode
+
+- **Guided cooking.** The cooking view has a preparation screen, then one stage per screen with a progress bar, large text, "Como deve ficar", and a timer that beeps and vibrates. The screen is kept awake during preparation and the steps, and the step is resumed after a reload. The finish takes one tap (the proposal as is, leftover portions, a rating), and "Ajustar" opens the detailed review. The rules are in [`docs/domain/recipes-and-cooking.md`](../domain/recipes-and-cooking.md#guided-cooking-for-beginners-plan-0054-phase-4).
+- **Recipe page.** Ingredients are rows with both measures, the page shows the total time, and "Cozinhar agora" is large with the secondary actions smaller.
+- **Defect found and fixed.** A missing saved step would have resumed at step 1, because `Number(null)` is 0.
+- **Not done:**
+  - Help for a missing ingredient or a problem during cooking needs a governed AI operation (PLAN-0042 Phase 2, PLAN-0045).
+  - Dish images wait for the owner's provider decision (PLAN-0030).
+  - Hoje and the menu page keep their boxed sections.
 
 ## Execution state
 
-- **Current run delivery target:** Phase 2 (estimated amounts and quick add).
-- **Current checkpoint:** Phase 2 first part delivered as above.
+- **Current run delivery target:** finish Phase 2, then Phases 3 and 4 (owner, 2026-10-29). All three are delivered.
+- **Current checkpoint:** Phase 4 complete, with the limits above.
 - **Validation:**
-  - **Backend unit tests:** the inventory domain and application tests pass (21), including the new estimate tests (consumption beyond an estimate; correction and split keep or set the mark).
-  - **Backend integration tests:** `InventoryLifecycleTransitionApiTests` and `PostgreSqlMigrationTests` pass (28) against PostgreSQL. The new test covers create, consumption past the estimate, rejecting `estimated` on Discard, and an exact correction.
-  - **Frontend:** typecheck is clean, and Vitest passes 55 files and 450 tests, including the half-package, little-without-size, and add-another cases.
-  - **Build:** the frontend build passes. OpenAPI lint shows the 6 known warnings.
-  - **Visual check:** the add screen and the pantry list were captured on the replica.
-- **Not run:** the full backend suites.
-- **Exact next action:** finish Phase 2.
-  - Add the estimate choice to the lot detail's correction.
-  - Show "~" in the shopping list's "tem" and in the menu reservations.
-  - Pass the estimate mark to the AI context.
-
-  Then Phase 3: dual measures.
-- **Blockers:** none.
+  - **Frontend:** typecheck and lint are clean, and Prettier and the guards pass. Vitest passes 461 tests, including the new guided path (preparation, step and timer, one-tap finish with leftover and rating) and the overview and review paths.
+  - **Replica:** phone captures of the recipe page, preparation, step, and finish screens.
+  - **Backend:** no change in Phases 3–4.
+- **Exact next action:**
+  - The owner tests Phases 1–4 on production.
+  - Then Phase 5, the shared household: the superseding ADR for ownership (`AGENTS.md` §4) first, then members, invitations, and the shared pantry, menu, and shopping. Phase 5 needs owner review of the ADR before implementation.
+- **Blockers:** Phase 5 needs the owner's agreement with the ownership ADR.
 
 ## Progress log
 
@@ -121,3 +136,26 @@ Phase 5 is large and changes the data model. It follows Phases 1–4 because tho
 
 - Phase 2 first part: approximate pantry amounts end to end (domain, migration, API, client), a quick add screen in everyday words with common items, and save-and-add-another. The pantry list now shows "~" for estimates.
 - Backend tests pass: 21 unit and 28 integration. Frontend tests pass: 450.
+
+### 2026-10-29T23:50:00Z — Claude Code
+
+- Phase 2 complete:
+  - an estimated correction on the lot detail;
+  - "~" in the shopping list;
+  - the estimate mark in the AI suggest context.
+- Tests pass: backend 21 targeted, frontend 451.
+
+### 2026-10-30T00:30:00Z — Claude Code
+
+- Phase 3: household measures next to every metric recipe amount, and cups and spoons accepted in the editor and saved as grams or milliliters, from a deterministic curated table.
+- Frontend tests pass: 460.
+
+### 2026-10-30T01:20:00Z — Claude Code
+
+- Phase 4: guided cooking (preparation, one step per screen with a timer, wake lock, resume, one-tap finish) and the recipe page in the row style.
+- Fixed a resume defect found by the new test.
+- Frontend tests pass: 461.
+
+### 2026-10-30 — Claude Code
+
+- PR #57 was squash-merged at its Phase 2a head (`1cb3970`), so the commits for Phase 2b, Phase 3, Phase 4, and PLAN-0030 never reached `main`. They were rebased unchanged onto `main` (the tree is identical to the former branch head `1f6093a`) as `agent/plan-0054-phases-2-4-and-plan-0030`, in draft PR #58. Next: the owner tests and merges PR #58; Phase 5 is unchanged.

@@ -730,6 +730,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/recipes/{recipeId}/thumbnail": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** GET /api/v1/recipes/{recipeId}/thumbnail */
+        get: operations["getApiV1RecipesRecipeIdThumbnail"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/session": {
         parameters: {
             query?: never;
@@ -1594,6 +1611,7 @@ export interface components {
              * @description Servings the quantities are written for.
              */
             servings: number | string;
+            thumbnail?: null | components["schemas"]["RecipeThumbnailResponse"];
             /** @description Thumbnail descriptor; `{}` for recipes written by the owner. */
             thumbnailVisualJson: string;
             /**
@@ -1836,6 +1854,7 @@ export interface components {
              * @description Current revision servings.
              */
             servings: number | string;
+            thumbnail?: null | components["schemas"]["RecipeThumbnailResponse"];
             /**
              * Format: int32
              * @description Completed cooking sessions.
@@ -1846,6 +1865,14 @@ export interface components {
              * @description Instant of the last revision.
              */
             updatedAt: string;
+        };
+        /** @description A recipe's dish image (PLAN-0030): `ready` with a same-origin Url,
+         *     `pending` while it is generated, or `none`, which shows the placeholder. */
+        RecipeThumbnailResponse: {
+            /** @description `ready`, `pending`, or `none`. */
+            state: string;
+            /** @description Image URL when ready; it changes when the image changes, so it may be cached. */
+            url: null | string;
         };
         /** @description Optional body for requesting candidates; without it the request is cook-now. */
         RequestCandidatesRequest: {
@@ -1904,6 +1931,8 @@ export interface components {
         };
         /** @description One shopping line; quantities are in Unit (`Gram`, `Milliliter`, `Unit`). */
         ShoppingItemResponse: {
+            /** @description Whether AvailableQuantity includes an estimated pantry amount. */
+            availableIsEstimate: boolean;
             /**
              * Format: double
              * @description What the pantry holds now.
@@ -5835,6 +5864,55 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["RecipeDetailResponse"];
                 };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    getApiV1RecipesRecipeIdThumbnail: {
+        parameters: {
+            query?: {
+                revision?: number | string;
+            };
+            header?: never;
+            path: {
+                recipeId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Authentication is required. */
             401: {

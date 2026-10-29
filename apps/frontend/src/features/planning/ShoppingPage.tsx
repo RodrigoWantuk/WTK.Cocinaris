@@ -223,7 +223,9 @@ function ShoppingRow({
           <p className="text-xs text-muted-foreground">
             {t("shopping.need", {
               need: amount(item.requiredQuantity),
-              have: amount(item.availableQuantity),
+              have:
+                (item.availableIsEstimate ? "~" : "") +
+                amount(item.availableQuantity),
             })}
           </p>
           <p className="text-xs text-muted-foreground">

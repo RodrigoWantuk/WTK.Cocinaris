@@ -83,6 +83,9 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
     /// <summary>Gets the owner's pantry lot protections (PLAN-0029 Phase 3).</summary>
     public DbSet<LotProtectionRecord> LotProtections => Set<LotProtectionRecord>();
 
+    /// <summary>Gets generated recipe images and their generation jobs (PLAN-0030).</summary>
+    public DbSet<RecipeThumbnailRecord> RecipeThumbnails => Set<RecipeThumbnailRecord>();
+
     /// <inheritdoc />
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -478,6 +481,24 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             // A protection is a planning decision about a lot; it disappears with the lot row.
             entity.HasOne<LotRecord>().WithMany().HasForeignKey(x => x.LotId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne<InternalUser>().WithMany().HasForeignKey(x => x.OwnerUserId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<RecipeThumbnailRecord>(entity =>
+        {
+            entity.ToTable("recipe_thumbnails", "recipes", table =>
+            {
+                table.HasCheckConstraint("ck_recipe_thumbnails_state", "\"State\" IN ('Pending', 'Generating', 'Ready', 'Failed')");
+                table.HasCheckConstraint("ck_recipe_thumbnails_ready_file", "(\"State\" = 'Ready') = (\"FileName\" IS NOT NULL)");
+            });
+            entity.HasKey(x => x.RenderKey);
+            entity.Property(x => x.RenderKey).HasMaxLength(64);
+            entity.Property(x => x.VisualIdentityKey).HasMaxLength(64);
+            entity.Property(x => x.DescriptorJson).HasColumnType("jsonb");
+            entity.Property(x => x.State).HasMaxLength(16);
+            entity.Property(x => x.FileName).HasMaxLength(80);
+            entity.Property(x => x.MediaType).HasMaxLength(32);
+            entity.Property(x => x.FailureCode).HasMaxLength(40);
+            entity.HasIndex(x => new { x.State, x.NextAttemptAt });
         });
 
         modelBuilder.Entity<ShoppingCheckRecord>(entity =>

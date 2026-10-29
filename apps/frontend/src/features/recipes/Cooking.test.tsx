@@ -205,14 +205,21 @@ describe("cooking a recipe", () => {
       repoWith({ getExecution: async () => execution(), completeExecution }),
     );
 
+    await user.click(await screen.findByTestId("cooking-overview"));
     expect(
       await screen.findByText("Junte o arroz e mexa por 2 minutos."),
     ).toBeInTheDocument();
     expect(screen.getByText(/grãos translúcidos/)).toBeInTheDocument();
+    const household = screen.getAllByTestId("recipe-ingredient-household");
+    expect(household.map((node) => node.textContent)).toEqual([
+      " · ≈ 1 cup",
+      " · ≈ ¾ teaspoon",
+    ]);
     await user.click(screen.getByRole("checkbox", { name: "Refogar" }));
     expect(localStorage.getItem("cocinaris.cooking.exec-1")).toContain("s:0");
 
     await user.click(screen.getByTestId("cooking-finish"));
+    await user.click(screen.getByTestId("cooking-adjust"));
     const lines = screen.getAllByTestId("cooking-review-line");
     expect(lines).toHaveLength(2);
     expect(within(lines[1]!).getByRole("checkbox")).not.toBeChecked();
@@ -247,6 +254,55 @@ describe("cooking a recipe", () => {
     expect(localStorage.getItem("cocinaris.cooking.exec-1")).toBeNull();
   });
 
+  it("guides preparation, one step per screen with a timer, and finishes in one tap", async () => {
+    const user = userEvent.setup();
+    const completeExecution = vi.fn(async () =>
+      execution({ status: "Completed", proposal: null }),
+    );
+    renderCooking(
+      repoWith({ getExecution: async () => execution(), completeExecution }),
+    );
+
+    const prep = await screen.findByTestId("cooking-prep");
+    expect(prep).toHaveTextContent("Before you start");
+    expect(prep).toHaveTextContent("180 g · ≈ 1 cup");
+    expect(prep).toHaveTextContent("Panela");
+    await user.click(screen.getByTestId("cooking-start"));
+
+    const step = screen.getByTestId("cooking-step");
+    expect(step).toHaveTextContent("Step 1 of 1");
+    expect(step).toHaveTextContent("How it should look");
+    expect(step).toHaveTextContent("grãos translúcidos");
+    expect(screen.getByTestId("cooking-timer-start")).toHaveTextContent(
+      "5 min timer",
+    );
+    expect(localStorage.getItem("cocinaris.cooking.exec-1.step")).toBe("0");
+
+    await user.click(screen.getByTestId("cooking-finish"));
+    expect(screen.getByTestId("cooking-finish-uses")).toHaveTextContent(
+      "out of the pantry: Arroz.",
+    );
+    await user.click(screen.getByTestId("cooking-leftover-1"));
+    await user.click(screen.getByTestId("cooking-rating-5"));
+    await user.click(screen.getByTestId("cooking-done"));
+
+    await waitFor(() => expect(completeExecution).toHaveBeenCalledTimes(1));
+    expect(completeExecution).toHaveBeenCalledWith(
+      "exec-1",
+      {
+        consumptions: [
+          { lotId: "lot-rice", quantity: 180, unit: "Gram", version: "v-rice" },
+        ],
+        leftover: { portions: 1, storageLocation: "Refrigerator", useBy: null },
+        rating: 5,
+        notes: null,
+      },
+      expect.objectContaining({ csrfToken: "csrf-test" }),
+    );
+    expect(await screen.findByTestId("cooking-finished")).toBeInTheDocument();
+    expect(localStorage.getItem("cocinaris.cooking.exec-1.step")).toBeNull();
+  });
+
   it("refuses more than the lot holds and reloads the proposal when the pantry changed", async () => {
     const user = userEvent.setup();
     const getExecution = vi.fn(async () => execution());
@@ -255,7 +311,9 @@ describe("cooking a recipe", () => {
     });
     renderCooking(repoWith({ getExecution, completeExecution }));
 
-    await user.click(await screen.findByTestId("cooking-finish"));
+    await user.click(await screen.findByTestId("cooking-overview"));
+    await user.click(screen.getByTestId("cooking-finish"));
+    await user.click(screen.getByTestId("cooking-adjust"));
     const quantity = within(
       screen.getAllByTestId("cooking-review-line")[0]!,
     ).getByRole("textbox");

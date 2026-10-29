@@ -1,5 +1,6 @@
 using Cocinaris.Modules.Identity;
 using Cocinaris.Modules.Recipes.Domain;
+using Cocinaris.Modules.Recipes.Thumbnails;
 
 namespace Cocinaris.Modules.Recipes.Application;
 
@@ -9,7 +10,7 @@ namespace Cocinaris.Modules.Recipes.Application;
 /// <param name="Search">Case-insensitive fragment of the current name.</param>
 public sealed record RecipeLibraryQuery(bool Archived, bool FavoritesOnly, string? Search);
 
-/// <summary>One library row: current revision, organization flags, and cooking statistics.</summary>
+/// <summary>One library row: current revision, organization flags, cooking statistics, and the current revision's visual descriptor.</summary>
 public sealed record RecipeLibraryItem(
     Guid RecipeId,
     string Name,
@@ -23,7 +24,8 @@ public sealed record RecipeLibraryItem(
     DateTimeOffset UpdatedAt,
     int TimesCooked,
     DateTimeOffset? LastCookedAt,
-    int? LastRating);
+    int? LastRating,
+    string ThumbnailVisualJson = "");
 
 /// <summary>One stored revision with its provenance.</summary>
 public sealed record RecipeRevisionContent(
@@ -98,7 +100,8 @@ public sealed record RecipeLibraryDetailView(
     int? ParentRevisionNumber,
     string? DerivationReason,
     string RevisionOrigin,
-    string? ChangeReason);
+    string? ChangeReason,
+    RecipeThumbnailView? Thumbnail = null);
 
 /// <summary>Library row projection.</summary>
 public sealed record RecipeSummaryView(
@@ -114,7 +117,8 @@ public sealed record RecipeSummaryView(
     DateTimeOffset UpdatedAt,
     int TimesCooked,
     DateTimeOffset? LastCookedAt,
-    int? LastRating);
+    int? LastRating,
+    RecipeThumbnailView? Thumbnail = null);
 
 /// <summary>One revision in a recipe's history.</summary>
 public sealed record RecipeRevisionEntryView(int RevisionNumber, string Name, string Origin, string? ChangeReason, Guid? SourceExecutionId, DateTimeOffset CreatedAt);
@@ -155,7 +159,8 @@ public sealed class RecipeLibraryApplicationService(
     ICurrentUserAccessor currentUser,
     IRecipeLibraryStore store,
     IRecipeExecutionStore executions,
-    TimeProvider timeProvider)
+    TimeProvider timeProvider,
+    RecipeThumbnailService? thumbnails = null)
 {
     private const int CookingHistoryLimit = 20;
     private const int MaxSearchLength = 80;
@@ -171,6 +176,9 @@ public sealed class RecipeLibraryApplicationService(
 
         var user = await currentUser.GetCurrentAsync(cancellationToken);
         var items = await store.ListAsync(user.Id, query with { Search = search }, cancellationToken);
+        var images = thumbnails is null
+            ? new Dictionary<Guid, RecipeThumbnailView>()
+            : await thumbnails.ResolveAsync(user.Id, items.ToDictionary(item => item.RecipeId, item => item.ThumbnailVisualJson), cancellationToken);
         return RecipeApplicationResult<IReadOnlyList<RecipeSummaryView>>.Succeeded(items.Select(item => new RecipeSummaryView(
             item.RecipeId,
             item.Name,
@@ -184,7 +192,8 @@ public sealed class RecipeLibraryApplicationService(
             item.UpdatedAt,
             item.TimesCooked,
             item.LastCookedAt,
-            item.LastRating)).ToList());
+            item.LastRating,
+            images.GetValueOrDefault(item.RecipeId, RecipeThumbnailView.None))).ToList());
     }
 
     /// <summary>Gets an owned recipe at its current revision, or at <paramref name="revisionNumber"/>.</summary>
@@ -198,9 +207,37 @@ public sealed class RecipeLibraryApplicationService(
         }
 
         var revision = await store.FindRevisionAsync(user.Id, recipeId, revisionNumber ?? recipe.CurrentRevisionNumber, cancellationToken);
-        return revision is null
-            ? Failure<RecipeLibraryDetailView>("resource_not_found", "The recipe revision was not found.")
-            : RecipeApplicationResult<RecipeLibraryDetailView>.Succeeded(View(recipe, revision));
+        if (revision is null)
+        {
+            return Failure<RecipeLibraryDetailView>("resource_not_found", "The recipe revision was not found.");
+        }
+
+        var image = thumbnails is null
+            ? RecipeThumbnailView.None
+            : (await thumbnails.ResolveAsync(user.Id, new Dictionary<int, string> { [revision.RevisionNumber] = revision.ThumbnailVisualJson }, cancellationToken))[revision.RevisionNumber];
+        return RecipeApplicationResult<RecipeLibraryDetailView>.Succeeded(View(recipe, revision) with { Thumbnail = image });
+    }
+
+    /// <summary>
+    /// Opens the image of an owned recipe's revision (the current one when null). Ownership is
+    /// checked first, so another owner's recipe is indistinguishable from a missing one.
+    /// </summary>
+    public async Task<(Stream Content, string MediaType)?> OpenThumbnailAsync(Guid recipeId, int? revisionNumber, CancellationToken cancellationToken)
+    {
+        if (thumbnails is null)
+        {
+            return null;
+        }
+
+        var user = await currentUser.GetCurrentAsync(cancellationToken);
+        var recipe = await store.FindAsync(user.Id, recipeId, cancellationToken);
+        if (recipe is null)
+        {
+            return null;
+        }
+
+        var revision = await store.FindRevisionAsync(user.Id, recipeId, revisionNumber ?? recipe.CurrentRevisionNumber, cancellationToken);
+        return revision is null ? null : await thumbnails.OpenAsync(revision.ThumbnailVisualJson, cancellationToken);
     }
 
     /// <summary>Gets an owned recipe's revisions and finished cooking sessions.</summary>
@@ -298,7 +335,7 @@ public sealed class RecipeLibraryApplicationService(
             return Failure<RecipeLibraryDetailView>("precondition_failed", "The recipe has a newer revision. Reload it before saving.");
         }
 
-        return RecipeApplicationResult<RecipeLibraryDetailView>.Succeeded(View(recipe, Content(revision)), RecipeApplicationSuccess.Created);
+        return RecipeApplicationResult<RecipeLibraryDetailView>.Succeeded(await WithThumbnailAsync(user.Id, View(recipe, Content(revision)), cancellationToken), RecipeApplicationSuccess.Created);
     }
 
     /// <summary>Creates a new recipe derived from a revision of an owned recipe. The parent is not changed.</summary>
@@ -375,14 +412,14 @@ public sealed class RecipeLibraryApplicationService(
         await store.SaveOrganizationAsync(recipe, cancellationToken);
         var revision = await store.FindRevisionAsync(user.Id, recipe.Id, recipe.CurrentRevisionNumber, cancellationToken)
             ?? throw new InvalidOperationException("The current revision of a stored recipe is missing.");
-        return RecipeApplicationResult<RecipeLibraryDetailView>.Succeeded(View(recipe, revision));
+        return RecipeApplicationResult<RecipeLibraryDetailView>.Succeeded(await WithThumbnailAsync(user.Id, View(recipe, revision), cancellationToken));
     }
 
     private async Task<RecipeApplicationResult<RecipeLibraryDetailView>> AddAsync(Recipe recipe, RecipeRevision revision, Guid key, Guid? parentRecipeId, CancellationToken cancellationToken)
     {
         if (await store.TryAddAsync(recipe, revision, cancellationToken))
         {
-            return RecipeApplicationResult<RecipeLibraryDetailView>.Succeeded(View(recipe, Content(revision)), RecipeApplicationSuccess.Created);
+            return RecipeApplicationResult<RecipeLibraryDetailView>.Succeeded(await WithThumbnailAsync(recipe.OwnerUserId, View(recipe, Content(revision)), cancellationToken), RecipeApplicationSuccess.Created);
         }
 
         // A concurrent retry with the same key won the insert; return what it created.
@@ -405,7 +442,7 @@ public sealed class RecipeLibraryApplicationService(
 
         var revision = await store.FindRevisionAsync(ownerUserId, existing.Id, 1, cancellationToken)
             ?? throw new InvalidOperationException("The first revision of a stored recipe is missing.");
-        return RecipeApplicationResult<RecipeLibraryDetailView>.Succeeded(View(existing, revision));
+        return RecipeApplicationResult<RecipeLibraryDetailView>.Succeeded(await WithThumbnailAsync(ownerUserId, View(existing, revision), cancellationToken));
     }
 
     // Only a finished session of the same recipe can be cited as the source of a change.
@@ -421,6 +458,12 @@ public sealed class RecipeLibraryApplicationService(
             ? Failure<RecipeLibraryDetailView>("validation_failed", "The cooking session must be a completed session of this recipe.", "sourceExecutionId")
             : null;
     }
+
+    // Every detail a library call returns carries its image, so a favorite or an edit keeps it on screen.
+    private async Task<RecipeLibraryDetailView> WithThumbnailAsync(Guid ownerUserId, RecipeLibraryDetailView view, CancellationToken cancellationToken) =>
+        thumbnails is null
+            ? view
+            : view with { Thumbnail = (await thumbnails.ResolveAsync(ownerUserId, new Dictionary<int, string> { [view.RevisionNumber] = view.ThumbnailVisualJson }, cancellationToken))[view.RevisionNumber] };
 
     private static RecipeLibraryDetailView View(Recipe recipe, RecipeRevisionContent revision) => new(
         recipe.Id,
