@@ -16,6 +16,7 @@ import {
   localIsoDate,
 } from "./planningDates";
 import { usePlanningRepository } from "./PlanningProvider";
+import { AiMealSuggestion } from "./AiMealSuggestion";
 import { formatLocaleDecimal } from "@/lib/localeDecimal";
 
 const FLEXIBLE = "flexible";
@@ -38,6 +39,7 @@ export function MenuPage() {
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [addingTo, setAddingTo] = useState<string | null>(null);
+  const [suggestingFor, setSuggestingFor] = useState<string | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
 
   useEffect(() => {
@@ -202,22 +204,41 @@ export function MenuPage() {
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h2 className="font-display text-lg">{group.title}</h2>
               {editable ? (
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="secondary"
-                  data-testid={`menu-add-${group.key}`}
-                  onClick={() =>
-                    setAddingTo((current) =>
-                      current === group.key ? null : group.key,
-                    )
-                  }
-                >
-                  {t("planning.addMeal")}
-                </Button>
+                <div className="flex flex-wrap gap-1">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    data-testid={`menu-add-${group.key}`}
+                    onClick={() => {
+                      setSuggestingFor(null);
+                      setAddingTo((current) =>
+                        current === group.key ? null : group.key,
+                      );
+                    }}
+                  >
+                    {t("planning.addMeal")}
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    data-testid={`menu-ai-${group.key}`}
+                    onClick={() => {
+                      setAddingTo(null);
+                      setSuggestingFor((current) =>
+                        current === group.key ? null : group.key,
+                      );
+                    }}
+                  >
+                    {t("planning.ai.open")}
+                  </Button>
+                </div>
               ) : null}
             </div>
-            {group.entries.length === 0 && addingTo !== group.key ? (
+            {group.entries.length === 0 &&
+            addingTo !== group.key &&
+            suggestingFor !== group.key ? (
               <p className="text-sm text-muted-foreground">
                 {t(
                   group.key === FLEXIBLE
@@ -261,6 +282,30 @@ export function MenuPage() {
                 />
               ))}
             </ul>
+            {suggestingFor === group.key ? (
+              <AiMealSuggestion
+                menuId={menu.menuId}
+                plannedDate={group.key === FLEXIBLE ? null : group.key}
+                initialServings={2}
+                onCancel={() => setSuggestingFor(null)}
+                onChosen={async (input) => {
+                  const added = await mutate((csrfToken) =>
+                    repo.addEntry(
+                      menu.menuId,
+                      {
+                        recipeId: input.recipeId,
+                        plannedDate: group.key === FLEXIBLE ? null : group.key,
+                        mealType: input.mealType,
+                        servings: input.servings,
+                      },
+                      { csrfToken, idempotencyKey: crypto.randomUUID() },
+                    ),
+                  );
+                  if (added) setSuggestingFor(null);
+                  return added;
+                }}
+              />
+            ) : null}
             {addingTo === group.key ? (
               <AddMeal
                 plannedDate={group.key === FLEXIBLE ? null : group.key}

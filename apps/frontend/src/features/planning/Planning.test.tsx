@@ -412,4 +412,79 @@ describe("menu planning (PLAN-0029)", () => {
       { csrfToken: expect.any(String) },
     );
   });
+
+  it("suggests dishes for a day with AI and adds the chosen one", async () => {
+    const user = userEvent.setup();
+    const candidate = {
+      candidateId: "c1",
+      candidateStrategy: "on_hand_first",
+      name: "Arroz de forno",
+      targetMealType: "lunch",
+      dishFormat: "bake",
+      primaryTechnique: "bake",
+      primaryIngredientRefs: [],
+      summary: "Arroz gratinado com o que sobrou.",
+      servings: 3,
+      activeMinutes: 10,
+      passiveMinutes: 30,
+      totalMinutes: 40,
+      difficulty: "easy",
+      requiredEquipmentIds: [],
+      requiredCapabilities: [],
+    };
+    const requestCandidates = vi.fn(async () => ({
+      sessionId: "s-1",
+      status: "CandidatesReady",
+      candidates: [candidate],
+      failureReason: null,
+    }));
+    const selectCandidate = vi.fn(async () => ({ recipeId: "recipe-9" }));
+    const addEntry = vi.fn(async () => MENU);
+    renderAt(
+      "/app/cardapio/menu-1",
+      { getMenu: async () => MENU, addEntry },
+      {
+        recipes: recipeRepo({
+          requestCandidates,
+          selectCandidate,
+        } as unknown as Partial<RecipeRepository>),
+      },
+    );
+
+    const day = await screen.findByTestId("menu-day-2026-11-03");
+    await user.click(within(day).getByTestId("menu-ai-2026-11-03"));
+    await user.selectOptions(within(day).getByTestId("menu-ai-meal"), "lunch");
+    await user.clear(within(day).getByTestId("menu-ai-servings"));
+    await user.type(within(day).getByTestId("menu-ai-servings"), "3");
+    await user.click(within(day).getByTestId("menu-ai-ask"));
+
+    expect(requestCandidates).toHaveBeenCalledWith(
+      expect.objectContaining({
+        menuPlanning: {
+          menuId: "menu-1",
+          plannedDate: "2026-11-03",
+          mealType: "lunch",
+          servings: 3,
+        },
+      }),
+    );
+    await user.click(await within(day).findByTestId("menu-ai-choose"));
+    expect(selectCandidate).toHaveBeenCalledWith(
+      "s-1",
+      "c1",
+      expect.objectContaining({ idempotencyKey: expect.any(String) }),
+    );
+    await waitFor(() =>
+      expect(addEntry).toHaveBeenCalledWith(
+        "menu-1",
+        {
+          recipeId: "recipe-9",
+          plannedDate: "2026-11-03",
+          mealType: "lunch",
+          servings: 3,
+        },
+        { csrfToken: expect.any(String), idempotencyKey: expect.any(String) },
+      ),
+    );
+  });
 });

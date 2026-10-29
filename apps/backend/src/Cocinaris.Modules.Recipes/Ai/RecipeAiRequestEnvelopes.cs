@@ -77,11 +77,14 @@ public static class RecipeAiRequestEnvelopes
                 ["requireDistinctRecipes"] = true,
                 ["requireDistinctCandidateStrategies"] = true,
                 ["allowedCandidateStrategies"] = new JsonArray("on_hand_first", "on_hand_flexible", "planned_purchase_reuse", "exploratory"),
-                ["recommendedStrategySet"] = new JsonArray("on_hand_first", "on_hand_flexible", "exploratory")
+                // Each mode has its own strategy set; the semantic validator rejects the other mode's strategy.
+                ["recommendedStrategySet"] = context.ExecutionContext.ExecutionMode == "menu_planning"
+                    ? new JsonArray("on_hand_first", "planned_purchase_reuse", "exploratory")
+                    : new JsonArray("on_hand_first", "on_hand_flexible", "exploratory")
             },
             ["outputLanguage"] = BuildOutputLanguage(context.Presets),
             ["instructionStyle"] = BuildInstructionStyle(context.Presets),
-            ["executionContext"] = new JsonObject { ["executionMode"] = context.ExecutionContext.ExecutionMode, ["availableLeadMinutes"] = context.ExecutionContext.AvailableLeadMinutes is null ? null : JsonValue.Create(context.ExecutionContext.AvailableLeadMinutes) },
+            ["executionContext"] = BuildExecutionContext(context.ExecutionContext),
             ["userPresets"] = new JsonObject
             {
                 ["servings"] = context.Presets.Servings,
@@ -264,6 +267,24 @@ public static class RecipeAiRequestEnvelopes
     /// user names stay verbatim (<c>preserveInventoryUserNames</c>), and ids, enum values, and units
     /// stay exactly as the schema defines them.
     /// </summary>
+    private static JsonObject BuildExecutionContext(RecipeExecutionContext execution)
+    {
+        var node = new JsonObject
+        {
+            ["executionMode"] = execution.ExecutionMode,
+            ["availableLeadMinutes"] = execution.AvailableLeadMinutes is null ? null : JsonValue.Create(execution.AvailableLeadMinutes)
+        };
+        if (execution.ExecutionMode == "menu_planning")
+        {
+            node["plannedDate"] = execution.PlannedDate?.ToString("yyyy-MM-dd");
+            node["targetMealType"] = execution.TargetMealType;
+            node["alreadyPlannedRecipeNames"] = ToStringArray(execution.AlreadyPlannedRecipeNames ?? []);
+            node["planningRule"] = "Suggest dishes for this planned meal that differ in dish format, technique, and main ingredient from the alreadyPlannedRecipeNames. Use only the quantities in availabilitySnapshot; they already exclude what other planned meals need.";
+        }
+
+        return node;
+    }
+
     private static JsonObject BuildOutputLanguage(RecipeUserPresets presets)
     {
         var tag = presets.OutputLanguage ?? "pt-BR";

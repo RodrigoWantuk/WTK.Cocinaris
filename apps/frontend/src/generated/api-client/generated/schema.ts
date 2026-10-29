@@ -1192,6 +1192,26 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
         };
+        /** @description A slot of an owned menu. */
+        MenuPlanningSlotRequest: {
+            /** @description `breakfast`, `lunch`, `dinner`, `snack`, or null. */
+            mealType: null | string;
+            /**
+             * Format: uuid
+             * @description Menu.
+             */
+            menuId: string;
+            /**
+             * Format: date
+             * @description Day inside the menu's period, or null for flexible.
+             */
+            plannedDate: null | string;
+            /**
+             * Format: int32
+             * @description Portions, 1 to 24.
+             */
+            servings: number | string;
+        };
         /** @description An ingredient a meal still lacks. */
         MissingIngredientResponse: {
             name: string;
@@ -1822,6 +1842,10 @@ export interface components {
              * @description Instant of the last revision.
              */
             updatedAt: string;
+        };
+        /** @description Optional body for requesting candidates; without it the request is cook-now. */
+        RequestCandidatesRequest: {
+            menuPlanning: null | components["schemas"]["MenuPlanningSlotRequest"];
         };
         /** @description Pantry commitments from From; read-only, never changes physical quantity. */
         ReservationsResponse: {
@@ -5004,7 +5028,11 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": null | components["schemas"]["RequestCandidatesRequest"];
+            };
+        };
         responses: {
             /** @description OK */
             200: {
@@ -5033,8 +5061,26 @@ export interface operations {
                     "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
             /** @description Conflict */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description The request content type is not supported. */
+            415: {
                 headers: {
                     [name: string]: unknown;
                 };

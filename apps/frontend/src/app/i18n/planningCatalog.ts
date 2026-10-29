@@ -97,9 +97,22 @@ export const REQUIRED_PLANNING_I18N_KEYS = [
   "lotCommitments.option.minimum",
   "lotCommitments.minimum",
   "lotCommitments.error.minimum",
+  "planning.ai.open",
+  "planning.ai.hint",
+  "planning.ai.ask",
+  "planning.ai.asking",
+  "planning.ai.choose",
+  "planning.ai.saving",
 ] as const;
 
 const ptBR: Record<string, string> = {
+  "planning.ai.open": "Sugerir com IA",
+  "planning.ai.hint":
+    "A IA sugere três pratos para este dia usando só o que a despensa tem livre e evitando repetir o que já está no cardápio.",
+  "planning.ai.ask": "Pedir sugestões",
+  "planning.ai.asking": "Pensando… pode levar até um minuto",
+  "planning.ai.choose": "Escolher",
+  "planning.ai.saving": "Preparando a receita…",
   "cooking.review.status.protected":
     "Você protegeu este item; nada dele foi proposto",
   "cooking.review.protected": "Você protegeu {{value}} deste item.",
@@ -211,6 +224,13 @@ const ptBR: Record<string, string> = {
 };
 
 const en: Record<string, string> = {
+  "planning.ai.open": "Suggest with AI",
+  "planning.ai.hint":
+    "The AI suggests three dishes for this day, using only what the pantry has free and avoiding what is already on the menu.",
+  "planning.ai.ask": "Get suggestions",
+  "planning.ai.asking": "Thinking… this can take up to a minute",
+  "planning.ai.choose": "Choose",
+  "planning.ai.saving": "Preparing the recipe…",
   "cooking.review.status.protected":
     "You protected this item; none of it was proposed",
   "cooking.review.protected": "You protected {{value}} of this item.",
@@ -318,6 +338,13 @@ const en: Record<string, string> = {
 };
 
 const es: Record<string, string> = {
+  "planning.ai.open": "Sugerir con IA",
+  "planning.ai.hint":
+    "La IA sugiere tres platos para este día usando solo lo que la despensa tiene libre y evitando repetir lo que ya está en el menú.",
+  "planning.ai.ask": "Pedir sugerencias",
+  "planning.ai.asking": "Pensando… puede tardar hasta un minuto",
+  "planning.ai.choose": "Elegir",
+  "planning.ai.saving": "Preparando la receta…",
   "cooking.review.status.protected":
     "Protegiste este artículo; no se propuso nada de él",
   "cooking.review.protected": "Protegiste {{value}} de este artículo.",

@@ -17,7 +17,12 @@ public sealed record RecipeEquipmentContextItem(string EquipmentId, string Name,
 public sealed record RecipeUserPresets(int Servings, IReadOnlyList<string> Preferences, IReadOnlyList<string> Restrictions, IReadOnlyList<string> AllowedAssumptions, string? OutputLanguage = null, string? InstructionDetail = null, string? CookingSkill = null);
 
 /// <summary>Execution-mode context; PLAN-0028 supports only <c>cook_now</c>.</summary>
-public sealed record RecipeExecutionContext(string ExecutionMode, int? AvailableLeadMinutes);
+/// <remarks>
+/// For <c>menu_planning</c> (PLAN-0029 Phase 2), <paramref name="PlannedDate"/> and
+/// <paramref name="TargetMealType"/> describe the menu slot, and <paramref name="AlreadyPlannedRecipeNames"/>
+/// lists meals already on the menu so the candidates differ from them.
+/// </remarks>
+public sealed record RecipeExecutionContext(string ExecutionMode, int? AvailableLeadMinutes, DateOnly? PlannedDate = null, string? TargetMealType = null, IReadOnlyList<string>? AlreadyPlannedRecipeNames = null);
 
 /// <summary>Complete bounded context assembled for one <c>recipe.suggest_candidates.v1</c> request.</summary>
 public sealed record RecipeSuggestRequestContext(

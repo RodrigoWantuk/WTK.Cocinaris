@@ -91,11 +91,15 @@ public sealed class FakeAiProvider : IAiProvider
 
         var inventoryUses = BuildInventoryUses(inventory);
         var requiredEquipment = equipment.Take(3).ToList();
+        // Follow the request's mode like a real model: menu planning has its own second strategy and a target meal.
+        var execution = root.TryGetProperty("executionContext", out var context) ? context : default;
+        var menuPlanning = execution.ValueKind == JsonValueKind.Object && execution.TryGetProperty("executionMode", out var mode) && mode.GetString() == "menu_planning";
+        var meal = menuPlanning && execution.TryGetProperty("targetMealType", out var target) && target.ValueKind == JsonValueKind.String ? target.GetString()! : "dinner";
         var candidates = new JsonArray
         {
-            BuildCandidate("c1", "on_hand_first", "Pan-seared skillet dinner", "dinner", "plated_main_with_sides", "pan_sear", ["ingredient-primary"], "Quick skillet dinner using declared on-hand items.", servings, requiredEquipment, inventoryUses, "easy"),
-            BuildCandidate("c2", "on_hand_flexible", "Flexible skillet scramble", "dinner", "single_skillet", "saute", ["ingredient-secondary"], "Flexible saute using declared inventory when present.", servings, requiredEquipment, inventoryUses, "easy"),
-            BuildCandidate("c3", "exploratory", "Simple simmered bowl", "dinner", "bowl", "simmer", ["ingredient-tertiary"], "Simple simmered bowl with pantry staples only.", servings, requiredEquipment, [], "medium")
+            BuildCandidate("c1", "on_hand_first", "Pan-seared skillet dinner", meal, "plated_main_with_sides", "pan_sear", ["ingredient-primary"], "Quick skillet dinner using declared on-hand items.", servings, requiredEquipment, inventoryUses, "easy"),
+            BuildCandidate("c2", menuPlanning ? "planned_purchase_reuse" : "on_hand_flexible", "Flexible skillet scramble", meal, "single_skillet", "saute", ["ingredient-secondary"], "Flexible saute using declared inventory when present.", servings, requiredEquipment, inventoryUses, "easy"),
+            BuildCandidate("c3", "exploratory", "Simple simmered bowl", meal, "bowl", "simmer", ["ingredient-tertiary"], "Simple simmered bowl with pantry staples only.", servings, requiredEquipment, [], "medium")
         };
 
         var response = new JsonObject

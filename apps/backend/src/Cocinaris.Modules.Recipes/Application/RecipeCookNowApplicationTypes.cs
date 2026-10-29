@@ -4,7 +4,15 @@ namespace Cocinaris.Modules.Recipes.Application;
 /// <param name="IdempotencyKey">Client replay key.</param>
 /// <param name="CorrelationId">Request correlation identifier.</param>
 /// <param name="RequestLanguage">Interface language of the request (<c>pt-BR</c>, <c>en</c>, <c>es</c>), used when the profile declares none.</param>
-public sealed record RequestCandidatesCommand(Guid? IdempotencyKey, string CorrelationId, string? RequestLanguage = null);
+/// <param name="MenuTarget">Menu slot to plan (PLAN-0029 Phase 2); null for cook-now.</param>
+public sealed record RequestCandidatesCommand(Guid? IdempotencyKey, string CorrelationId, string? RequestLanguage = null, MenuPlanningTarget? MenuTarget = null);
+
+/// <summary>A menu slot the candidates are for, resolved by the caller from an owned menu.</summary>
+/// <param name="PlannedDate">Day of the meal, or null for "some day in the period".</param>
+/// <param name="MealType">Meal, if any.</param>
+/// <param name="Servings">Portions to plan, 1 to 24.</param>
+/// <param name="AlreadyPlannedRecipeNames">Recipes already on the menu, so the candidates differ from them (at most 20).</param>
+public sealed record MenuPlanningTarget(DateOnly? PlannedDate, string? MealType, int Servings, IReadOnlyList<string> AlreadyPlannedRecipeNames);
 
 /// <summary>Transport-neutral input for the <c>select candidate</c> cook-now command.</summary>
 /// <param name="SessionId">Generation session.</param>

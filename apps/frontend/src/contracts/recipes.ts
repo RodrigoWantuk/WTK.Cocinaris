@@ -332,11 +332,21 @@ export interface RecipeRepository {
     archived: boolean,
     options: { csrfToken: string; signal?: AbortSignal },
   ): Promise<RecipeDetail>;
-  /** `language` is the interface locale; the AI writes in it unless the profile sets one. */
+  /**
+   * `language` is the interface locale; the AI writes in it unless the profile sets one.
+   * `menuPlanning` asks for a menu slot (PLAN-0029 Phase 2): the backend resolves the menu, uses
+   * only stock no other meal counts on, and avoids meals already planned.
+   */
   requestCandidates(options: {
     csrfToken: string;
     idempotencyKey: string;
     language?: string;
+    menuPlanning?: {
+      menuId: string;
+      plannedDate: string | null;
+      mealType: string | null;
+      servings: number;
+    };
     signal?: AbortSignal;
   }): Promise<RecipeGenerationSession>;
   getGenerationSession(

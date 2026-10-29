@@ -602,7 +602,13 @@ export function createLiveRecipeRepository(options?: {
       }
     },
 
-    async requestCandidates({ csrfToken, idempotencyKey, language, signal }) {
+    async requestCandidates({
+      csrfToken,
+      idempotencyKey,
+      language,
+      menuPlanning,
+      signal,
+    }) {
       try {
         const { data, error, response } = await client.POST(
           "/api/v1/recipes/generation-sessions",
@@ -613,6 +619,7 @@ export function createLiveRecipeRepository(options?: {
                 "Idempotency-Key": idempotencyKey,
               },
             },
+            body: menuPlanning ? { menuPlanning } : undefined,
             headers: language ? { "Accept-Language": language } : undefined,
             signal,
             credentials: "include",

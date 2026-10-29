@@ -49,7 +49,7 @@ public sealed class RecipeCookNowApplicationService(
 
         var user = await currentUser.GetCurrentAsync(cancellationToken);
         var now = timeProvider.GetUtcNow();
-        var session = RecipeGenerationSession.Create(user.Id, command.IdempotencyKey.Value, now);
+        var session = RecipeGenerationSession.Create(user.Id, command.IdempotencyKey.Value, now, command.MenuTarget is null ? "cook_now" : "menu_planning");
         var claim = await generationStore.TryClaimNewSessionAsync(session, cancellationToken);
         if (!claim.WasCreated)
         {
@@ -64,7 +64,7 @@ public sealed class RecipeCookNowApplicationService(
             return Failure<RecipeGenerationSessionView>(MapReservationFailure(reservation.Outcome), ReservationDetail(reservation.Outcome));
         }
 
-        var context = await contextAssembler.AssembleSuggestContextAsync(user.Id, Guid.NewGuid().ToString("n"), definition.ContextBudgetCharacters, cancellationToken);
+        var context = await contextAssembler.AssembleSuggestContextAsync(user.Id, Guid.NewGuid().ToString("n"), definition.ContextBudgetCharacters, cancellationToken, command.MenuTarget);
         context = context with { Presets = WithOutputLanguage(context.Presets, command.RequestLanguage) };
         var invocation = await InvokeSuggestWithRepairAsync(definition, context, command.CorrelationId, cancellationToken);
         if (invocation.Response is null)
