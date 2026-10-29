@@ -26,6 +26,7 @@
    - **Failed calls:** released calls keep their tokens and cost.
    - **Unlisted models:** a model missing from the price table is charged at the highest listed price.
    - **When exceeded:** the operation fails with `ai_budget_exhausted`, and the non-AI product keeps working.
+   - **Rolling 24-hour token windows** (owner request): `Ai:Usage:GlobalTokensPer24Hours` (600 000 by default) and `Ai:Usage:UserTokensPer24Hours` (150 000). They are checked in the same reservation, with closed calls at reported tokens and open ones at the operation's estimate.
 4. **Observability.** Every call records, on the usage ledger:
    - provider latency summed across attempts;
    - attempts (first call, repairs, and fallbacks);

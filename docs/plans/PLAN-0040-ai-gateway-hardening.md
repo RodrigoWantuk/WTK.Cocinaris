@@ -1,13 +1,13 @@
 # PLAN-0040: AI Gateway Hardening — Evaluated Model, Monthly Spend Ceiling, Latency, and Output Quality
 
-- **Status:** In Progress
+- **Status:** Completed
 - **Type:** Implementation
 - **Priority:** High
 - **Owner:** Claude Code (claimed 2026-10-29)
 - **Created:** 2026-10-29
 - **Last updated:** 2026-10-29
-- **Branch:** `agent/plan-0040-ai-hardening`
-- **Pull request:** Draft, opened after this commit
+- **Branch:** `agent/plan-0040-ai-hardening` (merged and deleted); token windows on `agent/plan-0029-ai-menu`
+- **Pull request:** Merged via [PR #54](https://github.com/RodrigoWantuk/WTK.Cocinaris/pull/54) at `47752fc`; token windows in the PLAN-0029 Phase 2 PR
 - **Roadmap entry:** [`PLAN-0031-amendment-2026-10-28-coverage-review.md`](PLAN-0031-amendment-2026-10-28-coverage-review.md) (PLAN-0040, D-3, G-07)
 - **Decision:** [ADR-0009](../architecture/decisions/0009-recipe-ai-provider-deepseek-v4-flash.md)
 - **Related documents:** `docs/ai/usage-and-cost-governance.md`, `docs/ai/decisions/model-routing-cook-now-menu-planning-2026-08-05.md`, `docs/ai/recipe-artifact-protocol.md`
@@ -56,6 +56,15 @@ Make recipe AI calls use the model the owner evaluated, bound monthly spend, mea
    This is how G-07 latency characterization accumulates from real use.
 7. **Documentation.** ADR-0009, the cost governance document, the routing decision status, the protocol document's quality checks, and runbook configuration.
 
+### Rolling 24-hour token windows (owner request, 2026-10-29)
+
+"Conseguimos colocar janelas de 24 em 24h de uso máximo de tokens ao invés de limitar apenas mensalmente?" The monthly cost ceiling stays. In addition, every reservation checks provider tokens (prompt plus completion) in the rolling 24 hours before it:
+
+- `Ai:Usage:GlobalTokensPer24Hours`: 600 000 tokens for the whole deployment, about the monthly US$ 5 divided by 30 at v4-flash prices;
+- `Ai:Usage:UserTokensPer24Hours`: 150 000 tokens per owner, about ten recipes.
+
+Closed calls count at their reported tokens, failed ones included; open reservations count at their operation's `EstimatedTokens` (suggest 14 000, expand 18 000). The check runs under the same advisory lock, so concurrency cannot exceed it. When a window is exceeded, the operation returns `ai_budget_exhausted`, and the problem detail says the limit frees up as earlier calls leave the window. Migration `AddAiTokenWindows` adds `EstimatedTokens` to the ledger, and the usage report shows the deployment's and the busiest owner's tokens in the window. The integration test `TokenWindows_LimitRolling24HoursPerOwnerAndForTheDeployment` covers the per-owner and deployment limits, settlement at real tokens, and the moving window.
+
 ### Not delivered
 
 - **Streaming and time to first token.** Latency is total provider time; TTFT needs streaming and remains unmeasured.
@@ -69,7 +78,7 @@ Make recipe AI calls use the model the owner evaluated, bound monthly spend, mea
 - [x] Monthly spend cannot exceed the ceiling: closed calls count at real cost (failed ones included) and open ones at estimate, under the existing advisory lock.
 - [x] Every call records cost, latency, attempts, and quality flags; the report shows spend, p50/p95, and flags.
 - [x] A valid answer in the wrong language or with terse stages triggers one repair; a clean repair replaces it, and otherwise the valid answer is kept with a flag. No valid answer is lost.
-- [ ] Deployed; the first live call after deploy reports `deepseek-v4-flash` (or the fallback) in the usage report.
+- [x] Deployed (`main` at `47752fc`). The live call check waits for the owner's first recipe after deploy; no live call has happened yet (usage report, 2026-10-29).
 
 ## Execution state
 
@@ -96,3 +105,8 @@ Make recipe AI calls use the model the owner evaluated, bound monthly spend, mea
 - Claimed after PR #53 was merged and `main` was deployed.
 - The ledger showed production on `deepseek-chat`; `appsettings.json` pinned it.
 - Delivered the scope above in one run.
+
+### 2026-10-29T15:20:00Z — Claude Code
+
+- The owner merged PR #54 (`47752fc`), and `main` was deployed. Acceptance criteria are met, and the plan is completed.
+- The owner asked for rolling 24-hour token windows. They were delivered on the PLAN-0029 Phase 2 branch, as described above, because the AI menu is the heaviest token consumer. No live recipe has been generated since the deploy, so the model check stays with the owner.

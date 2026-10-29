@@ -14,14 +14,14 @@ public sealed class AiUsageGovernor(IAiUsageLedgerStore store, AiUsageOptions op
     /// When the gateway is not administratively disabled, this method only delegates to
     /// <see cref="IAiUsageLedgerStore.TryReserveAsync"/> — it performs no separate read/check/insert.
     /// </summary>
-    public Task<AiUsageReservationResult> ReserveAsync(Guid ownerUserId, string operation, int estimatedUnits, long estimatedCostMicroUsd, string correlationId, CancellationToken cancellationToken)
+    public Task<AiUsageReservationResult> ReserveAsync(Guid ownerUserId, string operation, int estimatedUnits, long estimatedCostMicroUsd, int estimatedTokens, string correlationId, CancellationToken cancellationToken)
     {
         if (options.Disabled)
         {
             return Task.FromResult(AiUsageReservationResult.Rejected(AiUsageReservationOutcome.Disabled));
         }
 
-        return store.TryReserveAsync(ownerUserId, operation, estimatedUnits, estimatedCostMicroUsd, correlationId, timeProvider.GetUtcNow(), options, cancellationToken);
+        return store.TryReserveAsync(ownerUserId, operation, estimatedUnits, estimatedCostMicroUsd, estimatedTokens, correlationId, timeProvider.GetUtcNow(), options, cancellationToken);
     }
 
     /// <summary>Real provider cost of a call in micro-dollars, from the configured prices.</summary>

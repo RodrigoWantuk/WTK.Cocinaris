@@ -20,7 +20,7 @@ public sealed class RecipeCookNowApplicationServiceTests
         var governor = new AiUsageGovernor(ledger, new AiUsageOptions { UserDailyUnitCeiling = 10, GlobalDailyUnitCeiling = 100, UserConcurrencyCeiling = 2 }, new AiPricingOptions(), TimeProvider.System);
         var owner = Guid.NewGuid();
 
-        var reserved = await governor.ReserveAsync(owner, AiOperationRegistry.SuggestCandidates, 3, 3_000, "corr-1", CancellationToken.None);
+        var reserved = await governor.ReserveAsync(owner, AiOperationRegistry.SuggestCandidates, 3, 3_000, 10_000, "corr-1", CancellationToken.None);
         Assert.Equal(AiUsageReservationOutcome.Reserved, reserved.Outcome);
         Assert.Equal(1, await ledger.CountOpenReservationsAsync(owner, CancellationToken.None));
 
@@ -28,7 +28,7 @@ public sealed class RecipeCookNowApplicationServiceTests
         Assert.Equal(0, await ledger.CountOpenReservationsAsync(owner, CancellationToken.None));
         Assert.Equal(3, await ledger.SumOwnerUnitsForDayAsync(owner, DateTimeOffset.UtcNow, CancellationToken.None));
 
-        var second = await governor.ReserveAsync(owner, AiOperationRegistry.ExpandSelected, 5, 5_000, "corr-2", CancellationToken.None);
+        var second = await governor.ReserveAsync(owner, AiOperationRegistry.ExpandSelected, 5, 5_000, 10_000, "corr-2", CancellationToken.None);
         await governor.ReleaseAsync(second.ReservationId!.Value, CancellationToken.None);
         Assert.Equal(3, await ledger.SumOwnerUnitsForDayAsync(owner, DateTimeOffset.UtcNow, CancellationToken.None));
         Assert.Equal(0, await ledger.CountOpenReservationsAsync(owner, CancellationToken.None));
@@ -48,7 +48,7 @@ public sealed class RecipeCookNowApplicationServiceTests
         {
             ready.Signal();
             start.Wait();
-            results[index] = await governor.ReserveAsync(owner, AiOperationRegistry.SuggestCandidates, 3, 1_000, $"corr-{index}", CancellationToken.None);
+            results[index] = await governor.ReserveAsync(owner, AiOperationRegistry.SuggestCandidates, 3, 1_000, 10_000, $"corr-{index}", CancellationToken.None);
         }
 
         var tasks = new[]
@@ -315,6 +315,7 @@ public sealed class RecipeCookNowApplicationServiceTests
             string operation,
             int estimatedUnits,
             long estimatedCostMicroUsd,
+            int estimatedTokens,
             string correlationId,
             DateTimeOffset now,
             AiUsageOptions ceilings,

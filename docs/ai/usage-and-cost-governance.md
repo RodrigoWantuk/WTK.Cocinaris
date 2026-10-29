@@ -17,6 +17,8 @@ The PLAN-0028 cook-now ledger distinguishes three related but separate concepts:
 | **Provider-reported tokens** | `PromptTokens`, `CompletionTokens` | Optional observability metadata returned by the model provider. Nullable when the provider does not report usage. Never used as budget units. |
 | **Monetary cost** | `EstimatedCostMicroUsd`, `CostMicroUsd` | Implemented in PLAN-0040 (ADR-0009). Real cost is provider-reported tokens times the `Ai:Pricing` list price, in micro-dollars, recorded on settlement and also on release, because failed calls are billed. A deployment-wide monthly ceiling (`Ai:Usage:MonthlyCostCeilingUsd`, US$ 5 by default) is enforced in the reservation: closed calls count at real cost and open ones at the operation estimate. Billing, subscriptions, and paid credits remain out of scope (PLAN-0050). |
 
+Provider tokens are also limited in rolling 24-hour windows, for the deployment (`Ai:Usage:GlobalTokensPer24Hours`) and per owner (`Ai:Usage:UserTokensPer24Hours`). Closed calls count at reported tokens, failed ones included; open reservations count at `EstimatedTokens`.
+
 Each ledger row also records the summed provider `LatencyMs`, the `Attempts` (first call, repairs, and fallbacks), and `QualityFlags` (`language`, `detail`) when a valid answer was accepted with soft issues. `scripts/ops/ai-usage-report.sh` summarizes spend, latency p50/p95, repairs, and flags.
 
 Do not describe settled Cocinaris units as provider token usage.
