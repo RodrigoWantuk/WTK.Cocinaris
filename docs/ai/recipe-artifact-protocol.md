@@ -78,6 +78,17 @@ Both operations also state the output language and the instruction style (added 
 
 The model never guesses timezone or silently changes the requested meal. A `cook_now` candidate is invalid when soaking, thawing, marinating, fermentation, cooling or another blocking preparation exceeds the available lead window.
 
+## Output language and detail checks (PLAN-0040)
+
+The request's `outputLanguage` and `instructionStyle` are enforced as far as deterministic code can, after schema and semantic validation (`RecipeOutputQuality`).
+
+- **Language.** Distinctive function words of Portuguese, Spanish, and English are counted in candidate summaries, and in stage instructions and sensory cues. Recipe and ingredient names are excluded, since they often come from the pantry. A clear majority of another language's function words is a `language` issue; texts under 25 words are not judged.
+- **Detail.** Stage instruction length is checked against the level.
+  - `detailed`: every stage at least 120 characters, with an average of at least 200.
+  - `standard`: every stage at least 50 characters.
+  - `minimal`: never flagged.
+- **Effect.** An issue uses the operation's single repair, with the issue as the repair instruction. The first valid answer is kept when the repair is not clean, and the flags are recorded on the usage ledger. A valid answer is never discarded for a soft issue.
+
 ## Candidate strategies
 
 One call returns one candidate for each strategy:

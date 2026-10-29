@@ -106,7 +106,12 @@ Rename any dashboard or alert that uses `kitchenflow.*` metric names.
 2. `useradd --system --no-create-home --shell /usr/sbin/nologin wtk-cocinaris`.
 3. Create `/etc/wtk-cocinaris/api.env` from `api.env.example` (`chown root:wtk-cocinaris`, `chmod 0640`).
 4. Database: create role `cocinaris_owner` (NOLOGIN) and `cocinaris_app` (LOGIN, random password), and database `cocinaris` owned by `cocinaris_owner`. The deploy script grants `cocinaris_app` USAGE plus DML on every schema owned by `cocinaris_owner` after each migration run; `COCINARIS_APP_ROLE` overrides the role name.
-5. Optional AI Gateway: set `Ai__Providers__DeepSeek__Enabled=true` and `Ai__Providers__DeepSeek__ApiKey` in the environment file. Without them, recipe generation shows its unavailable state and the rest of the product works.
+5. Optional AI Gateway: set `Ai__Providers__DeepSeek__Enabled=true` and `Ai__Providers__DeepSeek__ApiKey` in the environment file. Without them, recipe generation shows its unavailable state and the rest of the product works. Optional overrides (ADR-0009):
+   - the model and its fallback, `Ai__Providers__DeepSeek__Model` (default `deepseek-v4-flash`) and `Ai__Providers__DeepSeek__FallbackModel` (default `deepseek-chat`; empty disables it);
+   - the monthly spend ceiling, `Ai__Usage__MonthlyCostCeilingUsd` (default 5);
+   - list prices, `Ai__Pricing__Models__<model>__InputUsdPerMillion` and `__OutputUsdPerMillion`.
+
+   Check spend, latency, and quality flags with `sudo scripts/ops/ai-usage-report.sh [ceiling-usd]`.
 6. Register an OIDC client with redirect URI `https://<host>/signin-oidc` and sign-out callback `https://<host>/signout-callback-oidc`; put authority, client ID and secret in the environment file.
 7. Add the `Caddyfile.cocinaris` block with the real host name, then `caddy validate` and `systemctl reload caddy`.
 8. Point DNS at the host. With a proxying CDN, create the record **before** the proxy first requests a certificate. If the certificate attempt ran before DNS existed, `systemctl reload caddy` retries immediately (the CDN shows HTTP 525 until then).

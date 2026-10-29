@@ -6,39 +6,32 @@ namespace Cocinaris.Modules.Ai.Usage;
 /// output, decides whether an operation may proceed and what it ultimately costs.
 /// Ceiling evaluation and insert are performed atomically by <see cref="IAiUsageLedgerStore.TryReserveAsync"/>.
 /// </summary>
-public sealed class AiUsageGovernor(IAiUsageLedgerStore store, AiUsageOptions options, TimeProvider timeProvider)
+/// <remarks>The monthly monetary ceiling (PLAN-0040) is evaluated in the same atomic reservation.</remarks>
+public sealed class AiUsageGovernor(IAiUsageLedgerStore store, AiUsageOptions options, AiPricingOptions pricing, TimeProvider timeProvider)
 {
     /// <summary>
     /// Attempts to reserve Cocinaris usage units for one operation.
     /// When the gateway is not administratively disabled, this method only delegates to
     /// <see cref="IAiUsageLedgerStore.TryReserveAsync"/> — it performs no separate read/check/insert.
     /// </summary>
-    public Task<AiUsageReservationResult> ReserveAsync(Guid ownerUserId, string operation, int estimatedUnits, string correlationId, CancellationToken cancellationToken)
+    public Task<AiUsageReservationResult> ReserveAsync(Guid ownerUserId, string operation, int estimatedUnits, long estimatedCostMicroUsd, string correlationId, CancellationToken cancellationToken)
     {
         if (options.Disabled)
         {
             return Task.FromResult(AiUsageReservationResult.Rejected(AiUsageReservationOutcome.Disabled));
         }
 
-        return store.TryReserveAsync(ownerUserId, operation, estimatedUnits, correlationId, timeProvider.GetUtcNow(), options, cancellationToken);
+        return store.TryReserveAsync(ownerUserId, operation, estimatedUnits, estimatedCostMicroUsd, correlationId, timeProvider.GetUtcNow(), options, cancellationToken);
     }
 
-    /// <summary>
-    /// Settles a reservation with Cocinaris usage units once an operation completes.
-    /// Optional <paramref name="promptTokens"/> and <paramref name="completionTokens"/> record provider token metadata only;
-    /// they are not usage credits.
-    /// </summary>
-    public Task SettleAsync(
-        Guid reservationId,
-        int settledUnits,
-        string provider,
-        string model,
-        CancellationToken cancellationToken,
-        int? promptTokens = null,
-        int? completionTokens = null) =>
-        store.SettleAsync(reservationId, settledUnits, provider, model, promptTokens, completionTokens, timeProvider.GetUtcNow(), cancellationToken);
+    /// <summary>Real provider cost of a call in micro-dollars, from the configured prices.</summary>
+    public long CostMicroUsd(AiCallUsage usage) => pricing.CostMicroUsd(usage.Model, usage.PromptTokens, usage.CompletionTokens);
 
-    /// <summary>Releases a reservation without cost when an operation fails safely before producing usable output.</summary>
-    public Task ReleaseAsync(Guid reservationId, CancellationToken cancellationToken) =>
-        store.ReleaseAsync(reservationId, timeProvider.GetUtcNow(), cancellationToken);
+    /// <summary>Settles a reservation with Cocinaris usage units and records what the call used at its real price.</summary>
+    public Task SettleAsync(Guid reservationId, int settledUnits, AiCallUsage usage, CancellationToken cancellationToken) =>
+        store.SettleAsync(reservationId, settledUnits, usage, pricing.CostMicroUsd(usage.Model, usage.PromptTokens, usage.CompletionTokens), timeProvider.GetUtcNow(), cancellationToken);
+
+    /// <summary>Releases a reservation without usage credits; provider tokens spent on failed attempts are still costed.</summary>
+    public Task ReleaseAsync(Guid reservationId, CancellationToken cancellationToken, AiCallUsage? usage = null) =>
+        store.ReleaseAsync(reservationId, usage, usage is null ? 0 : pricing.CostMicroUsd(usage.Model, usage.PromptTokens, usage.CompletionTokens), timeProvider.GetUtcNow(), cancellationToken);
 }

@@ -245,10 +245,8 @@ public sealed class PostgreSqlRecipeCookNowUnitOfWork(ApplicationDbContext datab
         RecipeGenerationSession session,
         Guid reservationId,
         int settledUnits,
-        string provider,
-        string model,
-        int? promptTokens,
-        int? completionTokens,
+        AiCallUsage usage,
+        long costMicroUsd,
         DateTimeOffset now,
         CancellationToken cancellationToken)
     {
@@ -258,7 +256,7 @@ public sealed class PostgreSqlRecipeCookNowUnitOfWork(ApplicationDbContext datab
         }
 
         await using var transaction = await database.Database.BeginTransactionAsync(cancellationToken);
-        await ApplySessionAndSettleAsync(session, reservationId, settledUnits, provider, model, promptTokens, completionTokens, now, cancellationToken);
+        await ApplySessionAndSettleAsync(session, reservationId, settledUnits, usage, costMicroUsd, now, cancellationToken);
         await transaction.CommitAsync(cancellationToken);
     }
 
@@ -267,12 +265,14 @@ public sealed class PostgreSqlRecipeCookNowUnitOfWork(ApplicationDbContext datab
         RecipeGenerationSession session,
         Guid reservationId,
         string failureReason,
+        AiCallUsage? usage,
+        long costMicroUsd,
         DateTimeOffset now,
         CancellationToken cancellationToken)
     {
         await using var transaction = await database.Database.BeginTransactionAsync(cancellationToken);
         session.MarkFailed(failureReason, now);
-        await ApplySessionAndReleaseAsync(session, reservationId, now, cancellationToken);
+        await ApplySessionAndReleaseAsync(session, reservationId, usage, costMicroUsd, now, cancellationToken);
         await transaction.CommitAsync(cancellationToken);
     }
 
@@ -283,10 +283,8 @@ public sealed class PostgreSqlRecipeCookNowUnitOfWork(ApplicationDbContext datab
         RecipeGenerationSession session,
         Guid reservationId,
         int settledUnits,
-        string provider,
-        string model,
-        int? promptTokens,
-        int? completionTokens,
+        AiCallUsage usage,
+        long costMicroUsd,
         DateTimeOffset now,
         CancellationToken cancellationToken)
     {
@@ -315,7 +313,7 @@ public sealed class PostgreSqlRecipeCookNowUnitOfWork(ApplicationDbContext datab
             SourceGenerationSessionId = revision.SourceGenerationSessionId,
             CreatedAt = revision.CreatedAt
         });
-        await ApplySessionAndSettleAsync(session, reservationId, settledUnits, provider, model, promptTokens, completionTokens, now, cancellationToken);
+        await ApplySessionAndSettleAsync(session, reservationId, settledUnits, usage, costMicroUsd, now, cancellationToken);
         await transaction.CommitAsync(cancellationToken);
     }
 
@@ -324,12 +322,14 @@ public sealed class PostgreSqlRecipeCookNowUnitOfWork(ApplicationDbContext datab
         RecipeGenerationSession session,
         Guid reservationId,
         string failureReason,
+        AiCallUsage? usage,
+        long costMicroUsd,
         DateTimeOffset now,
         CancellationToken cancellationToken)
     {
         await using var transaction = await database.Database.BeginTransactionAsync(cancellationToken);
         session.MarkFailed(failureReason, now);
-        await ApplySessionAndReleaseAsync(session, reservationId, now, cancellationToken);
+        await ApplySessionAndReleaseAsync(session, reservationId, usage, costMicroUsd, now, cancellationToken);
         await transaction.CommitAsync(cancellationToken);
     }
 
@@ -337,10 +337,8 @@ public sealed class PostgreSqlRecipeCookNowUnitOfWork(ApplicationDbContext datab
         RecipeGenerationSession session,
         Guid reservationId,
         int settledUnits,
-        string provider,
-        string model,
-        int? promptTokens,
-        int? completionTokens,
+        AiCallUsage usage,
+        long costMicroUsd,
         DateTimeOffset now,
         CancellationToken cancellationToken)
     {
@@ -349,24 +347,15 @@ public sealed class PostgreSqlRecipeCookNowUnitOfWork(ApplicationDbContext datab
         PostgreSqlRecipeGenerationStore.ApplySession(record, session);
 
         var entry = await database.AiUsageLedgerEntries.SingleAsync(item => item.Id == reservationId, cancellationToken);
-        if (entry.Status != nameof(AiUsageEntryStatus.Reserved))
-        {
-            throw new InvalidOperationException("Only a reserved AI usage entry can be settled.");
-        }
-
-        entry.Status = nameof(AiUsageEntryStatus.Settled);
-        entry.SettledUnits = settledUnits;
-        entry.Provider = provider;
-        entry.Model = model;
-        entry.PromptTokens = promptTokens;
-        entry.CompletionTokens = completionTokens;
-        entry.ClosedAt = now;
+        PostgreSqlAiUsageLedgerStore.ApplySettlement(entry, settledUnits, usage, costMicroUsd, now);
         await database.SaveChangesAsync(cancellationToken);
     }
 
     private async Task ApplySessionAndReleaseAsync(
         RecipeGenerationSession session,
         Guid reservationId,
+        AiCallUsage? usage,
+        long costMicroUsd,
         DateTimeOffset now,
         CancellationToken cancellationToken)
     {
@@ -375,13 +364,7 @@ public sealed class PostgreSqlRecipeCookNowUnitOfWork(ApplicationDbContext datab
         PostgreSqlRecipeGenerationStore.ApplySession(record, session);
 
         var entry = await database.AiUsageLedgerEntries.SingleAsync(item => item.Id == reservationId, cancellationToken);
-        if (entry.Status != nameof(AiUsageEntryStatus.Reserved))
-        {
-            throw new InvalidOperationException("Only a reserved AI usage entry can be released.");
-        }
-
-        entry.Status = nameof(AiUsageEntryStatus.Released);
-        entry.ClosedAt = now;
+        PostgreSqlAiUsageLedgerStore.ApplyRelease(entry, usage, costMicroUsd, now);
         await database.SaveChangesAsync(cancellationToken);
     }
 }

@@ -1,3 +1,4 @@
+using Cocinaris.Modules.Ai.Usage;
 using Cocinaris.Modules.Recipes.Domain;
 
 namespace Cocinaris.Modules.Recipes.Application;
@@ -23,10 +24,8 @@ public interface IRecipeCookNowUnitOfWork
         RecipeGenerationSession session,
         Guid reservationId,
         int settledUnits,
-        string provider,
-        string model,
-        int? promptTokens,
-        int? completionTokens,
+        AiCallUsage usage,
+        long costMicroUsd,
         DateTimeOffset now,
         CancellationToken cancellationToken);
 
@@ -37,6 +36,8 @@ public interface IRecipeCookNowUnitOfWork
         RecipeGenerationSession session,
         Guid reservationId,
         string failureReason,
+        AiCallUsage? usage,
+        long costMicroUsd,
         DateTimeOffset now,
         CancellationToken cancellationToken);
 
@@ -49,10 +50,8 @@ public interface IRecipeCookNowUnitOfWork
         RecipeGenerationSession session,
         Guid reservationId,
         int settledUnits,
-        string provider,
-        string model,
-        int? promptTokens,
-        int? completionTokens,
+        AiCallUsage usage,
+        long costMicroUsd,
         DateTimeOffset now,
         CancellationToken cancellationToken);
 
@@ -63,6 +62,8 @@ public interface IRecipeCookNowUnitOfWork
         RecipeGenerationSession session,
         Guid reservationId,
         string failureReason,
+        AiCallUsage? usage,
+        long costMicroUsd,
         DateTimeOffset now,
         CancellationToken cancellationToken);
 }

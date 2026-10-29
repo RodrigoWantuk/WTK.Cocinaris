@@ -20,6 +20,7 @@ public sealed class PostgreSqlAiUsageLedgerStore(ApplicationDbContext database) 
         Guid ownerUserId,
         string operation,
         int estimatedUnits,
+        long estimatedCostMicroUsd,
         string correlationId,
         DateTimeOffset now,
         AiUsageOptions ceilings,
@@ -51,6 +52,17 @@ public sealed class PostgreSqlAiUsageLedgerStore(ApplicationDbContext database) 
             return AiUsageReservationResult.Rejected(AiUsageReservationOutcome.UserBudgetExhausted);
         }
 
+        // Monthly spend: real cost of closed calls plus the estimate of calls still running.
+        var monthStart = new DateTimeOffset(now.UtcDateTime.Year, now.UtcDateTime.Month, 1, 0, 0, 0, TimeSpan.Zero);
+        var monthSpent = await database.AiUsageLedgerEntries
+            .Where(item => item.CreatedAt >= monthStart && item.CreatedAt < monthStart.AddMonths(1))
+            .SumAsync(item => item.CostMicroUsd ?? (item.Status == nameof(AiUsageEntryStatus.Reserved) ? item.EstimatedCostMicroUsd : 0), cancellationToken);
+        if (monthSpent + estimatedCostMicroUsd > ceilings.MonthlyCostCeilingMicroUsd)
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            return AiUsageReservationResult.Rejected(AiUsageReservationOutcome.MonthlyCostExhausted);
+        }
+
         var id = Guid.NewGuid();
         database.AiUsageLedgerEntries.Add(new AiUsageLedgerRecord
         {
@@ -59,6 +71,7 @@ public sealed class PostgreSqlAiUsageLedgerStore(ApplicationDbContext database) 
             Operation = operation,
             Status = nameof(AiUsageEntryStatus.Reserved),
             ReservedUnits = estimatedUnits,
+            EstimatedCostMicroUsd = estimatedCostMicroUsd,
             CorrelationId = correlationId,
             CreatedAt = now
         });
@@ -87,17 +100,25 @@ public sealed class PostgreSqlAiUsageLedgerStore(ApplicationDbContext database) 
             .CountAsync(item => item.OwnerUserId == ownerUserId && item.Status == nameof(AiUsageEntryStatus.Reserved), cancellationToken);
 
     /// <inheritdoc />
-    public async Task SettleAsync(
-        Guid reservationId,
-        int settledUnits,
-        string provider,
-        string model,
-        int? promptTokens,
-        int? completionTokens,
-        DateTimeOffset now,
-        CancellationToken cancellationToken)
+    public async Task SettleAsync(Guid reservationId, int settledUnits, AiCallUsage usage, long costMicroUsd, DateTimeOffset now, CancellationToken cancellationToken)
     {
         var entry = await database.AiUsageLedgerEntries.SingleAsync(item => item.Id == reservationId, cancellationToken);
+        ApplySettlement(entry, settledUnits, usage, costMicroUsd, now);
+        await database.SaveChangesAsync(cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task ReleaseAsync(Guid reservationId, AiCallUsage? usage, long costMicroUsd, DateTimeOffset now, CancellationToken cancellationToken)
+    {
+        var entry = await database.AiUsageLedgerEntries.SingleAsync(item => item.Id == reservationId, cancellationToken);
+        ApplyRelease(entry, usage, costMicroUsd, now);
+        await database.SaveChangesAsync(cancellationToken);
+    }
+
+    /// <summary>Marks a tracked reserved entry settled; shared with the recipe unit of work so both write the same fields.</summary>
+    /// <exception cref="InvalidOperationException">The entry is not reserved.</exception>
+    public static void ApplySettlement(AiUsageLedgerRecord entry, int settledUnits, AiCallUsage usage, long costMicroUsd, DateTimeOffset now)
+    {
         if (entry.Status != nameof(AiUsageEntryStatus.Reserved))
         {
             throw new InvalidOperationException("Only a reserved AI usage entry can be settled.");
@@ -105,26 +126,44 @@ public sealed class PostgreSqlAiUsageLedgerStore(ApplicationDbContext database) 
 
         entry.Status = nameof(AiUsageEntryStatus.Settled);
         entry.SettledUnits = settledUnits;
-        entry.Provider = provider;
-        entry.Model = model;
-        entry.PromptTokens = promptTokens;
-        entry.CompletionTokens = completionTokens;
+        entry.Provider = usage.Provider;
+        entry.Model = usage.Model ?? "unknown";
+        ApplyUsage(entry, usage, costMicroUsd);
         entry.ClosedAt = now;
-        await database.SaveChangesAsync(cancellationToken);
     }
 
-    /// <inheritdoc />
-    public async Task ReleaseAsync(Guid reservationId, DateTimeOffset now, CancellationToken cancellationToken)
+    /// <summary>Marks a tracked reserved entry released, keeping what a failed call still cost.</summary>
+    /// <exception cref="InvalidOperationException">The entry is not reserved.</exception>
+    public static void ApplyRelease(AiUsageLedgerRecord entry, AiCallUsage? usage, long costMicroUsd, DateTimeOffset now)
     {
-        var entry = await database.AiUsageLedgerEntries.SingleAsync(item => item.Id == reservationId, cancellationToken);
         if (entry.Status != nameof(AiUsageEntryStatus.Reserved))
         {
             throw new InvalidOperationException("Only a reserved AI usage entry can be released.");
         }
 
         entry.Status = nameof(AiUsageEntryStatus.Released);
+        if (usage is not null)
+        {
+            entry.Provider = usage.Provider;
+            entry.Model = usage.Model;
+            ApplyUsage(entry, usage, costMicroUsd);
+        }
+        else
+        {
+            entry.CostMicroUsd = 0;
+        }
+
         entry.ClosedAt = now;
-        await database.SaveChangesAsync(cancellationToken);
+    }
+
+    private static void ApplyUsage(AiUsageLedgerRecord entry, AiCallUsage usage, long costMicroUsd)
+    {
+        entry.PromptTokens = usage.PromptTokens;
+        entry.CompletionTokens = usage.CompletionTokens;
+        entry.LatencyMs = usage.LatencyMs;
+        entry.Attempts = usage.Attempts;
+        entry.QualityFlags = usage.QualityFlags;
+        entry.CostMicroUsd = costMicroUsd;
     }
 
     private async Task<int> SumUnitsInRangeAsync(Guid? ownerUserId, DateTimeOffset dayStart, DateTimeOffset dayEnd, CancellationToken cancellationToken)

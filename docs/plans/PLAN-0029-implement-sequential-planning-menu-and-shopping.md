@@ -6,8 +6,8 @@
 - **Owner:** Claude Code (claimed 2026-10-29)
 - **Created:** 2026-08-05
 - **Last updated:** 2026-10-29
-- **Branch:** Phase 1 `agent/plan-0029-menu-and-shopping` (merged and deleted); Phase 3 `agent/plan-0029-reservations`
-- **Pull request:** Phase 1 merged via [PR #52](https://github.com/RodrigoWantuk/WTK.Cocinaris/pull/52) at `3efb214`; Phase 3 draft opened after this commit
+- **Branch:** Phase 1 `agent/plan-0029-menu-and-shopping` (merged and deleted); Phase 3 `agent/plan-0029-reservations` (merged and deleted)
+- **Pull request:** Phase 1 merged via [PR #52](https://github.com/RodrigoWantuk/WTK.Cocinaris/pull/52) at `3efb214`; Phase 3 merged via [PR #53](https://github.com/RodrigoWantuk/WTK.Cocinaris/pull/53) at `f299090`
 - **Dependencies:** PLAN-0028 (recipe revisions), PLAN-0037 Phases 1–2 (pantry lots and attention), PLAN-0038 (recipe library), PLAN-0042 Phase 1 (cooking); all merged
 - **Related documents:** `docs/domain/planning-and-shopping.md`, `docs/product/entry-and-contextual-home.md` (suggestion priority), `docs/domain/inventory-lifecycle.md`
 
@@ -184,3 +184,7 @@ Phase 3 ran before Phase 2. Without it, two cooking sessions could count on the 
 - Delivered Phase 3 (reservations, protections, readiness, cooking and shopping integration) on `agent/plan-0029-reservations`.
 - Reservations are derived rather than stored, and protections are planning-owned. The cooking proposal reads both through a Recipes-owned port.
 - The reservation journey first showed the cooking warning without meal names when the cook picked a lot by hand. Pantry lots in the proposal now carry the names of the meals counting on them.
+
+### 2026-10-29T14:30:00Z — Claude Code
+
+- The owner merged PR #53 (`f299090`), and `main` was deployed. Phase 2 (AI-assisted menu) waits for PLAN-0040, now in progress.
