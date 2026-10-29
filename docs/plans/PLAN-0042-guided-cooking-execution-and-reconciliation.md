@@ -6,8 +6,8 @@
 - **Owner:** Claude Code (claimed 2026-10-29)
 - **Created:** 2026-10-29
 - **Last updated:** 2026-10-29
-- **Branch:** `agent/plan-0042-cook-and-reconcile`
-- **Pull request:** Not opened
+- **Branch:** `agent/plan-0042-cook-and-reconcile` (Phase 1, merged and deleted); Phase 2 finalization on `agent/plan-0038-recipe-library`
+- **Pull request:** Phase 1 merged via [PR #50](https://github.com/RodrigoWantuk/WTK.Cocinaris/pull/50) at `595af8e`
 - **Roadmap entry:** [`PLAN-0031-amendment-2026-10-28-coverage-review.md`](PLAN-0031-amendment-2026-10-28-coverage-review.md) (PLAN-0042, G-14)
 - **Related documents:** `docs/domain/recipes-and-cooking.md` (execution start, finalization), `docs/domain/inventory-lifecycle.md` (recipe completion reconciliation), `docs/product/user-journeys.md`
 
@@ -33,7 +33,7 @@ Language and detail cannot be checked deterministically. They are recorded as ev
 | Phase | Outcome | Depends on |
 | --- | --- | --- |
 | 1 | Start a recipe execution explicitly; cooking view with stage checklist; deterministic, editable completion proposal from the pinned revision and the pantry; completion that consumes the confirmed lots and stores leftovers in one database transaction; abandonment; resume from the home | PLAN-0028, PLAN-0023 preparation contract, PLAN-0037 |
-| 2 | Execution-local substitutions and notes; save changes as a new revision or a derived recipe at finalization | PLAN-0038 |
+| 2 | Execution-local substitutions and notes; save changes as a new revision or a derived recipe at finalization (finalization delivered with PLAN-0038; substitutions during cooking remain) | PLAN-0038 |
 | 3 | Menu-entry executions, reservation release, preparation-route due windows | PLAN-0029 |
 | 4 | Stage detail levels by profile, sensory references, timers | Phase 1 |
 
@@ -94,7 +94,7 @@ Text troubleshooting is PLAN-0045.
 - [x] Completion consumes the confirmed lots and stores the leftovers atomically with the execution state change; a stale lot rolls everything back.
 - [x] Completion is idempotent per key; a second completion is refused; another user gets 404.
 - [x] The cooking page and the completion review work end to end in the browser, and the pantry reflects the result (`scripts/e2e/cooking-journey.mjs` through the proxy replica: 5/5).
-- [ ] Deployed to the owner host.
+- [x] Deployed to the owner host (`main` at `595af8e`, release `20261029T102710Z-595af8e7331b`).
 
 ## Execution state
 
@@ -113,7 +113,9 @@ Text troubleshooting is PLAN-0045.
   - frontend: `Cooking.test.tsx` (4 new), recipe, i18n, app shell and home suites (22 files, 183 tests) passing; typecheck, ESLint and Prettier clean; guards (ts-only, interactive-nesting, production-isolation, third-party-html) passing; production build passing;
   - browser journey through the proxy replica: 5/5.
 - **Not run:** full backend and frontend suites; the browser smoke matrix; the full local gates (owner direction: lean validation).
-- **Exact next action:** Deploy, then open the draft PR. After merge: Phase 2 with PLAN-0038 (execution changes as revisions or derived recipes).
+- **Phase 1:** merged via PR #50 at `595af8e` and deployed from `main`.
+- **Phase 2:** the finalization part was delivered with PLAN-0038. After completion, "Salvar ajustes na receita" and "Criar variação" open the recipe editor with the session's notes, and the saved revision or derived recipe records the session (`sourceExecutionId`).
+- **Exact next action:** Phase 2 remainder: record substitutions and quantity changes during cooking in the execution, and pre-fill the editor from them. Alternatively Phase 3, after PLAN-0029.
 - **Blockers:** None.
 
 ## Progress log
@@ -128,3 +130,8 @@ Text troubleshooting is PLAN-0045.
 - Frontend delivered: the cooking page (checklists), the completion review (editable lines, lot picker, leftovers, rating, notes, stale-pantry reload), the "Cozinhar agora" action, and the live "Hoje" page.
 - Handled the owner's language and step-detail feedback as described above. Also replaced the "cook-now" jargon in the recipe copy with plain language in three locales.
 - Added `scripts/e2e/cooking-journey.mjs` and ran it through the proxy replica: 5/5 passing.
+
+### 2026-10-29T12:30:00Z — Claude Code
+
+- The owner merged PR #50 (`595af8e`), and `main` was deployed.
+- Phase 2 finalization was delivered on the PLAN-0038 branch: the finished screen saves changes as a revision or a derived recipe that cites the completed session. Substitutions recorded during cooking remain open.

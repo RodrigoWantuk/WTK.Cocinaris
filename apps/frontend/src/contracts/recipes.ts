@@ -30,18 +30,31 @@ export interface RecipeGenerationSession {
   failureReason: string | null;
 }
 
-/** Owned recipe list row. */
+/** `generated` (AI), `manual` (written by the owner), or `derived` (variation of another recipe). */
+export type RecipeOrigin = "generated" | "manual" | "derived" | string;
+
+/** Owned recipe library row (PLAN-0038). */
 export interface RecipeSummary {
   recipeId: string;
   name: string;
   mealTypes: string[];
   servings: number;
   createdAt: string;
+  revisionNumber: number;
+  origin: RecipeOrigin;
+  isFavorite: boolean;
+  archivedAt: string | null;
+  updatedAt: string;
+  /** Completed cooking sessions. */
+  timesCooked: number;
+  lastCookedAt: string | null;
+  lastRating: number | null;
 }
 
-/** Owned recipe detail after expansion or list navigation. */
+/** One revision of an owned recipe with its library state. */
 export interface RecipeDetail {
   recipeId: string;
+  /** Revision shown; older than `currentRevisionNumber` when viewing history. */
   revisionNumber: number;
   name: string;
   mealTypes: string[];
@@ -50,6 +63,75 @@ export interface RecipeDetail {
   normalizedRecipeJson: string;
   thumbnailVisualJson: string;
   createdAt: string;
+  currentRevisionNumber: number;
+  updatedAt: string;
+  origin: RecipeOrigin;
+  isFavorite: boolean;
+  archivedAt: string | null;
+  parentRecipeId: string | null;
+  parentRevisionNumber: number | null;
+  derivationReason: string | null;
+  /** `generated`, `manual`, `edited`, or `derived`. */
+  revisionOrigin: string;
+  changeReason: string | null;
+}
+
+/** Library filter; archived recipes are listed only on request. */
+export interface RecipeListFilter {
+  archived?: boolean;
+  favorites?: boolean;
+  search?: string;
+}
+
+/** A recipe's revisions and finished cooking sessions, newest first. */
+export interface RecipeHistory {
+  revisions: Array<{
+    revisionNumber: number;
+    name: string;
+    origin: string;
+    changeReason: string | null;
+    sourceExecutionId: string | null;
+    createdAt: string;
+  }>;
+  cooking: Array<{
+    executionId: string;
+    revisionNumber: number;
+    servings: number;
+    /** `Completed` or `Abandoned`. */
+    status: string;
+    startedAt: string;
+    finishedAt: string | null;
+    rating: number | null;
+    notes: string | null;
+  }>;
+}
+
+/**
+ * Editable recipe content. `ingredientId` and `stageId` come from the revision being edited; the
+ * backend keeps the pantry link and dependencies of rows that keep their identifier.
+ */
+export interface RecipeContentInput {
+  name: string;
+  mealTypes: string[];
+  servings: number;
+  yield: string | null;
+  ingredients: Array<{
+    ingredientId: string | null;
+    displayName: string;
+    quantity: number;
+    /** `g`, `ml`, or `unit`. */
+    unit: string;
+    optional: boolean;
+  }>;
+  equipment: string[];
+  stages: Array<{
+    stageId: string | null;
+    name: string;
+    instructions: string;
+    activeMinutes: number;
+    passiveMinutes: number;
+    sensoryCues: string[];
+  }>;
 }
 
 /** One recipe ingredient matched against the pantry (PLAN-0042). */
@@ -174,8 +256,67 @@ export class RecipeApiError extends Error {
 
 /** Live or unavailable recipe cook-now repository boundary. */
 export interface RecipeRepository {
-  listRecipes(signal?: AbortSignal): Promise<RecipeSummary[]>;
+  /** Active library by default; `filter.archived` lists archived recipes instead. */
+  listRecipes(
+    signal?: AbortSignal,
+    filter?: RecipeListFilter,
+  ): Promise<RecipeSummary[]>;
   getRecipe(recipeId: string, signal?: AbortSignal): Promise<RecipeDetail>;
+  getRecipeRevision(
+    recipeId: string,
+    revisionNumber: number,
+    signal?: AbortSignal,
+  ): Promise<RecipeDetail>;
+  getRecipeHistory(
+    recipeId: string,
+    signal?: AbortSignal,
+  ): Promise<RecipeHistory>;
+  /** Writes a recipe from scratch; a retry with the same key returns the same recipe. */
+  createRecipe(
+    content: RecipeContentInput,
+    options: {
+      csrfToken: string;
+      idempotencyKey: string;
+      signal?: AbortSignal;
+    },
+  ): Promise<RecipeDetail>;
+  /** Saves an edit as the next revision; fails with `precondition_failed` when a newer revision exists. */
+  reviseRecipe(
+    recipeId: string,
+    input: {
+      expectedRevisionNumber: number;
+      content: RecipeContentInput;
+      changeReason: string | null;
+      sourceExecutionId: string | null;
+    },
+    options: { csrfToken: string; signal?: AbortSignal },
+  ): Promise<RecipeDetail>;
+  /** Creates a new recipe derived from a revision; the parent is not changed. */
+  deriveRecipe(
+    recipeId: string,
+    input: {
+      parentRevisionNumber: number;
+      content: RecipeContentInput;
+      derivationReason: string;
+      sourceExecutionId: string | null;
+    },
+    options: {
+      csrfToken: string;
+      idempotencyKey: string;
+      signal?: AbortSignal;
+    },
+  ): Promise<RecipeDetail>;
+  setFavorite(
+    recipeId: string,
+    isFavorite: boolean,
+    options: { csrfToken: string; signal?: AbortSignal },
+  ): Promise<RecipeDetail>;
+  /** Archives (hides, keeping history) or brings a recipe back. */
+  setArchived(
+    recipeId: string,
+    archived: boolean,
+    options: { csrfToken: string; signal?: AbortSignal },
+  ): Promise<RecipeDetail>;
   /** `language` is the interface locale; the AI writes in it unless the profile sets one. */
   requestCandidates(options: {
     csrfToken: string;

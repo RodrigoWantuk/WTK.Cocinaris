@@ -35,9 +35,6 @@ public sealed record RecipeCandidateView(
 /// <summary>API-facing projection of one recipe generation session.</summary>
 public sealed record RecipeGenerationSessionView(Guid SessionId, string Status, IReadOnlyList<RecipeCandidateView>? Candidates, string? FailureReason);
 
-/// <summary>API-facing summary projection of one owned recipe.</summary>
-public sealed record RecipeSummaryView(Guid RecipeId, string Name, IReadOnlyList<string> MealTypes, int Servings, DateTimeOffset CreatedAt);
-
 /// <summary>API-facing detail projection of one owned recipe's current revision.</summary>
 public sealed record RecipeDetailView(
     Guid RecipeId,

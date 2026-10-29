@@ -9,7 +9,10 @@ using Testcontainers.PostgreSql;
 
 namespace Cocinaris.IntegrationTests;
 
-/// <summary>PLAN-0042 Phase 1: cook a recipe and reconcile the pantry through the HTTP boundary against PostgreSQL.</summary>
+/// <summary>
+/// PLAN-0042 Phase 1 (cook a recipe and reconcile the pantry) and PLAN-0038 (recipe library) through
+/// the HTTP boundary against PostgreSQL. They share one container because the library tests cook too.
+/// </summary>
 public sealed class RecipeExecutionApiTests : IAsyncLifetime
 {
     private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:18.4")
@@ -120,6 +123,130 @@ public sealed class RecipeExecutionApiTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.PreconditionFailed, response.StatusCode);
         Assert.Equal(1000m, (await client.GetFromJsonAsync<JsonElement>($"/api/v1/inventory/lots/{chicken}")).GetProperty("quantity").GetProperty("measuredValue").GetDecimal());
         Assert.Equal("InProgress", (await client.GetFromJsonAsync<JsonElement>($"/api/v1/recipes/executions/{executionId}")).GetProperty("status").GetString());
+    }
+
+    [Fact]
+    public async Task LibraryEditsAppendRevisionsKeepPantryLinksAndRecordDerivations()
+    {
+        using var client = Client("library-user");
+        var csrf = await CsrfAsync(client);
+        var chicken = await CreateLotAsync(client, csrf, "Chicken", 1000m);
+        var rice = await CreateLotAsync(client, csrf, "Rice", 300m);
+        var recipeId = await SeedRecipeAsync("library-user", servings: 2, chicken, rice);
+
+        // Cook once so the edit can cite the session it came from.
+        var execution = await (await PostAsync(client, csrf, $"/api/v1/recipes/{recipeId}/executions", new { })).Content.ReadFromJsonAsync<JsonElement>();
+        var executionId = execution.GetProperty("executionId").GetGuid();
+        Assert.Equal(HttpStatusCode.OK, (await PostAsync(client, csrf, $"/api/v1/recipes/executions/{executionId}/completion", new { consumptions = Array.Empty<object>(), rating = 4, notes = "More rice" }, Guid.NewGuid())).StatusCode);
+
+        var detail = await client.GetFromJsonAsync<JsonElement>($"/api/v1/recipes/{recipeId}");
+        Assert.Equal(("generated", false), (detail.GetProperty("origin").GetString(), detail.GetProperty("isFavorite").GetBoolean()));
+        var content = new
+        {
+            name = "Chicken and more rice",
+            mealTypes = new[] { "lunch", "dinner" },
+            servings = 2,
+            yield = "2 plates",
+            ingredients = new object[]
+            {
+                new { ingredientId = "ing-chicken", displayName = "Chicken", quantity = 300m, unit = "g", optional = false },
+                new { ingredientId = "ing-rice", displayName = "Rice", quantity = 250m, unit = "g", optional = false },
+                new { ingredientId = (string?)null, displayName = "Lime", quantity = 1m, unit = "unit", optional = true }
+            },
+            equipment = new[] { "Pan" },
+            stages = new object[]
+            {
+                new { stageId = (string?)null, name = "Cook", instructions = "Brown the chicken.\nAdd the rice and water.", activeMinutes = 10, passiveMinutes = 20, sensoryCues = new[] { "Water absorbed" } }
+            }
+        };
+
+        var revised = await PostAsync(client, csrf, $"/api/v1/recipes/{recipeId}/revisions", new { expectedRevisionNumber = 1, content, changeReason = "More rice", sourceExecutionId = executionId });
+        Assert.Equal(HttpStatusCode.Created, revised.StatusCode);
+        var revision = await revised.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal((2, "edited", "Chicken and more rice"), (revision.GetProperty("revisionNumber").GetInt32(), revision.GetProperty("revisionOrigin").GetString(), revision.GetProperty("name").GetString()));
+
+        // An edit that started from revision 1 is now stale.
+        Assert.Equal(HttpStatusCode.PreconditionFailed, (await PostAsync(client, csrf, $"/api/v1/recipes/{recipeId}/revisions", new { expectedRevisionNumber = 1, content })).StatusCode);
+        // Invalid content reports the field.
+        var invalid = await PostAsync(client, csrf, $"/api/v1/recipes/{recipeId}/revisions", new { expectedRevisionNumber = 2, content = content with { servings = 0 } });
+        Assert.Equal(HttpStatusCode.BadRequest, invalid.StatusCode);
+        Assert.True((await invalid.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("errors").TryGetProperty("servings", out _));
+
+        // The old revision is still readable, and cooking the new one still proposes the same lot.
+        Assert.Equal("Chicken and rice", (await client.GetFromJsonAsync<JsonElement>($"/api/v1/recipes/{recipeId}/revisions/1")).GetProperty("name").GetString());
+        var cooking = await (await PostAsync(client, csrf, $"/api/v1/recipes/{recipeId}/executions", new { })).Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(2, cooking.GetProperty("revisionNumber").GetInt32());
+        var lines = cooking.GetProperty("proposal").GetProperty("lines").EnumerateArray().ToDictionary(line => line.GetProperty("ingredientId").GetString()!);
+        Assert.Equal(("ready", rice), (lines["ing-rice"].GetProperty("status").GetString(), lines["ing-rice"].GetProperty("lotId").GetGuid()));
+        Assert.Equal("not_tracked", lines["ing-1"].GetProperty("status").GetString());
+        Assert.Equal(HttpStatusCode.OK, (await PostAsync(client, csrf, $"/api/v1/recipes/executions/{cooking.GetProperty("executionId").GetGuid()}/abandonment", new { })).StatusCode);
+
+        // A derived recipe records its parent; a retry with the same key returns it.
+        var key = Guid.NewGuid();
+        var deriveBody = new { parentRevisionNumber = 2, content = content with { name = "Air-fryer chicken and rice" }, derivationReason = "Air-fryer version" };
+        var derived = await PostAsync(client, csrf, $"/api/v1/recipes/{recipeId}/derivations", deriveBody, key);
+        Assert.Equal(HttpStatusCode.Created, derived.StatusCode);
+        var child = await derived.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(("derived", recipeId, 2), (child.GetProperty("origin").GetString(), child.GetProperty("parentRecipeId").GetGuid(), child.GetProperty("parentRevisionNumber").GetInt32()));
+        var replay = await PostAsync(client, csrf, $"/api/v1/recipes/{recipeId}/derivations", deriveBody, key);
+        Assert.Equal(HttpStatusCode.OK, replay.StatusCode);
+        Assert.Equal(child.GetProperty("recipeId").GetGuid(), (await replay.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("recipeId").GetGuid());
+
+        // History lists both revisions and the two finished sessions.
+        var history = await client.GetFromJsonAsync<JsonElement>($"/api/v1/recipes/{recipeId}/history");
+        Assert.Equal(new[] { 2, 1 }, history.GetProperty("revisions").EnumerateArray().Select(item => item.GetProperty("revisionNumber").GetInt32()));
+        Assert.Equal(executionId, history.GetProperty("revisions")[0].GetProperty("sourceExecutionId").GetGuid());
+        Assert.Equal(2, history.GetProperty("cooking").GetArrayLength());
+
+        // Favorites, archive, and search organize the library without touching content.
+        Assert.True((await (await PostAsync(client, csrf, $"/api/v1/recipes/{recipeId}/favorite", new { isFavorite = true })).Content.ReadFromJsonAsync<JsonElement>()).GetProperty("isFavorite").GetBoolean());
+        var favorites = await client.GetFromJsonAsync<JsonElement>("/api/v1/recipes?favorites=true");
+        Assert.Equal(recipeId, favorites.EnumerateArray().Single().GetProperty("recipeId").GetGuid());
+        Assert.Equal((1, 4), (favorites[0].GetProperty("timesCooked").GetInt32(), favorites[0].GetProperty("lastRating").GetInt32()));
+        Assert.Equal(HttpStatusCode.OK, (await PostAsync(client, csrf, $"/api/v1/recipes/{child.GetProperty("recipeId").GetGuid()}/archive", new { archived = true })).StatusCode);
+        Assert.Equal(new[] { recipeId }, (await client.GetFromJsonAsync<JsonElement>("/api/v1/recipes")).EnumerateArray().Select(item => item.GetProperty("recipeId").GetGuid()));
+        Assert.Single((await client.GetFromJsonAsync<JsonElement>("/api/v1/recipes?archived=true")).EnumerateArray());
+        Assert.Single((await client.GetFromJsonAsync<JsonElement>("/api/v1/recipes?search=MORE%20rice")).EnumerateArray());
+        Assert.Empty((await client.GetFromJsonAsync<JsonElement>("/api/v1/recipes?search=50%25")).EnumerateArray());
+
+        // Another user can neither read nor change the recipe.
+        using var other = Client("library-other");
+        var otherCsrf = await CsrfAsync(other);
+        Assert.Equal(HttpStatusCode.NotFound, (await other.GetAsync($"/api/v1/recipes/{recipeId}/history")).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await PostAsync(other, otherCsrf, $"/api/v1/recipes/{recipeId}/revisions", new { expectedRevisionNumber = 2, content })).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await PostAsync(other, otherCsrf, $"/api/v1/recipes/{recipeId}/derivations", deriveBody, Guid.NewGuid())).StatusCode);
+    }
+
+    [Fact]
+    public async Task AManualRecipeIsCreatedOnceAndCanBeCooked()
+    {
+        using var client = Client("manual-user");
+        var csrf = await CsrfAsync(client);
+        var body = new
+        {
+            content = new
+            {
+                name = "Grandma's beans",
+                mealTypes = new[] { "dinner" },
+                servings = 4,
+                ingredients = new object[] { new { displayName = "Beans", quantity = 500m, unit = "g", optional = false } },
+                stages = new object[] { new { name = "Soak", instructions = "Soak overnight.", activeMinutes = 5, passiveMinutes = 600 } }
+            }
+        };
+
+        Assert.Equal(HttpStatusCode.BadRequest, (await PostAsync(client, csrf, "/api/v1/recipes", body)).StatusCode);
+        var key = Guid.NewGuid();
+        var created = await PostAsync(client, csrf, "/api/v1/recipes", body, key);
+        Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+        var recipe = await created.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(("manual", "manual", "{}"), (recipe.GetProperty("origin").GetString(), recipe.GetProperty("revisionOrigin").GetString(), recipe.GetProperty("thumbnailVisualJson").GetString()));
+        var replay = await PostAsync(client, csrf, "/api/v1/recipes", body, key);
+        Assert.Equal((HttpStatusCode.OK, recipe.GetProperty("recipeId").GetGuid()), (replay.StatusCode, (await replay.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("recipeId").GetGuid()));
+        Assert.Single((await client.GetFromJsonAsync<JsonElement>("/api/v1/recipes")).EnumerateArray());
+
+        var execution = await PostAsync(client, csrf, $"/api/v1/recipes/{recipe.GetProperty("recipeId").GetGuid()}/executions", new { });
+        Assert.Equal(HttpStatusCode.Created, execution.StatusCode);
+        Assert.Equal("not_tracked", (await execution.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("proposal").GetProperty("lines")[0].GetProperty("status").GetString());
     }
 
     private async Task<Guid> SeedRecipeAsync(string subject, int servings, Guid chicken, Guid rice)

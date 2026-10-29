@@ -33,12 +33,7 @@ public static class RecipeEndpoints
             .ProducesProblem(412)
             .ProducesProblem(422)
             .ProducesProblem(503);
-        group.MapGet("/", (RecipeApiService service, HttpContext context, CancellationToken cancellationToken) => service.ListRecipesAsync(context, cancellationToken))
-            .Produces<IReadOnlyList<RecipeSummaryResponse>>()
-            .ProducesProblem(401);
-        group.MapGet("/{recipeId:guid}", (RecipeApiService service, Guid recipeId, HttpContext context, CancellationToken cancellationToken) => service.GetRecipeAsync(recipeId, context, cancellationToken))
-            .Produces<RecipeDetailResponse>()
-            .ProducesProblem(404);
+        group.MapRecipeLibraryEndpoints();
         group.MapRecipeExecutionEndpoints();
         return group;
     }
@@ -86,20 +81,6 @@ public sealed class RecipeApiService(RecipeCookNowApplicationService application
         var command = new SelectCandidateCommand(sessionId, body.CandidateId, ParseIdempotencyKey(request), request.HttpContext.TraceIdentifier, RequestLanguage(request));
         var result = await application.SelectCandidateAsync(command, cancellationToken);
         return ToResult(result, request.HttpContext.TraceIdentifier, ToResponse);
-    }
-
-    /// <summary>Lists recipes owned by the current user.</summary>
-    public async Task<IResult> ListRecipesAsync(HttpContext context, CancellationToken cancellationToken)
-    {
-        var result = await application.ListRecipesAsync(cancellationToken);
-        return ToResult(result, context.TraceIdentifier, value => value!.Select(ToResponse).ToList());
-    }
-
-    /// <summary>Gets one owned recipe detail.</summary>
-    public async Task<IResult> GetRecipeAsync(Guid recipeId, HttpContext context, CancellationToken cancellationToken)
-    {
-        var result = await application.GetRecipeAsync(recipeId, cancellationToken);
-        return ToResult(result, context.TraceIdentifier, ToResponse);
     }
 
     /// <summary>
@@ -154,6 +135,7 @@ public sealed class RecipeApiService(RecipeCookNowApplicationService application
             item.RequiredCapabilities)).ToList(),
         view.FailureReason);
 
+    // A selection returns the generated recipe it created: revision 1, not a favorite, not archived.
     private static RecipeDetailResponse ToResponse(RecipeDetailView view) => new(
         view.RecipeId,
         view.RevisionNumber,
@@ -162,9 +144,17 @@ public sealed class RecipeApiService(RecipeCookNowApplicationService application
         view.Servings,
         view.NormalizedRecipeJson,
         view.ThumbnailVisualJson,
-        view.CreatedAt);
-
-    private static RecipeSummaryResponse ToResponse(RecipeSummaryView view) => new(view.RecipeId, view.Name, view.MealTypes, view.Servings, view.CreatedAt);
+        view.CreatedAt,
+        view.RevisionNumber,
+        view.CreatedAt,
+        "generated",
+        false,
+        null,
+        null,
+        null,
+        null,
+        "generated",
+        null);
 
     private static int StatusFor(string errorCode) => errorCode switch
     {
@@ -216,10 +206,54 @@ public sealed record RecipeCandidateResponse(
     IReadOnlyList<string> RequiredEquipmentIds,
     IReadOnlyList<string> RequiredCapabilities);
 
-/// <summary>HTTP projection of one owned recipe summary.</summary>
-public sealed record RecipeSummaryResponse(Guid RecipeId, string Name, IReadOnlyList<string> MealTypes, int Servings, DateTimeOffset CreatedAt);
+/// <summary>HTTP projection of one library row.</summary>
+/// <param name="RecipeId">Recipe identifier.</param>
+/// <param name="Name">Current revision name.</param>
+/// <param name="MealTypes">Current revision meal types.</param>
+/// <param name="Servings">Current revision servings.</param>
+/// <param name="CreatedAt">Recipe creation instant.</param>
+/// <param name="RevisionNumber">Current revision number.</param>
+/// <param name="Origin"><c>generated</c>, <c>manual</c>, or <c>derived</c>.</param>
+/// <param name="IsFavorite">Whether the owner marked it as a favorite.</param>
+/// <param name="ArchivedAt">Archive instant, or null while in the library.</param>
+/// <param name="UpdatedAt">Instant of the last revision.</param>
+/// <param name="TimesCooked">Completed cooking sessions.</param>
+/// <param name="LastCookedAt">Completion instant of the latest session.</param>
+/// <param name="LastRating">Rating given in the latest session, if any.</param>
+public sealed record RecipeSummaryResponse(
+    Guid RecipeId,
+    string Name,
+    IReadOnlyList<string> MealTypes,
+    int Servings,
+    DateTimeOffset CreatedAt,
+    int RevisionNumber,
+    string Origin,
+    bool IsFavorite,
+    DateTimeOffset? ArchivedAt,
+    DateTimeOffset UpdatedAt,
+    int TimesCooked,
+    DateTimeOffset? LastCookedAt,
+    int? LastRating);
 
-/// <summary>HTTP projection of one owned recipe detail.</summary>
+/// <summary>HTTP projection of one revision of an owned recipe with its library state.</summary>
+/// <param name="RecipeId">Recipe identifier.</param>
+/// <param name="RevisionNumber">Revision shown.</param>
+/// <param name="Name">Revision name.</param>
+/// <param name="MealTypes">Revision meal types.</param>
+/// <param name="Servings">Servings the quantities are written for.</param>
+/// <param name="NormalizedRecipeJson">Revision content (protocol 0.3 shape).</param>
+/// <param name="ThumbnailVisualJson">Thumbnail descriptor; <c>{}</c> for recipes written by the owner.</param>
+/// <param name="CreatedAt">Recipe creation instant.</param>
+/// <param name="CurrentRevisionNumber">Latest revision; differs from <paramref name="RevisionNumber"/> when an older revision is shown.</param>
+/// <param name="UpdatedAt">Instant of the latest revision.</param>
+/// <param name="Origin"><c>generated</c>, <c>manual</c>, or <c>derived</c>.</param>
+/// <param name="IsFavorite">Whether the owner marked it as a favorite.</param>
+/// <param name="ArchivedAt">Archive instant, or null while in the library.</param>
+/// <param name="ParentRecipeId">Parent of a derived recipe.</param>
+/// <param name="ParentRevisionNumber">Parent revision a derived recipe started from.</param>
+/// <param name="DerivationReason">How a derived recipe differs from its parent.</param>
+/// <param name="RevisionOrigin"><c>generated</c>, <c>manual</c>, <c>edited</c>, or <c>derived</c>.</param>
+/// <param name="ChangeReason">Reason given for an edited revision.</param>
 public sealed record RecipeDetailResponse(
     Guid RecipeId,
     int RevisionNumber,
@@ -228,4 +262,14 @@ public sealed record RecipeDetailResponse(
     int Servings,
     string NormalizedRecipeJson,
     string ThumbnailVisualJson,
-    DateTimeOffset CreatedAt);
+    DateTimeOffset CreatedAt,
+    int CurrentRevisionNumber,
+    DateTimeOffset UpdatedAt,
+    string Origin,
+    bool IsFavorite,
+    DateTimeOffset? ArchivedAt,
+    Guid? ParentRecipeId,
+    int? ParentRevisionNumber,
+    string? DerivationReason,
+    string RevisionOrigin,
+    string? ChangeReason);

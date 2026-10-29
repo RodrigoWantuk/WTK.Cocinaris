@@ -49,4 +49,12 @@ commands, deployment evidence, forward-repair policy, and troubleshooting.
 - `ci/run-local-gates.sh` runs the backend, contract, frontend, browser-smoke and secret-scan gates on a clean worktree of a commit. It replaces the GitHub Actions workflows, which do not run for this repository.
 - `e2e/proxy-replica.sh start|stop` runs the API behind a separate Caddy that uses the deployment template, on `https://localhost:7443` with the local OIDC fixture.
 - `e2e/profile-journey.mjs` signs in through the replica and saves on every profile page. It catches defects that only appear behind the deployment proxy.
-- `e2e/cooking-journey.mjs` (PLAN-0042) signs in through the replica, creates a pantry lot, seeds one saved recipe in the development database (the replica does not call the AI provider), cooks it in the browser, confirms with leftovers, and checks the pantry and the "Hoje" resume card. Same password variable as the profile journey.
+- `e2e/cooking-journey.mjs` (PLAN-0042) signs in through the replica, creates a pantry lot, seeds one saved recipe in the development database (the replica does not call the AI provider), cooks it in the browser, confirms with leftovers, and checks the pantry and the "Hoje" resume card. Same password variable as the profile journey. Each run uses a unique product and recipe name, so lots from earlier runs do not affect its checks.
+- `e2e/library-journey.mjs` (PLAN-0038) signs in through the replica and, in the browser:
+  - writes a recipe in the editor;
+  - favorites it;
+  - cooks it;
+  - saves the cooking adjustments as version 2 from the finished screen;
+  - creates a variation and archives it.
+
+  It checks the history and the Favoritas and Arquivadas filters. It does not need the AI provider. Same password variable as the profile journey. Apply migrations to the development database first.

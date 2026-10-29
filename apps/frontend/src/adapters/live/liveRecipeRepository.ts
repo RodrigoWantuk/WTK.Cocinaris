@@ -11,6 +11,7 @@ import {
   type RecipeExecutionSummary,
   type RecipeDetail,
   type RecipeGenerationSession,
+  type RecipeHistory,
   type RecipeRepository,
   type RecipeSummary,
 } from "@/contracts/recipes";
@@ -22,6 +23,12 @@ type DetailDto = components["schemas"]["RecipeDetailResponse"];
 type ExecutionDto = components["schemas"]["RecipeExecutionResponse"];
 type ExecutionSummaryDto =
   components["schemas"]["RecipeExecutionSummaryResponse"];
+type HistoryDto = components["schemas"]["RecipeHistoryResponse"];
+
+const text = (value: unknown): string | null =>
+  typeof value === "string" ? value : null;
+const count = (value: unknown): number | null =>
+  value === null || value === undefined || value === "" ? null : Number(value);
 
 const KNOWN_ERROR_CODES = new Set<RecipeApiErrorCode>([
   "authentication_required",
@@ -112,6 +119,37 @@ function mapSummary(dto: SummaryDto): RecipeSummary {
       : [],
     servings: asFiniteNumber(dto.servings, "servings"),
     createdAt: assertString(dto.createdAt, "createdAt"),
+    revisionNumber: asFiniteNumber(dto.revisionNumber, "revisionNumber"),
+    origin: assertString(dto.origin, "origin"),
+    isFavorite: dto.isFavorite === true,
+    archivedAt: text(dto.archivedAt),
+    updatedAt: assertString(dto.updatedAt, "updatedAt"),
+    timesCooked: asFiniteNumber(dto.timesCooked, "timesCooked"),
+    lastCookedAt: text(dto.lastCookedAt),
+    lastRating: count(dto.lastRating),
+  };
+}
+
+function mapHistory(dto: HistoryDto): RecipeHistory {
+  return {
+    revisions: (dto.revisions ?? []).map((item) => ({
+      revisionNumber: asFiniteNumber(item.revisionNumber, "revisionNumber"),
+      name: String(item.name),
+      origin: String(item.origin),
+      changeReason: text(item.changeReason),
+      sourceExecutionId: text(item.sourceExecutionId),
+      createdAt: String(item.createdAt),
+    })),
+    cooking: (dto.cooking ?? []).map((item) => ({
+      executionId: String(item.executionId),
+      revisionNumber: asFiniteNumber(item.revisionNumber, "revisionNumber"),
+      servings: asFiniteNumber(item.servings, "servings"),
+      status: String(item.status),
+      startedAt: String(item.startedAt),
+      finishedAt: text(item.finishedAt),
+      rating: count(item.rating),
+      notes: text(item.notes),
+    })),
   };
 }
 
@@ -133,6 +171,19 @@ function mapDetail(dto: DetailDto): RecipeDetail {
       "thumbnailVisualJson",
     ),
     createdAt: assertString(dto.createdAt, "createdAt"),
+    currentRevisionNumber: asFiniteNumber(
+      dto.currentRevisionNumber,
+      "currentRevisionNumber",
+    ),
+    updatedAt: assertString(dto.updatedAt, "updatedAt"),
+    origin: assertString(dto.origin, "origin"),
+    isFavorite: dto.isFavorite === true,
+    archivedAt: text(dto.archivedAt),
+    parentRecipeId: text(dto.parentRecipeId),
+    parentRevisionNumber: count(dto.parentRevisionNumber),
+    derivationReason: text(dto.derivationReason),
+    revisionOrigin: assertString(dto.revisionOrigin, "revisionOrigin"),
+    changeReason: text(dto.changeReason),
   };
 }
 
@@ -307,9 +358,16 @@ export function createLiveRecipeRepository(options?: {
   });
 
   return {
-    async listRecipes(signal) {
+    async listRecipes(signal, filter) {
       try {
         const { data, error, response } = await client.GET("/api/v1/recipes", {
+          params: {
+            query: {
+              archived: filter?.archived || undefined,
+              favorites: filter?.favorites || undefined,
+              search: filter?.search?.trim() || undefined,
+            },
+          },
           signal,
           credentials: "include",
         });
@@ -342,6 +400,180 @@ export function createLiveRecipeRepository(options?: {
         );
         if (!response.ok || !data) {
           await throwForFailure(response, "Unable to load recipe.", error);
+        }
+        assertData(data, response);
+        return mapDetail(data);
+      } catch (err) {
+        wrapAbort(err);
+      }
+    },
+
+    async getRecipeRevision(recipeId, revisionNumber, signal) {
+      try {
+        const { data, error, response } = await client.GET(
+          "/api/v1/recipes/{recipeId}/revisions/{revisionNumber}",
+          {
+            params: { path: { recipeId, revisionNumber } },
+            signal,
+            credentials: "include",
+          },
+        );
+        if (!response.ok || !data) {
+          await throwForFailure(
+            response,
+            "Unable to load the revision.",
+            error,
+          );
+        }
+        assertData(data, response);
+        return mapDetail(data);
+      } catch (err) {
+        wrapAbort(err);
+      }
+    },
+
+    async getRecipeHistory(recipeId, signal) {
+      try {
+        const { data, error, response } = await client.GET(
+          "/api/v1/recipes/{recipeId}/history",
+          {
+            params: { path: { recipeId } },
+            signal,
+            credentials: "include",
+          },
+        );
+        if (!response.ok || !data) {
+          await throwForFailure(response, "Unable to load history.", error);
+        }
+        assertData(data, response);
+        return mapHistory(data);
+      } catch (err) {
+        wrapAbort(err);
+      }
+    },
+
+    async createRecipe(content, { csrfToken, idempotencyKey, signal }) {
+      try {
+        const { data, error, response } = await client.POST("/api/v1/recipes", {
+          params: {
+            header: {
+              "X-CSRF-TOKEN": csrfToken,
+              "Idempotency-Key": idempotencyKey,
+            },
+          },
+          body: { content },
+          signal,
+          credentials: "include",
+        });
+        if (!response.ok || !data) {
+          await throwForFailure(response, "Unable to save the recipe.", error);
+        }
+        assertData(data, response);
+        return mapDetail(data);
+      } catch (err) {
+        wrapAbort(err);
+      }
+    },
+
+    async reviseRecipe(recipeId, input, { csrfToken, signal }) {
+      try {
+        const { data, error, response } = await client.POST(
+          "/api/v1/recipes/{recipeId}/revisions",
+          {
+            params: {
+              path: { recipeId },
+              header: { "X-CSRF-TOKEN": csrfToken },
+            },
+            body: input,
+            signal,
+            credentials: "include",
+          },
+        );
+        if (!response.ok || !data) {
+          await throwForFailure(response, "Unable to save the recipe.", error);
+        }
+        assertData(data, response);
+        return mapDetail(data);
+      } catch (err) {
+        wrapAbort(err);
+      }
+    },
+
+    async deriveRecipe(recipeId, input, { csrfToken, idempotencyKey, signal }) {
+      try {
+        const { data, error, response } = await client.POST(
+          "/api/v1/recipes/{recipeId}/derivations",
+          {
+            params: {
+              path: { recipeId },
+              header: {
+                "X-CSRF-TOKEN": csrfToken,
+                "Idempotency-Key": idempotencyKey,
+              },
+            },
+            body: input,
+            signal,
+            credentials: "include",
+          },
+        );
+        if (!response.ok || !data) {
+          await throwForFailure(response, "Unable to save the recipe.", error);
+        }
+        assertData(data, response);
+        return mapDetail(data);
+      } catch (err) {
+        wrapAbort(err);
+      }
+    },
+
+    async setFavorite(recipeId, isFavorite, { csrfToken, signal }) {
+      try {
+        const { data, error, response } = await client.POST(
+          "/api/v1/recipes/{recipeId}/favorite",
+          {
+            params: {
+              path: { recipeId },
+              header: { "X-CSRF-TOKEN": csrfToken },
+            },
+            body: { isFavorite },
+            signal,
+            credentials: "include",
+          },
+        );
+        if (!response.ok || !data) {
+          await throwForFailure(
+            response,
+            "Unable to update the recipe.",
+            error,
+          );
+        }
+        assertData(data, response);
+        return mapDetail(data);
+      } catch (err) {
+        wrapAbort(err);
+      }
+    },
+
+    async setArchived(recipeId, archived, { csrfToken, signal }) {
+      try {
+        const { data, error, response } = await client.POST(
+          "/api/v1/recipes/{recipeId}/archive",
+          {
+            params: {
+              path: { recipeId },
+              header: { "X-CSRF-TOKEN": csrfToken },
+            },
+            body: { archived },
+            signal,
+            credentials: "include",
+          },
+        );
+        if (!response.ok || !data) {
+          await throwForFailure(
+            response,
+            "Unable to update the recipe.",
+            error,
+          );
         }
         assertData(data, response);
         return mapDetail(data);

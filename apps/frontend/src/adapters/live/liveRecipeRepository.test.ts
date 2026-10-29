@@ -51,19 +51,35 @@ describe("createLiveRecipeRepository", () => {
           mealTypes: ["breakfast"],
           servings: 1,
           createdAt: "2026-08-05T12:00:00Z",
+          revisionNumber: 2,
+          origin: "manual",
+          isFavorite: true,
+          archivedAt: null,
+          updatedAt: "2026-08-06T12:00:00Z",
+          timesCooked: 3,
+          lastCookedAt: "2026-08-07T12:00:00Z",
+          lastRating: 5,
         },
       ]),
     );
     const repo = createLiveRecipeRepository({ fetchImpl });
-    const items = await repo.listRecipes();
+    const items = await repo.listRecipes(undefined, {
+      favorites: true,
+      search: " eggs ",
+    });
     expect(items).toHaveLength(1);
-    expect(items[0].name).toBe("Eggs");
+    expect(items[0]).toMatchObject({
+      name: "Eggs",
+      isFavorite: true,
+      timesCooked: 3,
+      lastRating: 5,
+    });
     expect(fetchImpl).toHaveBeenCalled();
     const calls = fetchImpl.mock.calls as unknown as Array<
       [RequestInfo | URL, RequestInit?]
     >;
     const request = asRequest(calls[0][0]);
-    expect(request.url).toContain("/api/v1/recipes");
+    expect(request.url).toContain("/api/v1/recipes?favorites=true&search=eggs");
     expect(request.method).toBe("GET");
   });
 

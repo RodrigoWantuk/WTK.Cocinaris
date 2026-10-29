@@ -518,12 +518,6 @@ public sealed class RecipeCookNowApplicationServiceTests
             return Task.CompletedTask;
         }
 
-        public Task<IReadOnlyList<RecipeSummary>> ListAsync(Guid ownerUserId, CancellationToken cancellationToken) =>
-            Task.FromResult<IReadOnlyList<RecipeSummary>>(_items.Values
-                .Where(item => item.Recipe.OwnerUserId == ownerUserId)
-                .Select(item => new RecipeSummary(item.Recipe.Id, item.Revision.Name, item.Revision.MealTypes, item.Revision.Servings, item.Revision.RevisionNumber, item.Recipe.CreatedAt, item.Recipe.UpdatedAt))
-                .ToList());
-
         public Task<RecipeDetail?> FindDetailAsync(Guid ownerUserId, Guid recipeId, CancellationToken cancellationToken)
         {
             if (!_items.TryGetValue(recipeId, out var item) || item.Recipe.OwnerUserId != ownerUserId)

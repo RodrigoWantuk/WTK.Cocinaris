@@ -13,6 +13,20 @@ public sealed class RecipeRecord
     public DateTimeOffset CreatedAt { get; set; }
     /// <summary>Gets or sets the UTC instant of the last new revision.</summary>
     public DateTimeOffset UpdatedAt { get; set; }
+    /// <summary>Gets or sets how the recipe was created: <c>Generated</c>, <c>Manual</c>, or <c>Derived</c>.</summary>
+    public string Origin { get; set; } = "Generated";
+    /// <summary>Gets or sets whether the owner marked the recipe as a favorite.</summary>
+    public bool IsFavorite { get; set; }
+    /// <summary>Gets or sets the UTC archive instant; null while the recipe is in the library.</summary>
+    public DateTimeOffset? ArchivedAt { get; set; }
+    /// <summary>Gets or sets the parent recipe of a derived recipe (same owner).</summary>
+    public Guid? ParentRecipeId { get; set; }
+    /// <summary>Gets or sets the parent revision a derived recipe started from.</summary>
+    public int? ParentRevisionNumber { get; set; }
+    /// <summary>Gets or sets the owner's reason for deriving the recipe.</summary>
+    public string? DerivationReason { get; set; }
+    /// <summary>Gets or sets the idempotency key of the request that created a manual or derived recipe.</summary>
+    public Guid? CreationKey { get; set; }
 }
 
 /// <summary>
@@ -39,10 +53,16 @@ public sealed class RecipeRevisionRecord
     public required string NormalizedRecipeJson { get; set; }
     /// <summary>Gets or sets the deterministically normalized indexable thumbnail visual descriptor JSON.</summary>
     public required string ThumbnailVisualJson { get; set; }
-    /// <summary>Gets or sets the stable candidate identifier this revision was expanded from.</summary>
-    public required string SourceCandidateId { get; set; }
-    /// <summary>Gets or sets the generation session that produced this revision.</summary>
-    public Guid SourceGenerationSessionId { get; set; }
+    /// <summary>Gets or sets the stable candidate identifier a generated revision was expanded from.</summary>
+    public string? SourceCandidateId { get; set; }
+    /// <summary>Gets or sets the generation session that produced a generated revision.</summary>
+    public Guid? SourceGenerationSessionId { get; set; }
+    /// <summary>Gets or sets how the content was produced: <c>Generated</c>, <c>Manual</c>, <c>Edited</c>, or <c>Derived</c>.</summary>
+    public string Origin { get; set; } = "Generated";
+    /// <summary>Gets or sets the owner's reason for an edited revision.</summary>
+    public string? ChangeReason { get; set; }
+    /// <summary>Gets or sets the completed execution whose adjustments the revision saves.</summary>
+    public Guid? SourceExecutionId { get; set; }
     /// <summary>Gets or sets the UTC creation instant.</summary>
     public DateTimeOffset CreatedAt { get; set; }
 }

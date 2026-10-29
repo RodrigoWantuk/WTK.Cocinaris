@@ -41,3 +41,21 @@ export function isRetryableRecipeError(code: RecipeApiErrorCode): boolean {
     code === "unexpected"
   );
 }
+
+/**
+ * Maps errors of library reads and edits, which never call the AI, to production i18n keys.
+ * Server or network failures use `fallback` so the copy never blames the recipe AI.
+ */
+export function recipeLibraryErrorKey(
+  code: RecipeApiErrorCode,
+  fallback: string,
+): string {
+  switch (code) {
+    case "authentication_required":
+      return "recipes.error.session";
+    case "not_found":
+      return "recipes.detail.notFound";
+    default:
+      return fallback;
+  }
+}
