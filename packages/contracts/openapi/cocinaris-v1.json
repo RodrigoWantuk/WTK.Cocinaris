@@ -4023,6 +4023,10 @@
       "ShoppingItemResponse": {
         "description": "One shopping line; quantities are in Unit (`Gram`, `Milliliter`, `Unit`).",
         "properties": {
+          "availableIsEstimate": {
+            "description": "Whether AvailableQuantity includes an estimated pantry amount.",
+            "type": "boolean"
+          },
           "availableQuantity": {
             "description": "What the pantry holds now.",
             "format": "double",
@@ -4087,7 +4091,8 @@
           "availableQuantity",
           "toBuyQuantity",
           "checked",
-          "uses"
+          "uses",
+          "availableIsEstimate"
         ],
         "type": "object"
       },

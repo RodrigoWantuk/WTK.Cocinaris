@@ -105,15 +105,7 @@ public static class RecipeAiRequestEnvelopes
             ["availabilitySnapshot"] = new JsonObject
             {
                 ["scope"] = "complete_user_declared",
-                ["items"] = new JsonArray(context.InventoryItems.Select(item => (JsonNode)new JsonObject
-                {
-                    ["inventoryItemId"] = item.ItemId,
-                    ["userName"] = item.UserName,
-                    ["quantity"] = item.Quantity,
-                    ["unit"] = item.Unit,
-                    ["availabilitySource"] = item.AvailabilitySource,
-                    ["ingredientRef"] = item.IngredientRef
-                }).ToArray())
+                ["items"] = new JsonArray(context.InventoryItems.Select(item => (JsonNode)InventoryItemNode(item)).ToArray())
             },
             ["responseSchema"] = SuggestResponseSchema.Value.DeepClone(),
             ["responseContract"] = new JsonObject
@@ -124,6 +116,12 @@ public static class RecipeAiRequestEnvelopes
                 ["additionalProperties"] = false
             }
         };
+
+        if (context.InventoryItems.Any(item => item.QuantityIsEstimate))
+        {
+            envelope["policy"]!["estimatedQuantities"] = "Items with quantityIsEstimate are the owner's approximation. Do not depend on using all of such an item.";
+        }
+
         if (repair is not null)
         {
             envelope["repair"] = BuildRepairObject(repair);
@@ -243,6 +241,26 @@ public static class RecipeAiRequestEnvelopes
 
     private static string Truncate(string value, int maxCharacters) =>
         value.Length <= maxCharacters ? value : value[..maxCharacters] + "…[truncated]";
+
+    // The estimate flag is written only when true, so envelopes for exact pantries are unchanged.
+    private static JsonObject InventoryItemNode(RecipeInventoryContextItem item)
+    {
+        var node = new JsonObject
+        {
+            ["inventoryItemId"] = item.ItemId,
+            ["userName"] = item.UserName,
+            ["quantity"] = item.Quantity,
+            ["unit"] = item.Unit,
+            ["availabilitySource"] = item.AvailabilitySource,
+            ["ingredientRef"] = item.IngredientRef
+        };
+        if (item.QuantityIsEstimate)
+        {
+            node["quantityIsEstimate"] = true;
+        }
+
+        return node;
+    }
 
     private static JsonArray ToStringArray(IEnumerable<string> values) =>
         new(values.Select(item => (JsonNode)item).ToArray());

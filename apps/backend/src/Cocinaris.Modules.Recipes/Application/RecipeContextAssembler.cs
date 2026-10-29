@@ -66,7 +66,7 @@ public sealed class RecipeContextAssembler(IInventoryLotReadStore inventoryReadS
         // lots carry no usable quantity for candidate generation and are intentionally omitted.
         var inventoryItems = lotsPage.Items
             .Where(lot => lot.MeasuredValue is not null && lot.MeasuredUnit is not null)
-            .Select(lot => new RecipeInventoryContextItem(lot.LotId.ToString("n"), lot.ProductName, lot.MeasuredValue!.Value, ToCanonicalUnit(lot.MeasuredUnit!), "on_hand", null))
+            .Select(lot => new RecipeInventoryContextItem(lot.LotId.ToString("n"), lot.ProductName, lot.MeasuredValue!.Value, ToCanonicalUnit(lot.MeasuredUnit!), "on_hand", null, lot.QuantityIsEstimate))
             .ToList();
 
         var profile = await profileReadStore.FindAsync(ownerUserId, cancellationToken);

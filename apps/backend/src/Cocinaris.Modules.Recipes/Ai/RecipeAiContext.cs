@@ -1,7 +1,11 @@
 namespace Cocinaris.Modules.Recipes.Ai;
 
-/// <summary>One bounded on-hand inventory item exposed to the AI Gateway as untrusted structured context.</summary>
-public sealed record RecipeInventoryContextItem(string ItemId, string UserName, decimal Quantity, string Unit, string AvailabilitySource, string? IngredientRef);
+/// <summary>
+/// One bounded on-hand inventory item exposed to the AI Gateway as untrusted structured context.
+/// <c>QuantityIsEstimate</c> tells the model the amount is the owner's approximation (PLAN-0054), so
+/// a recipe should not depend on its last gram.
+/// </summary>
+public sealed record RecipeInventoryContextItem(string ItemId, string UserName, decimal Quantity, string Unit, string AvailabilitySource, string? IngredientRef, bool QuantityIsEstimate = false);
 
 /// <summary>One bounded declared equipment item exposed to the AI Gateway.</summary>
 public sealed record RecipeEquipmentContextItem(string EquipmentId, string Name, IReadOnlyList<string> Capabilities);

@@ -1904,6 +1904,8 @@ export interface components {
         };
         /** @description One shopping line; quantities are in Unit (`Gram`, `Milliliter`, `Unit`). */
         ShoppingItemResponse: {
+            /** @description Whether AvailableQuantity includes an estimated pantry amount. */
+            availableIsEstimate: boolean;
             /**
              * Format: double
              * @description What the pantry holds now.
