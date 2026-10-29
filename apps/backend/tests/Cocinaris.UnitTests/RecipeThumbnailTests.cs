@@ -26,6 +26,8 @@ public sealed class RecipeThumbnailTests
         Assert.Equal(64, descriptor.RenderKey.Length);
         Assert.Contains("Visible components: white rice, chicken breast in tomato sauce", descriptor.Prompt);
         Assert.Contains("Do not add ingredients", descriptor.Prompt);
+        Assert.Contains("real photograph of home-cooked food", descriptor.Prompt);
+        Assert.Contains("3D-rendered", descriptor.Prompt);
     }
 
     [Theory]
