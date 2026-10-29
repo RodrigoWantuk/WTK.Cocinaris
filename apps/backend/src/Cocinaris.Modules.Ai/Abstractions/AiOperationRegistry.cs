@@ -65,7 +65,7 @@ public sealed class AiOperationRegistry
         new AiOperationDefinition(ExpandSelected, "recipe-expand-selected.v1", "0.3", PreferNonThinking: true, TimeoutSeconds: 45, MaxRepairAttempts: 1, EstimatedUsageUnits: 5, ContextBudgetCharacters: 12_000, MaxOutputTokens: 6144, EstimatedCostMicroUsd: 5_000, EstimatedTokens: 18_000),
         // One image per call, priced per image; the job reserves the configured image price instead
         // of this estimate. Images use no text tokens, so they never count against the token windows.
-        new AiOperationDefinition(ThumbnailGenerate, "recipe-thumbnail-style-v1", "1", PreferNonThinking: true, TimeoutSeconds: 90, MaxRepairAttempts: 0, EstimatedUsageUnits: 1, ContextBudgetCharacters: 2_000, MaxOutputTokens: 0, EstimatedCostMicroUsd: 8_000, EstimatedTokens: 0)
+        new AiOperationDefinition(ThumbnailGenerate, "recipe-thumbnail-style-v2", "1", PreferNonThinking: true, TimeoutSeconds: 90, MaxRepairAttempts: 0, EstimatedUsageUnits: 1, ContextBudgetCharacters: 2_000, MaxOutputTokens: 0, EstimatedCostMicroUsd: 8_000, EstimatedTokens: 0)
     ]);
 
     /// <summary>Attempts to resolve a registered operation definition.</summary>

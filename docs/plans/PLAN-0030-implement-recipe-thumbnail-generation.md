@@ -51,7 +51,7 @@ Implement the complete optional recipe thumbnail vertical slice as specified by 
 
 ## Delivered (2026-10-30)
 
-- **Operation.** `recipe.thumbnail.generate.v1` is registered in the AI Gateway: style and prompt `recipe-thumbnail-style-v1`, one image per call, no text tokens.
+- **Operation.** `recipe.thumbnail.generate.v1` is registered in the AI Gateway: style and prompt `recipe-thumbnail-style-v2` (natural photography; `v1` before 2026-10-30), one image per call, no text tokens.
 - **Provider.**
   - The adapter is `OpenRouterImageProvider` (`Cocinaris.Modules.Ai/Images`). It makes one call with no retries, reads a bounded response (at most 12 MB), and maps failures to transient, refused, or invalid.
   - It is enabled with `Ai__Images__Enabled=true` and `Ai__Providers__OpenRouter__ApiKey`. The key is server-side only.
@@ -102,7 +102,7 @@ Implement the complete optional recipe thumbnail vertical slice as specified by 
 
 ## Execution state
 
-- **Current checkpoint:** implemented and tested, deployed disabled until the owner adds the OpenRouter key.
+- **Current checkpoint:** implemented and tested, deployed disabled until the owner adds the OpenRouter key. The prompt is `recipe-thumbnail-style-v2`, which asks for a natural photograph; it is committed but not yet deployed.
 - **Validation:**
   - **Unit tests:** canonical keys, prompt, invalid descriptors, and image inspection (6).
   - **Integration test (PostgreSQL):** an image is queued on read, two recipes with the same look share one generation, the ledger is settled, and the image is served to the owner as `image/png` with a private cache and refused to another owner.
@@ -115,3 +115,4 @@ Implement the complete optional recipe thumbnail vertical slice as specified by 
 ### 2026-10-30 — Claude Code
 
 - Implemented recipe thumbnails with OpenRouter FLUX 3 Image Klein at 16:9, tier 768 (1024 × 576), following the owner's decision. Delivered the cache, queue, job, budget, storage, serving, and frontend.
+- Changed the prompt to `recipe-thumbnail-style-v2` at the owner's request. It now asks for a natural, photorealistic photograph of home-cooked food with soft daylight, true colors, and real textures, and it rules out illustrated, 3D-rendered, over-saturated, or artificially perfect looks. The style version is part of the render key, so no `v1` image is reused. Validation: `RecipeThumbnailTests` (unit) pass. Next: deploy with the branch, then the owner adds the OpenRouter key.

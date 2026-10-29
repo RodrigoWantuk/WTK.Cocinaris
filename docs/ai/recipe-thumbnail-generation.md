@@ -178,7 +178,7 @@ The initial approved direction is:
 ### Canonical prompt template
 
 ```text
-Generate a realistic 16:9 recipe thumbnail showing one served plate of the following finished dish:
+Generate a natural, photorealistic 16:9 photograph of one served plate of the following finished dish:
 
 {appearanceDescription}
 
@@ -190,14 +190,16 @@ Texture and cooked-state cues: {textureAndDoneness}
 Garnish: {garnish}
 Dominant colors: {dominantColors}
 
-Use a modern wooden table and a light, predominantly white, softly blurred background. Keep the plate and food as the clear subject, with only a small margin outside the plate. Show the visible components and cooked states exactly as described. Do not add ingredients, garnish, side dishes, utensils, cutlery, napkins, hands, people, packaging, logos, labels, watermarks, or text. Do not imply nutrition, dietary suitability, restaurant quality, authenticity, freshness, doneness safety, or food-safety guarantees.
+Use a modern wooden table and a light, predominantly white, softly blurred background. Keep the plate and food as the clear subject, with only a small margin outside the plate. Make it look like a real photograph of home-cooked food: soft natural daylight, gentle shadows, true-to-life colors, real food textures with small natural imperfections, and a shallow depth of field. Avoid an illustrated, painted, cartoon, 3D-rendered, CGI, over-saturated, over-smoothed, glossy, or artificially perfect look. Show the visible components and cooked states exactly as described. Do not add ingredients, garnish, side dishes, utensils, cutlery, napkins, hands, people, packaging, logos, labels, watermarks, or text. Do not imply nutrition, dietary suitability, restaurant quality, authenticity, freshness, doneness safety, or food-safety guarantees.
 ```
 
-The initial template version is:
+The current template version is:
 
 ```text
-recipe-thumbnail-style-v1
+recipe-thumbnail-style-v2
 ```
+
+`v2` (2026-10-30, owner request) adds the natural-photography instruction and asks for a photorealistic photograph instead of a "realistic thumbnail". `v1` had neither. The version is part of the render key, so images rendered under `v1` are not reused for `v2`.
 
 Prompt wording may change only through evaluation and a prompt/style policy-version change.
 

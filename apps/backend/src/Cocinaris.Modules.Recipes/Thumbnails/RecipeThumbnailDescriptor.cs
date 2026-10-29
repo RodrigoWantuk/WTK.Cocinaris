@@ -19,7 +19,7 @@ namespace Cocinaris.Modules.Recipes.Thumbnails;
 public sealed record RecipeThumbnailDescriptor(string CanonicalJson, string VisualIdentityKey, string RenderKey, string Prompt)
 {
     /// <summary>Style and prompt template version; a change gives every dish a new render key.</summary>
-    public const string StyleVersion = "recipe-thumbnail-style-v1";
+    public const string StyleVersion = "recipe-thumbnail-style-v2";
 
     private static readonly JsonSerializerOptions ReadOptions = new(JsonSerializerDefaults.Web);
 
@@ -78,12 +78,12 @@ public sealed record RecipeThumbnailDescriptor(string CanonicalJson, string Visu
         return new RecipeThumbnailDescriptor(canonical, visualKey, renderKey, BuildPrompt(visual));
     }
 
-    /// <summary>The canonical prompt template <c>recipe-thumbnail-style-v1</c> filled from the descriptor.</summary>
+    /// <summary>The canonical prompt template <c>recipe-thumbnail-style-v2</c> filled from the descriptor.</summary>
     private static string BuildPrompt(ExpandThumbnailVisual visual)
     {
         static string Join(IEnumerable<string> values) => values.Any() ? string.Join(", ", values.Select(item => item.Trim())) : "none";
         return new StringBuilder()
-            .AppendLine("Generate a realistic 16:9 recipe thumbnail showing one served plate of the following finished dish:")
+            .AppendLine("Generate a natural, photorealistic 16:9 photograph of one served plate of the following finished dish:")
             .AppendLine()
             .AppendLine(visual.AppearanceDescription.Trim())
             .AppendLine()
@@ -96,6 +96,7 @@ public sealed record RecipeThumbnailDescriptor(string CanonicalJson, string Visu
             .AppendLine($"Dominant colors: {Join(visual.DominantColors)}")
             .AppendLine()
             .Append("Use a modern wooden table and a light, predominantly white, softly blurred background. Keep the plate and food as the clear subject, with only a small margin outside the plate. ")
+            .Append("Make it look like a real photograph of home-cooked food: soft natural daylight, gentle shadows, true-to-life colors, real food textures with small natural imperfections, and a shallow depth of field. Avoid an illustrated, painted, cartoon, 3D-rendered, CGI, over-saturated, over-smoothed, glossy, or artificially perfect look. ")
             .Append("Show the visible components and cooked states exactly as described. Do not add ingredients, garnish, side dishes, utensils, cutlery, napkins, hands, people, packaging, logos, labels, watermarks, or text. ")
             .Append("Do not imply nutrition, dietary suitability, restaurant quality, authenticity, freshness, doneness safety, or food-safety guarantees.")
             .ToString();
