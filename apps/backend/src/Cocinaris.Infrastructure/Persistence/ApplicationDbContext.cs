@@ -351,6 +351,7 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             entity.HasKey(x => x.Id);
             entity.Property(x => x.Operation).HasMaxLength(100).IsRequired();
             entity.Property(x => x.Status).HasMaxLength(20).IsRequired();
+            entity.Property(x => x.QualityFlags).HasMaxLength(100);
             entity.Property(x => x.Provider).HasMaxLength(60);
             entity.Property(x => x.Model).HasMaxLength(100);
             entity.Property(x => x.CorrelationId).HasMaxLength(100).IsRequired();

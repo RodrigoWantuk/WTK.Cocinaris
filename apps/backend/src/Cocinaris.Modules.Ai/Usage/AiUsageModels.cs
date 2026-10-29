@@ -15,11 +15,21 @@ public sealed class AiUsageOptions
     /// <summary>Gets or sets the maximum number of concurrently reserved (not yet settled or released) operations per owner.</summary>
     public int UserConcurrencyCeiling { get; set; } = 2;
 
+    /// <summary>
+    /// Gets or sets the most the deployment may spend on AI providers per UTC calendar month, in US
+    /// dollars (PLAN-0040). Settled and released calls count at their real cost; open reservations
+    /// count at their operation's estimate.
+    /// </summary>
+    public decimal MonthlyCostCeilingUsd { get; set; } = 5m;
+
     /// <summary>Gets or sets whether the AI Gateway is administratively disabled regardless of remaining budget.</summary>
     public bool Disabled { get; set; }
 
     /// <summary>Validates that configured ceilings are positive and coherent.</summary>
-    public bool IsValid() => GlobalDailyUnitCeiling > 0 && UserDailyUnitCeiling > 0 && UserConcurrencyCeiling > 0 && UserDailyUnitCeiling <= GlobalDailyUnitCeiling;
+    public bool IsValid() => GlobalDailyUnitCeiling > 0 && UserDailyUnitCeiling > 0 && UserConcurrencyCeiling > 0 && UserDailyUnitCeiling <= GlobalDailyUnitCeiling && MonthlyCostCeilingUsd > 0;
+
+    /// <summary>Gets the monthly ceiling in micro-dollars.</summary>
+    public long MonthlyCostCeilingMicroUsd => (long)(MonthlyCostCeilingUsd * 1_000_000m);
 }
 
 /// <summary>Lifecycle state of one usage ledger reservation.</summary>
@@ -52,7 +62,9 @@ public enum AiUsageReservationOutcome
     /// <summary>The owner's daily unit ceiling would be exceeded.</summary>
     UserBudgetExhausted,
     /// <summary>The owner already has the maximum number of concurrent reservations.</summary>
-    ConcurrencyExhausted
+    ConcurrencyExhausted,
+    /// <summary>The deployment's monthly provider spend ceiling would be exceeded.</summary>
+    MonthlyCostExhausted
 }
 
 /// <summary>Typed result of a reservation attempt.</summary>

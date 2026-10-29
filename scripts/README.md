@@ -73,3 +73,13 @@ commands, deployment evidence, forward-repair policy, and troubleshooting.
   - that nothing changed physically.
 
   Same password variable.
+
+## Operations (PLAN-0040)
+
+- `ops/ai-usage-report.sh [ceiling-usd]` runs on the owner host as root and reads only the AI usage ledger. It reports:
+  - this UTC month's provider spend against the monthly ceiling;
+  - calls by operation, model, and outcome, with attempts and cost;
+  - provider latency p50/p95/max;
+  - answers accepted with quality flags.
+
+  It prints no prompts, outputs, users, or secrets.

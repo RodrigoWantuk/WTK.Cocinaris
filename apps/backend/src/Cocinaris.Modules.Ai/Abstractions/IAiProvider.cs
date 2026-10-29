@@ -10,7 +10,8 @@ namespace Cocinaris.Modules.Ai.Abstractions;
 /// <param name="PreferNonThinking">Whether the gateway prefers a faster non-thinking model variant for this call.</param>
 /// <param name="TimeoutSeconds">Maximum time the provider call may take before it is treated as a timeout failure.</param>
 /// <param name="CorrelationId">Request correlation identifier propagated to logs and telemetry, never to the provider.</param>
-public sealed record AiProviderInvocationRequest(string Operation, string Payload, bool PreferNonThinking, int TimeoutSeconds, string CorrelationId);
+/// <param name="MaxOutputTokens">Completion token limit for the call.</param>
+public sealed record AiProviderInvocationRequest(string Operation, string Payload, bool PreferNonThinking, int TimeoutSeconds, string CorrelationId, int MaxOutputTokens = 4096);
 
 /// <summary>Describes why a provider invocation did not produce usable output.</summary>
 public enum AiProviderFailureKind
@@ -27,8 +28,10 @@ public enum AiProviderFailureKind
 /// </summary>
 public sealed record AiProviderInvocationResult
 {
-    private AiProviderInvocationResult(bool isSuccess, string? rawContent, string? modelUsed, int? promptTokens, int? completionTokens, AiProviderFailureKind? failureKind)
+    private AiProviderInvocationResult(bool isSuccess, string? rawContent, string? modelUsed, int? promptTokens, int? completionTokens, AiProviderFailureKind? failureKind, int? latencyMs = null, int providerCalls = 1)
     {
+        LatencyMs = latencyMs;
+        ProviderCalls = providerCalls;
         IsSuccess = isSuccess;
         RawContent = rawContent;
         ModelUsed = modelUsed;
@@ -54,6 +57,16 @@ public sealed record AiProviderInvocationResult
 
     /// <summary>Gets the failure classification, present only when <see cref="IsSuccess"/> is <see langword="false"/>.</summary>
     public AiProviderFailureKind? FailureKind { get; }
+
+    /// <summary>Gets the wall-clock time spent in the provider, across fallback calls, when measured.</summary>
+    public int? LatencyMs { get; }
+
+    /// <summary>Gets the number of provider calls made (more than 1 when a fallback model was tried).</summary>
+    public int ProviderCalls { get; }
+
+    /// <summary>Returns the same result with measured latency and call count.</summary>
+    public AiProviderInvocationResult WithTiming(int latencyMs, int providerCalls) =>
+        new(IsSuccess, RawContent, ModelUsed, PromptTokens, CompletionTokens, FailureKind, latencyMs, providerCalls);
 
     /// <summary>Creates a successful invocation outcome.</summary>
     public static AiProviderInvocationResult Success(string rawContent, string modelUsed, int? promptTokens = null, int? completionTokens = null) =>

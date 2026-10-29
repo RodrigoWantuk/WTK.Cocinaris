@@ -29,12 +29,18 @@ public static class RecipeAiServiceCollectionExtensions
             .Validate(options => options.IsValid(environment.IsDevelopment() || environment.IsEnvironment("Testing")), "DeepSeek configuration is absent or unsafe for this environment.")
             .ValidateOnStart();
 
+        services.AddOptions<AiPricingOptions>()
+            .Bind(configuration.GetSection("Ai:Pricing"))
+            .Validate(options => options.IsValid(), "AI model prices must be non-negative.")
+            .ValidateOnStart();
+        services.AddSingleton(provider => provider.GetRequiredService<IOptions<AiPricingOptions>>().Value);
         services.AddSingleton(AiOperationRegistry.CreateDefault());
         services.AddScoped<IAiUsageLedgerStore, PostgreSqlAiUsageLedgerStore>();
         services.AddScoped(provider =>
             new AiUsageGovernor(
                 provider.GetRequiredService<IAiUsageLedgerStore>(),
                 provider.GetRequiredService<IOptions<AiUsageOptions>>().Value,
+                provider.GetRequiredService<AiPricingOptions>(),
                 provider.GetRequiredService<TimeProvider>()));
         services.AddScoped<IRecipeGenerationStore, PostgreSqlRecipeGenerationStore>();
         services.AddScoped<IRecipeStore, PostgreSqlRecipeStore>();

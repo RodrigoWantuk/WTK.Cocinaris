@@ -15,11 +15,23 @@ public sealed class DeepSeekOptions
     /// <summary>Gets or sets the bearer API key. Must never have a non-empty repository default.</summary>
     public string? ApiKey { get; set; }
 
-    /// <summary>Gets or sets the non-thinking (fast) chat model identifier.</summary>
-    public string NonThinkingModel { get; set; } = "deepseek-chat";
+    /// <summary>
+    /// Gets or sets the model identifier (PLAN-0040, D-3: <c>deepseek-v4-flash</c>, the model the owner
+    /// evaluated). Thinking is switched per operation with the request's <c>thinking</c> parameter.
+    /// </summary>
+    public string Model { get; set; } = "deepseek-v4-flash";
 
-    /// <summary>Gets or sets the thinking (reasoning) model identifier, used only when an operation requires it.</summary>
-    public string ThinkingModel { get; set; } = "deepseek-reasoner";
+    /// <summary>
+    /// Gets or sets the model tried once when the primary model's call fails with a provider error
+    /// (not a timeout), for example a rejected model identifier. Empty disables the fallback.
+    /// </summary>
+    public string? FallbackModel { get; set; } = "deepseek-chat";
+
+    /// <summary>Gets or sets the reasoning effort sent when an operation uses thinking.</summary>
+    public string ReasoningEffort { get; set; } = "high";
+
+    /// <summary>Whether a model takes the <c>thinking</c> request parameter (the V4 family does; older aliases do not).</summary>
+    public static bool SupportsThinkingParameter(string model) => model.StartsWith("deepseek-v4", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>Gets or sets the fixed system prompt instructing strict JSON-only protocol 0.3 output.</summary>
     public string SystemPrompt { get; set; } =

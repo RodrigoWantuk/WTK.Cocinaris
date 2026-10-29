@@ -28,6 +28,9 @@ namespace Cocinaris.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<int?>("Attempts")
+                        .HasColumnType("integer");
+
                     b.Property<DateTimeOffset?>("ClosedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -39,8 +42,17 @@ namespace Cocinaris.Infrastructure.Persistence.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<long?>("CostMicroUsd")
+                        .HasColumnType("bigint");
+
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<long>("EstimatedCostMicroUsd")
+                        .HasColumnType("bigint");
+
+                    b.Property<int?>("LatencyMs")
+                        .HasColumnType("integer");
 
                     b.Property<string>("Model")
                         .HasMaxLength(100)
@@ -60,6 +72,10 @@ namespace Cocinaris.Infrastructure.Persistence.Migrations
                     b.Property<string>("Provider")
                         .HasMaxLength(60)
                         .HasColumnType("character varying(60)");
+
+                    b.Property<string>("QualityFlags")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
 
                     b.Property<int>("ReservedUnits")
                         .HasColumnType("integer");

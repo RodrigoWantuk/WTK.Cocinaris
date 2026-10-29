@@ -36,4 +36,14 @@ public sealed class AiUsageLedgerRecord
     public DateTimeOffset CreatedAt { get; set; }
     /// <summary>Gets or sets the UTC settlement or release instant.</summary>
     public DateTimeOffset? ClosedAt { get; set; }
+    /// <summary>Gets or sets the estimated provider cost (micro-dollars) held against the monthly ceiling while reserved.</summary>
+    public long EstimatedCostMicroUsd { get; set; }
+    /// <summary>Gets or sets the real provider cost (micro-dollars) once the call closed; null before PLAN-0040.</summary>
+    public long? CostMicroUsd { get; set; }
+    /// <summary>Gets or sets the summed provider latency in milliseconds.</summary>
+    public int? LatencyMs { get; set; }
+    /// <summary>Gets or sets the provider attempts (first call, repairs, and fallbacks).</summary>
+    public int? Attempts { get; set; }
+    /// <summary>Gets or sets soft quality issues of an accepted answer, comma separated (for example <c>language</c>).</summary>
+    public string? QualityFlags { get; set; }
 }

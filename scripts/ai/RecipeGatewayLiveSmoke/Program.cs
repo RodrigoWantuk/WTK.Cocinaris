@@ -36,8 +36,9 @@ var options = new DeepSeekOptions
     Enabled = true,
     ApiKey = apiKey,
     BaseUrl = baseUrl.TrimEnd('/'),
-    NonThinkingModel = model,
-    ThinkingModel = model
+    Model = model,
+    // The smoke measures one model; a silent fallback would hide a rejected model identifier.
+    FallbackModel = null
 };
 
 using var httpClient = new HttpClient();

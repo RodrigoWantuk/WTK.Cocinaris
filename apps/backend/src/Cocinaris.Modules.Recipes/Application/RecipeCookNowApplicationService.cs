@@ -56,7 +56,7 @@ public sealed class RecipeCookNowApplicationService(
             return RecipeApplicationResult<RecipeGenerationSessionView>.Succeeded(ToSessionView(claim.Session));
         }
 
-        var reservation = await usageGovernor.ReserveAsync(user.Id, definition.Operation, definition.EstimatedUsageUnits, command.CorrelationId, cancellationToken);
+        var reservation = await usageGovernor.ReserveAsync(user.Id, definition.Operation, definition.EstimatedUsageUnits, definition.EstimatedCostMicroUsd, command.CorrelationId, cancellationToken);
         if (reservation.Outcome != AiUsageReservationOutcome.Reserved)
         {
             claim.Session.MarkFailed($"usage_{reservation.Outcome}", timeProvider.GetUtcNow());
@@ -73,6 +73,8 @@ public sealed class RecipeCookNowApplicationService(
                 claim.Session,
                 reservation.ReservationId!.Value,
                 invocation.FailureCode ?? "ai_output_invalid",
+                invocation.Usage,
+                usageGovernor.CostMicroUsd(invocation.Usage),
                 timeProvider.GetUtcNow(),
                 cancellationToken);
             return Failure<RecipeGenerationSessionView>(invocation.FailureCode ?? "ai_output_invalid", invocation.FailureDetail ?? "The AI provider did not return three validated candidates.");
@@ -84,10 +86,8 @@ public sealed class RecipeCookNowApplicationService(
             claim.Session,
             reservation.ReservationId!.Value,
             definition.EstimatedUsageUnits,
-            aiProvider.Name,
-            invocation.ModelUsed ?? "unknown",
-            invocation.PromptTokens,
-            invocation.CompletionTokens,
+            invocation.Usage,
+            usageGovernor.CostMicroUsd(invocation.Usage),
             completedAt,
             cancellationToken);
         return RecipeApplicationResult<RecipeGenerationSessionView>.Succeeded(ToSessionView(claim.Session, invocation.Response.Candidates));
@@ -164,7 +164,7 @@ public sealed class RecipeCookNowApplicationService(
             return Failure<RecipeDetailView>("resource_not_found", "The candidate was not found in this generation session.");
         }
 
-        var reservation = await usageGovernor.ReserveAsync(user.Id, definition.Operation, definition.EstimatedUsageUnits, command.CorrelationId, cancellationToken);
+        var reservation = await usageGovernor.ReserveAsync(user.Id, definition.Operation, definition.EstimatedUsageUnits, definition.EstimatedCostMicroUsd, command.CorrelationId, cancellationToken);
         if (reservation.Outcome != AiUsageReservationOutcome.Reserved)
         {
             session.MarkFailed($"usage_{reservation.Outcome}", timeProvider.GetUtcNow());
@@ -181,6 +181,8 @@ public sealed class RecipeCookNowApplicationService(
                 session,
                 reservation.ReservationId!.Value,
                 invocation.FailureCode ?? "ai_output_invalid",
+                invocation.Usage,
+                usageGovernor.CostMicroUsd(invocation.Usage),
                 timeProvider.GetUtcNow(),
                 cancellationToken);
             return Failure<RecipeDetailView>(invocation.FailureCode ?? "ai_output_invalid", invocation.FailureDetail ?? "The AI provider did not return a valid expanded recipe.");
@@ -207,10 +209,8 @@ public sealed class RecipeCookNowApplicationService(
             session,
             reservation.ReservationId!.Value,
             definition.EstimatedUsageUnits,
-            aiProvider.Name,
-            invocation.ModelUsed ?? "unknown",
-            invocation.PromptTokens,
-            invocation.CompletionTokens,
+            invocation.Usage,
+            usageGovernor.CostMicroUsd(invocation.Usage),
             completedAt,
             cancellationToken);
         return RecipeApplicationResult<RecipeDetailView>.Succeeded(ToDetailView(revision), RecipeApplicationSuccess.Created);
@@ -239,64 +239,82 @@ public sealed class RecipeCookNowApplicationService(
             : RecipeApplicationResult<RecipeDetailView>.Succeeded(ToDetailView(priorDetail));
     }
 
-    private async Task<(SuggestCandidatesResponse? Response, string? ModelUsed, int? PromptTokens, int? CompletionTokens, string? FailureCode, string? FailureDetail)> InvokeSuggestWithRepairAsync(
+    private async Task<AiInvocationOutcome<SuggestCandidatesResponse>> InvokeSuggestWithRepairAsync(
         AiOperationDefinition definition, RecipeSuggestRequestContext context, string correlationId, CancellationToken cancellationToken)
     {
         var initialPayload = RecipeAiRequestEnvelopes.BuildSuggestRequest(context);
         using var requestDocument = JsonDocument.Parse(initialPayload);
         var requestElement = requestDocument.RootElement;
-        string? modelUsed = null;
-        int? promptTokens = null;
-        int? completionTokens = null;
-        AiProviderFailureKind? lastTransportFailure = null;
-        IReadOnlyList<string>? lastValidationErrors = null;
-        string? lastInvalidOutput = null;
-        for (var attempt = 0; attempt <= definition.MaxRepairAttempts; attempt++)
-        {
-            var payload = attempt == 0
-                ? initialPayload
-                : RecipeAiRequestEnvelopes.BuildSuggestRepairRequest(context, lastValidationErrors ?? ["validation_failed"], lastInvalidOutput ?? string.Empty);
-            var invocation = await aiProvider.InvokeAsync(new AiProviderInvocationRequest(definition.Operation, payload, definition.PreferNonThinking, definition.TimeoutSeconds, correlationId), cancellationToken);
-            if (!invocation.IsSuccess)
+        return await InvokeWithRepairAsync(
+            definition,
+            correlationId,
+            initialPayload,
+            errors => RecipeAiRequestEnvelopes.BuildSuggestRepairRequest(context, errors.Errors, errors.Output),
+            raw =>
             {
-                lastTransportFailure = invocation.FailureKind;
-                continue;
-            }
-
-            modelUsed = invocation.ModelUsed;
-            promptTokens = SumNullable(promptTokens, invocation.PromptTokens);
-            completionTokens = SumNullable(completionTokens, invocation.CompletionTokens);
-            var validation = RecipeProtocolValidator.ValidateSuggest(invocation.RawContent!, requestElement);
-            if (validation.IsValid)
-            {
-                return (validation.Response, modelUsed, promptTokens, completionTokens, null, null);
-            }
-
-            lastValidationErrors = validation.Errors;
-            lastInvalidOutput = invocation.RawContent;
-        }
-
-        return (null, modelUsed, promptTokens, completionTokens, MapProviderFailure(lastTransportFailure, lastValidationErrors is not null), DescribeProviderFailure(lastTransportFailure, lastValidationErrors is not null));
+                var validation = RecipeProtocolValidator.ValidateSuggest(raw, requestElement);
+                return (validation.IsValid ? validation.Response : null, validation.Errors);
+            },
+            response => RecipeOutputQuality.CheckSuggest(response, context.Presets.OutputLanguage),
+            cancellationToken);
     }
 
-    private async Task<(ExpandSelectedResponse? Response, string? ModelUsed, int? PromptTokens, int? CompletionTokens, string? FailureCode, string? FailureDetail)> InvokeExpandWithRepairAsync(
+    private async Task<AiInvocationOutcome<ExpandSelectedResponse>> InvokeExpandWithRepairAsync(
         AiOperationDefinition definition, RecipeExpandRequestContext context, string correlationId, CancellationToken cancellationToken)
     {
         var initialPayload = RecipeAiRequestEnvelopes.BuildExpandRequest(context);
         using var requestDocument = JsonDocument.Parse(initialPayload);
         var requestElement = requestDocument.RootElement;
+        var detailLevel = RecipeOutputQuality.DetailLevel(context.Presets);
+        return await InvokeWithRepairAsync(
+            definition,
+            correlationId,
+            initialPayload,
+            errors => RecipeAiRequestEnvelopes.BuildExpandRepairRequest(context, errors.Errors, errors.Output),
+            raw =>
+            {
+                var validation = RecipeProtocolValidator.ValidateExpand(raw, requestElement);
+                return (validation.IsValid ? validation.Response : null, validation.Errors);
+            },
+            response => RecipeOutputQuality.CheckExpand(response, context.Presets.OutputLanguage, detailLevel),
+            cancellationToken);
+    }
+
+    /// <summary>
+    /// Calls the provider and allows <see cref="AiOperationDefinition.MaxRepairAttempts"/> repairs.
+    /// A schema-invalid answer is repaired with its validation errors. A schema-valid answer with
+    /// soft quality issues (language, detail) is also sent for repair, but it is kept: if the repair
+    /// is not clean, the first valid answer is returned with its quality flags (PLAN-0040). Usage
+    /// (tokens, latency, attempts) is summed across every call, failed ones included.
+    /// </summary>
+    private async Task<AiInvocationOutcome<T>> InvokeWithRepairAsync<T>(
+        AiOperationDefinition definition,
+        string correlationId,
+        string initialPayload,
+        Func<(IReadOnlyList<string> Errors, string Output), string> buildRepair,
+        Func<string, (T? Response, IReadOnlyList<string> Errors)> validate,
+        Func<T, IReadOnlyList<RecipeQualityIssue>> checkQuality,
+        CancellationToken cancellationToken)
+        where T : class
+    {
         string? modelUsed = null;
         int? promptTokens = null;
         int? completionTokens = null;
+        var attempts = 0;
+        int? latencyMs = null;
         AiProviderFailureKind? lastTransportFailure = null;
-        IReadOnlyList<string>? lastValidationErrors = null;
-        string? lastInvalidOutput = null;
+        IReadOnlyList<string>? lastErrors = null;
+        string? lastOutput = null;
+        (T Response, IReadOnlyList<RecipeQualityIssue> Issues)? kept = null;
+        AiCallUsage Usage(string? flags = null) => new(aiProvider.Name, modelUsed, promptTokens, completionTokens, attempts, latencyMs, flags);
+        string Flags(IReadOnlyList<RecipeQualityIssue> issues) => string.Join(",", issues.Select(issue => issue.Flag).Distinct());
+
         for (var attempt = 0; attempt <= definition.MaxRepairAttempts; attempt++)
         {
-            var payload = attempt == 0
-                ? initialPayload
-                : RecipeAiRequestEnvelopes.BuildExpandRepairRequest(context, lastValidationErrors ?? ["validation_failed"], lastInvalidOutput ?? string.Empty);
-            var invocation = await aiProvider.InvokeAsync(new AiProviderInvocationRequest(definition.Operation, payload, definition.PreferNonThinking, definition.TimeoutSeconds, correlationId), cancellationToken);
+            var payload = attempt == 0 ? initialPayload : buildRepair((lastErrors ?? ["validation_failed"], lastOutput ?? string.Empty));
+            var invocation = await aiProvider.InvokeAsync(new AiProviderInvocationRequest(definition.Operation, payload, definition.PreferNonThinking, definition.TimeoutSeconds, correlationId, definition.MaxOutputTokens), cancellationToken);
+            attempts += invocation.ProviderCalls;
+            latencyMs = SumNullable(latencyMs, invocation.LatencyMs);
             if (!invocation.IsSuccess)
             {
                 lastTransportFailure = invocation.FailureKind;
@@ -306,18 +324,40 @@ public sealed class RecipeCookNowApplicationService(
             modelUsed = invocation.ModelUsed;
             promptTokens = SumNullable(promptTokens, invocation.PromptTokens);
             completionTokens = SumNullable(completionTokens, invocation.CompletionTokens);
-            var validation = RecipeProtocolValidator.ValidateExpand(invocation.RawContent!, requestElement);
-            if (validation.IsValid)
+            var (response, errors) = validate(invocation.RawContent!);
+            if (response is null)
             {
-                return (validation.Response, modelUsed, promptTokens, completionTokens, null, null);
+                lastErrors = errors;
+                lastOutput = invocation.RawContent;
+                continue;
             }
 
-            lastValidationErrors = validation.Errors;
-            lastInvalidOutput = invocation.RawContent;
+            var issues = checkQuality(response);
+            if (issues.Count == 0)
+            {
+                return new AiInvocationOutcome<T>(response, Usage(), null, null);
+            }
+
+            // Keep the first valid answer; a later one replaces it only if it has fewer issues.
+            if (kept is null || issues.Count < kept.Value.Issues.Count)
+            {
+                kept = (response, issues);
+            }
+
+            lastErrors = issues.Select(issue => issue.Instruction).ToList();
+            lastOutput = invocation.RawContent;
         }
 
-        return (null, modelUsed, promptTokens, completionTokens, MapProviderFailure(lastTransportFailure, lastValidationErrors is not null), DescribeProviderFailure(lastTransportFailure, lastValidationErrors is not null));
+        if (kept is { } accepted)
+        {
+            return new AiInvocationOutcome<T>(accepted.Response, Usage(Flags(accepted.Issues)), null, null);
+        }
+
+        return new AiInvocationOutcome<T>(null, Usage(), MapProviderFailure(lastTransportFailure, lastErrors is not null), DescribeProviderFailure(lastTransportFailure, lastErrors is not null));
     }
+
+    private sealed record AiInvocationOutcome<T>(T? Response, AiCallUsage Usage, string? FailureCode, string? FailureDetail)
+        where T : class;
 
     private static RecipeGenerationSession MarkFailedCopy(RecipeGenerationSession session, string reason, DateTimeOffset now)
     {
@@ -358,7 +398,7 @@ public sealed class RecipeCookNowApplicationService(
     private static string MapReservationFailure(AiUsageReservationOutcome outcome) => outcome switch
     {
         AiUsageReservationOutcome.Disabled => "ai_capability_unavailable",
-        AiUsageReservationOutcome.GlobalBudgetExhausted or AiUsageReservationOutcome.UserBudgetExhausted => "ai_budget_exhausted",
+        AiUsageReservationOutcome.GlobalBudgetExhausted or AiUsageReservationOutcome.UserBudgetExhausted or AiUsageReservationOutcome.MonthlyCostExhausted => "ai_budget_exhausted",
         AiUsageReservationOutcome.ConcurrencyExhausted => "ai_operation_conflict",
         _ => "ai_budget_unavailable"
     };
@@ -369,6 +409,7 @@ public sealed class RecipeCookNowApplicationService(
         AiUsageReservationOutcome.GlobalBudgetExhausted => "The global AI usage budget for today is exhausted.",
         AiUsageReservationOutcome.UserBudgetExhausted => "Your daily AI usage budget is exhausted.",
         AiUsageReservationOutcome.ConcurrencyExhausted => "You already have the maximum number of AI requests in progress.",
+        AiUsageReservationOutcome.MonthlyCostExhausted => "The monthly AI spending limit for this deployment is reached.",
         _ => "The AI Gateway is currently unavailable."
     };
 

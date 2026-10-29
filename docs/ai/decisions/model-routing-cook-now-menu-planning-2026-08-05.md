@@ -2,7 +2,7 @@
 
 - **Plan:** PLAN-0022
 - **Date:** 2026-08-05
-- **Status:** Accepted provisional policy (statistical latency deferred)
+- **Status:** Accepted provisional policy. Implemented in the gateway by PLAN-0040 / ADR-0009: `deepseek-v4-flash` with `thinking` disabled for cook-now, one fallback model after a provider error. Latency is now recorded per call; statistics accumulate in `scripts/ops/ai-usage-report.sh`.
 
 ## Models
 

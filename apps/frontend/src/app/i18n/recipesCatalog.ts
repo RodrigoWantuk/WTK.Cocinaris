@@ -99,7 +99,7 @@ const en: Record<(typeof REQUIRED_RECIPES_I18N_KEYS)[number], string> = {
   "recipes.error.providerUnavailable":
     "Recipe AI is unavailable right now. You can retry later.",
   "recipes.error.budgetUnavailable":
-    "Recipe AI budget is unavailable. Try again later.",
+    "The recipe AI has reached its usage limit for now. Your saved recipes, pantry, and menu still work.",
   "recipes.error.invalidOutput":
     "The AI response could not be validated. Retry to request new candidates.",
   "recipes.error.session": "A valid session and CSRF token are required.",
@@ -155,7 +155,7 @@ const ptBR: Record<(typeof REQUIRED_RECIPES_I18N_KEYS)[number], string> = {
   "recipes.error.providerUnavailable":
     "A IA de receitas está indisponível no momento. Você pode tentar depois.",
   "recipes.error.budgetUnavailable":
-    "O orçamento da IA de receitas está indisponível. Tente mais tarde.",
+    "A IA de receitas atingiu o limite de uso por agora. Suas receitas salvas, a despensa e o cardápio continuam funcionando.",
   "recipes.error.invalidOutput":
     "A resposta da IA não pôde ser validada. Tente de novo para pedir novos candidatos.",
   "recipes.error.session": "É necessária uma sessão válida e um token CSRF.",
@@ -215,7 +215,7 @@ const es: Record<(typeof REQUIRED_RECIPES_I18N_KEYS)[number], string> = {
   "recipes.error.providerUnavailable":
     "La IA de recetas no está disponible ahora. Puedes reintentar más tarde.",
   "recipes.error.budgetUnavailable":
-    "El presupuesto de IA de recetas no está disponible. Inténtalo más tarde.",
+    "La IA de recetas alcanzó su límite de uso por ahora. Tus recetas guardadas, la despensa y el menú siguen funcionando.",
   "recipes.error.invalidOutput":
     "La respuesta de la IA no se pudo validar. Reintenta para pedir nuevos candidatos.",
   "recipes.error.session": "Se requiere una sesión válida y un token CSRF.",

@@ -17,18 +17,18 @@ public sealed class RecipeCookNowApplicationServiceTests
     public async Task BudgetReserveSettleAndReleaseLifecycle()
     {
         var ledger = new InMemoryAiUsageLedgerStore();
-        var governor = new AiUsageGovernor(ledger, new AiUsageOptions { UserDailyUnitCeiling = 10, GlobalDailyUnitCeiling = 100, UserConcurrencyCeiling = 2 }, TimeProvider.System);
+        var governor = new AiUsageGovernor(ledger, new AiUsageOptions { UserDailyUnitCeiling = 10, GlobalDailyUnitCeiling = 100, UserConcurrencyCeiling = 2 }, new AiPricingOptions(), TimeProvider.System);
         var owner = Guid.NewGuid();
 
-        var reserved = await governor.ReserveAsync(owner, AiOperationRegistry.SuggestCandidates, 3, "corr-1", CancellationToken.None);
+        var reserved = await governor.ReserveAsync(owner, AiOperationRegistry.SuggestCandidates, 3, 3_000, "corr-1", CancellationToken.None);
         Assert.Equal(AiUsageReservationOutcome.Reserved, reserved.Outcome);
         Assert.Equal(1, await ledger.CountOpenReservationsAsync(owner, CancellationToken.None));
 
-        await governor.SettleAsync(reserved.ReservationId!.Value, 3, "fake", "fake-model", CancellationToken.None, promptTokens: 10, completionTokens: 20);
+        await governor.SettleAsync(reserved.ReservationId!.Value, 3, new AiCallUsage("fake", "fake-model", 10, 20, 1, 100), CancellationToken.None);
         Assert.Equal(0, await ledger.CountOpenReservationsAsync(owner, CancellationToken.None));
         Assert.Equal(3, await ledger.SumOwnerUnitsForDayAsync(owner, DateTimeOffset.UtcNow, CancellationToken.None));
 
-        var second = await governor.ReserveAsync(owner, AiOperationRegistry.ExpandSelected, 5, "corr-2", CancellationToken.None);
+        var second = await governor.ReserveAsync(owner, AiOperationRegistry.ExpandSelected, 5, 5_000, "corr-2", CancellationToken.None);
         await governor.ReleaseAsync(second.ReservationId!.Value, CancellationToken.None);
         Assert.Equal(3, await ledger.SumOwnerUnitsForDayAsync(owner, DateTimeOffset.UtcNow, CancellationToken.None));
         Assert.Equal(0, await ledger.CountOpenReservationsAsync(owner, CancellationToken.None));
@@ -38,7 +38,7 @@ public sealed class RecipeCookNowApplicationServiceTests
     public async Task ConcurrentReserveAgainstTightCeilingAllowsExactlyOne()
     {
         var ledger = new InMemoryAiUsageLedgerStore();
-        var governor = new AiUsageGovernor(ledger, new AiUsageOptions { UserDailyUnitCeiling = 3, GlobalDailyUnitCeiling = 3, UserConcurrencyCeiling = 2 }, TimeProvider.System);
+        var governor = new AiUsageGovernor(ledger, new AiUsageOptions { UserDailyUnitCeiling = 3, GlobalDailyUnitCeiling = 3, UserConcurrencyCeiling = 2 }, new AiPricingOptions(), TimeProvider.System);
         var owner = Guid.NewGuid();
         using var ready = new CountdownEvent(2);
         using var start = new ManualResetEventSlim(false);
@@ -48,7 +48,7 @@ public sealed class RecipeCookNowApplicationServiceTests
         {
             ready.Signal();
             start.Wait();
-            results[index] = await governor.ReserveAsync(owner, AiOperationRegistry.SuggestCandidates, 3, $"corr-{index}", CancellationToken.None);
+            results[index] = await governor.ReserveAsync(owner, AiOperationRegistry.SuggestCandidates, 3, 1_000, $"corr-{index}", CancellationToken.None);
         }
 
         var tasks = new[]
@@ -183,6 +183,38 @@ public sealed class RecipeCookNowApplicationServiceTests
     }
 
     [Fact]
+    public async Task AValidAnswerInTheWrongLanguageIsRepairedAndAClearRepairWins()
+    {
+        var harness = CreateHarness(useProtocolDefaults: false);
+        const string english = "Heat the oil in the pan, add the onion and stir until it is soft.";
+        const string portuguese = "Aqueça o óleo na panela, junte a cebola e mexa até ela ficar macia.";
+        harness.Provider.Enqueue(AiOperationRegistry.SuggestCandidates, request => AiProviderInvocationResult.Success(AiGatewayHardeningTests.WithSummaries(FakeAiProvider.BuildDefaultContent(request), english), "fake-model", 100, 50));
+        harness.Provider.Enqueue(AiOperationRegistry.SuggestCandidates, request => AiProviderInvocationResult.Success(AiGatewayHardeningTests.WithSummaries(FakeAiProvider.BuildDefaultContent(request), portuguese), "fake-model", 100, 50));
+
+        var result = await harness.Service.RequestCandidatesAsync(new RequestCandidatesCommand(Guid.NewGuid(), "corr"), CancellationToken.None);
+
+        Assert.Null(result.Problem);
+        Assert.Equal(portuguese, result.Value!.Candidates![0].Summary);
+        var usage = harness.Ledger.Usages.Single();
+        Assert.Equal((2, 200, 100, (string?)null), (usage.Attempts, usage.PromptTokens, usage.CompletionTokens, usage.QualityFlags));
+    }
+
+    [Fact]
+    public async Task AValidAnswerIsKeptWithAQualityFlagWhenTheRepairIsNoBetter()
+    {
+        var harness = CreateHarness(useProtocolDefaults: false);
+        const string english = "Heat the oil in the pan, add the onion and stir until it is soft.";
+        harness.Provider.Enqueue(AiOperationRegistry.SuggestCandidates, request => AiProviderInvocationResult.Success(AiGatewayHardeningTests.WithSummaries(FakeAiProvider.BuildDefaultContent(request), english), "fake-model"));
+        harness.Provider.Enqueue(AiOperationRegistry.SuggestCandidates, AiProviderInvocationResult.Failure(AiProviderFailureKind.Unavailable));
+
+        var result = await harness.Service.RequestCandidatesAsync(new RequestCandidatesCommand(Guid.NewGuid(), "corr"), CancellationToken.None);
+
+        Assert.Null(result.Problem);
+        Assert.Equal(english, result.Value!.Candidates![0].Summary);
+        Assert.Equal("language", harness.Ledger.Usages.Single().QualityFlags);
+    }
+
+    [Fact]
     public void RecipeRevisionContentIsImmutableAfterCreate()
     {
         var now = DateTimeOffset.UtcNow;
@@ -228,7 +260,7 @@ public sealed class RecipeCookNowApplicationServiceTests
             new EmptyRecipeContextAssembler(),
             provider,
             AiOperationRegistry.CreateDefault(),
-            new AiUsageGovernor(usageLedger, new AiUsageOptions(), TimeProvider.System),
+            new AiUsageGovernor(usageLedger, new AiUsageOptions(), new AiPricingOptions(), TimeProvider.System),
             TimeProvider.System);
         return new Harness(service, provider, usageLedger, recipeStore, owner);
     }
@@ -282,6 +314,7 @@ public sealed class RecipeCookNowApplicationServiceTests
             Guid ownerUserId,
             string operation,
             int estimatedUnits,
+            long estimatedCostMicroUsd,
             string correlationId,
             DateTimeOffset now,
             AiUsageOptions ceilings,
@@ -342,25 +375,20 @@ public sealed class RecipeCookNowApplicationServiceTests
             }
         }
 
-        public Task SettleAsync(
-            Guid reservationId,
-            int settledUnits,
-            string provider,
-            string model,
-            int? promptTokens,
-            int? completionTokens,
-            DateTimeOffset now,
-            CancellationToken cancellationToken)
+        public List<AiCallUsage> Usages { get; } = [];
+
+        public Task SettleAsync(Guid reservationId, int settledUnits, AiCallUsage usage, long costMicroUsd, DateTimeOffset now, CancellationToken cancellationToken)
         {
             lock (_gate)
             {
+                Usages.Add(usage);
                 var current = _entries[reservationId];
-                _entries[reservationId] = current with { Status = AiUsageEntryStatus.Settled, SettledUnits = settledUnits, Provider = provider, Model = model, ClosedAt = now };
+                _entries[reservationId] = current with { Status = AiUsageEntryStatus.Settled, SettledUnits = settledUnits, Provider = usage.Provider, Model = usage.Model, ClosedAt = now };
                 return Task.CompletedTask;
             }
         }
 
-        public Task ReleaseAsync(Guid reservationId, DateTimeOffset now, CancellationToken cancellationToken)
+        public Task ReleaseAsync(Guid reservationId, AiCallUsage? usage, long costMicroUsd, DateTimeOffset now, CancellationToken cancellationToken)
         {
             lock (_gate)
             {
@@ -538,27 +566,27 @@ public sealed class RecipeCookNowApplicationServiceTests
             RecipeGenerationSession session,
             Guid reservationId,
             int settledUnits,
-            string provider,
-            string model,
-            int? promptTokens,
-            int? completionTokens,
+            AiCallUsage usage,
+            long costMicroUsd,
             DateTimeOffset now,
             CancellationToken cancellationToken)
         {
             await generationStore.SaveAsync(session, cancellationToken);
-            await ledger.SettleAsync(reservationId, settledUnits, provider, model, promptTokens, completionTokens, now, cancellationToken);
+            await ledger.SettleAsync(reservationId, settledUnits, usage, costMicroUsd, now, cancellationToken);
         }
 
         public async Task FailSuggestAsync(
             RecipeGenerationSession session,
             Guid reservationId,
             string failureReason,
+            AiCallUsage? usage,
+            long costMicroUsd,
             DateTimeOffset now,
             CancellationToken cancellationToken)
         {
             session.MarkFailed(failureReason, now);
             await generationStore.SaveAsync(session, cancellationToken);
-            await ledger.ReleaseAsync(reservationId, now, cancellationToken);
+            await ledger.ReleaseAsync(reservationId, usage, costMicroUsd, now, cancellationToken);
         }
 
         public async Task FinalizeExpansionAsync(
@@ -567,29 +595,29 @@ public sealed class RecipeCookNowApplicationServiceTests
             RecipeGenerationSession session,
             Guid reservationId,
             int settledUnits,
-            string provider,
-            string model,
-            int? promptTokens,
-            int? completionTokens,
+            AiCallUsage usage,
+            long costMicroUsd,
             DateTimeOffset now,
             CancellationToken cancellationToken)
         {
             session.CompleteSelection(recipe.Id, now);
             await recipeStore.SaveNewAsync(recipe, revision, cancellationToken);
             await generationStore.SaveAsync(session, cancellationToken);
-            await ledger.SettleAsync(reservationId, settledUnits, provider, model, promptTokens, completionTokens, now, cancellationToken);
+            await ledger.SettleAsync(reservationId, settledUnits, usage, costMicroUsd, now, cancellationToken);
         }
 
         public async Task FailExpansionAsync(
             RecipeGenerationSession session,
             Guid reservationId,
             string failureReason,
+            AiCallUsage? usage,
+            long costMicroUsd,
             DateTimeOffset now,
             CancellationToken cancellationToken)
         {
             session.MarkFailed(failureReason, now);
             await generationStore.SaveAsync(session, cancellationToken);
-            await ledger.ReleaseAsync(reservationId, now, cancellationToken);
+            await ledger.ReleaseAsync(reservationId, usage, costMicroUsd, now, cancellationToken);
         }
     }
 }
