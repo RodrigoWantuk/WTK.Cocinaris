@@ -195,6 +195,42 @@ describe("recipe library (PLAN-0038)", () => {
     expect(await screen.findByTestId("recipes-detail")).toBeInTheDocument();
   });
 
+  it("accepts a kitchen measure and saves it in grams, showing both", async () => {
+    const user = userEvent.setup();
+    const reviseRecipe = vi.fn(async () => ({
+      ...DETAIL,
+      revisionNumber: 3,
+      currentRevisionNumber: 3,
+    }));
+    renderAt(repoWith({ reviseRecipe }), "/app/receitas/recipe-1/editar");
+
+    const ingredient = await screen.findByTestId("recipe-editor-ingredient");
+    const quantity = within(ingredient).getByLabelText("Quantity");
+    await user.clear(quantity);
+    await user.type(quantity, "250");
+    expect(screen.getByTestId("editor-measure-hint")).toHaveTextContent(
+      "≈ 1 ⅓ cups",
+    );
+    await user.selectOptions(within(ingredient).getByLabelText("Unit"), "cup");
+    await user.clear(quantity);
+    await user.type(quantity, "1");
+    expect(screen.getByTestId("editor-measure-hint")).toHaveTextContent(
+      "Saved as ≈ 185 g",
+    );
+    await user.type(screen.getByTestId("recipe-editor-reason"), "Cups");
+    await user.click(screen.getByTestId("recipe-editor-save"));
+
+    await waitFor(() => expect(reviseRecipe).toHaveBeenCalledTimes(1));
+    const [, input] = reviseRecipe.mock.calls[0] as unknown as [
+      string,
+      Parameters<RecipeRepository["reviseRecipe"]>[1],
+    ];
+    expect(input.content.ingredients[0]).toMatchObject({
+      quantity: 185,
+      unit: "g",
+    });
+  });
+
   it("reports a stale edit instead of overwriting the newer revision", async () => {
     const user = userEvent.setup();
     const reviseRecipe = vi.fn(async () => {
