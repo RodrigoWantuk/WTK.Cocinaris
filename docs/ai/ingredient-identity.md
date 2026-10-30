@@ -120,7 +120,17 @@ Ingredient identity does not drive allergy or restriction decisions in this rele
 - cross-language proposals and shopping;
 - the job end to end on PostgreSQL with pgvector.
 
-**Live-model evaluation is pending until the OpenRouter key is active.** The fixture `apps/backend/tests/fixtures/ingredient-identity-eval.json` lists names with their expected ingredient, or `null` when the correct outcome is unresolved. After enabling the key:
+**Live-model evaluation** runs with `IngredientLiveEvaluationTests`. The test uses a throwaway Testcontainers database and the real model, and it never touches the deployment database. It runs only when the key is supplied:
+
+```sh
+cd apps/backend
+COCINARIS_EVAL_OPENROUTER_API_KEY="$(sudo sed -n 's/^Ai__Providers__OpenRouter__ApiKey=//p' /etc/wtk-cocinaris/api.env)" \
+  dotnet test tests/Cocinaris.IntegrationTests --filter IngredientLiveEvaluation --logger "console;verbosity=detailed"
+```
+
+It prints one line per fixture name (verdict, linked ingredient, method and score, or nearest candidate and score) and a summary. It fails only on a **wrong link**, because a wrong link could merge two foods. A missed match is reported for tuning but is not a failure. The cost is well under US$ 0.001.
+
+The same check is possible on live data: The fixture `apps/backend/tests/fixtures/ingredient-identity-eval.json` lists names with their expected ingredient, or `null` when the correct outcome is unresolved. After enabling the key:
 
 1. Add the fixture names through the pantry, or let real use fill the queue.
 2. Run `scripts/ops/ingredient-identity-report.sh`.

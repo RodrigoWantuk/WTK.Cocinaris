@@ -26,6 +26,7 @@
 
   <ItemGroup>
     <Content Include="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="../fixtures/ingredient-identity-eval.json" Link="fixtures/ingredient-identity-eval.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

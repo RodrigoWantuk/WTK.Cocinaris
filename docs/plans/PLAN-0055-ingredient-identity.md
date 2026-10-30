@@ -71,7 +71,7 @@ Stop unnecessary AI calls for recipes and images by first giving ingredients a s
 - [x] Changing the catalog, space, or thresholds re-checks unresolved names, using cached vectors.
 - [x] Without a key the product works; curated and trigram matches still apply.
 - [x] Development, tests, and the host have pgvector; deploy refuses to run without it.
-- [ ] Live-model evaluation with the real provider (Phase 4; needs the OpenRouter key).
+- [ ] Live-model evaluation with the real provider (Phase 4): the test exists; its run with the key is pending (owner command in `docs/ai/ingredient-identity.md#evaluation`).
 
 ## Execution state
 
@@ -100,3 +100,11 @@ Stop unnecessary AI calls for recipes and images by first giving ingredients a s
 - Installed `postgresql-17-pgvector` 0.8.0 on the host (owner authorization 2026-10-30).
 - Implemented Phase 1 as listed above. Measured `pg_trgm` scores on real names to set the trigram threshold: 0.77 for "azeite extra virgem", 0.5 for "alho poro" against "alho".
 - An integration run showed the resolution worker starting in the `Development`-environment test hosts and querying before migration. The shared test host now removes it, as the thumbnail test already did for its own worker.
+
+### 2026-10-30 — Claude Code (delivery and evaluation)
+
+- PR #59 merged into the branch of #58 (its stacked base) after #58 had already been squash-merged, so Phase 1 never reached `main`. The same commit is cherry-picked onto `main` in PR #60. Its tree is identical to the deployed release `f770b05`.
+- On the host: the owner deployed the branch and enabled `Ai__Embeddings__Enabled` with the OpenRouter key. The catalog synced with the Qwen space in its evaluation. No names were queued yet, because no unknown names had been read.
+- Queuing the fixture names directly in the deployment database was refused by the session's permission policy. Added `IngredientLiveEvaluationTests` instead: an opt-in test that runs the real model against a throwaway database when `COCINARIS_EVAL_OPENROUTER_API_KEY` is set, and fails only on wrong links. Without the key it returns at once (verified).
+- Next: the owner runs the command in `docs/ai/ingredient-identity.md#evaluation`. Thresholds are tuned only from its output. Then start Phase 2.
+
