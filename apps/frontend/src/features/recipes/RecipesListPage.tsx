@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { RecipeThumbnail } from "./RecipeThumbnail";
+import { SavedCandidatesSection } from "./SavedCandidatesSection";
 import { usePendingThumbnailRefresh } from "./usePendingThumbnailRefresh";
 import { useRecipeRepository } from "./RecipeProvider";
 import { RecipeApiError, type RecipeSummary } from "@/contracts/recipes";
@@ -197,6 +198,8 @@ export function RecipesListPage() {
           ))}
         </div>
       </div>
+
+      <SavedCandidatesSection />
 
       {updateError ? (
         <p role="alert" className="text-sm text-destructive">

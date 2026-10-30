@@ -307,6 +307,71 @@ describe("Recipes generate flow", () => {
     );
   });
 
+  it("saves several candidates for later without choosing one", async () => {
+    const user = userEvent.setup();
+    const saveCandidate = vi.fn(
+      async (sessionId: string, candidateId: string) => ({
+        savedId: `saved-${candidateId}`,
+        sessionId,
+        candidate: candidate(candidateId, candidateId),
+        createdAt: "2026-10-30T12:00:00Z",
+      }),
+    );
+    const selectCandidate = vi.fn();
+    const recipeRepo: RecipeRepository = {
+      ...executionStubs,
+      listRecipes: async () => [],
+      getRecipe: async () => {
+        throw new Error("not used");
+      },
+      requestCandidates: async () => ({
+        sessionId: "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+        status: "CandidatesReady",
+        candidates: [
+          candidate("c1", "A"),
+          candidate("c2", "B"),
+          candidate("c3", "C"),
+        ],
+        failureReason: null,
+      }),
+      getGenerationSession: async () => {
+        throw new Error("not used");
+      },
+      selectCandidate,
+      saveCandidate,
+    };
+    renderGenerateTree(
+      recipeRepo,
+      createInventoryStub(),
+      <Routes>
+        <Route path="/app/receitas/gerar" element={<RecipeGeneratePage />} />
+      </Routes>,
+    );
+
+    await user.click(await screen.findByTestId("recipes-confirm-generate"));
+    await user.click(await screen.findByTestId("recipes-save-c1"));
+    await user.click(screen.getByTestId("recipes-save-c3"));
+
+    await waitFor(() =>
+      expect(screen.getByTestId("recipes-save-c3")).toHaveTextContent(
+        "Saved for later",
+      ),
+    );
+    expect(screen.getByTestId("recipes-save-c1")).toBeDisabled();
+    expect(screen.getByTestId("recipes-save-c2")).toHaveTextContent(
+      "Save for later",
+    );
+    expect(screen.getByText(/2 saved for later/)).toBeInTheDocument();
+    expect(saveCandidate).toHaveBeenCalledWith(
+      "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+      "c1",
+      { csrfToken: "csrf-test" },
+    );
+    // Choosing stays possible, and saving never chose anything.
+    expect(screen.getByTestId("recipes-select-c2")).toBeEnabled();
+    expect(selectCandidate).not.toHaveBeenCalled();
+  });
+
   it("sends no guidance when nothing is chosen", async () => {
     const user = userEvent.setup();
     const requestCandidates = vi.fn(async () => ({

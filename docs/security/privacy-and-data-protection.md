@@ -149,6 +149,14 @@ Only single ingredient names are sent to the embedding provider (OpenRouter, `da
 
 Account deletion does not need to remove alias or cache rows, because they hold no owner. A pending queue row with the deleted owner is cleared when the job decides it. Deletion should also clear it directly once the deletion workflow is implemented.
 
+## Saved candidates
+
+PLAN-0056 Phase 3 adds `recipes.saved_candidates`:
+- **Owner.** Each row belongs to one owner and is only ever read through owner-scoped queries.
+- **Contents.** A copy of a suggestion the owner kept for later, including the names of their own pantry items it used.
+- **After cooking.** A cooked entry keeps the id of the recipe it became, so a retried request returns the same recipe. It no longer appears in the list.
+- **Retention and deletion.** Rows live as long as the account. Export and deletion must include them, together with the owner's recipes and generation sessions.
+
 ## Shared recipe ideas
 
 PLAN-0055 Phase 2 ([ADR-0011](../architecture/decisions/0011-shared-recipe-idea-library.md)) adds `recipes.recipe_ideas`: generic recipe ideas shared by everyone, with no owner column. An idea is stored only after an AI expansion, and only when it can be made generic:

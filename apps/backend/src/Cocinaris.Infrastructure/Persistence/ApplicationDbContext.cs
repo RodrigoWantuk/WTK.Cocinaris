@@ -89,6 +89,9 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
     /// <summary>Gets the shared recipe-idea library (PLAN-0055 Phase 2).</summary>
     public DbSet<RecipeIdeaRecord> RecipeIdeas => Set<RecipeIdeaRecord>();
 
+    /// <summary>Gets candidates owners saved for later (PLAN-0056 Phase 3).</summary>
+    public DbSet<SavedCandidateEntryRecord> SavedCandidates => Set<SavedCandidateEntryRecord>();
+
     /// <summary>Gets the database copy of the curated ingredient catalog (PLAN-0055).</summary>
     public DbSet<IngredientCatalogItemRecord> IngredientCatalogItems => Set<IngredientCatalogItemRecord>();
 
@@ -563,6 +566,17 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             entity.Property(x => x.Id).ValueGeneratedNever();
             entity.Property(x => x.CatalogVersion).HasMaxLength(60);
             entity.Property(x => x.Evaluation).HasMaxLength(300);
+        });
+
+        modelBuilder.Entity<SavedCandidateEntryRecord>(entity =>
+        {
+            entity.ToTable("saved_candidates", "recipes");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.CandidateId).HasMaxLength(64);
+            entity.Property(x => x.CandidateJson).HasColumnType("jsonb");
+            entity.HasOne<InternalUser>().WithMany().HasForeignKey(x => x.OwnerUserId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasIndex(x => new { x.OwnerUserId, x.SessionId, x.CandidateId }).IsUnique();
+            entity.HasIndex(x => new { x.OwnerUserId, x.CreatedAt });
         });
 
         modelBuilder.Entity<RecipeIdeaRecord>(entity =>

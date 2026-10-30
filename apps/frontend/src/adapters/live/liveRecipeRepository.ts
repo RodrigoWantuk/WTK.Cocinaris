@@ -14,6 +14,7 @@ import {
   type RecipeHistory,
   type RecipeRepository,
   type RecipeSummary,
+  type SavedCandidate,
   type RecipeThumbnail,
 } from "@/contracts/recipes";
 
@@ -71,6 +72,20 @@ function assertString(value: unknown, field: string): string {
     );
   }
   return value;
+}
+
+function mapSaved(dto: {
+  savedId: string;
+  sessionId: string;
+  candidate: CandidateDto;
+  createdAt: string;
+}): SavedCandidate {
+  return {
+    savedId: assertString(dto.savedId, "savedId"),
+    sessionId: assertString(dto.sessionId, "sessionId"),
+    candidate: mapCandidate(dto.candidate),
+    createdAt: assertString(dto.createdAt, "createdAt"),
+  };
 }
 
 function mapCandidate(dto: CandidateDto): RecipeCandidate {
@@ -701,6 +716,113 @@ export function createLiveRecipeRepository(options?: {
         }
         assertData(data, response);
         return mapSession(data);
+      } catch (err) {
+        wrapAbort(err);
+      }
+    },
+
+    async saveCandidate(sessionId, candidateId, { csrfToken, signal }) {
+      try {
+        const { data, error, response } = await client.POST(
+          "/api/v1/recipes/generation-sessions/{sessionId}/saved-candidates",
+          {
+            params: {
+              path: { sessionId },
+              header: { "X-CSRF-TOKEN": csrfToken },
+            },
+            body: { candidateId },
+            signal,
+            credentials: "include",
+          },
+        );
+        if (!response.ok || !data) {
+          await throwForFailure(
+            response,
+            "Unable to save the candidate.",
+            error,
+          );
+        }
+        assertData(data, response);
+        return mapSaved(data);
+      } catch (err) {
+        wrapAbort(err);
+      }
+    },
+
+    async listSavedCandidates(signal) {
+      try {
+        const { data, error, response } = await client.GET(
+          "/api/v1/recipes/saved-candidates",
+          { signal, credentials: "include" },
+        );
+        if (!response.ok || !data) {
+          await throwForFailure(
+            response,
+            "Unable to load saved candidates.",
+            error,
+          );
+        }
+        assertData(data, response);
+        return data.map(mapSaved);
+      } catch (err) {
+        wrapAbort(err);
+      }
+    },
+
+    async deleteSavedCandidate(savedId, { csrfToken, signal }) {
+      try {
+        const { error, response } = await client.DELETE(
+          "/api/v1/recipes/saved-candidates/{savedId}",
+          {
+            params: {
+              path: { savedId },
+              header: { "X-CSRF-TOKEN": csrfToken },
+            },
+            signal,
+            credentials: "include",
+          },
+        );
+        if (!response.ok) {
+          await throwForFailure(
+            response,
+            "Unable to remove the saved candidate.",
+            error,
+          );
+        }
+      } catch (err) {
+        wrapAbort(err);
+      }
+    },
+
+    async cookSavedCandidate(
+      savedId,
+      { csrfToken, idempotencyKey, language, signal },
+    ) {
+      try {
+        const { data, error, response } = await client.POST(
+          "/api/v1/recipes/saved-candidates/{savedId}/recipe",
+          {
+            params: {
+              path: { savedId },
+              header: {
+                "X-CSRF-TOKEN": csrfToken,
+                "Idempotency-Key": idempotencyKey,
+              },
+            },
+            headers: language ? { "Accept-Language": language } : undefined,
+            signal,
+            credentials: "include",
+          },
+        );
+        if (!response.ok || !data) {
+          await throwForFailure(
+            response,
+            "Unable to cook the saved candidate.",
+            error,
+          );
+        }
+        assertData(data, response);
+        return mapDetail(data);
       } catch (err) {
         wrapAbort(err);
       }

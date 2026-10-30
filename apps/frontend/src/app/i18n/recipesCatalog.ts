@@ -36,6 +36,16 @@ export const REQUIRED_RECIPES_I18N_KEYS = [
   "recipes.generate.title",
   "recipes.generate.subtitle",
   "recipes.generate.confirmDetail",
+  "recipes.saved.save",
+  "recipes.saved.saved",
+  "recipes.saved.hint",
+  "recipes.saved.error",
+  "library.saved.title",
+  "library.saved.cook",
+  "library.saved.cooking",
+  "library.saved.remove",
+  "library.saved.error",
+  "library.saved.removeError",
   "recipes.guidance.title",
   "recipes.guidance.count",
   "recipes.guidance.hint",
@@ -100,6 +110,17 @@ export const REQUIRED_RECIPES_I18N_KEYS = [
 ] as const;
 
 const en: Record<(typeof REQUIRED_RECIPES_I18N_KEYS)[number], string> = {
+  "recipes.saved.save": "Save for later",
+  "recipes.saved.saved": "Saved for later",
+  "recipes.saved.hint":
+    "{{count}} saved for later. Find them under Recipes, in Saved ideas.",
+  "recipes.saved.error": "Could not save it. Try again.",
+  "library.saved.title": "Saved ideas",
+  "library.saved.cook": "Cook this",
+  "library.saved.cooking": "Preparing the recipe…",
+  "library.saved.remove": "Remove",
+  "library.saved.error": "Could not prepare this recipe. Try again.",
+  "library.saved.removeError": "Could not remove it. Try again.",
   "recipes.guidance.title": "Steer the suggestions (optional)",
   "recipes.guidance.count": "{{count}} chosen",
   "recipes.guidance.hint":
@@ -206,6 +227,18 @@ const en: Record<(typeof REQUIRED_RECIPES_I18N_KEYS)[number], string> = {
 };
 
 const ptBR: Record<(typeof REQUIRED_RECIPES_I18N_KEYS)[number], string> = {
+  "recipes.saved.save": "Salvar para depois",
+  "recipes.saved.saved": "Salva para depois",
+  "recipes.saved.hint":
+    "{{count}} salvas para depois. Elas ficam em Receitas, em Ideias salvas.",
+  "recipes.saved.error": "Não foi possível salvar. Tente de novo.",
+  "library.saved.title": "Ideias salvas",
+  "library.saved.cook": "Cozinhar esta",
+  "library.saved.cooking": "Preparando a receita…",
+  "library.saved.remove": "Remover",
+  "library.saved.error":
+    "Não foi possível preparar esta receita. Tente de novo.",
+  "library.saved.removeError": "Não foi possível remover. Tente de novo.",
   "recipes.guidance.title": "Direcionar as sugestões (opcional)",
   "recipes.guidance.count": "{{count}} escolhas",
   "recipes.guidance.hint":
@@ -313,6 +346,17 @@ const ptBR: Record<(typeof REQUIRED_RECIPES_I18N_KEYS)[number], string> = {
 };
 
 const es: Record<(typeof REQUIRED_RECIPES_I18N_KEYS)[number], string> = {
+  "recipes.saved.save": "Guardar para después",
+  "recipes.saved.saved": "Guardada para después",
+  "recipes.saved.hint":
+    "{{count}} guardadas para después. Están en Recetas, en Ideas guardadas.",
+  "recipes.saved.error": "No se pudo guardar. Inténtalo de nuevo.",
+  "library.saved.title": "Ideas guardadas",
+  "library.saved.cook": "Cocinar esta",
+  "library.saved.cooking": "Preparando la receta…",
+  "library.saved.remove": "Quitar",
+  "library.saved.error": "No se pudo preparar esta receta. Inténtalo de nuevo.",
+  "library.saved.removeError": "No se pudo quitar. Inténtalo de nuevo.",
   "recipes.guidance.title": "Orientar las sugerencias (opcional)",
   "recipes.guidance.count": "{{count}} elegidas",
   "recipes.guidance.hint":

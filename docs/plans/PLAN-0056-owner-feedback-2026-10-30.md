@@ -26,7 +26,7 @@ Also reported the same day and handled in PLAN-0055 (PR #63): suggestions someti
 | --- | --- | --- | --- |
 | 1 | 4 | Dry foods that keep once opened no longer ask for attention (curated catalog rule) | Delivered |
 | 2 | 3, 6 | Suggestion pre-filters: meal kind, dish family, cuisine, time, required and excluded pantry items. Sent to the AI as constraints and applied as hard filters to library ideas (PLAN-0055 Phase 2). Excluded lots are removed from the AI context. | Delivered |
-| 3 | 5 | Saved candidates: keep any candidate for later from a generation session, list them, and expand on demand (a library idea expands without AI) | After Phase 2 |
+| 3 | 5 | Saved candidates: keep any candidate for later from a generation session, list them, and expand on demand (a library idea expands without AI) | Delivered |
 | 4 | 1, 2 | Pantry entry: name autocomplete from the person's products and the catalog with match highlighting (accessible combobox), plus an optional auto-removal date that discards the lot through the normal lifecycle (recorded, reversible in history) | After Phase 3 |
 
 ## Phase 1 delivered (item 4)
@@ -66,16 +66,44 @@ Also reported the same day and handled in PLAN-0055 (PR #63): suggestions someti
 - [x] Unknown codes and inconsistent choices are rejected; nothing typed reaches the model.
 - [x] Without any choice, the request and the AI envelope are unchanged.
 
+## Phase 3 delivered (item 5)
+
+- **Candidates screen.** Each candidate has "Salvar para depois", next to "Escolher". Several can be saved, and choosing stays optional.
+- **Recipes page.** A "Ideias salvas" section offers "Cozinhar esta" and "Remover". It is hidden when nothing is saved.
+- **API.**
+  - `POST /generation-sessions/{id}/saved-candidates` keeps a candidate. It is idempotent per owner, session, and candidate.
+  - `GET /saved-candidates` lists the owner's saved candidates.
+  - `DELETE /saved-candidates/{id}` removes one.
+  - `POST /saved-candidates/{id}/recipe` cooks one and requires an Idempotency-Key.
+- **Cooking.**
+  - A saved candidate opens a new generation session holding just that candidate, keyed by the request, and goes through the normal selection.
+  - Selection keeps its claims, replay, usage ledger, idea-library shortcut (no AI for an `idea-` candidate), and capture.
+  - Inventory uses of lots no longer in the pantry become ingredients to buy.
+  - On success the entry is marked cooked, leaves the list, and still answers retries with the same recipe.
+- **Storage.** Table `recipes.saved_candidates`, owner-scoped, migration `AddSavedCandidates`.
+
+## Phase 3 acceptance criteria
+
+- [x] Several candidates of one session can be saved without choosing one; saving again does not duplicate.
+- [x] Saved candidates are listed, removable, and visible only to their owner.
+- [x] Cooking one later creates a recipe against the current pantry; a lot that is gone is not referenced.
+- [x] A retried cook request returns the same recipe.
+
 ## Execution state
 
-- **Current checkpoint:** Phases 1 (merged #64, deployed) and 2 (this branch) are delivered.
+- **Current checkpoint:**
+  - Phase 1: merged (#64) and deployed.
+  - Phase 2: merged (#65) and deployed.
+  - Phase 3: on this branch.
 - **Validation (2026-10-30, host `rwantuk`):**
   - Backend unit tests: 170 passed.
-  - Integration tests: 17 passed, including `GuidanceReachesTheAiExcludedItemsNeverDoAndBadCodesAreRejected`.
   - Architecture tests: 14 passed.
-  - Contract tests: passed.
-  - Frontend recipe, i18n, and repository tests: 53 passed. Typecheck, lint, and format are clean. OpenAPI export and API client drift checks are clean.
-- **Exact next action:** Phase 3 (item 5): save candidates for later. The design is a per-owner saved-candidate list holding the session's validated candidate snapshot; expanding later uses the normal selection path, so a library idea costs nothing.
+  - Integration tests: 39 passed in `RecipeExecutionApiTests`, `RecipeAiGateway*`, and `PostgreSqlMigrationTests`, including the new saved-candidate test.
+  - One intermittent failure: `IdeasWrittenForOnePersonAreServedToAnotherWithoutAnyAiCall` failed once in the first combined run. It passed alone and in two more combined runs, and the failure message was not captured. Suspected cause: load from parallel containers on the 3.8 GiB host. If it fails again, capture the log.
+  - Frontend: 112 recipe, planning, i18n, and adapter tests passed. Typecheck, lint, and format are clean. The OpenAPI and API client drift check is clean.
+- **Exact next action:** Phase 4 (items 1 and 2):
+  - pantry name autocomplete from the person's products and the catalog, as an accessible combobox with match highlighting;
+  - an optional auto-removal date that discards the lot through the normal lifecycle.
 - **Blockers:** none.
 
 ## Progress log
@@ -88,4 +116,9 @@ Also reported the same day and handled in PLAN-0055 (PR #63): suggestions someti
 ### 2026-10-30 — Claude Code (Phase 2)
 
 - Delivered the suggestion guidance panel and contract (items 3 and 6), as listed above.
+
+### 2026-10-30 — Claude Code (Phase 3)
+
+- Delivered saved candidates (item 5).
+- A replay first returned 404, because the entry was deleted after cooking. Entries are now marked cooked instead, so retries replay.
 

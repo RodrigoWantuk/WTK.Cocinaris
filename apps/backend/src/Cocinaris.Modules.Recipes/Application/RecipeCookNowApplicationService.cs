@@ -452,7 +452,8 @@ public sealed class RecipeCookNowApplicationService(
         return new RecipeGenerationSessionView(session.Id, session.Status.ToString(), resolved?.Select(ToCandidateView).ToList(), session.FailureReason);
     }
 
-    private static RecipeCandidateView ToCandidateView(SuggestCandidate candidate) => new(
+    /// <summary>API-facing projection of one validated candidate.</summary>
+    public static RecipeCandidateView ToCandidateView(SuggestCandidate candidate) => new(
         candidate.CandidateId,
         candidate.CandidateStrategy,
         candidate.Name,

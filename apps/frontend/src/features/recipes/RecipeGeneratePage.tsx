@@ -80,6 +80,26 @@ export function RecipeGeneratePage() {
   const selectIdempotencyRef = useRef<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const [guidance, setGuidance] = useState<SuggestionGuidance>(EMPTY_GUIDANCE);
+  // Candidates kept for later in this session (PLAN-0056 Phase 3), and one being saved now.
+  const [savedIds, setSavedIds] = useState<Set<string>>(() => new Set());
+  const [savingId, setSavingId] = useState<string | null>(null);
+  const [saveFailed, setSaveFailed] = useState(false);
+
+  async function saveForLater(candidateId: string) {
+    if (!session.csrfToken || !sessionView) return;
+    setSavingId(candidateId);
+    setSaveFailed(false);
+    try {
+      await recipeRepo.saveCandidate(sessionView.sessionId, candidateId, {
+        csrfToken: session.csrfToken,
+      });
+      setSavedIds((current) => new Set(current).add(candidateId));
+    } catch {
+      setSaveFailed(true);
+    } finally {
+      setSavingId(null);
+    }
+  }
   const [pantryLots, setPantryLots] = useState<
     { lotId: string; name: string; quantity: InventoryQuantity }[]
   >([]);
@@ -199,6 +219,8 @@ export function RecipeGeneratePage() {
     setErrorCode(null);
     setSessionView(null);
     setSelectedId(null);
+    setSavedIds(new Set());
+    setSaveFailed(false);
     selectIdempotencyRef.current = null;
     try {
       const initial = await recipeRepo.requestCandidates({
@@ -510,20 +532,45 @@ export function RecipeGeneratePage() {
                   </span>
                   <span>{candidate.targetMealType}</span>
                 </div>
-                <Button
-                  type="button"
-                  className="mt-4"
-                  data-testid={`recipes-select-${candidate.candidateId}`}
-                  aria-label={`${t("recipes.actions.selectCandidate")}: ${candidate.name}`}
-                  disabled={Boolean(selectedId)}
-                  onClick={() => void selectCandidate(candidate)}
-                >
-                  {t("recipes.actions.selectCandidate")}
-                </Button>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    data-testid={`recipes-select-${candidate.candidateId}`}
+                    aria-label={`${t("recipes.actions.selectCandidate")}: ${candidate.name}`}
+                    disabled={Boolean(selectedId)}
+                    onClick={() => void selectCandidate(candidate)}
+                  >
+                    {t("recipes.actions.selectCandidate")}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    data-testid={`recipes-save-${candidate.candidateId}`}
+                    aria-label={`${t("recipes.saved.save")}: ${candidate.name}`}
+                    aria-pressed={savedIds.has(candidate.candidateId)}
+                    disabled={
+                      Boolean(selectedId) ||
+                      savedIds.has(candidate.candidateId) ||
+                      savingId === candidate.candidateId
+                    }
+                    onClick={() => void saveForLater(candidate.candidateId)}
+                  >
+                    {savedIds.has(candidate.candidateId)
+                      ? t("recipes.saved.saved")
+                      : t("recipes.saved.save")}
+                  </Button>
+                </div>
               </article>
             </li>
           ))}
         </ul>
+        <p className="text-sm text-muted-foreground" role="status">
+          {saveFailed
+            ? t("recipes.saved.error")
+            : savedIds.size > 0
+              ? t("recipes.saved.hint", { count: savedIds.size })
+              : null}
+        </p>
         <Button asChild variant="secondary">
           <Link to="/app/receitas">{t("recipes.actions.back")}</Link>
         </Button>
