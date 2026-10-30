@@ -1,7 +1,7 @@
 # Planning and Shopping
 
 - **Status:** Accepted
-- **Last updated:** 2026-10-29
+- **Last updated:** 2026-10-30
 
 ## Optional module rule
 
@@ -19,11 +19,14 @@ A menu entry is an intention, shortcut, and source of preparation or purchase ac
   - Quantities scale like the cooking proposal.
   - Lots are matched by catalog ingredient ("Peito de frango" matches "chicken breast", PLAN-0055) or, failing that, normalized name, and by unit. The pantry is allocated meal by meal in plan order.
   - Lines are required, assumed basics, optional, "you have it but it will run out", or already available.
-  - No package size is assumed.
+  - No package size is assumed. The owner may confirm one per item (Phase 4, below).
   - A check mark is only remembered. "Comprei" records the purchase as a pantry lot through the normal inventory command, and the list is recalculated.
 - **Reservations and readiness (Phase 3).** A menu in use reserves pantry quantity for its meals still to cook. The reservations are derived, and a meal's reservations can be released. Each meal shows whether its pantry ingredients are covered or what it lacks; a draft shows the same as a simulation. A menu's shopping list counts only stock that is neither protected nor reserved by other menus in use. See `inventory-lifecycle.md` for protections.
 - **AI suggestions per slot (Phase 2).** On a menu day, the AI suggests three dishes for that date, meal, and servings. It sees only pantry stock that no other meal counts on and the names of meals already planned, so the suggestions differ from them. Nothing enters the menu until the owner chooses. Slots are planned one at a time, so each choice updates the reservations the next suggestion sees.
-- **Not yet.** Planning several slots in one request, package remainders, planned-versus-actual purchase impact, and reminders.
+- **Package sizes and remainder (Phase 4).** The owner can confirm the package size they buy an item in, from the shopping line or with one tap after buying more than the menu needed. The size is the owner's own, applies to every menu's list, is keyed by the line's item key (catalog ingredient or normalized name, and unit), and is in that unit. A line with a size shows the whole packages that cover what is left to buy and the expected remainder after the menu, and "Comprei" defaults to those packages. Without a size the line is the net quantity, as before. The source of a size is always the owner; receipts and package confidence from imports (PLAN-0046) are not used yet.
+- **Planned versus actual purchase (Phase 4).** After "Comprei" the list is recalculated and the page says what the purchase means: it covers the menu; it leaves named meals short by a quantity (each meal's shortfall comes from allocating the pantry in plan order); or it is more than the menu needs, with a freezing suggestion for produce, meat and fish, dairy, and bakery items, and the option to remember the amount bought as the package size. The rest of a short item stays on the list. The page points to the menu for changing servings or skipping a meal, and nothing in the menu or the pantry changes by itself.
+- **Pre-meal readiness and reminders (Phase 4).** "Prepare-se" on "Hoje" lists, for the dated meals of menus in use today and tomorrow, what to buy (a required ingredient the reservations do not cover), what to thaw (a reserved lot stored in the freezer or frozen; a lot already thawing needs nothing), and a reserved lot whose date falls before the meal (advisory: cook earlier or use another lot). Buying and thawing are due the day before the meal (or today, if the meal is today); a date reminder is due on the lot's date. Reminders are derived on every read (`GET /api/v1/planning/preparation?from=&days=`, 1–7 days), so each disappears once its cause does. Only meals that reserve ingredients are checked. Reminders are shown in the app only; there are no push or e-mail notifications and no per-meal reminder policy yet.
+- **Not yet.** Planning several slots in one request; package sizes from receipts or imports; notifications outside the app.
 
 ## Planning states
 

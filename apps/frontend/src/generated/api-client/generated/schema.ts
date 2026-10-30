@@ -350,6 +350,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/planning/package-sizes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** PUT /api/v1/planning/package-sizes */
+        put: operations["putApiV1PlanningPackage-sizes"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/planning/preparation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** GET /api/v1/planning/preparation */
+        get: operations["getApiV1PlanningPreparation"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/planning/protections/{lotId}": {
         parameters: {
             query?: never;
@@ -1238,6 +1272,69 @@ export interface components {
             resultingState: "AsAcquired" | "Prepared" | "Frozen" | "Thawing" | "Thawed";
             resultingStorageLocation: string;
         };
+        /** @description Something to do before a planned meal. */
+        MealPreparationReminderResponse: {
+            /**
+             * Format: date
+             * @description Day to act by.
+             */
+            dueDate: string;
+            /**
+             * Format: uuid
+             * @description Menu entry.
+             */
+            entryId: string;
+            /** @description Ingredient or product name. */
+            itemName: string;
+            /** @description `buy` (a required ingredient is not covered), `thaw` (a reserved lot is frozen), or `use_by` (a reserved lot's date falls before the meal; advisory). */
+            kind: string;
+            /**
+             * Format: uuid
+             * @description Pantry lot, for `thaw` and `use_by`.
+             */
+            lotId: null | string;
+            /** @description Meal, if set. */
+            mealType: null | string;
+            /**
+             * Format: uuid
+             * @description Menu.
+             */
+            menuId: string;
+            /**
+             * Format: date
+             * @description Day of the meal.
+             */
+            plannedDate: string;
+            /**
+             * Format: double
+             * @description Missing quantity (`buy`) or quantity reserved from the lot.
+             */
+            quantity: null | number | string;
+            /** @description Recipe name. */
+            recipeName: string;
+            /** @description `Gram`, `Milliliter`, or `Unit`, when there is a quantity. */
+            unit: null | string;
+            /**
+             * Format: date
+             * @description The lot's earliest date, for `use_by`.
+             */
+            useByDate: null | string;
+        };
+        /** @description Pre-meal reminders for the dated meals of menus in use (PLAN-0029 Phase 4). Read-only. */
+        MealPreparationResponse: {
+            /**
+             * Format: int32
+             * @description Days checked.
+             */
+            days: number | string;
+            /**
+             * Format: date
+             * @description First day checked.
+             */
+            from: string;
+            /** @description Reminders, earliest due first. */
+            reminders: components["schemas"]["MealPreparationReminderResponse"][];
+        };
         /** @description A meal's readiness: `ready` or `missing`, with what is missing. */
         MealReadinessResponse: {
             /** Format: uuid */
@@ -1332,6 +1429,16 @@ export interface components {
             name: string;
             /** @description `pantry` (used before) or `catalog` (curated ingredient). */
             source: string;
+        };
+        /** @description Body (and response) for a shopping item's package size. */
+        PackageSizeRequest: {
+            /** @description Item key from the shopping list; its unit is the size's unit. */
+            itemKey: null | string;
+            /**
+             * Format: double
+             * @description Size of one package, greater than zero and at most 100,000; null forgets it.
+             */
+            size: null | number | string;
         };
         /**
          * @description Explicit preference or restriction command action.
@@ -2063,8 +2170,23 @@ export interface components {
             checked: boolean;
             /** @description Name shown. */
             displayName: string;
+            /**
+             * Format: double
+             * @description What those packages leave after the menu, in Unit; null with PackageCount.
+             */
+            expectedRemainder: null | number | string;
             /** @description Key to check the line off. */
             itemKey: string;
+            /**
+             * Format: int32
+             * @description Whole packages that cover ToBuyQuantity; null without a package size or with nothing to buy.
+             */
+            packageCount: null | number | string;
+            /**
+             * Format: double
+             * @description Package size the owner confirmed for this item, in Unit (PLAN-0029 Phase 4); null when none was confirmed.
+             */
+            packageSize: null | number | string;
             /**
              * Format: double
              * @description What the meals need in all.
@@ -2104,13 +2226,29 @@ export interface components {
         };
         /** @description One meal that needs a shopping line. */
         ShoppingUseResponse: {
-            /** Format: uuid */
+            /**
+             * Format: uuid
+             * @description Menu entry.
+             */
             entryId: string;
+            /**
+             * Format: double
+             * @description What this meal still lacks after the pantry is allocated in plan order.
+             */
+            missingQuantity: number | string;
+            /** @description Whether the recipe marks it optional. */
             optional: boolean;
-            /** Format: date */
+            /**
+             * Format: date
+             * @description Day, or null when flexible.
+             */
             plannedDate: null | string;
-            /** Format: double */
+            /**
+             * Format: double
+             * @description What this meal needs.
+             */
             quantity: number | string;
+            /** @description Recipe name. */
             recipeName: string;
         };
         /** @description Optional body for starting an execution. */
@@ -3973,6 +4111,119 @@ export interface operations {
             };
             /** @description The request content type is not supported. */
             415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    "putApiV1PlanningPackage-sizes": {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Required CSRF token issued by GET /api/v1/session. */
+                "X-CSRF-TOKEN": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PackageSizeRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PackageSizeRequest"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description The request content type is not supported. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    getApiV1PlanningPreparation: {
+        parameters: {
+            query?: {
+                from?: string;
+                days?: number | string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MealPreparationResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
                 headers: {
                     [name: string]: unknown;
                 };

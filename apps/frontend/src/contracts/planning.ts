@@ -122,13 +122,45 @@ export interface ShoppingItem {
   storeSection?: string;
   toBuyQuantity: number;
   checked: boolean;
+  /**
+   * Package size the owner confirmed for this item, in `unit` (PLAN-0029 Phase 4). Absent when
+   * none was confirmed: Cocinaris never assumes one.
+   */
+  packageSize?: number | null;
+  /** Whole packages that cover `toBuyQuantity`; absent without a package size or nothing to buy. */
+  packageCount?: number | null;
+  /** What those packages leave after the menu, in `unit`. */
+  expectedRemainder?: number | null;
   uses: Array<{
     entryId: string;
     recipeName: string;
     plannedDate: string | null;
     quantity: number;
     optional: boolean;
+    /** What this meal still lacks after the pantry is allocated in plan order. */
+    missingQuantity?: number;
   }>;
+}
+
+/**
+ * Something to do before a planned meal (PLAN-0029 Phase 4). Derived on every read, so it
+ * disappears once its cause does.
+ */
+export interface PreparationReminder {
+  menuId: string;
+  entryId: string;
+  recipeName: string;
+  plannedDate: string;
+  mealType: string | null;
+  /** `buy` (not covered), `thaw` (a reserved lot is frozen), or `use_by` (a reserved lot's date is before the meal). */
+  kind: string;
+  itemName: string;
+  unit: string | null;
+  quantity: number | null;
+  /** Day to act by (`YYYY-MM-DD`). */
+  dueDate: string;
+  lotId: string | null;
+  useByDate: string | null;
 }
 
 /** A menu's derived shopping list; reading it never changes the pantry. */
@@ -219,4 +251,22 @@ export interface PlanningRepository {
   unprotectLot(lotId: string, options: Mutation): Promise<Reservations>;
   /** Meals of accepted menus for `date`, the owner's current day. */
   getToday(date: string, signal?: AbortSignal): Promise<TodayMenuEntry[]>;
+  /**
+   * Records the package size the owner buys an item in, or forgets it with `null`. Optional:
+   * without it the shopping list offers no package sizes.
+   */
+  setPackageSize?(
+    itemKey: string,
+    size: number | null,
+    options: Mutation,
+  ): Promise<void>;
+  /**
+   * Pre-meal reminders for the dated meals of menus in use, from `from` (the owner's current
+   * day) for `days` days. Optional: without it "Hoje" shows no reminders.
+   */
+  getPreparation?(
+    from: string,
+    days: number,
+    signal?: AbortSignal,
+  ): Promise<PreparationReminder[]>;
 }

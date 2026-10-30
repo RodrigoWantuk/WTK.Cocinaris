@@ -5,7 +5,7 @@
 - **Priority:** High
 - **Owner:** Claude Code (claimed 2026-10-29)
 - **Created:** 2026-08-05
-- **Last updated:** 2026-10-29
+- **Last updated:** 2026-10-30
 - **Branch:** Phase 1 `agent/plan-0029-menu-and-shopping` (merged and deleted); Phase 3 `agent/plan-0029-reservations` (merged and deleted)
 - **Pull request:** Phase 1 merged via [PR #52](https://github.com/RodrigoWantuk/WTK.Cocinaris/pull/52) at `3efb214`; Phase 3 merged via [PR #53](https://github.com/RodrigoWantuk/WTK.Cocinaris/pull/53) at `f299090`
 - **Dependencies:** PLAN-0028 (recipe revisions), PLAN-0037 Phases 1–2 (pantry lots and attention), PLAN-0038 (recipe library), PLAN-0042 Phase 1 (cooking); all merged
@@ -158,25 +158,34 @@ Phase 3 ran before Phase 2. Without it, two cooking sessions could count on the 
 - Reallocating reservations by hand, or letting a recommendation reorganize them. Order follows the plan.
 - Reminders.
 
+## Phase 4 scope delivered (package sizes, purchase impact, readiness reminders)
+
+Owner direction 2026-10-30: "Siga com plano 42 e 29, não temos pressa em compartilhar casa." Delivered on `agent/plan-0029-purchase-and-readiness` from `main`.
+
+1. **Package sizes.** `PackageSize` (domain) holds the size the owner confirmed for a shopping item key, in the key's unit, at most 100,000. Table `planning.package_sizes` (primary key owner and item key, check constraint on the size, owner foreign key), migration `AddPackageSizes` (additive). `PUT /api/v1/planning/package-sizes` with `{ itemKey, size }` sets it, and `size: null` forgets it; a key that does not end in a canonical unit is `validation_failed`. The source is always the owner: PLAN-0046 package confidence from receipts and imports is not used yet, and nothing is assumed.
+2. **Shopping line.** `packageSize`, `packageCount` (whole packages covering what is left to buy), and `expectedRemainder` (what they leave after the menu). Each use gains `missingQuantity`, what that meal still lacks after the pantry is allocated in plan order.
+3. **Planned versus actual purchase.** After "Comprei" the shopping page says whether the purchase covers the menu, which meals are left short and by how much, or how much is left over (with a freezing hint for perishable sections and "remember this amount as the package size"). The menu and pantry are never changed by the notice.
+4. **Readiness reminders.** `PreparationReminders` derives `buy`, `thaw`, and `use_by` reminders from the reservation projection for the dated meals of menus in use. `GET /api/v1/planning/preparation?from=&days=` (1–7 days, default 2). "Prepare-se" on "Hoje" shows today and tomorrow; it is an optional repository method, so a runtime without it shows nothing.
+5. **OpenAPI.** New response schemas are named `MealPreparation*` because `PreparationResponse` already names the inventory preparation batch.
+
+### Not delivered in Phase 4
+
+- Package sizes from receipts or imports (PLAN-0046) and package confidence.
+- Notifications outside the app, a per-meal reminder policy, and dismissing a reminder.
+- Proposals that change the plan (replace only affected recipes, repurpose the extra product) beyond pointing to the menu.
+
 ## Execution state
 
-- **Current run delivery target:** Phase 2, in one PR from fresh `main`, after the 24-hour token windows (PR #55).
-- **Current checkpoint:** Phase 2 implemented and validated as below. Deploy after the commit, then open the draft PR.
+- **Current run delivery target:** Phase 4 in one PR from fresh `main` (owner direction 2026-10-30).
+- **Current checkpoint:** Phase 4 implemented and validated as below; the draft PR follows the commit.
 - **Validation (lean, targeted):**
-  - **Backend integration tests:** 47 pass. They include the new `MenuSlotSuggestionsSeeOnlyFreeStockAndThePlannedMeals`, which uses a derived test host with the fake provider. It covers:
-    - the slot, the planned names, and only the 200 g of free stock reaching the provider;
-    - the menu strategy set;
-    - the selection and adding to the menu;
-    - a slot outside the period (400);
-    - another owner's menu (404).
-
-    The fake provider now follows `menu_planning` (strategy and target meal), as a real model must.
-  - **Backend unit tests:** the recipe and AI suites pass after the assembler and command changes.
-  - **Backend formatting:** `dotnet format --verify-no-changes` is clean.
-  - **OpenAPI:** exported, adding the optional request body; lint is valid. The client was regenerated.
-  - **Frontend:** the planning, recipe, adapter, and app suites pass (143 tests), including the new AI-slot test. Typecheck and ESLint are clean, the guards pass, and the build passes.
-- **Not run:** a live provider call (no key in the agent environment), a browser journey for this flow (the replica does not call the AI provider), the full suites, and the full local gates.
-- **Exact next action:** Deploy, then open the draft PR. After merge, the owner tries "Sugerir com IA" on a menu day. Then the candidates are Phase 4 (package sizes and purchase impact) or the PLAN-0042 Phase 2 remainder.
+  - **Backend unit tests:** the new `PurchaseAndPreparationTests` (package cover and remainder, per-meal shortfall, buy/thaw/use-by reminders) with `ShoppingProjectorTests` and `ReservationProjectorTests`: 13 passing.
+  - **Backend integration tests:** the new `PackageSizesShapeTheShoppingListAndRemindersFollowTheMenuInUse` (sizes per owner, validation, a draft reminds of nothing, buy reminders once in use, a thaw reminder after freezing the reserved lot, the 1–7 day bound) with the planning, reservation, menu-suggestion, migration, and contract tests: 35 passing.
+  - **Architecture tests:** 14 passing. `dotnet format --verify-no-changes` is clean.
+  - **OpenAPI:** exported (additions only); client regenerated and drift check passed.
+  - **Frontend:** planning, cooking, and app suites (13 files, 76 tests, including the new package/impact and "Prepare-se" tests) pass; typecheck, ESLint, and Prettier are clean.
+- **Not run:** the full suites, the browser journey, and the full local gates (lean validation).
+- **Exact next action:** After the owner merges, deploy `main`. Remaining PLAN-0029 work is listed under "Not delivered" of each phase; none is scheduled.
 - **Blockers:** None.
 
 ## Progress log
@@ -225,3 +234,7 @@ Phase 3 ran before Phase 2. Without it, two cooking sessions could count on the 
 
 - The owner merged PR #56 (`3459df4`), and `main` was deployed.
 - Phase 4 waits for PLAN-0054, which the owner prioritized after the flow review. That plan absorbs grouping the household shopping list by store section.
+
+### 2026-10-30T15:00:00Z — Claude Code
+
+- Delivered Phase 4 after the owner's "Siga com plano 42 e 29": package sizes the owner confirms, with whole packages and the expected remainder on the shopping line; the planned-versus-actual notice after a purchase; and "Prepare-se" reminders (buy, thaw, use by) on "Hoje".

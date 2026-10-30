@@ -83,6 +83,9 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
     /// <summary>Gets the owner's pantry lot protections (PLAN-0029 Phase 3).</summary>
     public DbSet<LotProtectionRecord> LotProtections => Set<LotProtectionRecord>();
 
+    /// <summary>Gets package sizes the owner confirmed for shopping items.</summary>
+    public DbSet<PackageSizeRecord> PackageSizes => Set<PackageSizeRecord>();
+
     /// <summary>Gets generated recipe images and their generation jobs (PLAN-0030).</summary>
     public DbSet<RecipeThumbnailRecord> RecipeThumbnails => Set<RecipeThumbnailRecord>();
 
@@ -596,6 +599,16 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             entity.HasIndex(x => x.Signature).IsUnique();
             entity.HasIndex(x => x.IngredientSlugs).HasMethod("gin");
             entity.HasIndex(x => new { x.Language, x.MealType });
+        });
+
+        modelBuilder.Entity<PackageSizeRecord>(entity =>
+        {
+            entity.ToTable("package_sizes", "planning", table =>
+                table.HasCheckConstraint("ck_package_sizes_size", "\"Size\" > 0 AND \"Size\" <= 100000"));
+            entity.HasKey(x => new { x.OwnerUserId, x.ItemKey });
+            entity.Property(x => x.ItemKey).HasMaxLength(200);
+            entity.Property(x => x.Size).HasPrecision(12, 3);
+            entity.HasOne<InternalUser>().WithMany().HasForeignKey(x => x.OwnerUserId).OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<ShoppingCheckRecord>(entity =>

@@ -12,6 +12,7 @@ import { SessionProvider } from "@/app/session/SessionProvider";
 import type {
   Menu,
   PlanningRepository,
+  ShoppingItem,
   ShoppingList,
 } from "@/contracts/planning";
 import type { RecipeRepository } from "@/contracts/recipes";
@@ -31,6 +32,7 @@ import { MenusPage } from "./MenusPage";
 import { addDays, daysBetween, localIsoDate } from "./planningDates";
 import { PlanningProvider } from "./PlanningProvider";
 import { ShoppingPage } from "./ShoppingPage";
+import { TodayPage } from "@/features/home/TodayPage";
 import { LotCommitmentsPanel } from "./LotCommitmentsPanel";
 
 const MENU: Menu = {
@@ -106,6 +108,7 @@ function renderAt(
             >
               <MemoryRouter initialEntries={[path]}>
                 <Routes>
+                  <Route path="/app" element={<TodayPage />} />
                   <Route path="/app/cardapio" element={<MenusPage />} />
                   <Route path="/app/cardapio/:menuId" element={<MenuPage />} />
                   <Route
@@ -343,6 +346,200 @@ describe("menu planning (PLAN-0029)", () => {
       { csrfToken: expect.any(String), idempotencyKey: expect.any(String) },
     );
     await waitFor(() => expect(getShopping).toHaveBeenCalledTimes(2));
+  });
+
+  it("counts packages the owner confirmed and says what a purchase means for the menu", async () => {
+    const user = userEvent.setup();
+    const chicken = (overrides: Partial<ShoppingItem>): ShoppingItem => ({
+      itemKey: "ingredient:chicken-breast|Gram",
+      displayName: "Peito de frango",
+      unit: "Gram",
+      category: "required",
+      storeSection: "butcher_fish",
+      requiredQuantity: 600,
+      availableQuantity: 200,
+      toBuyQuantity: 400,
+      checked: false,
+      packageSize: 1000,
+      packageCount: 1,
+      expectedRemainder: 600,
+      uses: [
+        {
+          entryId: "entry-1",
+          recipeName: "Ensopado",
+          plannedDate: null,
+          quantity: 600,
+          optional: false,
+          missingQuantity: 400,
+        },
+      ],
+      ...overrides,
+    });
+    const onion: ShoppingItem = {
+      itemKey: "ingredient:onion|Unit",
+      displayName: "Cebola",
+      unit: "Unit",
+      category: "required",
+      storeSection: "produce",
+      requiredQuantity: 2,
+      availableQuantity: 0,
+      toBuyQuantity: 2,
+      checked: false,
+      uses: [],
+    };
+    const list = (items: ShoppingItem[]): ShoppingList => ({
+      menuId: "menu-1",
+      from: localIsoDate(),
+      mealCount: 1,
+      items,
+    });
+    // After buying 250 g the meal still lacks 150 g; after buying 1 kg it has 600 g to spare.
+    const getShopping = vi
+      .fn()
+      .mockResolvedValueOnce(list([chicken({}), onion]))
+      .mockResolvedValueOnce(
+        list([
+          chicken({
+            toBuyQuantity: 150,
+            packageCount: 1,
+            expectedRemainder: 850,
+            uses: [{ ...chicken({}).uses[0]!, missingQuantity: 150 }],
+          }),
+          onion,
+        ]),
+      )
+      .mockResolvedValue(
+        list([
+          chicken({
+            category: "available",
+            availableQuantity: 1200,
+            toBuyQuantity: 0,
+            packageCount: null,
+            expectedRemainder: null,
+            uses: [{ ...chicken({}).uses[0]!, missingQuantity: 0 }],
+          }),
+          onion,
+        ]),
+      );
+    const setPackageSize = vi.fn(async () => undefined);
+    const inventory = createMockInventoryRepo();
+    inventory.createLot = vi.fn(async () => sampleLot);
+    renderAt(
+      "/app/cardapio/menu-1/compras",
+      { getShopping, setPackageSize },
+      { inventory },
+    );
+
+    const meat = await screen.findByTestId("shopping-section-butcher_fish");
+    expect(within(meat).getByTestId("shopping-item-package")).toHaveTextContent(
+      "1 package(s) of 1,000 g · 600 g left over",
+    );
+    // The purchase defaults to the whole package.
+    await user.click(within(meat).getByTestId("shopping-item-buy"));
+    const quantity = within(meat).getByTestId("shopping-buy-quantity");
+    expect(quantity).toHaveValue("1,000");
+    await user.clear(quantity);
+    await user.type(quantity, "250");
+    await user.click(within(meat).getByTestId("shopping-buy-confirm"));
+    const short = await screen.findByTestId("shopping-impact");
+    expect(short).toHaveTextContent(
+      "Peito de frango: 150 g still missing for Ensopado.",
+    );
+    expect(
+      within(short).getByRole("link", { name: "Open menu" }),
+    ).toHaveAttribute("href", "/app/cardapio/menu-1");
+
+    // Buying more than needed suggests freezing and remembering the amount as the package size.
+    await user.click(
+      within(screen.getByTestId("shopping-section-butcher_fish")).getByTestId(
+        "shopping-item-buy",
+      ),
+    );
+    const again = within(
+      screen.getByTestId("shopping-section-butcher_fish"),
+    ).getByTestId("shopping-buy-quantity");
+    await user.clear(again);
+    await user.type(again, "1000");
+    await user.click(screen.getByTestId("shopping-buy-confirm"));
+    await waitFor(() =>
+      expect(screen.getByTestId("shopping-impact")).toHaveTextContent(
+        "Peito de frango: 850 g more than the menu needs.",
+      ),
+    );
+    expect(screen.getByTestId("shopping-impact")).toHaveTextContent(
+      "Freeze it in portions",
+    );
+    // This line already has a package size, so nothing is offered to remember.
+    expect(screen.queryByTestId("shopping-impact-remember")).toBeNull();
+
+    // A line without a size can get one; the size is sent in the line's unit.
+    const produce = screen.getByTestId("shopping-section-produce");
+    await user.click(within(produce).getByTestId("shopping-package-edit"));
+    await user.type(within(produce).getByTestId("shopping-package-size"), "0");
+    await user.click(within(produce).getByTestId("shopping-package-save"));
+    expect(within(produce).getByRole("alert")).toHaveTextContent(
+      "greater than zero",
+    );
+    const size = within(produce).getByTestId("shopping-package-size");
+    await user.clear(size);
+    await user.type(size, "3");
+    await user.click(within(produce).getByTestId("shopping-package-save"));
+    expect(setPackageSize).toHaveBeenCalledWith("ingredient:onion|Unit", 3, {
+      csrfToken: expect.any(String),
+    });
+  });
+
+  it("lists what to buy, thaw, and use first before the next menu meals", async () => {
+    const tomorrow = addDays(localIsoDate(), 1);
+    const getPreparation = vi.fn(async () => [
+      {
+        menuId: "menu-1",
+        entryId: "entry-1",
+        recipeName: "Frango cremoso",
+        plannedDate: tomorrow,
+        mealType: "dinner",
+        kind: "thaw",
+        itemName: "Peito de frango",
+        unit: "Gram",
+        quantity: 400,
+        dueDate: localIsoDate(),
+        lotId: "lot-9",
+        useByDate: null,
+      },
+      {
+        menuId: "menu-1",
+        entryId: "entry-1",
+        recipeName: "Frango cremoso",
+        plannedDate: tomorrow,
+        mealType: "dinner",
+        kind: "buy",
+        itemName: "Cebola",
+        unit: "Unit",
+        quantity: 1,
+        dueDate: localIsoDate(),
+        lotId: null,
+        useByDate: null,
+      },
+    ]);
+    renderAt("/app", { getToday: async () => [], getPreparation });
+
+    const section = await screen.findByTestId("today-preparation");
+    const items = within(section).getAllByTestId("today-preparation-item");
+    expect(items[0]).toHaveTextContent(
+      "TodayThaw Peito de frango (it is in the freezer)for Frango cremoso · Tomorrow",
+    );
+    expect(
+      within(items[0]!).getByRole("link", { name: "See in pantry" }),
+    ).toHaveAttribute("href", "/app/despensa/lot-9");
+    expect(items[1]).toHaveTextContent("Buy Cebola (1 pcs)");
+    expect(
+      within(items[1]!).getByRole("link", { name: "Shopping list" }),
+    ).toHaveAttribute("href", "/app/cardapio/menu-1/compras");
+    expect(getPreparation).toHaveBeenCalledWith(
+      localIsoDate(),
+      2,
+      expect.anything(),
+    );
   });
 
   it("shows what a meal lacks and releases its reservations", async () => {

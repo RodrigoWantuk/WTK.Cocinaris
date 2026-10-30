@@ -30,17 +30,33 @@ const STORE_SECTIONS = [
 ] as const;
 /** Sections whose purchases usually go to the fridge; the person can still change the place. */
 const COLD_SECTIONS = new Set(["butcher_fish", "dairy_eggs"]);
+/** Sections whose extra purchase may spoil before another use, so the impact suggests freezing. */
+const PERISHABLE_SECTIONS = new Set([
+  "produce",
+  "butcher_fish",
+  "dairy_eggs",
+  "bakery",
+]);
 const UNIT_KEYS: Record<string, string> = {
   Gram: "recipes.unit.g",
   Milliliter: "recipes.unit.ml",
   Unit: "recipes.unit.unit",
 };
 
+/** A purchase just recorded, compared with the line as it was before it (PLAN-0029 Phase 4). */
+interface PurchaseImpact {
+  item: ShoppingItem;
+  bought: number;
+}
+
 /**
  * Shopping list of a menu (PLAN-0029): derived by the backend from the meals still to cook (from
  * the owner's current day) and the pantry. Checking a line off only remembers it. Recording a
  * purchase creates a pantry lot through the normal inventory command, and the list is
- * recalculated from the new pantry. No package size is assumed.
+ * recalculated from the new pantry. No package size is assumed: the owner may confirm one per
+ * item, and the line then shows whole packages and the expected remainder (Phase 4). After a
+ * purchase the page says what it means for the menu (planned versus actual) without changing the
+ * menu.
  */
 export function ShoppingPage({
   menuId: fixedMenuId,
@@ -54,6 +70,7 @@ export function ShoppingPage({
   const [failed, setFailed] = useState(false);
   const [reload, setReload] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [impact, setImpact] = useState<PurchaseImpact | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -84,7 +101,14 @@ export function ShoppingPage({
     }
   };
 
-  const purchased = useCallback(() => setReload((value) => value + 1), []);
+  const refresh = useCallback(() => setReload((value) => value + 1), []);
+  const purchased = useCallback(
+    (item: ShoppingItem, bought: number) => {
+      setImpact({ item, bought });
+      refresh();
+    },
+    [refresh],
+  );
 
   if (failed) {
     return (
@@ -115,6 +139,17 @@ export function ShoppingPage({
         <p role="alert" className="text-sm text-destructive">
           {t(error)}
         </p>
+      ) : null}
+      {impact ? (
+        <PurchaseImpactNotice
+          impact={impact}
+          after={list.items.find(
+            (item) => item.itemKey === impact.item.itemKey,
+          )}
+          menuId={menuId}
+          onDismiss={() => setImpact(null)}
+          onPackageSaved={refresh}
+        />
       ) : null}
       {list.mealCount === 0 ? (
         <p data-testid="shopping-empty" className="text-muted-foreground">
@@ -163,7 +198,8 @@ export function ShoppingPage({
                     key={item.itemKey}
                     item={item}
                     onToggle={() => void toggle(item)}
-                    onPurchased={purchased}
+                    onPurchased={(bought) => purchased(item, bought)}
+                    onPackageChanged={refresh}
                   />
                 ))}
               </ul>
@@ -175,22 +211,155 @@ export function ShoppingPage({
   );
 }
 
+/**
+ * What a recorded purchase means for the menu: covered, still short for named meals (the rest
+ * stays on the list; the menu is never changed here), or more than the menu needs (with a
+ * freezing hint for perishable sections and a one-tap way to remember the amount as the
+ * package size). Announced politely with `role="status"`.
+ */
+function PurchaseImpactNotice({
+  impact,
+  after,
+  menuId,
+  onDismiss,
+  onPackageSaved,
+}: {
+  impact: PurchaseImpact;
+  after: ShoppingItem | undefined;
+  menuId: string;
+  onDismiss: () => void;
+  onPackageSaved: () => void;
+}) {
+  const { t, locale } = useProductionI18n();
+  const { session } = useSession();
+  const repo = usePlanningRepository();
+  const [saved, setSaved] = useState(false);
+  const [failed, setFailed] = useState(false);
+  const { item, bought } = impact;
+  const unit = t(UNIT_KEYS[item.unit] ?? "recipes.unit.unit");
+  const amount = (value: number) =>
+    `${formatLocaleDecimal(value, locale)} ${unit}`;
+  const short = after?.toBuyQuantity ?? 0;
+  const surplus = Math.max(0, bought - item.toBuyQuantity);
+  const shortMeals = (after?.uses ?? [])
+    .filter((use) => (use.missingQuantity ?? 0) > 0)
+    .map(
+      (use) =>
+        `${use.recipeName}${use.plannedDate ? ` (${formatMenuDay(use.plannedDate, locale)})` : ""}`,
+    )
+    .join(", ");
+
+  const remember = async () => {
+    if (!session.csrfToken || !repo.setPackageSize) return;
+    setFailed(false);
+    try {
+      await repo.setPackageSize(item.itemKey, bought, {
+        csrfToken: session.csrfToken,
+      });
+      setSaved(true);
+      onPackageSaved();
+    } catch {
+      setFailed(true);
+    }
+  };
+
+  return (
+    <div
+      role="status"
+      data-testid="shopping-impact"
+      className="space-y-2 rounded-2xl border border-border bg-secondary/40 p-4 text-sm"
+    >
+      {short > 0 ? (
+        <>
+          <p>
+            {t("shopping.impact.short", {
+              item: item.displayName,
+              amount: amount(short),
+              meals: shortMeals,
+            })}
+          </p>
+          <p className="text-muted-foreground">
+            {t("shopping.impact.shortHint")}
+          </p>
+        </>
+      ) : surplus > 0 ? (
+        <>
+          <p>
+            {t("shopping.impact.surplus", {
+              item: item.displayName,
+              amount: amount(surplus),
+            })}
+          </p>
+          {PERISHABLE_SECTIONS.has(item.storeSection ?? "") ? (
+            <p className="text-muted-foreground">
+              {t("shopping.impact.perishable")}
+            </p>
+          ) : null}
+        </>
+      ) : (
+        <p>{t("shopping.impact.covered", { item: item.displayName })}</p>
+      )}
+      {failed ? (
+        <p role="alert" className="text-destructive">
+          {t("shopping.package.saveError")}
+        </p>
+      ) : null}
+      <div className="flex flex-wrap gap-2">
+        {surplus > 0 && !item.packageSize && repo.setPackageSize && !saved ? (
+          <Button
+            type="button"
+            size="sm"
+            variant="secondary"
+            data-testid="shopping-impact-remember"
+            onClick={() => void remember()}
+          >
+            {t("shopping.impact.rememberPackage", { amount: amount(bought) })}
+          </Button>
+        ) : null}
+        {short > 0 ? (
+          <Button asChild size="sm" variant="secondary">
+            <Link to={`/app/cardapio/${menuId}`}>
+              {t("shopping.impact.openMenu")}
+            </Link>
+          </Button>
+        ) : null}
+        <Button type="button" size="sm" variant="ghost" onClick={onDismiss}>
+          {t("shopping.impact.dismiss")}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 function ShoppingRow({
   item,
   onToggle,
   onPurchased,
+  onPackageChanged,
 }: {
   item: ShoppingItem;
   onToggle: () => void;
-  onPurchased: () => void;
+  onPurchased: (bought: number) => void;
+  onPackageChanged: () => void;
 }) {
   const { t, locale } = useProductionI18n();
   const { session } = useSession();
   const inventory = useInventoryRepository();
+  const planning = usePlanningRepository();
   const [buying, setBuying] = useState(false);
-  const [quantity, setQuantity] = useState(
-    formatLocaleDecimal(item.toBuyQuantity, locale),
+  // With a confirmed package size, the purchase defaults to the whole packages that cover the line.
+  const suggested = formatLocaleDecimal(
+    item.packageCount && item.packageSize
+      ? item.packageCount * item.packageSize
+      : item.toBuyQuantity,
+    locale,
   );
+  const [quantity, setQuantity] = useState(suggested);
+  const [editingPackage, setEditingPackage] = useState(false);
+  const [packageText, setPackageText] = useState(
+    item.packageSize ? formatLocaleDecimal(item.packageSize, locale) : "",
+  );
+  const [packageError, setPackageError] = useState<string | null>(null);
   const [storage, setStorage] = useState<StorageLocation>(
     COLD_SECTIONS.has(item.storeSection ?? "") ? "Refrigerator" : "Pantry",
   );
@@ -226,12 +395,35 @@ function ShoppingRow({
       );
       setBuying(false);
       keyRef.current = crypto.randomUUID();
-      onPurchased();
+      onPurchased(parsed.value);
     } catch {
       setError(true);
     } finally {
       setSaving(false);
     }
+  };
+
+  const savePackage = async (size: number | null) => {
+    if (!session.csrfToken || !planning.setPackageSize) return;
+    setPackageError(null);
+    try {
+      await planning.setPackageSize(item.itemKey, size, {
+        csrfToken: session.csrfToken,
+      });
+      setEditingPackage(false);
+      onPackageChanged();
+    } catch {
+      setPackageError("shopping.package.saveError");
+    }
+  };
+
+  const submitPackage = () => {
+    const parsed = parseLocaleDecimal(packageText, locale);
+    if (!parsed.ok || parsed.value <= 0 || parsed.value > 100000) {
+      setPackageError("shopping.package.error");
+      return;
+    }
+    void savePackage(parsed.value);
   };
 
   return (
@@ -263,6 +455,18 @@ function ShoppingRow({
                 amount(item.availableQuantity),
             })}
           </p>
+          {toBuy && item.packageCount && item.packageSize ? (
+            <p
+              className="text-xs text-muted-foreground"
+              data-testid="shopping-item-package"
+            >
+              {t("shopping.package.summary", {
+                count: item.packageCount,
+                size: amount(item.packageSize),
+                remainder: amount(item.expectedRemainder ?? 0),
+              })}
+            </p>
+          ) : null}
           <p className="text-xs text-muted-foreground">
             {item.uses
               .map(
@@ -279,12 +483,71 @@ function ShoppingRow({
             variant="secondary"
             data-testid="shopping-item-buy"
             aria-expanded={buying}
-            onClick={() => setBuying((value) => !value)}
+            onClick={() => {
+              if (!buying) setQuantity(suggested);
+              setBuying((value) => !value);
+            }}
           >
             {t("shopping.bought")}
           </Button>
         ) : null}
       </div>
+      {toBuy && planning.setPackageSize ? (
+        editingPackage ? (
+          <form
+            className="grid gap-2 sm:grid-cols-3 sm:items-end"
+            data-testid="shopping-package-form"
+            onSubmit={(event) => {
+              event.preventDefault();
+              submitPackage();
+            }}
+          >
+            <label className="space-y-1 text-xs text-muted-foreground">
+              {t("shopping.package.label", { unit })}
+              <Input
+                inputMode="decimal"
+                data-testid="shopping-package-size"
+                value={packageText}
+                onChange={(event) => setPackageText(event.target.value)}
+              />
+            </label>
+            <Button type="submit" size="sm" data-testid="shopping-package-save">
+              {t("shopping.package.save")}
+            </Button>
+            {item.packageSize ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                onClick={() => void savePackage(null)}
+              >
+                {t("shopping.package.remove")}
+              </Button>
+            ) : null}
+            {packageError ? (
+              <p
+                role="alert"
+                className="text-xs text-destructive sm:col-span-3"
+              >
+                {t(packageError)}
+              </p>
+            ) : null}
+          </form>
+        ) : (
+          <button
+            type="button"
+            className="ml-8 text-xs underline underline-offset-4"
+            data-testid="shopping-package-edit"
+            onClick={() => setEditingPackage(true)}
+          >
+            {t(
+              item.packageSize
+                ? "shopping.package.change"
+                : "shopping.package.set",
+            )}
+          </button>
+        )
+      ) : null}
       {buying ? (
         <form
           className="grid gap-2 sm:grid-cols-3 sm:items-end"

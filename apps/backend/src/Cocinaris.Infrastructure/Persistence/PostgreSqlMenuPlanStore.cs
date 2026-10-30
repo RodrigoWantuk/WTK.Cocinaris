@@ -163,6 +163,28 @@ public sealed class PostgreSqlMenuPlanStore(ApplicationDbContext database) : IMe
             cancellationToken);
     }
 
+    /// <inheritdoc />
+    public async Task<IReadOnlyDictionary<string, PackageSize>> ListPackageSizesAsync(Guid ownerUserId, CancellationToken cancellationToken)
+    {
+        var records = await database.PackageSizes.AsNoTracking().Where(item => item.OwnerUserId == ownerUserId).ToListAsync(cancellationToken);
+        return records.ToDictionary(item => item.ItemKey, item => PackageSize.Restore(item.OwnerUserId, item.ItemKey, item.Size, item.UpdatedAt), StringComparer.Ordinal);
+    }
+
+    /// <inheritdoc />
+    public async Task SetPackageSizeAsync(PackageSize packageSize, CancellationToken cancellationToken) =>
+        // Upsert keeps a repeated or concurrent request from failing on the primary key.
+        await database.Database.ExecuteSqlInterpolatedAsync(
+            $"""
+            INSERT INTO planning.package_sizes ("OwnerUserId", "ItemKey", "Size", "UpdatedAt")
+            VALUES ({packageSize.OwnerUserId}, {packageSize.ItemKey}, {packageSize.Size}, {packageSize.UpdatedAt})
+            ON CONFLICT ("OwnerUserId", "ItemKey") DO UPDATE SET "Size" = EXCLUDED."Size", "UpdatedAt" = EXCLUDED."UpdatedAt"
+            """,
+            cancellationToken);
+
+    /// <inheritdoc />
+    public async Task RemovePackageSizeAsync(Guid ownerUserId, string itemKey, CancellationToken cancellationToken) =>
+        await database.PackageSizes.Where(item => item.OwnerUserId == ownerUserId && item.ItemKey == itemKey).ExecuteDeleteAsync(cancellationToken);
+
     private async Task<bool> TrySaveAsync(CancellationToken cancellationToken)
     {
         try
