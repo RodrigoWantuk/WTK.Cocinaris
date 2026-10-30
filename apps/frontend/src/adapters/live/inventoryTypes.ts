@@ -255,4 +255,18 @@ export interface InventoryRepository {
     lotId: string,
     signal?: AbortSignal,
   ): Promise<InventoryHistoryEntry[]>;
+  /**
+   * Product names to suggest while typing (PLAN-0056 Phase 4): the person's own names first, then
+   * catalog names in `language`. Optional: without it the field works as a plain text input.
+   */
+  suggestNames?(
+    text: string,
+    options: { language?: string; signal?: AbortSignal },
+  ): Promise<InventoryNameSuggestion[]>;
+}
+
+/** A suggested product name and where it comes from. */
+export interface InventoryNameSuggestion {
+  name: string;
+  source: "pantry" | "catalog";
 }

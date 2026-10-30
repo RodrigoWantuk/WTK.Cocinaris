@@ -27,7 +27,7 @@ Also reported the same day and handled in PLAN-0055 (PR #63): suggestions someti
 | 1 | 4 | Dry foods that keep once opened no longer ask for attention (curated catalog rule) | Delivered |
 | 2 | 3, 6 | Suggestion pre-filters: meal kind, dish family, cuisine, time, required and excluded pantry items. Sent to the AI as constraints and applied as hard filters to library ideas (PLAN-0055 Phase 2). Excluded lots are removed from the AI context. | Delivered |
 | 3 | 5 | Saved candidates: keep any candidate for later from a generation session, list them, and expand on demand (a library idea expands without AI) | Delivered |
-| 4 | 1, 2 | Pantry entry: name autocomplete from the person's products and the catalog with match highlighting (accessible combobox), plus an optional auto-removal date that discards the lot through the normal lifecycle (recorded, reversible in history) | After Phase 3 |
+| 4 | 1, 2 | Pantry entry: name autocomplete from the person's products and the catalog with match highlighting (accessible combobox), plus an optional auto-removal date that discards the lot through the normal lifecycle (recorded, reversible in history) | Item 1 delivered; item 2 next |
 
 ## Phase 1 delivered (item 4)
 
@@ -89,21 +89,29 @@ Also reported the same day and handled in PLAN-0055 (PR #63): suggestions someti
 - [x] Cooking one later creates a recipe against the current pantry; a lot that is gone is not referenced.
 - [x] A retried cook request returns the same recipe.
 
+## Phase 4 item 1 delivered (name autocomplete)
+
+- **Endpoint.** `GET /api/v1/inventory/name-suggestions?q=` returns up to 8 names, owner-scoped.
+  - The person's own product names come first (500 most recent, non-deleted), then curated catalog names in the `Accept-Language` language.
+  - Matching ignores case and accents.
+  - Ranking puts names that start with the text first, then names with a word that starts with it, then names that only contain it. Shorter names come first within each group.
+- **Field.** "O que você tem?" is now a combobox following the ARIA 1.2 pattern:
+  - typing is debounced by 150 ms and the previous request is cancelled;
+  - the matching part is highlighted, accent-aware;
+  - names used before are labelled "já usado";
+  - ArrowDown and ArrowUp move, Enter picks, Escape closes, and a click or tap picks.
+  - When the repository has no `suggestNames`, or a request fails, it is a plain text field.
+
 ## Execution state
 
-- **Current checkpoint:**
-  - Phase 1: merged (#64) and deployed.
-  - Phase 2: merged (#65) and deployed.
-  - Phase 3: on this branch.
+- **Current checkpoint:** Phases 1–3 merged and deployed. Phase 4 item 1 (name autocomplete) is on `agent/plan-0056-pantry-name-autocomplete`.
 - **Validation (2026-10-30, host `rwantuk`):**
-  - Backend unit tests: 170 passed.
+  - Backend unit tests: 176 passed, including 6 suggestion tests.
   - Architecture tests: 14 passed.
-  - Integration tests: 39 passed in `RecipeExecutionApiTests`, `RecipeAiGateway*`, and `PostgreSqlMigrationTests`, including the new saved-candidate test.
-  - One intermittent failure: `IdeasWrittenForOnePersonAreServedToAnotherWithoutAnyAiCall` failed once in the first combined run. It passed alone and in two more combined runs, and the failure message was not captured. Suspected cause: load from parallel containers on the 3.8 GiB host. If it fails again, capture the log.
-  - Frontend: 112 recipe, planning, i18n, and adapter tests passed. Typecheck, lint, and format are clean. The OpenAPI and API client drift check is clean.
-- **Exact next action:** Phase 4 (items 1 and 2):
-  - pantry name autocomplete from the person's products and the catalog, as an accessible combobox with match highlighting;
-  - an optional auto-removal date that discards the lot through the normal lifecycle.
+  - Integration test `NameSuggestionsOfferTheOwnersNamesFirstAndNeverAnotherPersons` passed.
+  - Frontend inventory, i18n, and adapter tests: 126 passed, including the combobox tests (highlighting, keyboard, mouse, Escape, no-suggestion fallback).
+  - Typecheck, lint, and format are clean. The OpenAPI and API client drift check is clean.
+- **Exact next action:** Phase 4 item 2, the auto-removal date. Add an optional `autoRemoveOn` date on lot creation and editing. A daily job removes lots whose date has passed in the owner's calendar, through the normal lifecycle, recording the reason in the history.
 - **Blockers:** none.
 
 ## Progress log
@@ -121,4 +129,8 @@ Also reported the same day and handled in PLAN-0055 (PR #63): suggestions someti
 
 - Delivered saved candidates (item 5).
 - A replay first returned 404, because the entry was deleted after cooking. Entries are now marked cooked instead, so retries replay.
+
+### 2026-10-30 — Claude Code (Phase 4, item 1)
+
+- Delivered pantry name autocomplete. Product search names keep their accents in storage, so the owner's names are filtered in memory with the catalog normalization instead of SQL `LIKE`.
 

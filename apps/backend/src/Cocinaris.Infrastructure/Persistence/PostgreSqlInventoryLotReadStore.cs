@@ -109,3 +109,16 @@ public sealed class PostgreSqlInventoryLotReadStore(ApplicationDbContext databas
         }
     }
 }
+
+/// <summary>Product names an owner has used, for pantry name suggestions (PLAN-0056 Phase 4).</summary>
+public sealed class PostgreSqlInventoryProductNameSource(ApplicationDbContext database) : IInventoryProductNameSource
+{
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<string>> RecentAsync(Guid ownerUserId, int limit, CancellationToken cancellationToken) =>
+        await database.Products.AsNoTracking()
+            .Where(item => item.OwnerUserId == ownerUserId && !item.IsDeleted)
+            .OrderByDescending(item => item.UpdatedAt)
+            .Select(item => item.DisplayName)
+            .Take(limit)
+            .ToListAsync(cancellationToken);
+}

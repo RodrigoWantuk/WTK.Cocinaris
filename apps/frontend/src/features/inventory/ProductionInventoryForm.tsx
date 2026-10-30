@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useInventoryRepository } from "./InventoryProvider";
+import { ProductNameCombobox } from "./ProductNameCombobox";
 import {
   InventoryApiError,
   type CreateLotInput,
@@ -602,13 +603,13 @@ export function ProductionInventoryForm({ mode }: { mode: "create" | "edit" }) {
         <span className="font-semibold">
           {t("inventory.fields.productName")}
         </span>
-        <Input
-          data-testid="inventory-product-name"
+        <ProductNameCombobox
           value={productName}
+          onChange={setProductName}
+          repository={repo}
+          language={locale}
           disabled={busy || !editReady}
-          onChange={(event) => setProductName(event.target.value)}
-          required
-          aria-invalid={Boolean(fieldErrors.productName)}
+          invalid={Boolean(fieldErrors.productName)}
         />
       </label>
       {mode === "create" && !productName.trim() && (

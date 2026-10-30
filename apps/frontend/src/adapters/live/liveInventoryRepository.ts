@@ -448,6 +448,32 @@ export function createLiveInventoryRepository(options?: {
       }
     },
 
+    async suggestNames(text, { language, signal }) {
+      const { data, error, response } = await client.GET(
+        "/api/v1/inventory/name-suggestions",
+        {
+          params: { query: { q: text } },
+          headers: language ? { "Accept-Language": language } : undefined,
+          signal,
+          credentials: "include",
+        },
+      );
+      if (!response.ok || !data) {
+        await throwForFailure(
+          response,
+          "Unable to load name suggestions.",
+          error,
+        );
+      }
+      assertData(data, response);
+      return data
+        .filter((item) => typeof item.name === "string" && item.name.length > 0)
+        .map((item) => ({
+          name: item.name,
+          source: item.source === "pantry" ? "pantry" : "catalog",
+        }));
+    },
+
     async getHistory(lotId, signal) {
       const { data, error, response } = await client.GET(
         "/api/v1/inventory/lots/{lotId}/history",

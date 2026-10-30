@@ -57,6 +57,8 @@ builder.Services.AddScoped<IOidcSubjectAccessor>(provider => provider.GetRequire
 builder.Services.AddScoped<IInternalUserStore, PostgreSqlInternalUserStore>();
 builder.Services.AddScoped<ICurrentUserAccessor, CurrentUserResolver>();
 builder.Services.AddScoped<IInventoryLotReadStore, PostgreSqlInventoryLotReadStore>();
+builder.Services.AddScoped<IInventoryProductNameSource, PostgreSqlInventoryProductNameSource>();
+builder.Services.AddScoped<InventoryNameSuggestionService>();
 builder.Services.AddScoped<IInventoryLotWriteStore, PostgreSqlInventoryLotWriteStore>();
 builder.Services.AddScoped<IInventoryPreparationStore, PostgreSqlInventoryPreparationStore>();
 builder.Services.AddSingleton<IInventoryHttpTokenService, DataProtectionInventoryHttpTokenService>();

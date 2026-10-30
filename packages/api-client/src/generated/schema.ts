@@ -160,6 +160,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/inventory/name-suggestions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** GET /api/v1/inventory/name-suggestions */
+        get: operations["getApiV1InventoryName-suggestions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/inventory/preparations": {
         parameters: {
             query?: never;
@@ -1304,6 +1321,13 @@ export interface components {
             /** Format: double */
             quantity: number | string;
             unit: string;
+        };
+        /** @description A suggested pantry product name (PLAN-0056 Phase 4). */
+        NameSuggestionResponse: {
+            /** @description Name to fill in. */
+            name: string;
+            /** @description `pantry` (used before) or `catalog` (curated ingredient). */
+            source: string;
         };
         /**
          * @description Explicit preference or restriction command action.
@@ -2984,6 +3008,46 @@ export interface operations {
             };
             /** @description The mutation rate limit was exceeded. */
             429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    "getApiV1InventoryName-suggestions": {
+        parameters: {
+            query?: {
+                q?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NameSuggestionResponse"][];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
                 headers: {
                     [name: string]: unknown;
                 };

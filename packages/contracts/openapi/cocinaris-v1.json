@@ -1552,6 +1552,24 @@
         ],
         "type": "object"
       },
+      "NameSuggestionResponse": {
+        "description": "A suggested pantry product name (PLAN-0056 Phase 4).",
+        "properties": {
+          "name": {
+            "description": "Name to fill in.",
+            "type": "string"
+          },
+          "source": {
+            "description": "`pantry` (used before) or `catalog` (curated ingredient).",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "source"
+        ],
+        "type": "object"
+      },
       "PreferenceCommandAction": {
         "description": "Explicit preference or restriction command action.",
         "enum": [
@@ -6526,6 +6544,90 @@
           }
         ],
         "summary": "POST /api/v1/inventory/lots/{lotId}/transitions",
+        "tags": [
+          "Cocinaris.Api"
+        ]
+      }
+    },
+    "/api/v1/inventory/name-suggestions": {
+      "get": {
+        "operationId": "getApiV1InventoryName-suggestions",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/NameSuggestionResponse"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "authenticationFailure": {
+                    "summary": "The backend-managed session is absent or invalid.",
+                    "value": {
+                      "detail": "Authentication is required.",
+                      "errorCode": "authentication_required",
+                      "status": 401,
+                      "title": "Unauthorized",
+                      "traceId": "00-00000000000000000000000000000000-0000000000000000-00",
+                      "type": "about:blank"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authentication is required."
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "unexpectedFailure": {
+                    "summary": "An unexpected error was safely redacted.",
+                    "value": {
+                      "detail": "An unexpected error occurred.",
+                      "errorCode": "unexpected_error",
+                      "status": 500,
+                      "title": "Internal Server Error",
+                      "traceId": "00-00000000000000000000000000000000-0000000000000000-00",
+                      "type": "about:blank"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An unexpected server error occurred."
+          }
+        },
+        "security": [
+          {
+            "cocinarisSession": []
+          }
+        ],
+        "summary": "GET /api/v1/inventory/name-suggestions",
         "tags": [
           "Cocinaris.Api"
         ]
