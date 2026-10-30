@@ -38,7 +38,8 @@ internal sealed class CocinarisFactory(string connectionString) : WebApplication
         // (and query its tables before EnsureDatabaseAsync has migrated).
         builder.ConfigureTestServices(services =>
         {
-            foreach (var worker in services.Where(item => item.ServiceType == typeof(IHostedService) && item.ImplementationType == typeof(Cocinaris.Api.Ingredients.IngredientResolutionWorker)).ToList())
+            foreach (var worker in services.Where(item => item.ServiceType == typeof(IHostedService)
+                && (item.ImplementationType == typeof(Cocinaris.Api.Ingredients.IngredientResolutionWorker) || item.ImplementationType == typeof(Cocinaris.Api.Inventory.InventoryAutoRemovalWorker))).ToList())
             {
                 services.Remove(worker);
             }

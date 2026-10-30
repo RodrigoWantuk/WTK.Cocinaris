@@ -17,7 +17,7 @@ public sealed record InventoryQuantity(decimal? MeasuredValue, string? Unit, str
 /// <see cref="Lifecycle"/> is optional only so that idempotency replays stored before lifecycle
 /// support still deserialize; current reads and writes always populate it.
 /// </remarks>
-public sealed record InventoryLotView(Guid LotId, Guid ProductId, string ProductName, InventoryQuantity Quantity, string StorageLocation, string? CustomLocation, string? PackageState, DateOnly? PrintedExpirationDate, string? Notes, Guid ConcurrencyToken, DateTimeOffset CreatedAt, DateTimeOffset UpdatedAt, InventoryLifecycleView? Lifecycle = null);
+public sealed record InventoryLotView(Guid LotId, Guid ProductId, string ProductName, InventoryQuantity Quantity, string StorageLocation, string? CustomLocation, string? PackageState, DateOnly? PrintedExpirationDate, string? Notes, Guid ConcurrencyToken, DateTimeOffset CreatedAt, DateTimeOffset UpdatedAt, InventoryLifecycleView? Lifecycle = null, DateOnly? AutoRemoveOn = null);
 
 /// <summary>Current lifecycle facts of a lot: state name, most recent transition instants, and parent lot.</summary>
 /// <remarks><see cref="PreparedShelfLifeDate"/> is filled on reads of prepared lots; mutation responses leave it null.</remarks>
@@ -71,13 +71,13 @@ public sealed record InventoryApplicationResult<T>(InventoryApplicationSuccess S
 /// Transport-neutral create input supplied by an authenticated adapter. <c>Estimated</c> marks the
 /// measured value as the owner's approximation (PLAN-0054) and is valid only with a measured value.
 /// </summary>
-public sealed record CreateInventoryLotCommand(string? ProductName, decimal? MeasuredValue, string? Unit, string? AvailabilityState, string? StorageLocation, string? CustomLocation, string? PackageState, DateOnly? PrintedExpirationDate, string? Notes, Guid? IdempotencyKey, string CorrelationId, bool Estimated = false);
+public sealed record CreateInventoryLotCommand(string? ProductName, decimal? MeasuredValue, string? Unit, string? AvailabilityState, string? StorageLocation, string? CustomLocation, string? PackageState, DateOnly? PrintedExpirationDate, string? Notes, Guid? IdempotencyKey, string CorrelationId, bool Estimated = false, DateOnly? AutoRemoveOn = null);
 
 /// <summary>Transport-neutral inventory-list input with a decoded trusted cursor position.</summary>
 public sealed record ListInventoryLotsQuery(int? PageSize, string? Status, string? StorageLocation, string? Search, InventoryLotReadCursor? Cursor);
 
 /// <summary>Transport-neutral mutable lot metadata correction input.</summary>
-public sealed record UpdateInventoryLotCommand(Guid LotId, string? ProductName, string? StorageLocation, string? CustomLocation, string? PackageState, DateOnly? PrintedExpirationDate, string? Notes, InventoryVersionPrecondition Precondition, string CorrelationId);
+public sealed record UpdateInventoryLotCommand(Guid LotId, string? ProductName, string? StorageLocation, string? CustomLocation, string? PackageState, DateOnly? PrintedExpirationDate, string? Notes, InventoryVersionPrecondition Precondition, string CorrelationId, DateOnly? AutoRemoveOn = null);
 
 /// <summary>
 /// Transport-neutral immutable inventory adjustment input. <c>Estimated</c> states, for a
@@ -228,7 +228,8 @@ public sealed class InventoryLotApplicationWorkflow(
 
         var validProductName = ValidateProductName(command.ProductName, out var productName);
         var validQuantity = ValidateQuantity(command.MeasuredValue, command.Unit, command.AvailabilityState, out var quantityError) && (!command.Estimated || command.MeasuredValue is not null || (quantityError = "An estimate requires a measured value.") is null);
-        var validMetadata = ValidateMetadata(command.StorageLocation, command.CustomLocation, command.PackageState, command.Notes, out var metadataError);
+        var validMetadata = ValidateMetadata(command.StorageLocation, command.CustomLocation, command.PackageState, command.Notes, out var metadataError)
+            && ValidateAutoRemoveOn(command.AutoRemoveOn, out metadataError);
         if (!validProductName || !validQuantity || !validMetadata)
         {
             var errors = new Dictionary<string, string[]>(StringComparer.Ordinal);
@@ -239,7 +240,7 @@ public sealed class InventoryLotApplicationWorkflow(
         }
 
         var user = await currentUser.GetCurrentAsync(cancellationToken);
-        var hash = Hash(new { ProductName = productName, Quantity = new { MeasuredValue = command.MeasuredValue?.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture) + (command.Estimated ? "~" : ""), command.Unit, command.AvailabilityState }, StorageLocation = command.StorageLocation, CustomLocation = command.CustomLocation?.Trim(), command.PackageState, command.PrintedExpirationDate, Notes = string.IsNullOrWhiteSpace(command.Notes) ? null : command.Notes.Trim() });
+        var hash = Hash(new { ProductName = productName, Quantity = new { MeasuredValue = command.MeasuredValue?.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture) + (command.Estimated ? "~" : ""), command.Unit, command.AvailabilityState }, StorageLocation = command.StorageLocation, CustomLocation = command.CustomLocation?.Trim(), command.PackageState, command.PrintedExpirationDate, Notes = string.IsNullOrWhiteSpace(command.Notes) ? null : command.Notes.Trim(), AutoRemoveOn = command.AutoRemoveOn });
         var prior = await writeStore.FindIdempotencyAsync(user.Id, "inventory.lots.create", command.IdempotencyKey.Value, cancellationToken);
         if (prior is not null)
         {
@@ -268,7 +269,8 @@ public sealed class InventoryLotApplicationWorkflow(
             return missing;
         }
 
-        var validMetadata = ValidateMetadata(command.StorageLocation, command.CustomLocation, command.PackageState, command.Notes, out var metadataError);
+        var validMetadata = ValidateMetadata(command.StorageLocation, command.CustomLocation, command.PackageState, command.Notes, out var metadataError)
+            && ValidateAutoRemoveOn(command.AutoRemoveOn, out metadataError);
         var validProductName = command.ProductName is null || ValidateProductName(command.ProductName, out _);
         if (!validMetadata || !validProductName)
         {
@@ -277,7 +279,7 @@ public sealed class InventoryLotApplicationWorkflow(
 
         return await MutateAsync(command.LotId, command.Precondition, command.CorrelationId, null, null, null, "inventory.lot.metadata_corrected", (lot, product) => JsonSerializer.Serialize(new { changedFields = MetadataChangedFields(lot, product, command) }), cancellationToken, (lot, product, now) =>
         {
-            lot.UpdateMetadata(ToStorage(command.StorageLocation!, command.CustomLocation), ToPackageState(command.PackageState), ToExpiration(command.PrintedExpirationDate), ToNotes(command.Notes), now);
+            lot.UpdateMetadata(ToStorage(command.StorageLocation!, command.CustomLocation), ToPackageState(command.PackageState), ToExpiration(command.PrintedExpirationDate), ToNotes(command.Notes), now, command.AutoRemoveOn);
             if (command.ProductName is not null)
             {
                 ProductName.TryCreate(command.ProductName, out var name);
@@ -531,14 +533,14 @@ public sealed class InventoryLotApplicationWorkflow(
     }
 
     private InventoryApplicationResult<InventoryLotView> Success(InventoryLotView view) => InventoryApplicationResult<InventoryLotView>.Succeeded(view);
-    private static InventoryLotView ToView(InventoryLot lot, Product product) => new(lot.Id, lot.ProductId, product.DisplayName, new InventoryQuantity(lot.Quantity is LotQuantity.Measured measured ? measured.Value : null, lot.Quantity is LotQuantity.Measured unit ? unit.Unit.ToString() : null, lot.Quantity is LotQuantity.Availability availability ? availability.State.ToString() : null, lot.Quantity is LotQuantity.Measured { IsEstimate: true }), lot.Storage.Location.ToString(), lot.Storage.CustomLocation, lot.PackageState?.ToString(), lot.PrintedExpiration?.Date, lot.Notes?.Value, lot.ConcurrencyToken, lot.CreatedAt, lot.UpdatedAt, new InventoryLifecycleView(lot.Lifecycle.State.ToString(), lot.Lifecycle.OpenedAt, lot.Lifecycle.FrozenAt, lot.Lifecycle.ThawStartedAt, lot.Lifecycle.ThawedAt, lot.Lifecycle.ParentLotId));
-    private static InventoryLotView ToView(InventoryLotReadModel lot) => new(lot.LotId, lot.ProductId, lot.ProductName, new InventoryQuantity(lot.MeasuredValue, lot.MeasuredUnit, lot.AvailabilityState, lot.QuantityIsEstimate), lot.StorageLocation, lot.CustomLocation, lot.PackageState, lot.PrintedExpirationDate, lot.Notes, lot.ConcurrencyToken, lot.CreatedAt, lot.UpdatedAt, lot.Lifecycle);
+    private static InventoryLotView ToView(InventoryLot lot, Product product) => new(lot.Id, lot.ProductId, product.DisplayName, new InventoryQuantity(lot.Quantity is LotQuantity.Measured measured ? measured.Value : null, lot.Quantity is LotQuantity.Measured unit ? unit.Unit.ToString() : null, lot.Quantity is LotQuantity.Availability availability ? availability.State.ToString() : null, lot.Quantity is LotQuantity.Measured { IsEstimate: true }), lot.Storage.Location.ToString(), lot.Storage.CustomLocation, lot.PackageState?.ToString(), lot.PrintedExpiration?.Date, lot.Notes?.Value, lot.ConcurrencyToken, lot.CreatedAt, lot.UpdatedAt, new InventoryLifecycleView(lot.Lifecycle.State.ToString(), lot.Lifecycle.OpenedAt, lot.Lifecycle.FrozenAt, lot.Lifecycle.ThawStartedAt, lot.Lifecycle.ThawedAt, lot.Lifecycle.ParentLotId), lot.AutoRemoveOn);
+    private static InventoryLotView ToView(InventoryLotReadModel lot) => new(lot.LotId, lot.ProductId, lot.ProductName, new InventoryQuantity(lot.MeasuredValue, lot.MeasuredUnit, lot.AvailabilityState, lot.QuantityIsEstimate), lot.StorageLocation, lot.CustomLocation, lot.PackageState, lot.PrintedExpirationDate, lot.Notes, lot.ConcurrencyToken, lot.CreatedAt, lot.UpdatedAt, lot.Lifecycle, lot.AutoRemoveOn);
     private static InventoryQuantity? ToQuantity(decimal? measuredValue, string? unit, string? availabilityState) => measuredValue is null && unit is null && availabilityState is null ? null : new InventoryQuantity(measuredValue, unit, availabilityState);
     private static InventoryApplicationResult<T> Failure<T>(string code, string detail, IReadOnlyDictionary<string, string[]>? errors = null) => InventoryApplicationResult<T>.Failure(code, detail, errors);
     private static InventoryLot CreateDomainLot(Guid ownerUserId, Guid productId, CreateInventoryLotCommand command, DateTimeOffset now)
     {
         var quantity = command.MeasuredValue is { } measured ? new LotQuantity.Measured(measured, Enum.Parse<CanonicalUnit>(command.Unit!), command.Estimated) : LotQuantity.FromAvailability(Enum.Parse<AvailabilityState>(command.AvailabilityState!));
-        return InventoryLot.Create(ownerUserId, productId, quantity, ToStorage(command.StorageLocation!, command.CustomLocation), ToPackageState(command.PackageState), ToExpiration(command.PrintedExpirationDate), ToNotes(command.Notes), now);
+        return InventoryLot.Create(ownerUserId, productId, quantity, ToStorage(command.StorageLocation!, command.CustomLocation), ToPackageState(command.PackageState), ToExpiration(command.PrintedExpirationDate), ToNotes(command.Notes), now, autoRemoveOn: command.AutoRemoveOn);
     }
 
     private static LotStorage ToStorage(string location, string? customLocation) { LotStorage.TryCreate(Enum.Parse<StorageLocation>(location), customLocation, out var storage); return storage!; }
@@ -572,12 +574,23 @@ public sealed class InventoryLotApplicationWorkflow(
         if (!string.Equals(lot.Storage.CustomLocation, storage.CustomLocation, StringComparison.Ordinal)) { fields.Add("customLocation"); }
         if (lot.PackageState != ToPackageState(command.PackageState)) { fields.Add("packageState"); }
         if (lot.PrintedExpiration?.Date != command.PrintedExpirationDate) { fields.Add("printedExpirationDate"); }
+        if (lot.AutoRemoveOn != command.AutoRemoveOn) { fields.Add("autoRemoveOn"); }
         if (!string.Equals(lot.Notes?.Value, ToNotes(command.Notes)?.Value, StringComparison.Ordinal)) { fields.Add("notes"); }
         if (command.ProductName is not null && !string.Equals(product.DisplayName, command.ProductName.Trim(), StringComparison.Ordinal)) { fields.Add("productName"); }
         return fields;
     }
     private static IReadOnlyDictionary<string, string[]> FieldErrors(string field, string error) => new Dictionary<string, string[]>(StringComparer.Ordinal) { [field] = [error] };
-    private static string MetadataField(string? error) => error?.StartsWith("Notes", StringComparison.Ordinal) == true ? "notes" : error?.StartsWith("The package", StringComparison.Ordinal) == true ? "packageState" : "storageLocation";
+    private static string MetadataField(string? error) => error?.StartsWith("Notes", StringComparison.Ordinal) == true ? "notes" : error?.StartsWith("The package", StringComparison.Ordinal) == true ? "packageState" : error?.StartsWith("The removal", StringComparison.Ordinal) == true ? "autoRemoveOn" : "storageLocation";
+
+    /// <summary>
+    /// An auto-removal date may not lie in the past. A day of slack covers owners ahead of UTC,
+    /// whose "today" is already UTC tomorrow; the removal job decides in the owner's calendar.
+    /// </summary>
+    private bool ValidateAutoRemoveOn(DateOnly? date, out string? error)
+    {
+        error = date is { } value && value < DateOnly.FromDateTime(timeProvider.GetUtcNow().UtcDateTime).AddDays(-1) ? "The removal date must not be in the past." : null;
+        return error is null;
+    }
 }
 
 /// <summary>Concrete create-lot application handler.</summary>

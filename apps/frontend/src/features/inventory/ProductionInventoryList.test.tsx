@@ -36,6 +36,25 @@ describe("ProductionInventoryList", () => {
     );
   });
 
+  it("shows when a lot leaves the pantry automatically (PLAN-0056)", async () => {
+    const repo = createMockInventoryRepo({
+      listLots: async () => ({
+        items: [{ ...sampleLot, autoRemoveOn: "2026-11-05" }],
+        nextCursor: null,
+      }),
+    });
+    render(
+      renderInventoryTree({
+        repository: repo,
+        children: <ProductionInventoryList />,
+      }),
+    );
+
+    expect(
+      await screen.findByTestId(`inventory-auto-remove-${sampleLot.lotId}`),
+    ).toHaveTextContent(/Leaves the pantry after .*2026/);
+  });
+
   it("shows empty inventory and empty filtered states", async () => {
     const user = userEvent.setup();
     const listLots = vi.fn(async () => ({ items: [], nextCursor: null }));

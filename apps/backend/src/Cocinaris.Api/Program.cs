@@ -59,6 +59,12 @@ builder.Services.AddScoped<ICurrentUserAccessor, CurrentUserResolver>();
 builder.Services.AddScoped<IInventoryLotReadStore, PostgreSqlInventoryLotReadStore>();
 builder.Services.AddScoped<IInventoryProductNameSource, PostgreSqlInventoryProductNameSource>();
 builder.Services.AddScoped<InventoryNameSuggestionService>();
+builder.Services.AddScoped<IInventoryAutoRemovalSource, PostgreSqlInventoryAutoRemovalSource>();
+builder.Services.AddScoped<InventoryAutoRemovalService>();
+if (!builder.Environment.IsEnvironment("Testing"))
+{
+    builder.Services.AddHostedService<InventoryAutoRemovalWorker>();
+}
 builder.Services.AddScoped<IInventoryLotWriteStore, PostgreSqlInventoryLotWriteStore>();
 builder.Services.AddScoped<IInventoryPreparationStore, PostgreSqlInventoryPreparationStore>();
 builder.Services.AddSingleton<IInventoryHttpTokenService, DataProtectionInventoryHttpTokenService>();

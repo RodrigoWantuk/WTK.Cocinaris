@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ProductionInventoryForm } from "./ProductionInventoryForm";
 import { InventoryApiError } from "@/adapters/live/inventoryTypes";
@@ -68,6 +68,34 @@ describe("ProductionInventoryForm", () => {
         customLocation: null,
       }),
       expect.objectContaining({ csrfToken: "csrf-test" }),
+    );
+  });
+
+  it("sends the automatic removal date with the new lot (PLAN-0056)", async () => {
+    const user = userEvent.setup();
+    const createLot = vi.fn(async (..._args: unknown[]) => sampleLot);
+    renderForm("create", createMockInventoryRepo({ createLot }), "pt-BR");
+
+    await user.type(
+      screen.getByTestId("inventory-product-name"),
+      "Requeijão cremoso",
+    );
+    await user.type(screen.getByTestId("inventory-amount"), "100");
+    expect(
+      screen.getByText("Apagar automaticamente depois de"),
+    ).toBeInTheDocument();
+    fireEvent.change(screen.getByTestId("inventory-auto-remove-input"), {
+      target: { value: "2026-11-05" },
+    });
+    await user.click(screen.getByTestId("inventory-save"));
+
+    await waitFor(() => expect(createLot).toHaveBeenCalled());
+    expect(createLot).toHaveBeenCalledWith(
+      expect.objectContaining({
+        productName: "Requeijão cremoso",
+        autoRemoveOn: "2026-11-05",
+      }),
+      expect.anything(),
     );
   });
 

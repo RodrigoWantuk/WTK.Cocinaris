@@ -85,6 +85,7 @@ function mapLot(dto: LotDto, etag: string | null): InventoryLotView {
     customLocation: dto.customLocation ?? null,
     packageState: dto.packageState ?? null,
     printedExpirationDate: dto.printedExpirationDate ?? null,
+    autoRemoveOn: dto.autoRemoveOn ?? null,
     notes: dto.notes ?? null,
     version: dto.version,
     etag: etag ?? dto.version,
@@ -278,6 +279,7 @@ export function createLiveInventoryRepository(options?: {
         customLocation: input.customLocation ?? null,
         packageState: input.packageState ?? null,
         printedExpirationDate: input.printedExpirationDate ?? null,
+        autoRemoveOn: input.autoRemoveOn ?? null,
         notes: input.notes ?? null,
       };
       const { data, error, response } = await client.POST(
@@ -315,6 +317,7 @@ export function createLiveInventoryRepository(options?: {
         customLocation: input.customLocation ?? null,
         packageState: input.packageState ?? null,
         printedExpirationDate: input.printedExpirationDate ?? null,
+        autoRemoveOn: input.autoRemoveOn ?? null,
         notes: input.notes ?? null,
       };
       const { data, error, response } = await client.PATCH(

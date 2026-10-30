@@ -998,8 +998,10 @@ export interface components {
             reheatingPreference: components["schemas"]["ProfileFieldDtoOfstring"];
             repeatMealPreference: components["schemas"]["ProfileFieldDtoOfstring"];
         };
-        /** @description Creates one manually entered, user-owned inventory lot. */
+        /** @description Creates one manually entered, user-owned inventory lot. `AutoRemoveOn`: the day after which the lot is removed automatically (PLAN-0056). */
         CreateLotRequest: {
+            /** Format: date */
+            autoRemoveOn?: null | string;
             customLocation: null | string;
             notes: null | string;
             packageState: ("Sealed" | "Opened" | "Unknown") | null;
@@ -1199,9 +1201,11 @@ export interface components {
             quantity: number | string;
             recipeName: string;
         };
-        /** @description Returns the current representation of an inventory lot. */
+        /** @description Returns the current representation of an inventory lot, including its automatic removal date (PLAN-0056). */
         LotResponse: {
             attention: components["schemas"]["LotAttentionResponse"];
+            /** Format: date */
+            autoRemoveOn?: null | string;
             /** Format: date-time */
             createdAt: string;
             customLocation: null | string;
@@ -2152,8 +2156,10 @@ export interface components {
             targetCustomLocation: null | string;
             targetStorageLocation: ("Pantry" | "Refrigerator" | "Freezer" | "Other") | null;
         };
-        /** @description Corrects mutable lot metadata without accepting any authoritative owner identifier. */
+        /** @description Corrects mutable lot metadata without accepting any authoritative owner identifier. `AutoRemoveOn` replaces the removal date (null clears it). */
         UpdateLotRequest: {
+            /** Format: date */
+            autoRemoveOn?: null | string;
             customLocation: null | string;
             notes: null | string;
             packageState: ("Sealed" | "Opened" | "Unknown") | null;

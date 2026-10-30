@@ -364,8 +364,15 @@
         "type": "object"
       },
       "CreateLotRequest": {
-        "description": "Creates one manually entered, user-owned inventory lot.",
+        "description": "Creates one manually entered, user-owned inventory lot. `AutoRemoveOn`: the day after which the lot is removed automatically (PLAN-0056).",
         "properties": {
+          "autoRemoveOn": {
+            "format": "date",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
           "customLocation": {
             "type": [
               "null",
@@ -1143,10 +1150,17 @@
         "type": "object"
       },
       "LotResponse": {
-        "description": "Returns the current representation of an inventory lot.",
+        "description": "Returns the current representation of an inventory lot, including its automatic removal date (PLAN-0056).",
         "properties": {
           "attention": {
             "$ref": "#/components/schemas/LotAttentionResponse"
+          },
+          "autoRemoveOn": {
+            "format": "date",
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "createdAt": {
             "format": "date-time",
@@ -4453,8 +4467,15 @@
         "type": "object"
       },
       "UpdateLotRequest": {
-        "description": "Corrects mutable lot metadata without accepting any authoritative owner identifier.",
+        "description": "Corrects mutable lot metadata without accepting any authoritative owner identifier. `AutoRemoveOn` replaces the removal date (null clears it).",
         "properties": {
+          "autoRemoveOn": {
+            "format": "date",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
           "customLocation": {
             "type": [
               "null",

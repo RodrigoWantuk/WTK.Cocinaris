@@ -3,11 +3,11 @@ namespace Cocinaris.Api.Inventory;
 /// <summary>Represents exactly one inventory quantity mode supplied by an API client.</summary>
 public sealed record QuantityRequest(decimal? MeasuredValue, string? Unit, string? AvailabilityState, bool? Estimated = null);
 
-/// <summary>Creates one manually entered, user-owned inventory lot.</summary>
-public sealed record CreateLotRequest(string ProductName, QuantityRequest Quantity, string StorageLocation, string? CustomLocation, string? PackageState, DateOnly? PrintedExpirationDate, string? Notes);
+/// <summary>Creates one manually entered, user-owned inventory lot. <c>AutoRemoveOn</c>: the day after which the lot is removed automatically (PLAN-0056).</summary>
+public sealed record CreateLotRequest(string ProductName, QuantityRequest Quantity, string StorageLocation, string? CustomLocation, string? PackageState, DateOnly? PrintedExpirationDate, string? Notes, DateOnly? AutoRemoveOn = null);
 
-/// <summary>Corrects mutable lot metadata without accepting any authoritative owner identifier.</summary>
-public sealed record UpdateLotRequest(string? ProductName, string StorageLocation, string? CustomLocation, string? PackageState, DateOnly? PrintedExpirationDate, string? Notes);
+/// <summary>Corrects mutable lot metadata without accepting any authoritative owner identifier. <c>AutoRemoveOn</c> replaces the removal date (null clears it).</summary>
+public sealed record UpdateLotRequest(string? ProductName, string StorageLocation, string? CustomLocation, string? PackageState, DateOnly? PrintedExpirationDate, string? Notes, DateOnly? AutoRemoveOn = null);
 
 /// <summary>Records an explicit immutable inventory adjustment.</summary>
 public sealed record AdjustmentRequest(string Type, decimal? Value, string? AvailabilityState, string? ReasonCode, string? Note, bool? Estimated = null);
@@ -18,8 +18,8 @@ public sealed record AdjustmentRequest(string Type, decimal? Value, string? Avai
 /// </summary>
 public sealed record TransitionRequest(string Kind, QuantityRequest? Quantity, string? TargetStorageLocation, string? TargetCustomLocation);
 
-/// <summary>Returns the current representation of an inventory lot.</summary>
-public sealed record LotResponse(Guid LotId, Guid ProductId, string ProductName, QuantityResponse Quantity, string StorageLocation, string? CustomLocation, string? PackageState, DateOnly? PrintedExpirationDate, string? Notes, string Version, DateTimeOffset CreatedAt, DateTimeOffset UpdatedAt, LotLifecycleResponse Lifecycle, LotAttentionResponse Attention);
+/// <summary>Returns the current representation of an inventory lot, including its automatic removal date (PLAN-0056).</summary>
+public sealed record LotResponse(Guid LotId, Guid ProductId, string ProductName, QuantityResponse Quantity, string StorageLocation, string? CustomLocation, string? PackageState, DateOnly? PrintedExpirationDate, string? Notes, string Version, DateTimeOffset CreatedAt, DateTimeOffset UpdatedAt, LotLifecycleResponse Lifecycle, LotAttentionResponse Attention, DateOnly? AutoRemoveOn = null);
 
 /// <summary>
 /// Advisory attention for a lot, evaluated at response time in the user's time zone. It explains

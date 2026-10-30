@@ -292,3 +292,11 @@ While a pantry name is typed, the form suggests:
 
 Suggestions only fill the text field: the name is still the owner's free text, and nothing else about the lot changes.
 
+### Automatic removal date (PLAN-0056)
+
+A lot may carry `autoRemoveOn`, the day after which the owner wants it gone ("100 g de requeijão… depois do dia tal, apague"). It is optional, never in the past when set, and replaced or cleared on edit. A lot split from a lot keeps the same date.
+
+A background job removes a lot once that day has ended in the owner's time zone (profile time zone, UTC when none). The removal is the ordinary deletion with reason `auto_remove_date` and audit event `inventory.lot.auto_removed`, so it appears in the lot's history. It respects optimistic concurrency: a lot changed meanwhile is removed on a later run.
+
+This is the owner's own instruction, not a food-safety judgment: it does not change attention states or shelf-life advice.
+

@@ -352,6 +352,18 @@ export function ProductionInventoryList() {
                   t,
                 )}
               </p>
+              {item.autoRemoveOn ? (
+                <p
+                  className="mt-1 text-xs text-muted-foreground"
+                  data-testid={`inventory-auto-remove-${item.lotId}`}
+                >
+                  {t("inventory.autoRemoveOn.list", {
+                    date: new Date(
+                      `${item.autoRemoveOn}T12:00:00`,
+                    ).toLocaleDateString(locale),
+                  })}
+                </p>
+              ) : null}
               <div className="mt-2">
                 <AttentionBadge attention={item.attention} />
               </div>

@@ -72,6 +72,7 @@ function buildNormalizedCreateCommand(
     customLocation: string;
     packageState: PackageState | "";
     printedDate: string;
+    autoRemoveOn: string;
     notes: string;
   },
   locale: SupportedDecimalLocale,
@@ -155,6 +156,10 @@ function buildNormalizedCreateCommand(
   if (printedExpirationDate && !isCalendarDateString(printedExpirationDate)) {
     return { ok: false, errorKey: "inventory.error.printedDate" };
   }
+  const autoRemoveOn = input.autoRemoveOn.trim() || null;
+  if (autoRemoveOn && !isCalendarDateString(autoRemoveOn)) {
+    return { ok: false, errorKey: "inventory.error.autoRemoveOn" };
+  }
 
   return {
     ok: true,
@@ -165,6 +170,7 @@ function buildNormalizedCreateCommand(
       customLocation,
       packageState: input.packageState || null,
       printedExpirationDate,
+      autoRemoveOn,
       notes: input.notes.trim() || null,
     },
   };
@@ -200,6 +206,7 @@ export function ProductionInventoryForm({ mode }: { mode: "create" | "edit" }) {
   const [customLocation, setCustomLocation] = useState("");
   const [packageState, setPackageState] = useState<PackageState | "">("");
   const [printedDate, setPrintedDate] = useState("");
+  const [autoRemoveOn, setAutoRemoveOn] = useState("");
   const [notes, setNotes] = useState("");
   const [fieldError, setFieldError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -225,6 +232,7 @@ export function ProductionInventoryForm({ mode }: { mode: "create" | "edit" }) {
       setCustomLocation(lot.customLocation ?? "");
       setPackageState((lot.packageState as PackageState) || "");
       setPrintedDate(lot.printedExpirationDate ?? "");
+      setAutoRemoveOn(lot.autoRemoveOn ?? "");
       setNotes(lot.notes ?? "");
       if (lot.quantity.kind === "measured") {
         setQuantityMode("measured");
@@ -330,6 +338,7 @@ export function ProductionInventoryForm({ mode }: { mode: "create" | "edit" }) {
           customLocation,
           packageState,
           printedDate,
+          autoRemoveOn,
           notes,
         },
         locale as SupportedDecimalLocale,
@@ -364,6 +373,7 @@ export function ProductionInventoryForm({ mode }: { mode: "create" | "edit" }) {
           setAmount("");
           setNotes("");
           setPrintedDate("");
+          setAutoRemoveOn("");
           setPackageState("");
           return;
         }
@@ -430,6 +440,7 @@ export function ProductionInventoryForm({ mode }: { mode: "create" | "edit" }) {
           customLocation: resolvedCustom,
           packageState: packageState || null,
           printedExpirationDate: printedDate.trim() || null,
+          autoRemoveOn: autoRemoveOn.trim() || null,
           notes: notes.trim() || null,
         },
         { csrfToken: session.csrfToken, etag: existing.etag },
@@ -831,6 +842,20 @@ export function ProductionInventoryForm({ mode }: { mode: "create" | "edit" }) {
             />
             <span className="block text-xs text-muted-foreground">
               {t("inventory.printedDateDisclaimer")}
+            </span>
+          </label>
+
+          <label className="block space-y-1">
+            <span>{t("inventory.fields.autoRemoveOn")}</span>
+            <Input
+              data-testid="inventory-auto-remove-input"
+              type="date"
+              value={autoRemoveOn}
+              disabled={busy || !editReady}
+              onChange={(event) => setAutoRemoveOn(event.target.value)}
+            />
+            <span className="block text-xs text-muted-foreground">
+              {t("inventory.autoRemoveHint")}
             </span>
           </label>
 

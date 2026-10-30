@@ -34,6 +34,11 @@ export const REQUIRED_INVENTORY_I18N_KEYS = [
   "inventory.filter.location",
   "inventory.filter.locationAll",
   "inventory.fields.productName",
+  "inventory.fields.autoRemoveOn",
+  "inventory.autoRemoveHint",
+  "inventory.autoRemoveOn.list",
+  "inventory.error.autoRemoveOn",
+  "inventory.reason.auto_remove_date",
   "inventory.nameSuggestions.label",
   "inventory.nameSuggestions.usedBefore",
   "inventory.fields.location",
@@ -216,6 +221,13 @@ const en: Record<InventoryI18nKey, string> = {
   "inventory.filter.location": "Location filter",
   "inventory.filter.locationAll": "All locations",
   "inventory.fields.productName": "What do you have?",
+  "inventory.fields.autoRemoveOn": "Remove automatically after",
+  "inventory.autoRemoveHint":
+    "Optional. The day after this date, the item leaves your pantry by itself; the removal stays in its history.",
+  "inventory.autoRemoveOn.list": "Leaves the pantry after {{date}}",
+  "inventory.error.autoRemoveOn": "Enter a valid date.",
+  "inventory.reason.auto_remove_date":
+    "Removed automatically after the chosen date",
   "inventory.nameSuggestions.label": "Name suggestions",
   "inventory.nameSuggestions.usedBefore": "used before",
   "inventory.fields.location": "Where is it?",
@@ -421,6 +433,13 @@ const ptBR: Record<InventoryI18nKey, string> = {
   "inventory.filter.location": "Filtro de local",
   "inventory.filter.locationAll": "Todos os locais",
   "inventory.fields.productName": "O que você tem?",
+  "inventory.fields.autoRemoveOn": "Apagar automaticamente depois de",
+  "inventory.autoRemoveHint":
+    "Opcional. No dia seguinte a essa data, o item sai da despensa sozinho; a remoção fica no histórico.",
+  "inventory.autoRemoveOn.list": "Sai da despensa depois de {{date}}",
+  "inventory.error.autoRemoveOn": "Informe uma data válida.",
+  "inventory.reason.auto_remove_date":
+    "Removido automaticamente depois da data escolhida",
   "inventory.nameSuggestions.label": "Sugestões de nome",
   "inventory.nameSuggestions.usedBefore": "já usado",
   "inventory.fields.location": "Onde fica?",
@@ -627,6 +646,13 @@ const es: Record<InventoryI18nKey, string> = {
   "inventory.filter.location": "Filtro de ubicación",
   "inventory.filter.locationAll": "Todas las ubicaciones",
   "inventory.fields.productName": "¿Qué tienes?",
+  "inventory.fields.autoRemoveOn": "Quitar automáticamente después del",
+  "inventory.autoRemoveHint":
+    "Opcional. Al día siguiente de esta fecha, el producto sale solo de tu despensa; la eliminación queda en su historial.",
+  "inventory.autoRemoveOn.list": "Sale de la despensa después del {{date}}",
+  "inventory.error.autoRemoveOn": "Introduce una fecha válida.",
+  "inventory.reason.auto_remove_date":
+    "Eliminado automáticamente tras la fecha elegida",
   "inventory.nameSuggestions.label": "Sugerencias de nombre",
   "inventory.nameSuggestions.usedBefore": "usado antes",
   "inventory.fields.location": "¿Dónde está?",

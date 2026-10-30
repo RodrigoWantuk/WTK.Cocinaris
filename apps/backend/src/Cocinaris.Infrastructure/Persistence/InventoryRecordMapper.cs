@@ -21,7 +21,7 @@ internal static class InventoryRecordMapper
         LotStorage.TryCreate(Enum.Parse<StorageLocation>(item.StorageLocation), item.CustomLocation, out var storage);
         PrivateNotes.TryCreate(item.Notes, out var notes);
         var lifecycle = new LotLifecycle(Enum.Parse<LotLifecycleState>(item.LifecycleState), item.OpenedAt, item.FrozenAt, item.ThawStartedAt, item.ThawedAt, item.ParentLotId);
-        return InventoryLot.Restore(item.Id, item.OwnerUserId, item.ProductId, quantity, storage!, item.PackageState is null ? null : Enum.Parse<PackageState>(item.PackageState), item.PrintedExpirationDate is null ? null : new PrintedExpiration(item.PrintedExpirationDate.Value, ExpirationProvenance.UserEntered), notes, item.Version, item.ConcurrencyToken, item.CreatedAt, item.UpdatedAt, item.DeletedAt, lifecycle);
+        return InventoryLot.Restore(item.Id, item.OwnerUserId, item.ProductId, quantity, storage!, item.PackageState is null ? null : Enum.Parse<PackageState>(item.PackageState), item.PrintedExpirationDate is null ? null : new PrintedExpiration(item.PrintedExpirationDate.Value, ExpirationProvenance.UserEntered), notes, item.Version, item.ConcurrencyToken, item.CreatedAt, item.UpdatedAt, item.DeletedAt, lifecycle, item.AutoRemoveOn);
     }
 
     public static ProductRecord ToRecord(Product item) => new() { Id = item.Id, OwnerUserId = item.OwnerUserId, DisplayName = item.DisplayName, NormalizedSearchName = item.NormalizedSearchName, CreatedAt = item.CreatedAt, UpdatedAt = item.UpdatedAt, IsDeleted = item.IsDeleted };
@@ -39,6 +39,7 @@ internal static class InventoryRecordMapper
         CustomLocation = item.Storage.CustomLocation,
         PackageState = item.PackageState?.ToString(),
         PrintedExpirationDate = item.PrintedExpiration?.Date,
+        AutoRemoveOn = item.AutoRemoveOn,
         ExpirationProvenance = item.PrintedExpiration?.Provenance.ToString(),
         Notes = item.Notes?.Value,
         LifecycleState = item.Lifecycle.State.ToString(),
