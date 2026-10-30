@@ -131,3 +131,8 @@ Implement the complete optional recipe thumbnail vertical slice as specified by 
   - Typecheck, lint, format, OpenAPI export and API client drift, `dotnet format`, and the vulnerability check are clean.
 - Next: the owner merges this PR and deploys `main`. Existing images are converted on their first read.
 
+### 2026-10-30 — Claude Code (deploy)
+
+- The first deploy of `main` with the WebP change failed before touching the service: `ENOSPC` while installing the frontend in the build worktree under `/tmp`. On the owner host `/tmp` is a 2 GB tmpfs, while the root disk has 25 GB free. The deploy script now builds in `/var/tmp` (`COCINARIS_DEPLOY_BUILD_ROOT`), and the runbook says so.
+- Next: deploy `main` after this fix is merged, or deploy this branch, which contains `main` plus the fix.
+
