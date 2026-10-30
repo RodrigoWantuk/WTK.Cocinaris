@@ -111,20 +111,37 @@ function mapSession(dto: SessionDto): RecipeGenerationSession {
   };
 }
 
-// The image URL comes from the API; only this API's own thumbnail path is accepted, so a
-// malformed or hostile value can never point an <img> elsewhere.
+// The image URLs come from the API; only this API's own thumbnail path is accepted, so a
+// malformed or hostile value can never point an <img> elsewhere. The version may carry an
+// encoding suffix (".w1" = WebP), and the card URL adds "size=small".
 const THUMBNAIL_PATH =
-  /^\/api\/v1\/recipes\/[0-9a-f-]{36}\/thumbnail\?(revision=\d+&)?v=[0-9a-f]{16}$/;
+  /^\/api\/v1\/recipes\/[0-9a-f-]{36}\/thumbnail\?(revision=\d+&)?(size=small&)?v=[0-9a-f]{16}(\.w\d+)?$/;
 
 function mapThumbnail(value: unknown): RecipeThumbnail {
-  const dto = (value ?? {}) as { state?: unknown; url?: unknown };
+  const dto = (value ?? {}) as {
+    state?: unknown;
+    url?: unknown;
+    smallUrl?: unknown;
+  };
   if (
     dto.state === "ready" &&
     typeof dto.url === "string" &&
     THUMBNAIL_PATH.test(dto.url)
   )
-    return { state: "ready", url: dto.url };
-  return { state: dto.state === "pending" ? "pending" : "none", url: null };
+    return {
+      state: "ready",
+      url: dto.url,
+      // A missing or rejected card URL falls back to the full image.
+      smallUrl:
+        typeof dto.smallUrl === "string" && THUMBNAIL_PATH.test(dto.smallUrl)
+          ? dto.smallUrl
+          : null,
+    };
+  return {
+    state: dto.state === "pending" ? "pending" : "none",
+    url: null,
+    smallUrl: null,
+  };
 }
 
 function mapSummary(dto: SummaryDto): RecipeSummary {

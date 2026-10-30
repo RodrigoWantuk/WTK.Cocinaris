@@ -1869,9 +1869,11 @@ export interface components {
         /** @description A recipe's dish image (PLAN-0030): `ready` with a same-origin Url,
          *     `pending` while it is generated, or `none`, which shows the placeholder. */
         RecipeThumbnailResponse: {
+            /** @description Card-size (480 × 270 WebP) image URL when ready, for recipe lists. */
+            smallUrl: null | string;
             /** @description `ready`, `pending`, or `none`. */
             state: string;
-            /** @description Image URL when ready; it changes when the image changes, so it may be cached. */
+            /** @description Full-size (1024 × 576 WebP) image URL when ready; it changes when the image changes, so it may be cached. */
             url: null | string;
         };
         /** @description Optional body for requesting candidates; without it the request is cook-now. */
@@ -5898,6 +5900,7 @@ export interface operations {
         parameters: {
             query?: {
                 revision?: number | string;
+                size?: string;
             };
             header?: never;
             path: {

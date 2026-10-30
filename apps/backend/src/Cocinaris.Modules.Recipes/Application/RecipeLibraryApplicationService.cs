@@ -222,7 +222,11 @@ public sealed class RecipeLibraryApplicationService(
     /// Opens the image of an owned recipe's revision (the current one when null). Ownership is
     /// checked first, so another owner's recipe is indistinguishable from a missing one.
     /// </summary>
-    public async Task<(Stream Content, string MediaType)?> OpenThumbnailAsync(Guid recipeId, int? revisionNumber, CancellationToken cancellationToken)
+    /// <param name="recipeId">Recipe.</param>
+    /// <param name="revisionNumber">Revision, or null for the current one.</param>
+    /// <param name="size">Served size: the full image for the recipe page, the small one for cards.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    public async Task<(Stream Content, string MediaType)?> OpenThumbnailAsync(Guid recipeId, int? revisionNumber, RecipeThumbnailSize size, CancellationToken cancellationToken)
     {
         if (thumbnails is null)
         {
@@ -237,7 +241,7 @@ public sealed class RecipeLibraryApplicationService(
         }
 
         var revision = await store.FindRevisionAsync(user.Id, recipeId, revisionNumber ?? recipe.CurrentRevisionNumber, cancellationToken);
-        return revision is null ? null : await thumbnails.OpenAsync(revision.ThumbnailVisualJson, cancellationToken);
+        return revision is null ? null : await thumbnails.OpenAsync(revision.ThumbnailVisualJson, size, cancellationToken);
     }
 
     /// <summary>Gets an owned recipe's revisions and finished cooking sessions.</summary>

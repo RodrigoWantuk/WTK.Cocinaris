@@ -12,33 +12,43 @@ import type { RecipeThumbnail as RecipeThumbnailValue } from "@/contracts/recipe
  * @param thumbnail Image state from the API.
  * @param name Recipe name, used in the image's accessible description.
  * @param disclose Show the "imagem ilustrativa gerada por IA" caption (the detail page).
+ * @param size `full` (1024 × 576) for the recipe page, `small` (480 × 270) for cards.
+ * @param priority Load at once with high priority: the image is the page's main content above
+ *   the fold. Cards in lists load lazily.
  * @param className Size and shape classes for the frame.
  */
 export function RecipeThumbnail({
   thumbnail,
   name,
   disclose = false,
+  size = "full",
+  priority = false,
   className = "",
 }: {
   thumbnail: RecipeThumbnailValue;
   name: string;
   disclose?: boolean;
+  size?: "full" | "small";
+  priority?: boolean;
   className?: string;
 }) {
   const { t } = useProductionI18n();
   const [broken, setBroken] = useState(false);
-  const ready = thumbnail.state === "ready" && thumbnail.url && !broken;
+  const source =
+    size === "small" ? (thumbnail.smallUrl ?? thumbnail.url) : thumbnail.url;
+  const ready = thumbnail.state === "ready" && source && !broken;
   return (
     <figure className={className}>
       <div className="aspect-video w-full overflow-hidden rounded-2xl bg-secondary">
         {ready ? (
           <img
-            src={thumbnail.url!}
+            src={source!}
             alt={t("recipes.thumbnail.alt", { name })}
-            loading="lazy"
+            loading={priority ? "eager" : "lazy"}
+            fetchPriority={priority ? "high" : "auto"}
             decoding="async"
-            width={1024}
-            height={576}
+            width={size === "small" ? 480 : 1024}
+            height={size === "small" ? 270 : 576}
             onError={() => setBroken(true)}
             className="h-full w-full object-cover"
             data-testid="recipe-thumbnail-image"

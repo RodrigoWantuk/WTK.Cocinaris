@@ -111,6 +111,9 @@ public sealed class FileSystemRecipeThumbnailFileStore(string directory) : IReci
         return File.Exists(path) ? new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 81_920, useAsync: true) : null;
     }
 
+    /// <inheritdoc />
+    public bool Exists(string fileName) => File.Exists(PathFor(fileName));
+
     private string PathFor(string fileName)
     {
         // Render keys are hex; reject anything else so a stored name can never escape the directory.

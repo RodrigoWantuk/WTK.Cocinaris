@@ -128,7 +128,9 @@ describe("recipe library (PLAN-0038)", () => {
       lastRating: 4,
       thumbnail: {
         state: "ready",
-        url: "/api/v1/recipes/recipe-1/thumbnail?v=0123456789abcdef",
+        url: "/api/v1/recipes/recipe-1/thumbnail?v=0123456789abcdef.w1",
+        smallUrl:
+          "/api/v1/recipes/recipe-1/thumbnail?size=small&v=0123456789abcdef.w1",
       },
     });
     const listRecipes = vi.fn(async () => [row]);
@@ -138,10 +140,17 @@ describe("recipe library (PLAN-0038)", () => {
     const item = await screen.findByTestId("recipes-item-recipe-1");
     expect(item).toHaveTextContent("Lunch");
     expect(item).toHaveTextContent("Cooked 3× · rated 4");
-    expect(within(item).getByTestId("recipe-thumbnail-image")).toHaveAttribute(
+    const image = within(item).getByTestId("recipe-thumbnail-image");
+    expect(image).toHaveAttribute(
       "alt",
       "Illustrative photo of Arroz de forno",
     );
+    // Cards load the small WebP lazily.
+    expect(image).toHaveAttribute(
+      "src",
+      "/api/v1/recipes/recipe-1/thumbnail?size=small&v=0123456789abcdef.w1",
+    );
+    expect(image).toHaveAttribute("loading", "lazy");
 
     await user.click(screen.getByTestId("recipes-favorite-recipe-1"));
     expect(setFavorite).toHaveBeenCalledWith("recipe-1", true, {
@@ -162,6 +171,40 @@ describe("recipe library (PLAN-0038)", () => {
         search: undefined,
       }),
     );
+  });
+
+  it("shows the dish image once it is generated, without reloading the page", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      const ready = "/api/v1/recipes/recipe-1/thumbnail?v=0123456789abcdef.w1";
+      const getRecipe = vi
+        .fn()
+        .mockResolvedValueOnce({
+          ...DETAIL,
+          thumbnail: { state: "pending", url: null, smallUrl: null },
+        })
+        .mockResolvedValue({
+          ...DETAIL,
+          thumbnail: { state: "ready", url: ready, smallUrl: null },
+        });
+      renderAt(repoWith({ getRecipe }), "/app/receitas/recipe-1");
+
+      expect(
+        await screen.findByTestId("recipe-thumbnail-placeholder"),
+      ).toBeInTheDocument();
+      await vi.advanceTimersByTimeAsync(3000);
+
+      // The recipe page's image is its main content: full size, loaded at once.
+      const image = await screen.findByTestId("recipe-thumbnail-image");
+      expect(image).toHaveAttribute("src", ready);
+      expect(image).toHaveAttribute("loading", "eager");
+      expect(image).toHaveAttribute("fetchpriority", "high");
+      expect(getRecipe).toHaveBeenCalledTimes(2);
+      await vi.advanceTimersByTimeAsync(10000);
+      expect(getRecipe).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("saves an edit as the next revision, keeping row identifiers", async () => {

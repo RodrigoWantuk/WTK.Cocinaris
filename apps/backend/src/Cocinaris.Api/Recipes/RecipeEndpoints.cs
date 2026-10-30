@@ -290,8 +290,9 @@ public sealed record RecipeSummaryResponse(
 /// <c>pending</c> while it is generated, or <c>none</c>, which shows the placeholder.
 /// </summary>
 /// <param name="State"><c>ready</c>, <c>pending</c>, or <c>none</c>.</param>
-/// <param name="Url">Image URL when ready; it changes when the image changes, so it may be cached.</param>
-public sealed record RecipeThumbnailResponse(string State, string? Url);
+/// <param name="Url">Full-size (1024 × 576 WebP) image URL when ready; it changes when the image changes, so it may be cached.</param>
+/// <param name="SmallUrl">Card-size (480 × 270 WebP) image URL when ready, for recipe lists.</param>
+public sealed record RecipeThumbnailResponse(string State, string? Url, string? SmallUrl);
 
 /// <summary>HTTP projection of one revision of an owned recipe with its library state.</summary>
 /// <param name="RecipeId">Recipe identifier.</param>

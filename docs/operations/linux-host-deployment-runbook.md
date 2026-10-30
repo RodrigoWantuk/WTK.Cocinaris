@@ -118,7 +118,7 @@ Rename any dashboard or alert that uses `kitchenflow.*` metric names.
    - set `Ai__Images__Enabled=true` and `Ai__Providers__OpenRouter__ApiKey`;
    - the images use OpenRouter FLUX 3 Image Klein at 16:9, tier `768` (1024 × 576, US$ 0.008 each), and count toward the same monthly ceiling;
    - the daily limits are `Ai__Images__UserDailyImages` (default 10) and `Ai__Images__GlobalDailyImages` (default 100);
-   - files are kept in `/var/lib/wtk-cocinaris/media/thumbnails` (the service state directory), or in `Ai__Images__StoragePath`. The deploy database backup does not include them; a lost file shows the placeholder until the asset row is reset to `Pending`, which costs one new image;
+   - files are kept in `/var/lib/wtk-cocinaris/media/thumbnails` (the service state directory), or in `Ai__Images__StoragePath`. Each image has the provider original plus `.full.webp` (1024 × 576) and `.small.webp` (480 × 270), which are the files served; deleting a WebP file only makes the next read encode it again from the original. The deploy database backup does not include them; a lost file shows the placeholder until the asset row is reset to `Pending`, which costs one new image;
    - while disabled, recipes show a placeholder and existing images are still served.
 
    Optional ingredient embeddings (PLAN-0055, [ADR-0010](../architecture/decisions/0010-ingredient-identity-catalog-embeddings-pgvector.md)):

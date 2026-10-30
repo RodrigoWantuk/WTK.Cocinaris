@@ -79,6 +79,29 @@ public interface IRecipeThumbnailStore
     Task<int> CountGeneratedSinceAsync(Guid? ownerUserId, DateTimeOffset since, CancellationToken cancellationToken);
 }
 
+/// <summary>Size of a served recipe image.</summary>
+public enum RecipeThumbnailSize
+{
+    /// <summary>The full 1024 × 576 image, for the recipe page.</summary>
+    Full,
+
+    /// <summary>A 480 × 270 image, for recipe cards in lists.</summary>
+    Small
+}
+
+/// <summary>
+/// Re-encodes a validated provider image into the served WebP files (PLAN-0030 follow-up). The
+/// provider's original is kept, so a later encoder change re-encodes without paying for a new image.
+/// </summary>
+public interface IThumbnailImageEncoder
+{
+    /// <summary>
+    /// Encodes <paramref name="original"/> as WebP at <paramref name="size"/>; null when the bytes
+    /// cannot be decoded, in which case the caller serves the original.
+    /// </summary>
+    byte[]? EncodeWebP(byte[] original, RecipeThumbnailSize size);
+}
+
 /// <summary>Stores generated image files outside the database.</summary>
 public interface IRecipeThumbnailFileStore
 {
@@ -87,6 +110,9 @@ public interface IRecipeThumbnailFileStore
 
     /// <summary>Opens a stored file for reading, or null when it is missing.</summary>
     Stream? OpenRead(string fileName);
+
+    /// <summary>Whether a stored file exists.</summary>
+    bool Exists(string fileName);
 }
 
 /// <summary>
@@ -102,6 +128,7 @@ public interface IRecipeThumbnailFileStore
 public sealed class RecipeThumbnailService(
     IRecipeThumbnailStore store,
     IRecipeThumbnailFileStore files,
+    IThumbnailImageEncoder encoder,
     IImageGenerationProvider? provider,
     AiUsageGovernor governor,
     RecipeThumbnailOptions options,
@@ -166,8 +193,12 @@ public sealed class RecipeThumbnailService(
         return result;
     }
 
-    /// <summary>Opens the stored image of a descriptor, or null when none is ready.</summary>
-    public async Task<(Stream Content, string MediaType)?> OpenAsync(string? thumbnailVisualJson, CancellationToken cancellationToken)
+    /// <summary>
+    /// Opens the stored image of a descriptor at <paramref name="size"/>, or null when none is
+    /// ready. Served images are WebP. An image stored before WebP encoding existed is encoded on
+    /// its first read; if encoding fails, the provider's original is served instead.
+    /// </summary>
+    public async Task<(Stream Content, string MediaType)?> OpenAsync(string? thumbnailVisualJson, RecipeThumbnailSize size, CancellationToken cancellationToken)
     {
         if (Describe(thumbnailVisualJson) is not { } descriptor)
         {
@@ -180,8 +211,48 @@ public sealed class RecipeThumbnailService(
             return null;
         }
 
-        var stream = files.OpenRead(asset.FileName);
-        return stream is null ? null : (stream, asset.MediaType);
+        var variant = VariantName(asset.RenderKey, size);
+        if (!files.Exists(variant))
+        {
+            await WriteVariantsAsync(asset.RenderKey, asset.FileName, null, cancellationToken);
+        }
+
+        if (files.OpenRead(variant) is { } encoded)
+        {
+            return (encoded, "image/webp");
+        }
+
+        var original = files.OpenRead(asset.FileName);
+        return original is null ? null : (original, asset.MediaType);
+    }
+
+    /// <summary>File name of a served WebP size; never collides with the provider original (<c>key.png</c>, <c>key.jpg</c>, <c>key.webp</c>).</summary>
+    public static string VariantName(string renderKey, RecipeThumbnailSize size) =>
+        $"{renderKey}.{(size == RecipeThumbnailSize.Small ? "small" : "full")}.webp";
+
+    /// <summary>Encodes and stores both WebP sizes from the original; a failed encoding leaves the original as the served file.</summary>
+    private async Task WriteVariantsAsync(string renderKey, string originalFileName, byte[]? originalBytes, CancellationToken cancellationToken)
+    {
+        if (originalBytes is null)
+        {
+            await using var stream = files.OpenRead(originalFileName);
+            if (stream is null)
+            {
+                return;
+            }
+
+            using var buffer = new MemoryStream();
+            await stream.CopyToAsync(buffer, cancellationToken);
+            originalBytes = buffer.ToArray();
+        }
+
+        foreach (var size in new[] { RecipeThumbnailSize.Full, RecipeThumbnailSize.Small })
+        {
+            if (encoder.EncodeWebP(originalBytes, size) is { Length: > 0 } webp)
+            {
+                await files.WriteAsync(VariantName(renderKey, size), webp, cancellationToken);
+            }
+        }
     }
 
     /// <summary>
@@ -255,6 +326,8 @@ public sealed class RecipeThumbnailService(
 
         var fileName = $"{asset.RenderKey}.{inspected.Extension}";
         await files.WriteAsync(fileName, generated.Bytes, cancellationToken);
+        // The served WebP sizes are written before the asset is Ready, so its first read is already small.
+        await WriteVariantsAsync(asset.RenderKey, fileName, generated.Bytes, cancellationToken);
         var sizeFlag = inspected.Width == options.ExpectedWidth && inspected.Height == options.ExpectedHeight ? null : $"size_{inspected.Width}x{inspected.Height}";
         await store.SaveAsync(asset with { State = RecipeThumbnailState.Ready, Attempts = attempts, FileName = fileName, MediaType = inspected.MediaType, Width = inspected.Width, Height = inspected.Height, FailureCode = sizeFlag }, now, cancellationToken);
         await governor.SettleAtCostAsync(reservationId, 1, usage with { QualityFlags = sizeFlag }, cost, cancellationToken);

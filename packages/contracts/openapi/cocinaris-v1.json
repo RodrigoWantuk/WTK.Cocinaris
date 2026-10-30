@@ -3848,12 +3848,19 @@
       "RecipeThumbnailResponse": {
         "description": "A recipe's dish image (PLAN-0030): `ready` with a same-origin Url,\n`pending` while it is generated, or `none`, which shows the placeholder.",
         "properties": {
+          "smallUrl": {
+            "description": "Card-size (480 × 270 WebP) image URL when ready, for recipe lists.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
           "state": {
             "description": "`ready`, `pending`, or `none`.",
             "type": "string"
           },
           "url": {
-            "description": "Image URL when ready; it changes when the image changes, so it may be cached.",
+            "description": "Full-size (1024 × 576 WebP) image URL when ready; it changes when the image changes, so it may be cached.",
             "type": [
               "null",
               "string"
@@ -3862,7 +3869,8 @@
         },
         "required": [
           "state",
-          "url"
+          "url",
+          "smallUrl"
         ],
         "type": "object"
       },
@@ -12014,6 +12022,13 @@
                 "integer",
                 "string"
               ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "size",
+            "schema": {
+              "type": "string"
             }
           }
         ],
