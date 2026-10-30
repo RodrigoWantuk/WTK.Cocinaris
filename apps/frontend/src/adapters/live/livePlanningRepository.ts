@@ -124,12 +124,17 @@ function mapShopping(dto: ShoppingDto): ShoppingList {
       storeSection: item.storeSection ? String(item.storeSection) : "other",
       toBuyQuantity: num(item.toBuyQuantity),
       checked: item.checked === true,
+      packageSize: item.packageSize == null ? null : num(item.packageSize),
+      packageCount: item.packageCount == null ? null : num(item.packageCount),
+      expectedRemainder:
+        item.expectedRemainder == null ? null : num(item.expectedRemainder),
       uses: (item.uses ?? []).map((use) => ({
         entryId: String(use.entryId),
         recipeName: String(use.recipeName),
         plannedDate: text(use.plannedDate),
         quantity: num(use.quantity),
         optional: use.optional === true,
+        missingQuantity: num(use.missingQuantity),
       })),
     })),
   };
@@ -387,6 +392,43 @@ export function createLivePlanningRepository(options?: {
             menuId: String(item.menuId),
             menuName: String(item.menuName ?? ""),
             entry: mapEntry(item.entry),
+          })),
+      ),
+    setPackageSize: (itemKey, size, { csrfToken, signal }) =>
+      run(
+        () =>
+          client.PUT("/api/v1/planning/package-sizes", {
+            params: { header: { "X-CSRF-TOKEN": csrfToken } },
+            body: { itemKey, size },
+            signal,
+            ...include,
+          }),
+        "Unable to save the package size.",
+        () => undefined,
+      ),
+    getPreparation: (from, days, signal) =>
+      run(
+        () =>
+          client.GET("/api/v1/planning/preparation", {
+            params: { query: { from, days } },
+            signal,
+            ...include,
+          }),
+        "Unable to load the reminders.",
+        (data) =>
+          (data?.reminders ?? []).map((item) => ({
+            menuId: String(item.menuId),
+            entryId: String(item.entryId),
+            recipeName: String(item.recipeName ?? ""),
+            plannedDate: String(item.plannedDate),
+            mealType: text(item.mealType),
+            kind: String(item.kind),
+            itemName: String(item.itemName ?? ""),
+            unit: text(item.unit),
+            quantity: item.quantity == null ? null : num(item.quantity),
+            dueDate: String(item.dueDate),
+            lotId: text(item.lotId),
+            useByDate: text(item.useByDate),
           })),
       ),
   };

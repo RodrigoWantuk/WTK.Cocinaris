@@ -11,11 +11,22 @@ import type {
 import { AttentionBadge } from "@/features/inventory/AttentionBadge";
 import { useInventoryRepository } from "@/features/inventory/InventoryProvider";
 import { useRecipeRepository } from "@/features/recipes/RecipeProvider";
-import type { TodayMenuEntry } from "@/contracts/planning";
+import type { PreparationReminder, TodayMenuEntry } from "@/contracts/planning";
 import { usePlanningRepository } from "@/features/planning/PlanningProvider";
-import { localIsoDate } from "@/features/planning/planningDates";
+import {
+  addDays,
+  formatMenuDay,
+  localIsoDate,
+} from "@/features/planning/planningDates";
+import { formatLocaleDecimal } from "@/lib/localeDecimal";
 import { mealTypeLabel } from "@/features/recipes/recipeLabels";
 import { buildHomeGreeting, readBrowserTimeZone } from "./dayPart";
+
+const UNIT_KEYS: Record<string, string> = {
+  Gram: "recipes.unit.g",
+  Milliliter: "recipes.unit.ml",
+  Unit: "recipes.unit.unit",
+};
 
 type Source<T> =
   | { status: "loading" }
@@ -38,6 +49,86 @@ function useSource<T>(load: (signal: AbortSignal) => Promise<T[]>): Source<T> {
 }
 
 /**
+ * "Prepare-se" (PLAN-0029 Phase 4): what to buy, thaw, or use first for the menu meals of today
+ * and tomorrow. The reminders are derived on every read, so each disappears once its cause does;
+ * nothing here changes the pantry or the menu. Renders nothing when there is nothing to do.
+ */
+function PreparationSection({ items }: { items: PreparationReminder[] }) {
+  const { t, locale } = useProductionI18n();
+  if (items.length === 0) return null;
+  const today = localIsoDate();
+  const day = (iso: string) =>
+    iso <= today
+      ? t("today.prep.dueToday")
+      : iso === addDays(today, 1)
+        ? t("today.prep.dueTomorrow")
+        : formatMenuDay(iso, locale);
+  const amount = (item: PreparationReminder) =>
+    item.quantity === null
+      ? ""
+      : `${formatLocaleDecimal(item.quantity, locale)} ${t(UNIT_KEYS[item.unit ?? ""] ?? "recipes.unit.unit")}`;
+  const action = (item: PreparationReminder) =>
+    item.kind === "buy"
+      ? t("today.prep.buy", { item: item.itemName, amount: amount(item) })
+      : item.kind === "thaw"
+        ? t("today.prep.thaw", { item: item.itemName })
+        : t("today.prep.useBy", {
+            item: item.itemName,
+            date: formatMenuDay(item.useByDate ?? item.dueDate, locale),
+          });
+
+  return (
+    <section
+      aria-labelledby="today-preparation"
+      data-testid="today-preparation"
+      className="rounded-lg border border-border p-4"
+    >
+      <h2 id="today-preparation" className="font-display text-xl">
+        {t("today.prep.title")}
+      </h2>
+      <p className="text-sm text-muted-foreground">{t("today.prep.hint")}</p>
+      <ul className="mt-2 divide-y divide-border">
+        {items.map((item) => (
+          <li
+            key={`${item.entryId}-${item.kind}-${item.lotId ?? item.itemName}`}
+            data-testid="today-preparation-item"
+            className="flex flex-wrap items-center justify-between gap-2 py-2"
+          >
+            <span>
+              <span className="mr-2 rounded-full bg-secondary px-2 py-0.5 text-xs text-secondary-foreground">
+                {day(item.dueDate)}
+              </span>
+              <span className="font-medium">{action(item)}</span>
+              <span className="block text-sm text-muted-foreground">
+                {t("today.prep.for", {
+                  recipe: item.recipeName,
+                  day: day(item.plannedDate),
+                })}
+              </span>
+            </span>
+            {item.kind === "buy" ? (
+              <Link
+                to={`/app/cardapio/${item.menuId}/compras`}
+                className="text-sm underline underline-offset-4"
+              >
+                {t("today.prep.shopping")}
+              </Link>
+            ) : item.lotId ? (
+              <Link
+                to={`/app/despensa/${item.lotId}`}
+                className="text-sm underline underline-offset-4"
+              >
+                {t("today.prep.pantry")}
+              </Link>
+            ) : null}
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+/**
  * Production "Hoje" (PLAN-0021 deterministic tiers, PLAN-0042 resume, PLAN-0029 menu). Every
  * section reads an authoritative source independently: the accepted menu's meals for the owner's
  * current day (first, as the home suggestion order requires), in-progress cooking, the inventory
@@ -57,6 +148,16 @@ export function TodayPage() {
   const menu = useSource<TodayMenuEntry>(
     useMemo(
       () => (signal: AbortSignal) => planning.getToday(localIsoDate(), signal),
+      [planning],
+    ),
+  );
+
+  // Optional source: a repository without reminders simply shows none.
+  const preparation = useSource<PreparationReminder>(
+    useMemo(
+      () => (signal: AbortSignal) =>
+        planning.getPreparation?.(localIsoDate(), 2, signal) ??
+        Promise.resolve([]),
       [planning],
     ),
   );
@@ -180,6 +281,10 @@ export function TodayPage() {
             </p>
           ) : null}
         </section>
+      ) : null}
+
+      {preparation.status === "ready" ? (
+        <PreparationSection items={preparation.items} />
       ) : null}
 
       {cooking.status === "ready" && cooking.items.length > 0 ? (

@@ -60,6 +60,15 @@ public interface IMenuPlanStore
 
     /// <summary>Checks or unchecks a shopping item; repeating the same state is a no-op.</summary>
     Task SetCheckedAsync(Guid ownerUserId, Guid planId, string itemKey, bool isChecked, DateTimeOffset now, CancellationToken cancellationToken);
+
+    /// <summary>Lists the package sizes the owner confirmed, by shopping item key.</summary>
+    Task<IReadOnlyDictionary<string, PackageSize>> ListPackageSizesAsync(Guid ownerUserId, CancellationToken cancellationToken);
+
+    /// <summary>Sets (inserts or replaces) the package size of one item.</summary>
+    Task SetPackageSizeAsync(PackageSize packageSize, CancellationToken cancellationToken);
+
+    /// <summary>Removes the package size of one item; removing an absent size is a no-op.</summary>
+    Task RemovePackageSizeAsync(Guid ownerUserId, string itemKey, CancellationToken cancellationToken);
 }
 
 /// <summary>Plan list row.</summary>
@@ -136,6 +145,9 @@ public sealed record LotProtectionView(string Kind, decimal? MinimumQuantity);
 /// <summary>The owner's pantry commitments and the readiness of each reserving meal.</summary>
 public sealed record ReservationsView(DateOnly From, IReadOnlyList<LotCommitmentView> Lots, IReadOnlyList<MealReadinessView> Meals);
 
+/// <summary>Pre-meal reminders for the dated meals of menus in use from <paramref name="From"/>, for <paramref name="Days"/> days.</summary>
+public sealed record PreparationView(DateOnly From, int Days, IReadOnlyList<PreparationReminderView> Reminders);
+
 /// <summary>
 /// Menu planning (PLAN-0029): draft and accepted plans, entries, the menu of the day for the home
 /// page, and the shopping projection. Planning is optional and never mutates inventory, recipes,
@@ -151,7 +163,8 @@ public sealed class MenuPlanningApplicationService(
     TimeProvider timeProvider)
 {
     private const int MaxPantryLots = 500;
-    private const int MaxItemKeyLength = 200;
+    private const int MaxItemKeyLength = PackageSize.MaxItemKeyLength;
+    private const int MaxReminderDays = 7;
     private static readonly string[] MealOrder = ["breakfast", "lunch", "snack", "dinner"];
 
     /// <summary>Lists the owner's plans.</summary>
@@ -387,7 +400,7 @@ public sealed class MenuPlanningApplicationService(
                 : lot)
             .ToList();
         var keys = await MatchKeysAsync(user.Id, lots, meals.Select(meal => meal.NormalizedRecipeJson), cancellationToken);
-        var items = ShoppingProjector.Build(meals, usable, await store.ListCheckedAsync(user.Id, plan.Id, cancellationToken), keys);
+        var items = ShoppingProjector.Build(meals, usable, await store.ListCheckedAsync(user.Id, plan.Id, cancellationToken), keys, await store.ListPackageSizesAsync(user.Id, cancellationToken));
         return RecipeApplicationResult<ShoppingListView>.Succeeded(new ShoppingListView(plan.Id, start, meals.Count, items));
     }
 
@@ -408,6 +421,68 @@ public sealed class MenuPlanningApplicationService(
 
         await store.SetCheckedAsync(user.Id, plan.Id, itemKey, isChecked, timeProvider.GetUtcNow(), cancellationToken);
         return RecipeApplicationResult<bool>.Succeeded(isChecked);
+    }
+
+    /// <summary>
+    /// Records the package size the owner buys an item in, or forgets it when
+    /// <paramref name="size"/> is null (PLAN-0029 Phase 4). The size applies to every menu's list
+    /// and is in the unit of the item key. It never changes the pantry or a menu.
+    /// </summary>
+    /// <param name="itemKey">Shopping item key (catalog ingredient or normalized name, and unit).</param>
+    /// <param name="size">Size of one package, or null to remove it.</param>
+    /// <param name="cancellationToken">Cancellation.</param>
+    /// <returns>The size kept, or null when removed.</returns>
+    public async Task<RecipeApplicationResult<decimal?>> SetPackageSizeAsync(string? itemKey, decimal? size, CancellationToken cancellationToken)
+    {
+        // An item key always ends in a canonical unit, so a size is never stored for an unknown unit.
+        if (string.IsNullOrWhiteSpace(itemKey) || itemKey.Length > MaxItemKeyLength || !(itemKey.EndsWith("|Gram", StringComparison.Ordinal) || itemKey.EndsWith("|Milliliter", StringComparison.Ordinal) || itemKey.EndsWith("|Unit", StringComparison.Ordinal)))
+        {
+            return Failure<decimal?>("validation_failed", "The item key from the shopping list is required.", "itemKey");
+        }
+
+        if (size is <= 0 or > PackageSize.MaxSize)
+        {
+            return Failure<decimal?>("validation_failed", "A package size must be greater than zero and at most 100,000.", "size");
+        }
+
+        var user = await currentUser.GetCurrentAsync(cancellationToken);
+        if (size is null)
+        {
+            await store.RemovePackageSizeAsync(user.Id, itemKey, cancellationToken);
+            return RecipeApplicationResult<decimal?>.Succeeded(null);
+        }
+
+        await store.SetPackageSizeAsync(PackageSize.Create(user.Id, itemKey, size.Value, timeProvider.GetUtcNow()), cancellationToken);
+        return RecipeApplicationResult<decimal?>.Succeeded(size);
+    }
+
+    /// <summary>
+    /// Pre-meal readiness checks for the dated meals of menus in use between
+    /// <paramref name="from"/> and the following <paramref name="days"/> − 1 days (PLAN-0029
+    /// Phase 4): what to buy, what to thaw, and reserved lots whose date falls before the meal.
+    /// Read-only and recomputed on every read; reminders are shown in the app only.
+    /// </summary>
+    /// <param name="from">The owner's current day; the server does not know the owner's time zone.</param>
+    /// <param name="days">Days to check, 1 to 7; 2 (today and tomorrow) when omitted.</param>
+    /// <param name="cancellationToken">Cancellation.</param>
+    public async Task<RecipeApplicationResult<PreparationView>> GetPreparationAsync(DateOnly? from, int? days, CancellationToken cancellationToken)
+    {
+        if (days is < 1 or > MaxReminderDays)
+        {
+            return Failure<PreparationView>("validation_failed", "Check one to seven days.", "days");
+        }
+
+        var user = await currentUser.GetCurrentAsync(cancellationToken);
+        var start = from ?? ConservativeToday();
+        var span = days ?? 2;
+        var end = start.AddDays(span);
+        var lots = await inventory.ListActiveAsync(user.Id, MaxPantryLots, cancellationToken);
+        var projected = await ProjectAsync(user.Id, start, lots, simulateDraft: null, excludePlanId: null, cancellationToken);
+        var meals = projected.Meals
+            .Where(item => item.View.PlannedDate is { } date && date >= start && date < end)
+            .Select(item => new ReminderMeal(item.PlanId, item.View.EntryId, item.View.RecipeName, item.View.PlannedDate!.Value, item.View.MealType))
+            .ToList();
+        return RecipeApplicationResult<PreparationView>.Succeeded(new PreparationView(start, span, PreparationReminders.Build(meals, projected.Projection, lots, start)));
     }
 
     /// <summary>
@@ -558,7 +633,7 @@ public sealed class MenuPlanningApplicationService(
 
     // Reserving meals: entries of accepted menus (and of one simulated draft, after them) that are
     // still to cook, reserve ingredients, and are dated from `from` or flexible.
-    private async Task<(ReservationProjection Projection, IReadOnlyList<LotProtection> Protections)> ProjectAsync(
+    private async Task<(ReservationProjection Projection, IReadOnlyList<LotProtection> Protections, IReadOnlyList<ResolvedEntry> Meals)> ProjectAsync(
         Guid ownerUserId, DateOnly from, IReadOnlyList<InventoryLotReadModel> lots, MenuPlan? simulateDraft, Guid? excludePlanId, CancellationToken cancellationToken)
     {
         var plans = (await store.ListAcceptedFromAsync(ownerUserId, from, cancellationToken)).Where(plan => plan.Id != excludePlanId).ToList();
@@ -572,15 +647,17 @@ public sealed class MenuPlanningApplicationService(
             .Where(entry => entry.ReserveIngredients && (entry.PlannedDate is null || entry.PlannedDate >= from))
             .ToList();
         var resolved = await ResolveEntriesAsync(ownerUserId, entries, cancellationToken);
-        var meals = resolved
+        var reserving = resolved
             .Where(item => item.View.Status is "planned" or "cooking" && item.Content is not null)
             // Menus in use reserve before a simulated draft; within each, the resolver's day and meal order holds.
             .OrderBy(item => !accepted.Contains(item.PlanId))
+            .ToList();
+        var meals = reserving
             .Select(item => new ReservingMeal(item.View.EntryId, item.View.RecipeName, item.View.PlannedDate, item.View.Servings, item.Content!.Servings, item.Content.NormalizedRecipeJson))
             .ToList();
         var protections = await store.ListProtectionsAsync(ownerUserId, cancellationToken);
         var keys = await MatchKeysAsync(ownerUserId, lots, meals.Select(meal => meal.NormalizedRecipeJson), cancellationToken);
-        return (ReservationProjector.Build(meals, lots, protections, keys), protections);
+        return (ReservationProjector.Build(meals, lots, protections, keys), protections, reserving.Where(item => accepted.Contains(item.PlanId)).ToList());
     }
 
     /// <summary>Matching keys for the pantry's product names and the meals' ingredient names (PLAN-0055).</summary>

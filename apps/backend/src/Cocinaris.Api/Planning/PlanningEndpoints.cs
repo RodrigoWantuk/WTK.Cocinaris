@@ -75,6 +75,13 @@ public static class PlanningEndpoints
         group.MapDelete("/protections/{lotId:guid}", (PlanningApiService service, Guid lotId, HttpContext context, CancellationToken cancellationToken) => service.UnprotectAsync(lotId, context, cancellationToken))
             .RequireRateLimiting("mutation")
             .Produces<ReservationsResponse>();
+        group.MapPut("/package-sizes", (PlanningApiService service, PackageSizeRequest body, HttpContext context, CancellationToken cancellationToken) => service.SetPackageSizeAsync(body, context, cancellationToken))
+            .RequireRateLimiting("mutation")
+            .Produces<PackageSizeRequest>()
+            .ProducesProblem(400);
+        group.MapGet("/preparation", (PlanningApiService service, DateOnly? from, int? days, HttpContext context, CancellationToken cancellationToken) => service.GetPreparationAsync(from, days, context, cancellationToken))
+            .Produces<MealPreparationResponse>()
+            .ProducesProblem(400);
         group.MapGet("/today", (PlanningApiService service, DateOnly? date, HttpContext context, CancellationToken cancellationToken) => service.GetTodayAsync(date, context, cancellationToken))
             .Produces<IReadOnlyList<TodayMenuEntryResponse>>()
             .ProducesProblem(400);
@@ -155,9 +162,23 @@ public sealed class PlanningApiService(MenuPlanningApplicationService applicatio
                 item.AvailableQuantity,
                 item.ToBuyQuantity,
                 item.Checked,
-                item.Uses.Select(use => new ShoppingUseResponse(use.EntryId, use.RecipeName, use.PlannedDate, use.Quantity, use.Optional)).ToList(),
+                item.Uses.Select(use => new ShoppingUseResponse(use.EntryId, use.RecipeName, use.PlannedDate, use.Quantity, use.Optional, use.MissingQuantity)).ToList(),
                 item.AvailableIsEstimate,
-                item.StoreSection)).ToList()));
+                item.StoreSection,
+                item.PackageSize,
+                item.PackageCount,
+                item.ExpectedRemainder)).ToList()));
+
+    /// <summary>Records or forgets the package size of a shopping item.</summary>
+    public async Task<IResult> SetPackageSizeAsync(PackageSizeRequest body, HttpContext context, CancellationToken cancellationToken) =>
+        ToResult(await application.SetPackageSizeAsync(body.ItemKey, body.Size, cancellationToken), context.TraceIdentifier, size => body with { Size = size });
+
+    /// <summary>Gets pre-meal reminders for the dated meals of menus in use.</summary>
+    public async Task<IResult> GetPreparationAsync(DateOnly? from, int? days, HttpContext context, CancellationToken cancellationToken) =>
+        ToResult(await application.GetPreparationAsync(from, days, cancellationToken), context.TraceIdentifier, view => new MealPreparationResponse(
+            view!.From,
+            view.Days,
+            view.Reminders.Select(item => new MealPreparationReminderResponse(item.PlanId, item.EntryId, item.RecipeName, item.PlannedDate, item.MealType, item.Kind, item.ItemName, item.Unit, item.Quantity, item.DueDate, item.LotId, item.UseByDate)).ToList()));
 
     /// <summary>Checks or unchecks a shopping line.</summary>
     public async Task<IResult> SetCheckedAsync(Guid menuId, ShoppingCheckRequest body, HttpContext context, CancellationToken cancellationToken) =>
@@ -316,7 +337,42 @@ public sealed record ShoppingListResponse(Guid MenuId, DateOnly From, int MealCo
 /// <param name="Uses">Meals that need it.</param>
 /// <param name="AvailableIsEstimate">Whether <paramref name="AvailableQuantity"/> includes an estimated pantry amount.</param>
 /// <param name="StoreSection">Store section to group the line by: <c>produce</c>, <c>butcher_fish</c>, <c>dairy_eggs</c>, <c>bakery</c>, <c>dry_goods</c>, <c>drinks</c>, or <c>other</c> (PLAN-0037 Phase 3).</param>
-public sealed record ShoppingItemResponse(string ItemKey, string DisplayName, string Unit, string Category, decimal RequiredQuantity, decimal AvailableQuantity, decimal ToBuyQuantity, bool Checked, IReadOnlyList<ShoppingUseResponse> Uses, bool AvailableIsEstimate, string StoreSection);
+/// <param name="PackageSize">Package size the owner confirmed for this item, in <paramref name="Unit"/> (PLAN-0029 Phase 4); null when none was confirmed.</param>
+/// <param name="PackageCount">Whole packages that cover <paramref name="ToBuyQuantity"/>; null without a package size or with nothing to buy.</param>
+/// <param name="ExpectedRemainder">What those packages leave after the menu, in <paramref name="Unit"/>; null with <paramref name="PackageCount"/>.</param>
+public sealed record ShoppingItemResponse(string ItemKey, string DisplayName, string Unit, string Category, decimal RequiredQuantity, decimal AvailableQuantity, decimal ToBuyQuantity, bool Checked, IReadOnlyList<ShoppingUseResponse> Uses, bool AvailableIsEstimate, string StoreSection, decimal? PackageSize, int? PackageCount, decimal? ExpectedRemainder);
 
 /// <summary>One meal that needs a shopping line.</summary>
-public sealed record ShoppingUseResponse(Guid EntryId, string RecipeName, DateOnly? PlannedDate, decimal Quantity, bool Optional);
+/// <param name="EntryId">Menu entry.</param>
+/// <param name="RecipeName">Recipe name.</param>
+/// <param name="PlannedDate">Day, or null when flexible.</param>
+/// <param name="Quantity">What this meal needs.</param>
+/// <param name="Optional">Whether the recipe marks it optional.</param>
+/// <param name="MissingQuantity">What this meal still lacks after the pantry is allocated in plan order.</param>
+public sealed record ShoppingUseResponse(Guid EntryId, string RecipeName, DateOnly? PlannedDate, decimal Quantity, bool Optional, decimal MissingQuantity);
+
+/// <summary>Body (and response) for a shopping item's package size.</summary>
+/// <param name="ItemKey">Item key from the shopping list; its unit is the size's unit.</param>
+/// <param name="Size">Size of one package, greater than zero and at most 100,000; null forgets it.</param>
+public sealed record PackageSizeRequest(string? ItemKey, decimal? Size);
+
+/// <summary>Pre-meal reminders for the dated meals of menus in use (PLAN-0029 Phase 4). Read-only.</summary>
+/// <param name="From">First day checked.</param>
+/// <param name="Days">Days checked.</param>
+/// <param name="Reminders">Reminders, earliest due first.</param>
+public sealed record MealPreparationResponse(DateOnly From, int Days, IReadOnlyList<MealPreparationReminderResponse> Reminders);
+
+/// <summary>Something to do before a planned meal.</summary>
+/// <param name="MenuId">Menu.</param>
+/// <param name="EntryId">Menu entry.</param>
+/// <param name="RecipeName">Recipe name.</param>
+/// <param name="PlannedDate">Day of the meal.</param>
+/// <param name="MealType">Meal, if set.</param>
+/// <param name="Kind"><c>buy</c> (a required ingredient is not covered), <c>thaw</c> (a reserved lot is frozen), or <c>use_by</c> (a reserved lot's date falls before the meal; advisory).</param>
+/// <param name="ItemName">Ingredient or product name.</param>
+/// <param name="Unit"><c>Gram</c>, <c>Milliliter</c>, or <c>Unit</c>, when there is a quantity.</param>
+/// <param name="Quantity">Missing quantity (<c>buy</c>) or quantity reserved from the lot.</param>
+/// <param name="DueDate">Day to act by.</param>
+/// <param name="LotId">Pantry lot, for <c>thaw</c> and <c>use_by</c>.</param>
+/// <param name="UseByDate">The lot's earliest date, for <c>use_by</c>.</param>
+public sealed record MealPreparationReminderResponse(Guid MenuId, Guid EntryId, string RecipeName, DateOnly PlannedDate, string? MealType, string Kind, string ItemName, string? Unit, decimal? Quantity, DateOnly DueDate, Guid? LotId, DateOnly? UseByDate);

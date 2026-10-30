@@ -123,7 +123,8 @@ public static class ReservationProjector
         return new ReservationProjection(commitments, readiness);
     }
 
-    private static DateOnly? EarliestDate(InventoryLotReadModel lot)
+    /// <summary>The earlier of the printed expiration date and the prepared shelf-life date, if any.</summary>
+    internal static DateOnly? EarliestDate(InventoryLotReadModel lot)
     {
         var prepared = lot.Lifecycle?.PreparedShelfLifeDate;
         return (lot.PrintedExpirationDate, prepared) switch

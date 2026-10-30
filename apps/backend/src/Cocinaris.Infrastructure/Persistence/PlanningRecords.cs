@@ -83,3 +83,16 @@ public sealed class ShoppingCheckRecord
     /// <summary>Gets or sets the UTC check instant.</summary>
     public DateTimeOffset CheckedAt { get; set; }
 }
+
+/// <summary>A package size the owner confirmed for a shopping item (PLAN-0029 Phase 4).</summary>
+public sealed class PackageSizeRecord
+{
+    /// <summary>Gets or sets the authoritative owner identifier.</summary>
+    public Guid OwnerUserId { get; set; }
+    /// <summary>Gets or sets the shopping item key (catalog ingredient or normalized name, and unit).</summary>
+    public required string ItemKey { get; set; }
+    /// <summary>Gets or sets the size of one package, in the item key's unit.</summary>
+    public decimal Size { get; set; }
+    /// <summary>Gets or sets the UTC instant the owner set the size.</summary>
+    public DateTimeOffset UpdatedAt { get; set; }
+}

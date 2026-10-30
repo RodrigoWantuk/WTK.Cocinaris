@@ -681,6 +681,30 @@ namespace Cocinaris.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Cocinaris.Infrastructure.Persistence.PackageSizeRecord", b =>
+                {
+                    b.Property<Guid>("OwnerUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ItemKey")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<decimal>("Size")
+                        .HasPrecision(12, 3)
+                        .HasColumnType("numeric(12,3)");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("OwnerUserId", "ItemKey");
+
+                    b.ToTable("package_sizes", "planning", t =>
+                        {
+                            t.HasCheckConstraint("ck_package_sizes_size", "\"Size\" > 0 AND \"Size\" <= 100000");
+                        });
+                });
+
             modelBuilder.Entity("Cocinaris.Infrastructure.Persistence.PreferenceEntryRecord", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1956,6 +1980,15 @@ namespace Cocinaris.Infrastructure.Persistence.Migrations
                 });
 
             modelBuilder.Entity("Cocinaris.Infrastructure.Persistence.MenuPlanRecord", b =>
+                {
+                    b.HasOne("Cocinaris.Modules.Identity.InternalUser", null)
+                        .WithMany()
+                        .HasForeignKey("OwnerUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Cocinaris.Infrastructure.Persistence.PackageSizeRecord", b =>
                 {
                     b.HasOne("Cocinaris.Modules.Identity.InternalUser", null)
                         .WithMany()
