@@ -13,7 +13,10 @@ import {
 } from "@/adapters/live/inventoryTypes";
 import { useSession } from "@/app/session/SessionProvider";
 import { useProductionI18n } from "@/app/i18n/ProductionI18nProvider";
+import { Bookmark, Clock, Gauge, Sparkles, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { RecipeThumbnail } from "./RecipeThumbnail";
+import { mealTypeLabel } from "./recipeLabels";
 import { FeatureUnavailable } from "@/components/runtime/FeatureUnavailable";
 import { isRetryableRecipeError, recipeErrorMessageKey } from "./recipeErrors";
 import {
@@ -460,10 +463,14 @@ export function RecipeGeneratePage() {
     return (
       <div
         data-testid="recipes-generate-busy"
-        className="space-y-4"
+        className="space-y-5"
         role="status"
       >
-        <p>
+        <p className="flex items-center gap-3 text-lg font-semibold">
+          <Sparkles
+            aria-hidden="true"
+            className="h-6 w-6 text-primary motion-safe:animate-pulse"
+          />
           {phase === "requesting"
             ? t("recipes.generate.requesting")
             : t("recipes.generate.selecting")}
@@ -471,6 +478,16 @@ export function RecipeGeneratePage() {
             {t("recipes.generate.waitingSession")}
           </span>
         </p>
+        {/* Skeletons in the shape of the three cards that are coming (PLAN-0058). */}
+        <ul aria-hidden="true" className="grid gap-3 sm:grid-cols-3">
+          {[0, 1, 2].map((index) => (
+            <li key={index} className="surface space-y-3 p-3">
+              <div className="aspect-video rounded-2xl bg-secondary motion-safe:animate-pulse" />
+              <div className="h-4 w-3/4 rounded bg-secondary motion-safe:animate-pulse" />
+              <div className="h-3 w-1/2 rounded bg-secondary motion-safe:animate-pulse" />
+            </li>
+          ))}
+        </ul>
         <Button
           type="button"
           variant="secondary"
@@ -500,7 +517,7 @@ export function RecipeGeneratePage() {
           </p>
         ) : null}
         <ul
-          className="space-y-3"
+          className="grid gap-4 sm:grid-cols-3"
           aria-labelledby={candidatesHeadingId}
           data-testid="recipes-candidate-list"
         >
@@ -508,31 +525,47 @@ export function RecipeGeneratePage() {
             <li key={candidate.candidateId}>
               <article
                 data-testid={`recipes-candidate-${candidate.candidateId}`}
-                className="rounded-2xl border border-border bg-card p-4"
+                className="surface flex h-full flex-col gap-3 p-3"
               >
-                <h2 className="font-display text-xl">{candidate.name}</h2>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  {candidate.summary}
-                </p>
-                <div className="mt-3 flex flex-wrap gap-3 text-xs text-muted-foreground">
-                  <span>
-                    {t("recipes.generate.minutes", {
-                      count: candidate.totalMinutes,
-                    })}
-                  </span>
-                  <span>
-                    {t("recipes.generate.servings", {
-                      count: candidate.servings,
-                    })}
-                  </span>
-                  <span>
-                    {t("recipes.generate.difficulty", {
-                      value: candidate.difficulty,
-                    })}
-                  </span>
-                  <span>{candidate.targetMealType}</span>
+                <RecipeThumbnail
+                  thumbnail={{ state: "none", url: null }}
+                  name={candidate.name}
+                  size="small"
+                />
+                <div className="space-y-2 px-1">
+                  {candidate.targetMealType ? (
+                    <p className="text-xs font-semibold uppercase tracking-wide text-primary">
+                      {mealTypeLabel(t, candidate.targetMealType)}
+                    </p>
+                  ) : null}
+                  <h2 className="text-lg font-semibold leading-snug">
+                    {candidate.name}
+                  </h2>
+                  <p className="text-sm leading-relaxed text-muted-foreground">
+                    {candidate.summary}
+                  </p>
+                  <ul className="flex flex-wrap gap-2 pt-1 text-xs font-medium text-muted-foreground">
+                    <li className="inline-flex items-center gap-1 rounded-full bg-secondary px-2.5 py-1">
+                      <Clock aria-hidden="true" className="h-3.5 w-3.5" />
+                      {t("recipes.generate.minutes", {
+                        count: candidate.totalMinutes,
+                      })}
+                    </li>
+                    <li className="inline-flex items-center gap-1 rounded-full bg-secondary px-2.5 py-1">
+                      <Users aria-hidden="true" className="h-3.5 w-3.5" />
+                      {t("recipes.generate.servings", {
+                        count: candidate.servings,
+                      })}
+                    </li>
+                    <li className="inline-flex items-center gap-1 rounded-full bg-secondary px-2.5 py-1">
+                      <Gauge aria-hidden="true" className="h-3.5 w-3.5" />
+                      {t("recipes.generate.difficulty", {
+                        value: candidate.difficulty,
+                      })}
+                    </li>
+                  </ul>
                 </div>
-                <div className="mt-4 flex flex-wrap gap-2">
+                <div className="mt-auto grid gap-2 px-1 pb-1">
                   <Button
                     type="button"
                     data-testid={`recipes-select-${candidate.candidateId}`}
@@ -555,6 +588,14 @@ export function RecipeGeneratePage() {
                     }
                     onClick={() => void saveForLater(candidate.candidateId)}
                   >
+                    <Bookmark
+                      aria-hidden="true"
+                      className={
+                        savedIds.has(candidate.candidateId)
+                          ? "fill-current"
+                          : ""
+                      }
+                    />
                     {savedIds.has(candidate.candidateId)
                       ? t("recipes.saved.saved")
                       : t("recipes.saved.save")}
@@ -580,15 +621,17 @@ export function RecipeGeneratePage() {
 
   return (
     <div data-testid="recipes-generate-confirm" className="space-y-6">
-      <div>
-        <h1 className="font-display text-3xl">{t("recipes.generate.title")}</h1>
-        <p className="mt-1 text-muted-foreground">
-          {t("recipes.generate.subtitle")}
+      {/* The page's promise up front, on the accent (PLAN-0058). */}
+      <div className="rounded-2xl bg-accent p-5 text-accent-foreground">
+        <Sparkles aria-hidden="true" className="h-7 w-7" />
+        <h1 className="mt-3 font-display text-3xl">
+          {t("recipes.generate.title")}
+        </h1>
+        <p className="mt-1">{t("recipes.generate.subtitle")}</p>
+        <p className="mt-2 text-sm opacity-90">
+          {t("recipes.generate.confirmDetail")}
         </p>
       </div>
-      <p className="text-sm text-muted-foreground">
-        {t("recipes.generate.confirmDetail")}
-      </p>
       <SuggestionGuidancePanel
         lots={guidanceLots}
         value={guidance}

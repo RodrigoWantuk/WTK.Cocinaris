@@ -1,4 +1,10 @@
-import { Plus, Sparkles, Trash2 } from "lucide-react";
+import {
+  CalendarDays,
+  ChevronLeft,
+  Plus,
+  Sparkles,
+  Trash2,
+} from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useProductionI18n } from "@/app/i18n/ProductionI18nProvider";
@@ -9,6 +15,7 @@ import { FeatureUnavailable } from "@/components/runtime/FeatureUnavailable";
 import type { Menu, MenuEntry, MenuEntryInput } from "@/contracts/planning";
 import { RecipeApiError, type RecipeSummary } from "@/contracts/recipes";
 import { useRecipeRepository } from "@/features/recipes/RecipeProvider";
+import { RecipeThumbnail } from "@/features/recipes/RecipeThumbnail";
 import { MEAL_TYPES, mealTypeLabel } from "@/features/recipes/recipeLabels";
 import {
   daysBetween,
@@ -42,6 +49,22 @@ export function MenuPage() {
   const [addingTo, setAddingTo] = useState<string | null>(null);
   const [suggestingFor, setSuggestingFor] = useState<string | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
+  // Dish images for the meals (PLAN-0058); a failed read only leaves the placeholders.
+  const [thumbnails, setThumbnails] = useState<
+    Map<string, RecipeSummary["thumbnail"]>
+  >(new Map());
+  useEffect(() => {
+    const controller = new AbortController();
+    recipes
+      .listRecipes(controller.signal)
+      .then((list) =>
+        setThumbnails(
+          new Map(list.map((recipe) => [recipe.recipeId, recipe.thumbnail])),
+        ),
+      )
+      .catch(() => undefined);
+    return () => controller.abort();
+  }, [recipes]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -134,7 +157,11 @@ export function MenuPage() {
   return (
     <div data-testid="menu-page" className="space-y-6">
       <div className="space-y-2">
-        <Link to="/app/cardapio" className="text-sm underline">
+        <Link
+          to="/app/cardapio"
+          className="inline-flex items-center gap-1 text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+        >
+          <ChevronLeft aria-hidden="true" className="h-4 w-4" />
           {t("planning.back")}
         </Link>
         <h1 className="font-display text-3xl">
@@ -204,7 +231,33 @@ export function MenuPage() {
             className="space-y-2 p-4"
           >
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <h2 className="font-display text-lg">{group.title}</h2>
+              <h2 className="flex items-center gap-3 font-display text-lg">
+                {/* A calendar leaf per day; today carries the accent. */}
+                <span
+                  aria-hidden="true"
+                  className={`flex h-11 w-11 shrink-0 flex-col items-center justify-center rounded-xl ${
+                    group.key === today
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-secondary text-secondary-foreground"
+                  }`}
+                >
+                  {group.key === FLEXIBLE ? (
+                    <CalendarDays className="h-5 w-5" />
+                  ) : (
+                    <>
+                      <span className="text-[10px] font-semibold uppercase leading-none">
+                        {new Intl.DateTimeFormat(locale, { weekday: "short" })
+                          .format(new Date(`${group.key}T12:00:00`))
+                          .replace(".", "")}
+                      </span>
+                      <span className="tabular text-base font-bold leading-tight">
+                        {Number(group.key.slice(8, 10))}
+                      </span>
+                    </>
+                  )}
+                </span>
+                {group.title}
+              </h2>
               {editable ? (
                 <div className="flex gap-1">
                   <Button
@@ -262,6 +315,7 @@ export function MenuPage() {
                 <EntryRow
                   key={entry.entryId}
                   entry={entry}
+                  thumbnail={thumbnails.get(entry.recipeId)}
                   menu={menu}
                   editable={editable}
                   busy={busy}
@@ -343,6 +397,7 @@ export function MenuPage() {
 
 function EntryRow({
   entry,
+  thumbnail,
   menu,
   editable,
   busy,
@@ -353,6 +408,7 @@ function EntryRow({
   onRemove,
 }: {
   entry: MenuEntry;
+  thumbnail?: RecipeSummary["thumbnail"];
   menu: Menu;
   editable: boolean;
   busy: boolean;
@@ -378,26 +434,35 @@ function EntryRow({
   return (
     <li
       data-testid="menu-entry"
-      className="space-y-2 rounded-xl border border-border bg-background p-3"
+      className="space-y-3 rounded-xl border border-border bg-background p-3"
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <Link
-            to={`/app/receitas/${entry.recipeId}`}
-            className={`font-medium underline-offset-2 hover:underline ${entry.status === "skipped" ? "line-through" : ""}`}
-          >
-            {entry.recipeName}
-          </Link>
-          <p className="text-xs text-muted-foreground">
-            {[
-              entry.mealType ? mealTypeLabel(t, entry.mealType) : null,
-              t("recipes.detail.servings", { count: entry.servings }),
-              t(`planning.entryStatus.${entry.status}`),
-            ]
-              .filter(Boolean)
-              .join(" · ")}
-          </p>
-          <Readiness entry={entry} />
+        <div className="flex min-w-0 flex-1 items-center gap-3">
+          <span className="w-20 shrink-0">
+            <RecipeThumbnail
+              thumbnail={thumbnail ?? { state: "none", url: null }}
+              name={entry.recipeName}
+              size="small"
+            />
+          </span>
+          <div className="min-w-0">
+            <Link
+              to={`/app/receitas/${entry.recipeId}`}
+              className={`font-medium underline-offset-2 hover:underline ${entry.status === "skipped" ? "line-through" : ""}`}
+            >
+              {entry.recipeName}
+            </Link>
+            <p className="text-xs text-muted-foreground">
+              {[
+                entry.mealType ? mealTypeLabel(t, entry.mealType) : null,
+                t("recipes.detail.servings", { count: entry.servings }),
+                t(`planning.entryStatus.${entry.status}`),
+              ]
+                .filter(Boolean)
+                .join(" · ")}
+            </p>
+            <Readiness entry={entry} />
+          </div>
         </div>
         {editable ? (
           <div className="flex flex-wrap gap-1">
@@ -421,6 +486,7 @@ function EntryRow({
                 type="button"
                 size="sm"
                 variant="ghost"
+                className="px-2.5"
                 data-testid="menu-entry-skip"
                 disabled={busy}
                 onClick={() =>
@@ -441,6 +507,7 @@ function EntryRow({
                 type="button"
                 size="sm"
                 variant="ghost"
+                className="px-2.5"
                 data-testid="menu-entry-edit"
                 aria-expanded={editing}
                 onClick={onEdit}
@@ -452,6 +519,7 @@ function EntryRow({
               type="button"
               size="sm"
               variant="ghost"
+              className="px-2.5"
               data-testid="menu-entry-remove"
               aria-label={t("planning.remove", { name: entry.recipeName })}
               disabled={busy}

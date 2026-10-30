@@ -4,8 +4,10 @@ import {
   ChevronRight,
   MapPin,
   Refrigerator,
+  SearchX,
   Snowflake,
 } from "lucide-react";
+import { EmptyState } from "@/components/feedback/EmptyState";
 import { Link } from "react-router-dom";
 import { useInventoryRepository } from "./InventoryProvider";
 import { formatQuantityLabel } from "./quantityDisplay";
@@ -360,20 +362,24 @@ export function ProductionInventoryList() {
       )}
 
       {status === "ready" && items.length === 0 && (
-        <div data-testid="inventory-empty" className="rounded-xl border p-8">
-          <p>
-            {hasActiveFilters
+        <EmptyState
+          testId="inventory-empty"
+          icon={hasActiveFilters ? SearchX : Refrigerator}
+          title={
+            hasActiveFilters
               ? t("inventory.emptyFiltered")
-              : t("inventory.empty")}
-          </p>
-          {!hasActiveFilters && (
-            <Button asChild className="mt-4">
-              <Link to="/app/despensa/novo">
-                {t("inventory.actions.create")}
-              </Link>
-            </Button>
-          )}
-        </div>
+              : t("inventory.empty")
+          }
+          actions={
+            hasActiveFilters ? undefined : (
+              <Button asChild>
+                <Link to="/app/despensa/novo">
+                  {t("inventory.actions.create")}
+                </Link>
+              </Button>
+            )
+          }
+        />
       )}
 
       {/* Grouped by place, in the order people look (PLAN-0058): fridge, freezer, cupboard,

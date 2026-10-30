@@ -1,4 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  Beef,
+  Carrot,
+  ChevronDown,
+  ChevronLeft,
+  Croissant,
+  CupSoda,
+  Milk,
+  Package,
+  PackageCheck,
+  ShoppingCart,
+  Wheat,
+} from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 import type {
   MeasuredUnit,
@@ -28,6 +41,16 @@ const STORE_SECTIONS = [
   "drinks",
   "other",
 ] as const;
+/** An icon per store section, so the list reads like the aisles of a shop (PLAN-0058). */
+const SECTION_ICON: Record<string, typeof Package> = {
+  produce: Carrot,
+  butcher_fish: Beef,
+  dairy_eggs: Milk,
+  bakery: Croissant,
+  dry_goods: Wheat,
+  drinks: CupSoda,
+  other: Package,
+};
 /** Sections whose purchases usually go to the fridge; the person can still change the place. */
 const COLD_SECTIONS = new Set(["butcher_fish", "dairy_eggs"]);
 /** Sections whose extra purchase may spoil before another use, so the impact suggests freezing. */
@@ -129,12 +152,17 @@ export function ShoppingPage({
   return (
     <div data-testid="shopping-page" className="space-y-6">
       <div className="space-y-2">
-        <Link to={`/app/cardapio/${menuId}`} className="text-sm underline">
+        <Link
+          to={`/app/cardapio/${menuId}`}
+          className="inline-flex items-center gap-1 text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+        >
+          <ChevronLeft aria-hidden="true" className="h-4 w-4" />
           {t("shopping.back")}
         </Link>
         <h1 className="font-display text-3xl">{t("shopping.title")}</h1>
         <p className="text-sm text-muted-foreground">{t("shopping.hint")}</p>
       </div>
+      {list.mealCount > 0 ? <ShoppingSummary items={list.items} /> : null}
       {error ? (
         <p role="alert" className="text-sm text-destructive">
           {t(error)}
@@ -172,13 +200,9 @@ export function ShoppingPage({
                   TO_BUY.indexOf(b.category as (typeof TO_BUY)[number]),
               ),
           })),
-          ...OWNED.map((category) => ({
-            id: category,
-            title: t(`shopping.category.${category}`),
-            items: list.items.filter((item) => item.category === category),
-          })),
         ].map(({ id, title, items }) => {
           if (items.length === 0) return null;
+          const Icon = SECTION_ICON[id.replace("section-", "")] ?? Package;
           return (
             <section
               key={id}
@@ -188,11 +212,15 @@ export function ShoppingPage({
             >
               <h2
                 id={`shopping-${id}`}
-                className="text-sm font-semibold text-muted-foreground"
+                className="flex items-center gap-2 text-sm font-semibold text-muted-foreground"
               >
+                <Icon aria-hidden="true" className="h-4 w-4" />
                 {title}
+                <span className="tabular rounded-full bg-secondary px-2 text-xs">
+                  {items.length}
+                </span>
               </h2>
-              <ul className="divide-y divide-border border-y border-border">
+              <ul className="surface divide-y divide-border overflow-hidden">
                 {items.map((item) => (
                   <ShoppingRow
                     key={item.itemKey}
@@ -207,6 +235,109 @@ export function ShoppingPage({
           );
         })
       )}
+      {/* What the pantry covers is reference, not a task: it stays one tap away (PLAN-0058). */}
+      {list.mealCount > 0 &&
+      list.items.some((item) =>
+        (OWNED as readonly string[]).includes(item.category),
+      ) ? (
+        <details
+          className="surface group overflow-hidden"
+          data-testid="shopping-owned"
+        >
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-2 p-4 font-semibold [&::-webkit-details-marker]:hidden">
+            <span className="flex items-center gap-2">
+              <PackageCheck
+                aria-hidden="true"
+                className="h-5 w-5 text-success"
+              />
+              {t("shopping.owned.title", {
+                count: list.items.filter((item) =>
+                  (OWNED as readonly string[]).includes(item.category),
+                ).length,
+              })}
+            </span>
+            <ChevronDown
+              aria-hidden="true"
+              className="h-5 w-5 text-muted-foreground transition-transform duration-150 group-open:rotate-180"
+            />
+          </summary>
+          {OWNED.map((category) => {
+            const items = list.items.filter(
+              (item) => item.category === category,
+            );
+            if (items.length === 0) return null;
+            return (
+              <section
+                key={category}
+                aria-labelledby={`shopping-${category}`}
+                data-testid={`shopping-${category}`}
+                className="border-t border-border"
+              >
+                <h2
+                  id={`shopping-${category}`}
+                  className="px-4 pt-3 text-sm font-semibold text-muted-foreground"
+                >
+                  {t(`shopping.category.${category}`)}
+                </h2>
+                <ul className="divide-y divide-border">
+                  {items.map((item) => (
+                    <ShoppingRow
+                      key={item.itemKey}
+                      item={item}
+                      onToggle={() => void toggle(item)}
+                      onPurchased={(bought) => purchased(item, bought)}
+                      onPackageChanged={refresh}
+                    />
+                  ))}
+                </ul>
+              </section>
+            );
+          })}
+        </details>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * Progress of the trip (PLAN-0058): how many lines are left to buy and how many are checked
+ * off, with a bar. Purely a reading of the list; it changes nothing.
+ */
+function ShoppingSummary({ items }: { items: ShoppingItem[] }) {
+  const { t } = useProductionI18n();
+  const toBuy = items.filter((item) =>
+    (TO_BUY as readonly string[]).includes(item.category),
+  );
+  const done = toBuy.filter((item) => item.checked).length;
+  const percent =
+    toBuy.length === 0 ? 100 : Math.round((done / toBuy.length) * 100);
+  return (
+    <div
+      className="surface flex items-center gap-4 p-4"
+      data-testid="shopping-summary"
+    >
+      <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-accent text-accent-foreground">
+        <ShoppingCart aria-hidden="true" className="h-6 w-6" />
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="font-semibold">
+          {toBuy.length === 0
+            ? t("shopping.summary.none")
+            : t("shopping.summary.toBuy", { count: toBuy.length })}
+        </p>
+        <p className="text-sm text-muted-foreground">
+          {t("shopping.summary.checked", { done, total: toBuy.length })}
+        </p>
+        <div
+          className="mt-2 h-2 overflow-hidden rounded-full bg-secondary"
+          aria-hidden="true"
+        >
+          <div
+            className="h-full rounded-full bg-primary transition-[width] duration-200"
+            style={{ width: `${percent}%` }}
+          />
+        </div>
+      </div>
     </div>
   );
 }
@@ -427,23 +558,34 @@ function ShoppingRow({
   };
 
   return (
-    <li data-testid="shopping-item" className="space-y-2 py-4">
+    <li data-testid="shopping-item" className="space-y-3 px-4 py-3.5">
       <div className="flex items-start gap-3">
         <input
           type="checkbox"
-          className="mt-0.5 h-5 w-5 shrink-0 accent-primary"
+          className="mt-0.5 h-6 w-6 shrink-0 cursor-pointer accent-primary"
           data-testid="shopping-item-check"
           aria-label={item.displayName}
           checked={item.checked}
           onChange={onToggle}
         />
-        <div className="flex-1 space-y-1">
-          <p className={`font-medium ${item.checked ? "line-through" : ""}`}>
-            {item.displayName}
-            {toBuy ? ` — ${amount(item.toBuyQuantity)}` : ""}
-            {item.category === "assumed" || item.category === "optional" ? (
-              <span className="ml-2 rounded-full bg-secondary px-2 py-0.5 text-xs font-normal text-secondary-foreground">
-                {t(`shopping.badge.${item.category}`)}
+        <div className="min-w-0 flex-1 space-y-1">
+          <p className="flex items-baseline justify-between gap-3">
+            <span
+              className={`text-[16px] font-semibold ${item.checked ? "text-muted-foreground line-through" : ""}`}
+            >
+              {item.displayName}
+              {item.category === "assumed" || item.category === "optional" ? (
+                <span className="ml-2 rounded-full bg-secondary px-2 py-0.5 align-middle text-xs font-medium text-secondary-foreground">
+                  {t(`shopping.badge.${item.category}`)}
+                </span>
+              ) : null}
+            </span>
+            {toBuy ? (
+              <span
+                data-testid="shopping-item-amount"
+                className="tabular shrink-0 font-semibold"
+              >
+                {amount(item.toBuyQuantity)}
               </span>
             ) : null}
           </p>
@@ -481,6 +623,7 @@ function ShoppingRow({
             type="button"
             size="sm"
             variant="secondary"
+            className="shrink-0"
             data-testid="shopping-item-buy"
             aria-expanded={buying}
             onClick={() => {

@@ -309,9 +309,15 @@ describe("menu planning (PLAN-0029)", () => {
     // Lines to buy are grouped by store section, in shopping-trip order (PLAN-0037 Phase 3).
     const toBuy = await screen.findByTestId("shopping-section-dry_goods");
     expect(toBuy).toHaveTextContent("Dry goods");
-    expect(toBuy).toHaveTextContent("Feijão — 700 g");
+    expect(toBuy).toHaveTextContent("Feijão");
+    expect(within(toBuy).getByTestId("shopping-item-amount")).toHaveTextContent(
+      "700 g",
+    );
     const dairy = screen.getByTestId("shopping-section-dairy_eggs");
-    expect(dairy).toHaveTextContent("Leite — 200 ml");
+    expect(dairy).toHaveTextContent("Leite");
+    expect(within(dairy).getByTestId("shopping-item-amount")).toHaveTextContent(
+      "200 ml",
+    );
     expect(dairy).toHaveTextContent("optional");
     expect(
       dairy.compareDocumentPosition(toBuy) & Node.DOCUMENT_POSITION_FOLLOWING,

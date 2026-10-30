@@ -84,6 +84,13 @@ The success green and the emerald accent are different hues and roles. Success a
 - **Ingredients** are rows with a pantry status icon (success, warning, muted), the household measure under the name, and the amount on the right. A summary such as "Você tem 2 de 4" sits in the header.
 - **Pantry lists** are grouped by place (fridge, freezer, cupboard, other). Each group has an icon and a count, and the rows sit on one surface.
 
+- **Empty states** use `components/feedback/EmptyState.tsx`: an icon in a large accent circle, a title, one line of detail, and the first action. An empty list never shows a bare sentence.
+- **First run.** While there are no recipes, "Hoje" replaces its empty sections with a welcome that has three linked steps.
+- **Progress** (a shopping trip, profile completeness) is a summary card with an icon, a sentence, and a bar.
+- **Calendar leaves** stand for days and menus: the weekday or month above, the day number in bold, and the accent for today.
+- **Forms with several decisions** are numbered steps, each on its own surface, with optional details in a disclosure surface.
+- **Waiting for AI** shows skeletons in the shape of the result, never only a sentence.
+
 ## Themes
 
 - The theme follows the operating system by default (`prefers-color-scheme`).

@@ -1,3 +1,4 @@
+import { Plus } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useProductionI18n } from "@/app/i18n/ProductionI18nProvider";
@@ -73,72 +74,84 @@ export function MenusPage() {
         <p className="mt-1 text-muted-foreground">{t("planning.subtitle")}</p>
       </div>
 
-      <form
-        className="space-y-3 rounded-2xl border border-border p-4"
-        onSubmit={(event) => {
-          event.preventDefault();
-          void create();
-        }}
+      {/* Creating is the less frequent task: it opens by itself only when there is no menu yet. */}
+      <details
+        className="surface group overflow-hidden"
+        data-testid="menu-create-panel"
+        open={items !== null && items.length === 0 && !archived}
       >
-        <h2 className="font-display text-xl">{t("planning.create.title")}</h2>
-        <div className="grid gap-3 sm:grid-cols-3">
-          <div className="space-y-1">
-            <label htmlFor="menu-name" className="text-sm font-medium">
-              {t("planning.create.name")}
-            </label>
-            <Input
-              id="menu-name"
-              data-testid="menu-create-name"
-              value={name}
-              maxLength={80}
-              placeholder={t("planning.create.namePlaceholder")}
-              onChange={(event) => setName(event.target.value)}
-            />
-          </div>
-          <div className="space-y-1">
-            <label htmlFor="menu-start" className="text-sm font-medium">
-              {t("planning.create.start")}
-            </label>
-            <Input
-              id="menu-start"
-              type="date"
-              data-testid="menu-create-start"
-              value={startDate}
-              onChange={(event) => {
-                setStartDate(event.target.value);
-                if (event.target.value)
-                  setEndDate(addDays(event.target.value, 6));
-              }}
-            />
-          </div>
-          <div className="space-y-1">
-            <label htmlFor="menu-end" className="text-sm font-medium">
-              {t("planning.create.end")}
-            </label>
-            <Input
-              id="menu-end"
-              type="date"
-              data-testid="menu-create-end"
-              value={endDate}
-              min={startDate}
-              max={startDate ? addDays(startDate, 30) : undefined}
-              onChange={(event) => setEndDate(event.target.value)}
-            />
-          </div>
-        </div>
-        {createError ? (
-          <p role="alert" className="text-sm text-destructive">
-            {t(createError)}
-          </p>
-        ) : null}
-        <Button
-          type="submit"
-          data-testid="menu-create"
-          disabled={creating || !session.csrfToken}
+        <summary className="flex cursor-pointer list-none items-center gap-3 p-4 font-semibold [&::-webkit-details-marker]:hidden">
+          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground">
+            <Plus aria-hidden="true" className="h-5 w-5" />
+          </span>
+          {t("planning.create.title")}
+        </summary>
+        <form
+          className="space-y-3 p-4 pt-0"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void create();
+          }}
         >
-          {creating ? t("planning.saving") : t("planning.create.submit")}
-        </Button>
-      </form>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className="space-y-1">
+              <label htmlFor="menu-name" className="text-sm font-medium">
+                {t("planning.create.name")}
+              </label>
+              <Input
+                id="menu-name"
+                data-testid="menu-create-name"
+                value={name}
+                maxLength={80}
+                placeholder={t("planning.create.namePlaceholder")}
+                onChange={(event) => setName(event.target.value)}
+              />
+            </div>
+            <div className="space-y-1">
+              <label htmlFor="menu-start" className="text-sm font-medium">
+                {t("planning.create.start")}
+              </label>
+              <Input
+                id="menu-start"
+                type="date"
+                data-testid="menu-create-start"
+                value={startDate}
+                onChange={(event) => {
+                  setStartDate(event.target.value);
+                  if (event.target.value)
+                    setEndDate(addDays(event.target.value, 6));
+                }}
+              />
+            </div>
+            <div className="space-y-1">
+              <label htmlFor="menu-end" className="text-sm font-medium">
+                {t("planning.create.end")}
+              </label>
+              <Input
+                id="menu-end"
+                type="date"
+                data-testid="menu-create-end"
+                value={endDate}
+                min={startDate}
+                max={startDate ? addDays(startDate, 30) : undefined}
+                onChange={(event) => setEndDate(event.target.value)}
+              />
+            </div>
+          </div>
+          {createError ? (
+            <p role="alert" className="text-sm text-destructive">
+              {t(createError)}
+            </p>
+          ) : null}
+          <Button
+            type="submit"
+            data-testid="menu-create"
+            disabled={creating || !session.csrfToken}
+          >
+            {creating ? t("planning.saving") : t("planning.create.submit")}
+          </Button>
+        </form>
+      </details>
 
       <section aria-labelledby="menus-list" className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -181,17 +194,41 @@ export function MenusPage() {
                 <Link
                   to={`/app/cardapio/${menu.menuId}`}
                   data-testid={`menus-item-${menu.menuId}`}
-                  className="block rounded-2xl border border-border bg-card p-4 hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="surface flex items-center gap-4 p-4 transition-[background-color,border-color] duration-150 hover:border-input/60 hover:bg-secondary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                 >
-                  <p className="font-display text-xl">
-                    {menu.name ||
-                      formatMenuPeriod(menu.startDate, menu.endDate, locale)}
-                  </p>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    {formatMenuPeriod(menu.startDate, menu.endDate, locale)} ·{" "}
-                    {t(`planning.status.${menu.status}`)} ·{" "}
-                    {t("planning.list.meals", { count: menu.entryCount })}
-                  </p>
+                  {/* A calendar leaf with the first day reads faster than a date range. */}
+                  <span
+                    aria-hidden="true"
+                    className="flex h-14 w-14 shrink-0 flex-col items-center justify-center rounded-2xl bg-accent text-accent-foreground"
+                  >
+                    <span className="text-[11px] font-semibold uppercase leading-none">
+                      {new Intl.DateTimeFormat(locale, { month: "short" })
+                        .format(new Date(`${menu.startDate}T12:00:00`))
+                        .replace(".", "")}
+                    </span>
+                    <span className="tabular text-xl font-bold leading-tight">
+                      {Number(menu.startDate.slice(8, 10))}
+                    </span>
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-lg font-semibold">
+                      {menu.name ||
+                        formatMenuPeriod(menu.startDate, menu.endDate, locale)}
+                    </span>
+                    <span className="block text-sm text-muted-foreground">
+                      {formatMenuPeriod(menu.startDate, menu.endDate, locale)} ·{" "}
+                      {t("planning.list.meals", { count: menu.entryCount })}
+                    </span>
+                  </span>
+                  <span
+                    className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                      menu.status === "accepted"
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-secondary text-secondary-foreground"
+                    }`}
+                  >
+                    {t(`planning.status.${menu.status}`)}
+                  </span>
                 </Link>
               </li>
             ))}
