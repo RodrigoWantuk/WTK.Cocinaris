@@ -134,16 +134,34 @@ public sealed class RecipeCookNowApplicationServiceTests
     }
 
     [Fact]
-    public async Task InvalidOutputAfterOneRepairFailsWithoutPersistingRecipe()
+    public async Task InvalidOutputAfterTwoRepairsFailsWithoutPersistingRecipe()
     {
+        // Suggestions get two repairs (owner report 2026-10-30): three invalid answers fail the request.
         var harness = CreateHarness(useProtocolDefaults: false);
-        harness.Provider.Enqueue(AiOperationRegistry.SuggestCandidates, AiProviderInvocationResult.Success("""{"operation":"recipe.suggest_candidates.v1","schemaVersion":"0.3","candidates":[],"clarifications":[]}""", "fake-model"));
-        harness.Provider.Enqueue(AiOperationRegistry.SuggestCandidates, AiProviderInvocationResult.Success("""{"operation":"recipe.suggest_candidates.v1","schemaVersion":"0.3","candidates":[],"clarifications":[]}""", "fake-model"));
+        for (var attempt = 0; attempt < 3; attempt++)
+        {
+            harness.Provider.Enqueue(AiOperationRegistry.SuggestCandidates, AiProviderInvocationResult.Success("""{"operation":"recipe.suggest_candidates.v1","schemaVersion":"0.3","candidates":[],"clarifications":[]}""", "fake-model"));
+        }
 
         var result = await harness.Service.RequestCandidatesAsync(new RequestCandidatesCommand(Guid.NewGuid(), "corr"), CancellationToken.None);
         Assert.Equal("ai_output_invalid", result.Problem!.ErrorCode);
-        Assert.Equal(2, harness.Provider.InvocationCount(AiOperationRegistry.SuggestCandidates));
+        Assert.Equal(3, harness.Provider.InvocationCount(AiOperationRegistry.SuggestCandidates));
         Assert.Equal(0, harness.Recipes.SavedCount);
+    }
+
+    [Fact]
+    public void FailedRuleLabelsKeepTheRuleAndDropContent()
+    {
+        var flags = RecipeCookNowApplicationService.InvalidFlags(
+        [
+            "$.candidates[0].summary has 22 words (max 18)",
+            "candidates[2].additionalIngredients[1] repeats assumption \"frango da vó\"",
+            "$.candidates[1].summary has 25 words (max 18)"
+        ]);
+
+        Assert.Equal("invalid:candidates.summary has words max;candidates.additionalIngredients repeats assumption", flags);
+        Assert.DoesNotContain("frango", flags);
+        Assert.True(RecipeCookNowApplicationService.InvalidFlags(Enumerable.Repeat("x", 1).Select((_, i) => new string('a', 300)).ToList()).Length <= 100);
     }
 
     [Fact]
@@ -605,6 +623,13 @@ public sealed class RecipeCookNowApplicationServiceTests
             await recipeStore.SaveNewAsync(recipe, revision, cancellationToken);
             await generationStore.SaveAsync(session, cancellationToken);
             await ledger.SettleAsync(reservationId, settledUnits, usage, costMicroUsd, now, cancellationToken);
+        }
+
+        public async Task FinalizeLibrarySelectionAsync(Recipe recipe, RecipeRevision revision, RecipeGenerationSession session, DateTimeOffset now, CancellationToken cancellationToken)
+        {
+            session.CompleteSelection(recipe.Id, now);
+            await recipeStore.SaveNewAsync(recipe, revision, cancellationToken);
+            await generationStore.SaveAsync(session, cancellationToken);
         }
 
         public async Task FailExpansionAsync(

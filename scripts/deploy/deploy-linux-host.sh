@@ -106,7 +106,10 @@ git -C "$REPO_ROOT" fetch --quiet origin || log "fetch failed; continuing with t
 SHA="$(git -C "$REPO_ROOT" rev-parse --verify "$REF^{commit}")"
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 RELEASE="$RELEASES/$STAMP-${SHA:0:12}"
-WORKTREE="$(mktemp -d /tmp/cocinaris-deploy.XXXXXX)"
+# Build on disk, not in /tmp: on the owner host /tmp is a 2 GB tmpfs, and the worktree with the
+# frontend node_modules and the .NET build no longer fits there (ENOSPC on 2026-10-30).
+BUILD_ROOT="${COCINARIS_DEPLOY_BUILD_ROOT:-/var/tmp}"
+WORKTREE="$(mktemp -d "$BUILD_ROOT/cocinaris-deploy.XXXXXX")"
 RELEASE_READY=0
 cleanup() {
   git -C "$REPO_ROOT" worktree remove --force "$WORKTREE" >/dev/null 2>&1 || rm -rf "$WORKTREE"

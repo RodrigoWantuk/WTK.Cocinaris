@@ -86,6 +86,9 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
     /// <summary>Gets generated recipe images and their generation jobs (PLAN-0030).</summary>
     public DbSet<RecipeThumbnailRecord> RecipeThumbnails => Set<RecipeThumbnailRecord>();
 
+    /// <summary>Gets the shared recipe-idea library (PLAN-0055 Phase 2).</summary>
+    public DbSet<RecipeIdeaRecord> RecipeIdeas => Set<RecipeIdeaRecord>();
+
     /// <summary>Gets the database copy of the curated ingredient catalog (PLAN-0055).</summary>
     public DbSet<IngredientCatalogItemRecord> IngredientCatalogItems => Set<IngredientCatalogItemRecord>();
 
@@ -560,6 +563,22 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             entity.Property(x => x.Id).ValueGeneratedNever();
             entity.Property(x => x.CatalogVersion).HasMaxLength(60);
             entity.Property(x => x.Evaluation).HasMaxLength(300);
+        });
+
+        modelBuilder.Entity<RecipeIdeaRecord>(entity =>
+        {
+            entity.ToTable("recipe_ideas", "recipes");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Signature).HasMaxLength(64);
+            entity.Property(x => x.Language).HasMaxLength(16);
+            entity.Property(x => x.InstructionDetail).HasMaxLength(32);
+            entity.Property(x => x.CookingSkill).HasMaxLength(32);
+            entity.Property(x => x.MealType).HasMaxLength(32);
+            entity.Property(x => x.Strategy).HasMaxLength(32);
+            entity.Property(x => x.ContentJson).HasColumnType("jsonb");
+            entity.HasIndex(x => x.Signature).IsUnique();
+            entity.HasIndex(x => x.IngredientSlugs).HasMethod("gin");
+            entity.HasIndex(x => new { x.Language, x.MealType });
         });
 
         modelBuilder.Entity<ShoppingCheckRecord>(entity =>

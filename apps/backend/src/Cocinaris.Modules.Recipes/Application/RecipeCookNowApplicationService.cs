@@ -4,6 +4,7 @@ using Cocinaris.Modules.Ai.Usage;
 using Cocinaris.Modules.Identity;
 using Cocinaris.Modules.Recipes.Ai;
 using Cocinaris.Modules.Recipes.Domain;
+using Cocinaris.Modules.Recipes.Ideas;
 
 namespace Cocinaris.Modules.Recipes.Application;
 
@@ -14,6 +15,9 @@ namespace Cocinaris.Modules.Recipes.Application;
 /// persisted until it passes <see cref="RecipeProtocolValidator"/> schema and semantic validation.
 /// </summary>
 /// <remarks>
+/// Before calling the AI, both steps ask the shared idea library (<see cref="RecipeIdeaLibrary"/>,
+/// PLAN-0055 Phase 2). A suggestion request it can answer, or a library idea it can rebuild,
+/// costs no AI call and no usage. After an AI expansion, the recipe is offered to the library.
 /// Session and selection claims prevent concurrent duplicate provider calls. An unavoidable crash
 /// window remains between a successful provider return and the finalization database commit.
 /// </remarks>
@@ -26,7 +30,8 @@ public sealed class RecipeCookNowApplicationService(
     IAiProvider aiProvider,
     AiOperationRegistry operationRegistry,
     AiUsageGovernor usageGovernor,
-    TimeProvider timeProvider)
+    TimeProvider timeProvider,
+    RecipeIdeaLibrary? ideas = null)
 {
     private static readonly JsonSerializerOptions SerializerOptions = new(JsonSerializerDefaults.Web);
 
@@ -56,6 +61,15 @@ public sealed class RecipeCookNowApplicationService(
             return RecipeApplicationResult<RecipeGenerationSessionView>.Succeeded(ToSessionView(claim.Session));
         }
 
+        var context = await contextAssembler.AssembleSuggestContextAsync(user.Id, Guid.NewGuid().ToString("n"), definition.ContextBudgetCharacters, cancellationToken, command.MenuTarget);
+        context = context with { Presets = WithOutputLanguage(context.Presets, command.RequestLanguage) };
+        if (ideas is not null && await ideas.TrySuggestAsync(user.Id, context, cancellationToken) is { } fromLibrary)
+        {
+            claim.Session.AttachValidatedCandidates(JsonSerializer.Serialize(fromLibrary, SerializerOptions), timeProvider.GetUtcNow());
+            await generationStore.SaveAsync(claim.Session, cancellationToken);
+            return RecipeApplicationResult<RecipeGenerationSessionView>.Succeeded(ToSessionView(claim.Session, fromLibrary.Candidates));
+        }
+
         var reservation = await usageGovernor.ReserveAsync(user.Id, definition.Operation, definition.EstimatedUsageUnits, definition.EstimatedCostMicroUsd, definition.EstimatedTokens, command.CorrelationId, cancellationToken);
         if (reservation.Outcome != AiUsageReservationOutcome.Reserved)
         {
@@ -64,8 +78,6 @@ public sealed class RecipeCookNowApplicationService(
             return Failure<RecipeGenerationSessionView>(MapReservationFailure(reservation.Outcome), ReservationDetail(reservation.Outcome));
         }
 
-        var context = await contextAssembler.AssembleSuggestContextAsync(user.Id, Guid.NewGuid().ToString("n"), definition.ContextBudgetCharacters, cancellationToken, command.MenuTarget);
-        context = context with { Presets = WithOutputLanguage(context.Presets, command.RequestLanguage) };
         var invocation = await InvokeSuggestWithRepairAsync(definition, context, command.CorrelationId, cancellationToken);
         if (invocation.Response is null)
         {
@@ -164,6 +176,28 @@ public sealed class RecipeCookNowApplicationService(
             return Failure<RecipeDetailView>("resource_not_found", "The candidate was not found in this generation session.");
         }
 
+        var context = await contextAssembler.AssembleExpandContextAsync(user.Id, Guid.NewGuid().ToString("n"), selected, definition.ContextBudgetCharacters, cancellationToken);
+        context = context with { Presets = WithOutputLanguage(context.Presets, command.RequestLanguage) };
+        if (ideas is not null && RecipeIdeaLibrary.TryParseCandidateId(selected.CandidateId, out var ideaId)
+            && await ideas.TryBuildRecipeAsync(user.Id, ideaId, context, cancellationToken) is { } fromIdea)
+        {
+            var builtAt = timeProvider.GetUtcNow();
+            var ideaRecipe = Recipe.Create(user.Id, builtAt);
+            var ideaRevision = RecipeRevision.CreateFirst(
+                ideaRecipe.Id,
+                user.Id,
+                fromIdea.Name,
+                fromIdea.MealTypes,
+                fromIdea.Servings,
+                RecipeRevisionMapper.NormalizeRecipe(fromIdea),
+                RecipeRevisionMapper.NormalizeThumbnailVisual(fromIdea.ThumbnailVisual),
+                selected.CandidateId,
+                session.Id,
+                builtAt);
+            await unitOfWork.FinalizeLibrarySelectionAsync(ideaRecipe, ideaRevision, session, builtAt, cancellationToken);
+            return RecipeApplicationResult<RecipeDetailView>.Succeeded(ToDetailView(ideaRevision), RecipeApplicationSuccess.Created);
+        }
+
         var reservation = await usageGovernor.ReserveAsync(user.Id, definition.Operation, definition.EstimatedUsageUnits, definition.EstimatedCostMicroUsd, definition.EstimatedTokens, command.CorrelationId, cancellationToken);
         if (reservation.Outcome != AiUsageReservationOutcome.Reserved)
         {
@@ -172,8 +206,6 @@ public sealed class RecipeCookNowApplicationService(
             return Failure<RecipeDetailView>(MapReservationFailure(reservation.Outcome), ReservationDetail(reservation.Outcome));
         }
 
-        var context = await contextAssembler.AssembleExpandContextAsync(user.Id, Guid.NewGuid().ToString("n"), selected, definition.ContextBudgetCharacters, cancellationToken);
-        context = context with { Presets = WithOutputLanguage(context.Presets, command.RequestLanguage) };
         var invocation = await InvokeExpandWithRepairAsync(definition, context, command.CorrelationId, cancellationToken);
         if (invocation.Response is null)
         {
@@ -213,6 +245,19 @@ public sealed class RecipeCookNowApplicationService(
             usageGovernor.CostMicroUsd(invocation.Usage),
             completedAt,
             cancellationToken);
+        if (ideas is not null)
+        {
+            try
+            {
+                await ideas.TryCaptureAsync(user.Id, selected, expandedRecipe, context, cancellationToken);
+            }
+            catch (Exception exception) when (exception is not OperationCanceledException)
+            {
+                // Capture is best effort: the owner's recipe is already saved, and a missing idea
+                // only means a later request asks the AI again.
+            }
+        }
+
         return RecipeApplicationResult<RecipeDetailView>.Succeeded(ToDetailView(revision), RecipeApplicationSuccess.Created);
     }
 
@@ -353,7 +398,27 @@ public sealed class RecipeCookNowApplicationService(
             return new AiInvocationOutcome<T>(accepted.Response, Usage(Flags(accepted.Issues)), null, null);
         }
 
-        return new AiInvocationOutcome<T>(null, Usage(), MapProviderFailure(lastTransportFailure, lastErrors is not null), DescribeProviderFailure(lastTransportFailure, lastErrors is not null));
+        // The ledger keeps which rules the last answer broke, so repeated failures can be traced
+        // to a rule (owner report 2026-10-30: the first request sometimes failed, the second worked).
+        return new AiInvocationOutcome<T>(null, Usage(lastErrors is null ? null : InvalidFlags(lastErrors)), MapProviderFailure(lastTransportFailure, lastErrors is not null), DescribeProviderFailure(lastTransportFailure, lastErrors is not null));
+    }
+
+    /// <summary>
+    /// Compact, content-free labels of validation errors for the usage ledger (at most 100
+    /// characters): paths, indices, numbers, and quoted values are removed, so no recipe or pantry
+    /// text is stored, only the rule (for example <c>candidates.summary has words max</c>).
+    /// </summary>
+    public static string InvalidFlags(IReadOnlyList<string> errors)
+    {
+        var labels = errors
+            .Select(error => System.Text.RegularExpressions.Regex.Replace(error, "\\[\\d+\\]|^\\$\\.", string.Empty))
+            .Select(error => System.Text.RegularExpressions.Regex.Replace(error, "\"[^\"]*\"|[0-9]+|[(),<>=]", " "))
+            .Select(error => string.Join(' ', error.Split(' ', StringSplitOptions.RemoveEmptyEntries)))
+            .Where(label => label.Length > 0)
+            .Distinct(StringComparer.Ordinal)
+            .Take(4);
+        var flags = "invalid:" + string.Join(";", labels);
+        return flags.Length > 100 ? flags[..100] : flags;
     }
 
     private sealed record AiInvocationOutcome<T>(T? Response, AiCallUsage Usage, string? FailureCode, string? FailureDetail)

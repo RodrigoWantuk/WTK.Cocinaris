@@ -37,7 +37,7 @@ sudo scripts/deploy/deploy-linux-host.sh --ref <sha|branch> # deploy another ref
 
 Steps performed:
 
-1. Fetch, then create a detached worktree of the ref.
+1. Fetch, then create a detached worktree of the ref in `/var/tmp` (override with `COCINARIS_DEPLOY_BUILD_ROOT`). It is not built in `/tmp`, because on the owner host that is a 2 GB RAM-backed tmpfs, too small for the build.
 2. Restore (locked mode), build and publish the API.
 3. Generate EF Core's idempotent migration script.
 4. Install the frontend with the frozen lockfile, build in production mode, and run the build-mode guard.

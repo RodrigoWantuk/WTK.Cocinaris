@@ -149,6 +149,16 @@ Only single ingredient names are sent to the embedding provider (OpenRouter, `da
 
 Account deletion does not need to remove alias or cache rows, because they hold no owner. A pending queue row with the deleted owner is cleared when the job decides it. Deletion should also clear it directly once the deletion workflow is implemented.
 
+## Shared recipe ideas
+
+PLAN-0055 Phase 2 ([ADR-0011](../architecture/decisions/0011-shared-recipe-idea-library.md)) adds `recipes.recipe_ideas`: generic recipe ideas shared by everyone, with no owner column. An idea is stored only after an AI expansion, and only when it can be made generic:
+- catalog ingredient names;
+- no inventory or equipment ids;
+- no private-context term;
+- no name the owner typed outside the catalog.
+
+It keeps the restriction codes it was generated under, without linking them to any person. It is reference data, retained indefinitely. Account deletion does not need to remove ideas, because they hold nothing linked to the account. The person's own saved recipe stays a private copy.
+
 ## AI processing
 
 - send only context required for the requested operation;
