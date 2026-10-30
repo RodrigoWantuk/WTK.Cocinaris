@@ -252,6 +252,7 @@ describe("menu planning (PLAN-0029)", () => {
           displayName: "Feijão",
           unit: "Gram",
           category: "required",
+          storeSection: "dry_goods",
           requiredQuantity: 1000,
           availableQuantity: 300,
           availableIsEstimate: true,
@@ -266,6 +267,18 @@ describe("menu planning (PLAN-0029)", () => {
               optional: false,
             },
           ],
+        },
+        {
+          itemKey: "ingredient:milk|Milliliter",
+          displayName: "Leite",
+          unit: "Milliliter",
+          category: "optional",
+          storeSection: "dairy_eggs",
+          requiredQuantity: 200,
+          availableQuantity: 0,
+          toBuyQuantity: 200,
+          checked: false,
+          uses: [],
         },
         {
           itemKey: "sal|Gram",
@@ -290,8 +303,16 @@ describe("menu planning (PLAN-0029)", () => {
       { inventory },
     );
 
-    const toBuy = await screen.findByTestId("shopping-required");
+    // Lines to buy are grouped by store section, in shopping-trip order (PLAN-0037 Phase 3).
+    const toBuy = await screen.findByTestId("shopping-section-dry_goods");
+    expect(toBuy).toHaveTextContent("Dry goods");
     expect(toBuy).toHaveTextContent("Feijão — 700 g");
+    const dairy = screen.getByTestId("shopping-section-dairy_eggs");
+    expect(dairy).toHaveTextContent("Leite — 200 ml");
+    expect(dairy).toHaveTextContent("optional");
+    expect(
+      dairy.compareDocumentPosition(toBuy) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
     expect(toBuy).toHaveTextContent("Need 1,000 g · have ~300 g");
     expect(screen.getByTestId("shopping-available")).toHaveTextContent("Sal");
     expect(getShopping).toHaveBeenCalledWith(
@@ -310,6 +331,9 @@ describe("menu planning (PLAN-0029)", () => {
     await user.clear(quantity);
     await user.type(quantity, "1000");
     await user.click(within(toBuy).getByTestId("shopping-buy-confirm"));
+    // A dairy purchase suggests the fridge; dry goods stay in the pantry.
+    await user.click(within(dairy).getByTestId("shopping-item-buy"));
+    expect(within(dairy).getByRole("combobox")).toHaveValue("Refrigerator");
     expect(inventory.createLot).toHaveBeenCalledWith(
       {
         productName: "Feijão",

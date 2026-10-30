@@ -21,7 +21,7 @@ Make inventory lots follow the accepted food lifecycle instead of only quantity 
 |---|---|---|
 | 1 | Lifecycle transitions: lifecycle state and timestamps on lots, `Open`, `Move`, `Freeze`, `StartThaw`, `CompleteThaw`, partial transitions creating a derived lot with provenance, immutable history, API, contract, production UI, tests | This run |
 | 2 | Shelf-life evidence and attention: evidence priority (printed date, prepared record, curated rule, unknown), deterministic generic rules by storage, package and lifecycle state, attention states with explanations, pantry attention view | Delivered (this run) |
-| 3 | Product identity: culinary category and roles on products, used to refine Phase 2 rules and later by planning | Next |
+| 3 | Product identity: culinary category and roles on products, used to refine Phase 2 rules and later by planning | In progress: category from the ingredient catalog (PLAN-0055) drives store sections in the shopping list; rule refinement by category remains |
 
 ## Phase 1 scope
 
@@ -64,9 +64,18 @@ Refreezing a thawed lot is allowed. Food-safety guidance about it belongs to the
 
 ## Execution state
 
-- **Current run delivery target:** Phase 2.
-- **Current checkpoint:** Phase 1 implemented and validated on the owner host (see progress log).
-- **Exact next action:** Owner reviews and merges PR #49; then Phase 3 (product culinary category and roles).
+- **Current run delivery target:** Phase 3, first part (store sections).
+- **Current checkpoint:** Phases 1 and 2 are merged. Phase 3, first part, is on `agent/plan-0037-store-sections`:
+  - a product's culinary category comes from its catalog ingredient (PLAN-0055);
+  - `StoreSections` maps it to a store section;
+  - shopping lines carry `storeSection`, and the shopping list groups the lines to buy by section in shopping-trip order;
+  - purchases from the meat-and-fish and dairy-and-eggs sections suggest the refrigerator.
+- **Validation (2026-10-30):**
+  - Backend unit tests: 180 passed, including sections for onion, chicken, milk, rice, and an unknown name.
+  - Architecture tests: 14 passed.
+  - Integration tests: 16 passed in `RecipeExecutionApiTests`.
+  - Frontend: 83 planning, i18n, and adapter tests passed, including grouping, order, labels, and the fridge default. Typecheck, lint, and format are clean. The OpenAPI and API client drift check is clean.
+- **Exact next action:** Phase 3, second part: refine the attention rules by category with curated shelf-life rules (for example, opened dairy and raw meat in the refrigerator). This needs a curated, sourced rule table, reviewed as a food-safety change.
 - **Blockers:** None. GitHub Actions does not start jobs because the owner account is locked for billing (PR #46); validation runs on the owner host until the owner resolves it.
 - **Working tree state:** Phase 1 committed on `agent/plan-0037-inventory-lifecycle`.
 
@@ -113,3 +122,8 @@ Refreezing a thawed lot is allowed. Food-safety guidance about it belongs to the
 ### 2026-10-29T02:30:00Z — Claude Code
 
 - PR #48 was squash-merged (`bc7ec04`), which left PR #49 conflicting. Merged `main` into the Phase 2 branch (no force push); the only conflicts were the registry row and the integration test file, where `main` had the same content as the old base. Kept the branch versions. No code changed, no tests rerun.
+
+### 2026-10-30 — Claude Code (Phase 3, first part)
+
+- Product category now comes from ingredient identity (PLAN-0055) instead of a separate field: the curated catalog already holds a category for every ingredient. The first visible use is the shopping list grouped by store section, which the owner had asked for alongside the household shopping list (PLAN-0054 Phase 5).
+

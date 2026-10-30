@@ -15,13 +15,21 @@ import { formatLocaleDecimal, parseLocaleDecimal } from "@/lib/localeDecimal";
 import { formatMenuDay, localIsoDate } from "./planningDates";
 import { usePlanningRepository } from "./PlanningProvider";
 
-const CATEGORIES = [
-  "required",
-  "assumed",
-  "optional",
-  "runs_out",
-  "available",
+/** Lines still to buy, grouped by store section; the rest keep their own blocks below. */
+const TO_BUY = ["required", "assumed", "optional"] as const;
+const OWNED = ["runs_out", "available"] as const;
+/** Store sections in the order of a typical shopping trip (PLAN-0037 Phase 3). */
+const STORE_SECTIONS = [
+  "produce",
+  "butcher_fish",
+  "dairy_eggs",
+  "bakery",
+  "dry_goods",
+  "drinks",
+  "other",
 ] as const;
+/** Sections whose purchases usually go to the fridge; the person can still change the place. */
+const COLD_SECTIONS = new Set(["butcher_fish", "dairy_eggs"]);
 const UNIT_KEYS: Record<string, string> = {
   Gram: "recipes.unit.g",
   Milliliter: "recipes.unit.ml",
@@ -113,21 +121,41 @@ export function ShoppingPage({
           {t("shopping.empty")}
         </p>
       ) : (
-        CATEGORIES.map((category) => {
-          const items = list.items.filter((item) => item.category === category);
+        [
+          ...STORE_SECTIONS.map((section) => ({
+            id: `section-${section}`,
+            title: t(`shopping.section.${section}`),
+            items: list.items
+              .filter(
+                (item) =>
+                  (TO_BUY as readonly string[]).includes(item.category) &&
+                  (item.storeSection ?? "other") === section,
+              )
+              .sort(
+                (a, b) =>
+                  TO_BUY.indexOf(a.category as (typeof TO_BUY)[number]) -
+                  TO_BUY.indexOf(b.category as (typeof TO_BUY)[number]),
+              ),
+          })),
+          ...OWNED.map((category) => ({
+            id: category,
+            title: t(`shopping.category.${category}`),
+            items: list.items.filter((item) => item.category === category),
+          })),
+        ].map(({ id, title, items }) => {
           if (items.length === 0) return null;
           return (
             <section
-              key={category}
-              aria-labelledby={`shopping-${category}`}
-              data-testid={`shopping-${category}`}
+              key={id}
+              aria-labelledby={`shopping-${id}`}
+              data-testid={`shopping-${id}`}
               className="space-y-2"
             >
               <h2
-                id={`shopping-${category}`}
+                id={`shopping-${id}`}
                 className="text-sm font-semibold text-muted-foreground"
               >
-                {t(`shopping.category.${category}`)}
+                {title}
               </h2>
               <ul className="divide-y divide-border border-y border-border">
                 {items.map((item) => (
@@ -163,7 +191,9 @@ function ShoppingRow({
   const [quantity, setQuantity] = useState(
     formatLocaleDecimal(item.toBuyQuantity, locale),
   );
-  const [storage, setStorage] = useState<StorageLocation>("Pantry");
+  const [storage, setStorage] = useState<StorageLocation>(
+    COLD_SECTIONS.has(item.storeSection ?? "") ? "Refrigerator" : "Pantry",
+  );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(false);
   // One key per purchase form, so a retried request creates one lot.
@@ -219,6 +249,11 @@ function ShoppingRow({
           <p className={`font-medium ${item.checked ? "line-through" : ""}`}>
             {item.displayName}
             {toBuy ? ` — ${amount(item.toBuyQuantity)}` : ""}
+            {item.category === "assumed" || item.category === "optional" ? (
+              <span className="ml-2 rounded-full bg-secondary px-2 py-0.5 text-xs font-normal text-secondary-foreground">
+                {t(`shopping.badge.${item.category}`)}
+              </span>
+            ) : null}
           </p>
           <p className="text-xs text-muted-foreground">
             {t("shopping.need", {

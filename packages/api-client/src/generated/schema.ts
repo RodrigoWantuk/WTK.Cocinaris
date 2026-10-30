@@ -2070,6 +2070,8 @@ export interface components {
              * @description What the meals need in all.
              */
             requiredQuantity: number | string;
+            /** @description Store section to group the line by: `produce`, `butcher_fish`, `dairy_eggs`, `bakery`, `dry_goods`, `drinks`, or `other` (PLAN-0037 Phase 3). */
+            storeSection: string;
             /**
              * Format: double
              * @description What is left to buy, never negative; no package size is assumed.

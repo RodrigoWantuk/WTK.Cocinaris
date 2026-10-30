@@ -168,6 +168,24 @@ public sealed class IngredientIdentityTests
     }
 
     [Fact]
+    public void ShoppingLinesAreGroupedByStoreSectionOfTheirCatalogIngredient()
+    {
+        var keys = new IngredientMatchKeys(new Dictionary<string, string> { ["cebola"] = "onion", ["peito de frango"] = "chicken-breast", ["leite"] = "milk", ["arroz"] = "rice" });
+        var meals = new[]
+        {
+            new ShoppingMeal(Guid.NewGuid(), "Jantar", null, 2, 2, """{"ingredients":[ {"ingredientId":"i1","sourceType":"additional","displayName":"Cebola","requiredQuantity":1,"unit":"unit","optional":false}, {"ingredientId":"i2","sourceType":"additional","displayName":"Peito de frango","requiredQuantity":300,"unit":"g","optional":false}, {"ingredientId":"i3","sourceType":"additional","displayName":"Leite","requiredQuantity":200,"unit":"ml","optional":false}, {"ingredientId":"i4","sourceType":"additional","displayName":"Arroz","requiredQuantity":200,"unit":"g","optional":false}, {"ingredientId":"i5","sourceType":"additional","displayName":"Pó mágico","requiredQuantity":5,"unit":"g","optional":false}]}""")
+        };
+
+        var sections = ShoppingProjector.Build(meals, [], new HashSet<string>(), keys).ToDictionary(item => item.DisplayName, item => item.StoreSection);
+
+        Assert.Equal(StoreSections.Produce, sections["Cebola"]);
+        Assert.Equal(StoreSections.ButcherFish, sections["Peito de frango"]);
+        Assert.Equal(StoreSections.DairyEggs, sections["Leite"]);
+        Assert.Equal(StoreSections.DryGoods, sections["Arroz"]);
+        Assert.Equal(StoreSections.Other, sections["Pó mágico"]);
+    }
+
+    [Fact]
     public async Task OnlyNamesOutsideTheCatalogAndTheLearnedAliasesAreQueuedWithTheirExactText()
     {
         var store = new MemoryStore { Learned = { ["frango desfiado"] = "chicken" } };

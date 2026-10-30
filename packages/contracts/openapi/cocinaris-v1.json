@@ -4186,6 +4186,10 @@
               "string"
             ]
           },
+          "storeSection": {
+            "description": "Store section to group the line by: `produce`, `butcher_fish`, `dairy_eggs`, `bakery`, `dry_goods`, `drinks`, or `other` (PLAN-0037 Phase 3).",
+            "type": "string"
+          },
           "toBuyQuantity": {
             "description": "What is left to buy, never negative; no package size is assumed.",
             "format": "double",
@@ -4217,7 +4221,8 @@
           "toBuyQuantity",
           "checked",
           "uses",
-          "availableIsEstimate"
+          "availableIsEstimate",
+          "storeSection"
         ],
         "type": "object"
       },

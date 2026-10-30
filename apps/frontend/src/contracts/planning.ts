@@ -115,6 +115,11 @@ export interface ShoppingItem {
   availableQuantity: number;
   /** Whether `availableQuantity` includes an estimated pantry amount (shown with "~"). */
   availableIsEstimate?: boolean;
+  /**
+   * Store section to group the line by (PLAN-0037 Phase 3): `produce`, `butcher_fish`,
+   * `dairy_eggs`, `bakery`, `dry_goods`, `drinks`, or `other`.
+   */
+  storeSection?: string;
   toBuyQuantity: number;
   checked: boolean;
   uses: Array<{

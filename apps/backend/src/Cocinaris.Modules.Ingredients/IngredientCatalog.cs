@@ -38,6 +38,7 @@ public sealed class IngredientCatalog
         Items = items;
         Version = version;
         ById = items.ToDictionary(item => item.Id);
+        BySlug = items.ToDictionary(item => item.Slug, StringComparer.Ordinal);
         var aliases = new Dictionary<string, IngredientCatalogItem>(StringComparer.Ordinal);
         foreach (var item in items)
         {
@@ -69,6 +70,9 @@ public sealed class IngredientCatalog
 
     /// <summary>Gets ingredients by id.</summary>
     public IReadOnlyDictionary<int, IngredientCatalogItem> ById { get; }
+
+    /// <summary>Gets ingredients by slug.</summary>
+    public IReadOnlyDictionary<string, IngredientCatalogItem> BySlug { get; }
 
     /// <summary>Gets every normalized catalog name and its ingredient.</summary>
     public IReadOnlyDictionary<string, IngredientCatalogItem> Aliases { get; }
