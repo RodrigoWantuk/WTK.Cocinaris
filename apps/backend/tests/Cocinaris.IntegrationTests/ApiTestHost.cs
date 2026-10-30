@@ -4,9 +4,11 @@ using Cocinaris.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -31,6 +33,15 @@ internal sealed class CocinarisFactory(string connectionString) : WebApplication
             services.AddDbContext<ApplicationDbContext>(options => options.UseNpgsql(connectionString));
             services.AddAuthentication(TestAuthenticationHandler.TestScheme)
                 .AddScheme<AuthenticationSchemeOptions, TestAuthenticationHandler>(TestAuthenticationHandler.TestScheme, _ => { });
+        });
+        // Tests run the ingredient resolution job themselves; the background worker would race them
+        // (and query its tables before EnsureDatabaseAsync has migrated).
+        builder.ConfigureTestServices(services =>
+        {
+            foreach (var worker in services.Where(item => item.ServiceType == typeof(IHostedService) && item.ImplementationType == typeof(Cocinaris.Api.Ingredients.IngredientResolutionWorker)).ToList())
+            {
+                services.Remove(worker);
+            }
         });
     }
 }

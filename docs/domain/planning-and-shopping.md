@@ -17,7 +17,7 @@ A menu entry is an intention, shortcut, and source of preparation or purchase ac
 - **Home.** "Hoje" lists the accepted menus' meals for the owner's current day (dated that day, or flexible), excluding skipped and cooked meals, as the first suggestion tier.
 - **Shopping.** The list is derived from the meals still to cook from the owner's current day and the current pantry.
   - Quantities scale like the cooking proposal.
-  - Lots are matched by normalized name and unit, and the pantry is allocated meal by meal in plan order.
+  - Lots are matched by catalog ingredient ("Peito de frango" matches "chicken breast", PLAN-0055) or, failing that, normalized name, and by unit. The pantry is allocated meal by meal in plan order.
   - Lines are required, assumed basics, optional, "you have it but it will run out", or already available.
   - No package size is assumed.
   - A check mark is only remembered. "Comprei" records the purchase as a pantry lot through the normal inventory command, and the list is recalculated.

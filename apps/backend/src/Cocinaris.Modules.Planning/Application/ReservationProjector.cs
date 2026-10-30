@@ -1,3 +1,4 @@
+using Cocinaris.Modules.Ingredients;
 using Cocinaris.Modules.Inventory.Application;
 using Cocinaris.Modules.Planning.Domain;
 using Cocinaris.Modules.Recipes.Application;
@@ -39,7 +40,7 @@ public sealed record ReservationProjection(IReadOnlyDictionary<Guid, LotCommitme
 /// <item>Protected quantity is set aside first and is never reserved.</item>
 /// <item>Meals are served in the given order (day, then meal); each takes what is still free.</item>
 /// <item>For each ingredient the lot the recipe was written for comes first, then other lots with
-/// the same normalized name and unit, earliest printed or prepared date first, then oldest.</item>
+/// the same catalog ingredient or normalized name, and unit, earliest printed or prepared date first, then oldest.</item>
 /// <item>Quantities scale like the cooking proposal (<see cref="RecipeIngredientReader"/>).</item>
 /// </list>
 /// </remarks>
@@ -49,7 +50,8 @@ public static class ReservationProjector
     /// <param name="meals">Reserving meals, already in priority order.</param>
     /// <param name="lots">The owner's active lots.</param>
     /// <param name="protections">The owner's lot protections.</param>
-    public static ReservationProjection Build(IReadOnlyList<ReservingMeal> meals, IReadOnlyList<InventoryLotReadModel> lots, IReadOnlyList<LotProtection> protections)
+    /// <param name="matchKeys">Ingredient matching keys (PLAN-0055); names only when null.</param>
+    public static ReservationProjection Build(IReadOnlyList<ReservingMeal> meals, IReadOnlyList<InventoryLotReadModel> lots, IReadOnlyList<LotProtection> protections, IngredientMatchKeys? matchKeys = null)
     {
         var measured = lots.Where(lot => lot.MeasuredValue is > 0 && lot.MeasuredUnit is not null).ToList();
         var byId = measured.ToDictionary(lot => lot.LotId);
@@ -57,7 +59,7 @@ public static class ReservationProjector
         var protectedQuantity = measured.ToDictionary(lot => lot.LotId, lot => protectionByLot.TryGetValue(lot.LotId, out var rule) ? rule.ProtectedOf(lot.MeasuredValue!.Value) : 0m);
         var free = measured.ToDictionary(lot => lot.LotId, lot => lot.MeasuredValue!.Value - protectedQuantity[lot.LotId]);
         var byKey = measured
-            .GroupBy(lot => ShoppingProjector.Key(lot.ProductName, lot.MeasuredUnit!))
+            .GroupBy(lot => ShoppingProjector.Key(lot.ProductName, lot.MeasuredUnit!, matchKeys))
             .ToDictionary(group => group.Key, group => group
                 .OrderBy(lot => EarliestDate(lot) ?? DateOnly.MaxValue)
                 .ThenBy(lot => lot.CreatedAt)
@@ -79,7 +81,7 @@ public static class ReservationProjector
                 var unit = RecipeIngredientReader.ToLotUnit(ingredient.Unit);
                 var need = RecipeIngredientReader.Scale(ingredient.Quantity, unit, scale);
                 var linked = ingredient.LotId is { } lotId && byId.TryGetValue(lotId, out var lot) && lot.MeasuredUnit == unit ? lot : null;
-                var key = ShoppingProjector.Key(linked?.ProductName ?? ingredient.Name, unit);
+                var key = ShoppingProjector.Key(linked?.ProductName ?? ingredient.Name, unit, matchKeys);
                 var candidates = (linked is null ? Enumerable.Empty<InventoryLotReadModel>() : [linked])
                     .Concat(byKey.GetValueOrDefault(key) ?? [])
                     .DistinctBy(item => item.LotId);

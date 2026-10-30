@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Cocinaris.Modules.Identity;
+using Cocinaris.Modules.Ingredients;
 using Cocinaris.Modules.Inventory.Application;
 using Cocinaris.Modules.Inventory.Domain;
 using Cocinaris.Modules.Recipes.Domain;
@@ -104,6 +105,7 @@ public sealed class RecipeExecutionApplicationService(
     IInventoryLotReadStore inventory,
     IPrepareComponentsUseCase prepare,
     IPantryCommitmentLookup commitments,
+    IIngredientMatching matching,
     TimeProvider timeProvider)
 {
     private const int MaxPantryLots = 200;
@@ -286,7 +288,8 @@ public sealed class RecipeExecutionApplicationService(
         {
             var lots = await inventory.ListActiveAsync(ownerUserId, MaxPantryLots, cancellationToken);
             var committed = await commitments.GetAsync(ownerUserId, cancellationToken);
-            proposal = BuildProposal(revision.NormalizedRecipeJson, revision.Servings, execution.Servings, lots, committed, execution.MenuEntryId);
+            var keys = await matching.KeysAsync(ownerUserId, lots.Select(lot => lot.ProductName).Concat(RecipeIngredientReader.Read(revision.NormalizedRecipeJson).Select(ingredient => ingredient.Name)), cancellationToken);
+            proposal = BuildProposal(revision.NormalizedRecipeJson, revision.Servings, execution.Servings, lots, committed, execution.MenuEntryId, keys);
         }
 
         return new RecipeExecutionView(execution.Id, execution.RecipeId, execution.RevisionNumber, revision.Name, execution.Servings, revision.Servings, execution.Status.ToString(), execution.StartedAt, execution.FinishedAt, execution.InventoryBatchId, execution.Rating, execution.Notes, revision.NormalizedRecipeJson, proposal);
@@ -306,10 +309,12 @@ public sealed class RecipeExecutionApplicationService(
     /// <param name="lots">The owner's active lots.</param>
     /// <param name="commitments">Planning commitments by lot; none when null.</param>
     /// <param name="ownMenuEntryId">Menu meal this session cooks; its own reservations are not warnings.</param>
+    /// <param name="matchKeys">Ingredient matching keys (PLAN-0055); names only when null.</param>
     /// <returns>The proposal lines and the pickable measured lots.</returns>
-    public static ExecutionProposalView BuildProposal(string normalizedRecipeJson, int recipeServings, int servings, IReadOnlyList<InventoryLotReadModel> lots, IReadOnlyDictionary<Guid, LotCommitment>? commitments = null, Guid? ownMenuEntryId = null)
+    public static ExecutionProposalView BuildProposal(string normalizedRecipeJson, int recipeServings, int servings, IReadOnlyList<InventoryLotReadModel> lots, IReadOnlyDictionary<Guid, LotCommitment>? commitments = null, Guid? ownMenuEntryId = null, IngredientMatchKeys? matchKeys = null)
     {
         commitments ??= new Dictionary<Guid, LotCommitment>();
+        matchKeys ??= IngredientMatchKeys.NamesOnly;
         decimal Protected(Guid lotId) => commitments.TryGetValue(lotId, out var commitment) ? commitment.ProtectedQuantity : 0;
         IReadOnlyList<LotReservationView> Elsewhere(Guid lotId) => commitments.TryGetValue(lotId, out var commitment)
             ? commitment.Reservations.Where(item => item.MenuEntryId != ownMenuEntryId).ToList()
@@ -323,11 +328,13 @@ public sealed class RecipeExecutionApplicationService(
             var unit = RecipeIngredientReader.ToLotUnit(ingredient.Unit);
             var required = RecipeIngredientReader.Scale(ingredient.Quantity, unit, scale);
             // The lot the recipe was written for comes first; otherwise a pantry lot with the same
-            // name and unit (case and accents ignored), so a recipe written by hand or a lot used up
-            // and bought again still proposes the pantry item.
+            // name or the same catalog ingredient, and the same unit (case and accents ignored), so a
+            // recipe written by hand, in another language, or for a lot used up and bought again
+            // still proposes the pantry item.
             var linked = ingredient.SourceType == "inventory" && ingredient.LotId is { } lotId && byId.TryGetValue(lotId, out var exact) && exact.MeasuredUnit == unit ? exact : null;
+            var ingredientKey = matchKeys.Key(ingredient.Name);
             var named = linked ?? measured
-                .Where(candidate => candidate.MeasuredUnit == unit && RecipeIngredientReader.NormalizeName(candidate.ProductName) == RecipeIngredientReader.NormalizeName(ingredient.Name))
+                .Where(candidate => candidate.MeasuredUnit == unit && matchKeys.Key(candidate.ProductName) == ingredientKey)
                 .OrderByDescending(candidate => candidate.MeasuredValue)
                 .FirstOrDefault();
             if (named is not { } lot)

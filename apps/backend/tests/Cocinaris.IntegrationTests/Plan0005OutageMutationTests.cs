@@ -398,7 +398,7 @@ public sealed class Plan0005OutagePostgresCollection : ICollectionFixture<Plan00
 /// <summary>PostgreSQL container that can be paused and unpaused for outage injection.</summary>
 public sealed class Plan0005OutagePostgresFixture : IAsyncLifetime
 {
-    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:18.4")
+    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder(TestImages.PostgreSql)
         .WithDatabase("cocinaris_plan0005_outage")
         .WithUsername("cocinaris_test")
         .WithPassword("development-only-test-password")

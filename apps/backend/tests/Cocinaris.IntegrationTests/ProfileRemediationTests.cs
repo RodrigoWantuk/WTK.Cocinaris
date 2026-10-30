@@ -18,7 +18,7 @@ namespace Cocinaris.IntegrationTests;
 /// <summary>Integration tests for PLAN-0012 remediation: concurrency, PUT semantics, validation, privacy, and equipment identity.</summary>
 public sealed class ProfileRemediationTests : IAsyncLifetime
 {
-    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:18.4")
+    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder(TestImages.PostgreSql)
         .WithDatabase("cocinaris_profile_remediation")
         .WithUsername("cocinaris_test")
         .WithPassword("development-only-test-password")

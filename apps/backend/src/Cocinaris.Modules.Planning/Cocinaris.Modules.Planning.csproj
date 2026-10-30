@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <ProjectReference Include="../Cocinaris.Modules.Identity/Cocinaris.Modules.Identity.csproj" />
+    <ProjectReference Include="../Cocinaris.Modules.Ingredients/Cocinaris.Modules.Ingredients.csproj" />
     <ProjectReference Include="../Cocinaris.Modules.Inventory/Cocinaris.Modules.Inventory.csproj" />
     <ProjectReference Include="../Cocinaris.Modules.Recipes/Cocinaris.Modules.Recipes.csproj" />
     <ProjectReference Include="../Cocinaris.SharedKernel/Cocinaris.SharedKernel.csproj" />

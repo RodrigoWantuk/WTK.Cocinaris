@@ -1,0 +1,263 @@
+{
+  "description": "PLAN-0055 live-model evaluation fixture for ingredient identity. 'expected' is the catalog slug a correct system links the text to, or null when it should stay unresolved (ambiguous, a different product, or not food). 'nearest' is the closest catalog ingredient for reference. 'expectedStep' is the cheapest step expected to decide it (catalog, trigram, embedding) or null. Run after enabling the OpenRouter key; see docs/ai/ingredient-identity.md#evaluation.",
+  "cases": [
+    {
+      "text": "Peito de frango",
+      "expected": "chicken-breast",
+      "nearest": "chicken-breast",
+      "expectedStep": "catalog"
+    },
+    {
+      "text": "chicken breasts",
+      "expected": "chicken-breast",
+      "nearest": "chicken-breast",
+      "expectedStep": "catalog"
+    },
+    {
+      "text": "Pechuga de pollo",
+      "expected": "chicken-breast",
+      "nearest": "chicken-breast",
+      "expectedStep": "catalog"
+    },
+    {
+      "text": "Peito de galinha",
+      "expected": "chicken-breast",
+      "nearest": "chicken-breast",
+      "expectedStep": "embedding"
+    },
+    {
+      "text": "filezinho de frango",
+      "expected": "chicken-breast",
+      "nearest": "chicken-breast",
+      "expectedStep": "embedding"
+    },
+    {
+      "text": "sassami",
+      "expected": "chicken-breast",
+      "nearest": "chicken-breast",
+      "expectedStep": "embedding"
+    },
+    {
+      "text": "Azeite extra virgem",
+      "expected": "olive-oil",
+      "nearest": "olive-oil",
+      "expectedStep": "trigram"
+    },
+    {
+      "text": "batatas doces",
+      "expected": "sweet-potato",
+      "nearest": "sweet-potato",
+      "expectedStep": "trigram"
+    },
+    {
+      "text": "Cebola branca grande",
+      "expected": "onion",
+      "nearest": "onion",
+      "expectedStep": "embedding"
+    },
+    {
+      "text": "scallions chopped",
+      "expected": "green-onion",
+      "nearest": "green-onion",
+      "expectedStep": "embedding"
+    },
+    {
+      "text": "Tomate italiano",
+      "expected": "tomato",
+      "nearest": "tomato",
+      "expectedStep": "embedding"
+    },
+    {
+      "text": "leite integral longa vida",
+      "expected": "milk",
+      "nearest": "milk",
+      "expectedStep": "embedding"
+    },
+    {
+      "text": "queijo prato",
+      "expected": null,
+      "nearest": "cheddar",
+      "expectedStep": null
+    },
+    {
+      "text": "presunto cozido",
+      "expected": "ham",
+      "nearest": "ham",
+      "expectedStep": "embedding"
+    },
+    {
+      "text": "Arroz parboilizado",
+      "expected": "rice",
+      "nearest": "rice",
+      "expectedStep": "embedding"
+    },
+    {
+      "text": "arroz arbóreo",
+      "expected": null,
+      "nearest": "rice",
+      "expectedStep": null
+    },
+    {
+      "text": "massa de lasanha",
+      "expected": "pasta",
+      "nearest": "pasta",
+      "expectedStep": "embedding"
+    },
+    {
+      "text": "pimenta",
+      "expected": null,
+      "nearest": "black-pepper",
+      "expectedStep": null
+    },
+    {
+      "text": "pimenta calabresa em flocos",
+      "expected": "chili-pepper",
+      "nearest": "chili-pepper",
+      "expectedStep": "embedding"
+    },
+    {
+      "text": "alho poró",
+      "expected": null,
+      "nearest": "garlic",
+      "expectedStep": null
+    },
+    {
+      "text": "Alho picado",
+      "expected": "garlic",
+      "nearest": "garlic",
+      "expectedStep": "embedding"
+    },
+    {
+      "text": "cheiro verde",
+      "expected": "parsley",
+      "nearest": "parsley",
+      "expectedStep": "catalog"
+    },
+    {
+      "text": "Coentro fresco",
+      "expected": "cilantro",
+      "nearest": "cilantro",
+      "expectedStep": "embedding"
+    },
+    {
+      "text": "açúcar de confeiteiro",
+      "expected": null,
+      "nearest": "sugar",
+      "expectedStep": null
+    },
+    {
+      "text": "Farinha de trigo integral",
+      "expected": "wheat-flour",
+      "nearest": "wheat-flour",
+      "expectedStep": "embedding"
+    },
+    {
+      "text": "Fermento royal",
+      "expected": "baking-powder",
+      "nearest": "baking-powder",
+      "expectedStep": "embedding"
+    },
+    {
+      "text": "Creme de leite de caixinha",
+      "expected": "heavy-cream",
+      "nearest": "heavy-cream",
+      "expectedStep": "embedding"
+    },
+    {
+      "text": "Requeijão light",
+      "expected": "cream-cheese",
+      "nearest": "cream-cheese",
+      "expectedStep": "embedding"
+    },
+    {
+      "text": "Iogurte grego zero",
+      "expected": "yogurt",
+      "nearest": "yogurt",
+      "expectedStep": "embedding"
+    },
+    {
+      "text": "ovos caipiras",
+      "expected": "egg",
+      "nearest": "egg",
+      "expectedStep": "embedding"
+    },
+    {
+      "text": "Banana da terra",
+      "expected": null,
+      "nearest": "banana",
+      "expectedStep": null
+    },
+    {
+      "text": "limão tahiti",
+      "expected": "lime",
+      "nearest": "lime",
+      "expectedStep": "embedding"
+    },
+    {
+      "text": "Feijão preto cozido",
+      "expected": "black-beans",
+      "nearest": "black-beans",
+      "expectedStep": "embedding"
+    },
+    {
+      "text": "grão de bico em lata",
+      "expected": "chickpeas",
+      "nearest": "chickpeas",
+      "expectedStep": "embedding"
+    },
+    {
+      "text": "Atum sólido em óleo",
+      "expected": "tuna-canned",
+      "nearest": "tuna-canned",
+      "expectedStep": "embedding"
+    },
+    {
+      "text": "Carne seca",
+      "expected": null,
+      "nearest": "beef-stew-meat",
+      "expectedStep": null
+    },
+    {
+      "text": "Linguiça calabresa",
+      "expected": "sausage",
+      "nearest": "sausage",
+      "expectedStep": "embedding"
+    },
+    {
+      "text": "salsicha hot dog",
+      "expected": "hot-dog-sausage",
+      "nearest": "hot-dog-sausage",
+      "expectedStep": "embedding"
+    },
+    {
+      "text": "Shoyu light",
+      "expected": "soy-sauce",
+      "nearest": "soy-sauce",
+      "expectedStep": "embedding"
+    },
+    {
+      "text": "Grandma's magic dust",
+      "expected": null,
+      "nearest": null,
+      "expectedStep": null
+    },
+    {
+      "text": "Xyzzy powder",
+      "expected": null,
+      "nearest": null,
+      "expectedStep": null
+    },
+    {
+      "text": "detergente",
+      "expected": null,
+      "nearest": null,
+      "expectedStep": null
+    },
+    {
+      "text": "ração do cachorro",
+      "expected": null,
+      "nearest": null,
+      "expectedStep": null
+    }
+  ]
+}

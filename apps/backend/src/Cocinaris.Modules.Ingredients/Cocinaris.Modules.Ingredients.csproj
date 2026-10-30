@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <AssemblyName>Cocinaris.Modules.Ingredients</AssemblyName>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <WarningsAsErrors>$(WarningsAsErrors);CS1591</WarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Cocinaris.Modules.Ai/Cocinaris.Modules.Ai.csproj" />
+    <ProjectReference Include="../Cocinaris.Modules.Identity/Cocinaris.Modules.Identity.csproj" />
+    <ProjectReference Include="../Cocinaris.SharedKernel/Cocinaris.SharedKernel.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Catalog/ingredient-catalog.json" LogicalName="Cocinaris.Modules.Ingredients.ingredient-catalog.json" />
+  </ItemGroup>
+
+</Project>
