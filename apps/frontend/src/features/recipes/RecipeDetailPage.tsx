@@ -12,11 +12,12 @@ import {
   type RecipeAvailabilityLine,
 } from "@/contracts/recipes";
 import { useProductionI18n } from "@/app/i18n/ProductionI18nProvider";
-import { Button } from "@/components/ui/button";
+import { MoreHorizontal, Star } from "lucide-react";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { FeatureUnavailable } from "@/components/runtime/FeatureUnavailable";
 import { parseNormalizedRecipeJson } from "./parseNormalizedRecipe";
 import { recipeLibraryErrorKey } from "./recipeErrors";
-import { formatRecipeDate, mealTypesLabel } from "./recipeLabels";
+import { formatRecipeDate, mealTypeLabel } from "./recipeLabels";
 
 /**
  * Authenticated detail of one owned recipe: the current revision with cooking, favorite, edit,
@@ -244,9 +245,7 @@ export function RecipeDetailPage() {
         />
       ) : null}
       <div>
-        <p className="text-sm text-muted-foreground">
-          {t("recipes.detail.revision", { number: detail.revisionNumber })}
-        </p>
+        {/* The version number lives in the history; the page leads with the dish (review M8). */}
         <h1 className="font-display text-3xl">{detail.name}</h1>
         <p className="mt-2 text-muted-foreground">
           {[
@@ -259,10 +258,19 @@ export function RecipeDetailPage() {
             .join(" · ")}
         </p>
         {detail.mealTypes.length > 0 ? (
-          <p className="mt-1 text-sm text-muted-foreground">
-            {t("recipes.detail.mealTypes")}:{" "}
-            {mealTypesLabel(t, detail.mealTypes)}
-          </p>
+          <ul
+            aria-label={t("recipes.detail.mealTypes")}
+            className="mt-2 flex flex-wrap gap-1.5"
+          >
+            {detail.mealTypes.map((type) => (
+              <li
+                key={type}
+                className="rounded-full bg-secondary px-2.5 py-0.5 text-[13px] font-medium text-secondary-foreground"
+              >
+                {mealTypeLabel(t, type)}
+              </li>
+            ))}
+          </ul>
         ) : null}
         {parsed?.yield ? (
           <p className="mt-1 text-sm text-muted-foreground">
@@ -312,11 +320,11 @@ export function RecipeDetailPage() {
               {t("recipes.detail.archivedNotice")}
             </p>
           ) : null}
-          <div className="flex flex-wrap gap-2">
+          <div className="flex items-start gap-2">
             <Button
               type="button"
               size="lg"
-              className="w-full sm:w-auto"
+              className="flex-1 sm:flex-none"
               data-testid="recipes-detail-cook"
               disabled={busy || !session.csrfToken}
               onClick={() => void startCooking()}
@@ -326,53 +334,73 @@ export function RecipeDetailPage() {
             <Button
               type="button"
               variant="secondary"
-              size="sm"
+              size="lg"
+              className="w-14 px-0"
               data-testid="recipes-detail-favorite"
               aria-pressed={detail.isFavorite}
-              disabled={busy || !session.csrfToken}
-              onClick={() => void organize("favorite")}
-            >
-              <span aria-hidden="true">{detail.isFavorite ? "★ " : "☆ "}</span>
-              {t(
+              aria-label={t(
                 detail.isFavorite
                   ? "recipes.detail.unfavorite"
                   : "recipes.detail.favorite",
               )}
-            </Button>
-            <Button
-              asChild
-              variant="secondary"
-              size="sm"
-              data-testid="recipes-detail-edit"
-            >
-              <Link to={`/app/receitas/${detail.recipeId}/editar`}>
-                {t("recipes.detail.edit")}
-              </Link>
-            </Button>
-            <Button
-              asChild
-              variant="secondary"
-              size="sm"
-              data-testid="recipes-detail-variation"
-            >
-              <Link to={`/app/receitas/${detail.recipeId}/variacao`}>
-                {t("recipes.detail.variation")}
-              </Link>
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              data-testid="recipes-detail-archive"
               disabled={busy || !session.csrfToken}
-              onClick={() => void organize("archive")}
+              onClick={() => void organize("favorite")}
             >
-              {t(
-                detail.archivedAt
-                  ? "recipes.detail.unarchive"
-                  : "recipes.detail.archive",
-              )}
+              <Star
+                aria-hidden="true"
+                className={`!size-5 ${detail.isFavorite ? "fill-primary text-primary" : ""}`}
+              />
             </Button>
+            {/* Less frequent actions sit behind "Mais" (review M8). */}
+            <details
+              className="group relative"
+              data-testid="recipes-detail-more"
+            >
+              <summary
+                className={`${buttonVariants({ variant: "secondary", size: "lg" })} cursor-pointer list-none [&::-webkit-details-marker]:hidden`}
+              >
+                <MoreHorizontal aria-hidden="true" className="!size-5" />
+                <span className="sr-only sm:not-sr-only">
+                  {t("recipes.detail.more")}
+                </span>
+              </summary>
+              <div className="absolute right-0 z-30 mt-2 flex w-56 flex-col gap-1 rounded-2xl border border-border bg-popover p-2 text-popover-foreground shadow-lg">
+                <Button
+                  asChild
+                  variant="ghost"
+                  className="justify-start"
+                  data-testid="recipes-detail-edit"
+                >
+                  <Link to={`/app/receitas/${detail.recipeId}/editar`}>
+                    {t("recipes.detail.edit")}
+                  </Link>
+                </Button>
+                <Button
+                  asChild
+                  variant="ghost"
+                  className="justify-start"
+                  data-testid="recipes-detail-variation"
+                >
+                  <Link to={`/app/receitas/${detail.recipeId}/variacao`}>
+                    {t("recipes.detail.variation")}
+                  </Link>
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="justify-start"
+                  data-testid="recipes-detail-archive"
+                  disabled={busy || !session.csrfToken}
+                  onClick={() => void organize("archive")}
+                >
+                  {t(
+                    detail.archivedAt
+                      ? "recipes.detail.unarchive"
+                      : "recipes.detail.archive",
+                  )}
+                </Button>
+              </div>
+            </details>
           </div>
         </>
       )}
@@ -484,10 +512,6 @@ export function RecipeDetailPage() {
           </div>
         ) : null}
       </section>
-
-      <Button asChild variant="secondary" data-testid="recipes-detail-back">
-        <Link to="/app/receitas">{t("recipes.actions.back")}</Link>
-      </Button>
     </div>
   );
 }

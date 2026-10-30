@@ -474,6 +474,9 @@ describe("menu planning (PLAN-0029)", () => {
 
     // A line without a size can get one; the size is sent in the line's unit.
     const produce = screen.getByTestId("shopping-section-produce");
+    // The size is offered while buying, not on every line.
+    expect(within(produce).queryByTestId("shopping-package-edit")).toBeNull();
+    await user.click(within(produce).getByTestId("shopping-item-buy"));
     await user.click(within(produce).getByTestId("shopping-package-edit"));
     await user.type(within(produce).getByTestId("shopping-package-size"), "0");
     await user.click(within(produce).getByTestId("shopping-package-save"));

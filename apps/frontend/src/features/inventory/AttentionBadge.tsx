@@ -1,14 +1,47 @@
 import type { LotAttention } from "@/adapters/live/inventoryTypes";
 import { useProductionI18n } from "@/app/i18n/ProductionI18nProvider";
-import { formatCalendarDateForDisplay } from "@/lib/calendarDate";
 
 const TONE: Record<string, string> = {
-  LikelyDiscard: "bg-destructive/15 text-destructive",
+  LikelyDiscard: "bg-destructive/10 text-destructive",
   CheckCondition: "bg-destructive/10 text-destructive",
-  UsePriority: "bg-warning/20 text-warning-foreground",
-  UseSoon: "bg-warning/10 text-warning-foreground",
+  UsePriority: "bg-warning-soft text-warning",
+  UseSoon: "bg-warning-soft text-warning",
   EstimateUncertain: "bg-muted text-muted-foreground",
 };
+
+/** Whole days from the person's local today to a `YYYY-MM-DD` date. */
+function daysFromToday(iso: string): number {
+  const [year, month, day] = iso.split("-").map(Number);
+  const now = new Date();
+  const today = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+  return Math.round((Date.UTC(year, month - 1, day) - today) / 86_400_000);
+}
+
+/**
+ * A short use-by phrase (review L1): "today" and "tomorrow" in words, otherwise weekday, day,
+ * and month, with the year only when it is not the current one. Null when the state label
+ * already says the same ("use today or tomorrow").
+ */
+function formatUseBy(
+  iso: string,
+  state: string,
+  locale: string,
+  t: (key: string) => string,
+): string | null {
+  const days = daysFromToday(iso);
+  if (state === "UsePriority" && days >= 0 && days <= 1) return null;
+  if (days === 0) return t("inventory.attention.useByToday");
+  if (days === 1) return t("inventory.attention.useByTomorrow");
+  const [year, month, day] = iso.split("-").map(Number);
+  const date = new Date(year, month - 1, day);
+  const text = new Intl.DateTimeFormat(locale, {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    ...(year !== new Date().getFullYear() ? { year: "numeric" } : {}),
+  }).format(date);
+  return t("inventory.attention.useBy").replace("{date}", text);
+}
 
 /**
  * Advisory attention label for a lot (PLAN-0037 Phase 2). Renders nothing for the normal state.
@@ -28,16 +61,17 @@ export function AttentionBadge({
   const { t, locale } = useProductionI18n();
   if (!attention || attention.state === "Normal") return null;
   const label = t(`inventory.attention.state.${attention.state}`);
+  const useBy = attention.estimatedUseBy
+    ? formatUseBy(attention.estimatedUseBy, attention.state, locale, t)
+    : null;
   return (
     <div data-testid="inventory-attention" className="space-y-1">
       <span
         data-attention-state={attention.state}
-        className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${TONE[attention.state] ?? TONE.EstimateUncertain}`}
+        className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold ${TONE[attention.state] ?? TONE.EstimateUncertain}`}
       >
         {label}
-        {attention.estimatedUseBy
-          ? ` · ${t("inventory.attention.useBy").replace("{date}", formatCalendarDateForDisplay(attention.estimatedUseBy, locale))}`
-          : ""}
+        {useBy ? ` · ${useBy}` : ""}
       </span>
       {detailed && (
         <ul

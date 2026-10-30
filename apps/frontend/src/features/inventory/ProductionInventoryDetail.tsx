@@ -25,6 +25,7 @@ import {
 import { formatCalendarDateForDisplay } from "@/lib/calendarDate";
 import { parseLocaleDecimal } from "@/lib/localeDecimal";
 import { Button } from "@/components/ui/button";
+import { ChoiceChips } from "@/components/choice/ChoiceChips";
 import { Input } from "@/components/ui/input";
 
 type MeasuredAction = "Consume" | "Discard" | "Correct";
@@ -516,30 +517,19 @@ export function ProductionInventoryDetail() {
           <h2 className="font-display text-xl">
             {t("inventory.actions.adjust")}
           </h2>
-          <label className="block max-w-xs space-y-1">
-            <span className="text-sm">
-              {t("inventory.fields.adjustmentType")}
-            </span>
-            <select
-              data-testid="inventory-adjust-type"
-              className="flex h-11 w-full rounded-xl border border-input bg-card px-3 text-[15px] focus-visible:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-              value={measuredAction}
-              disabled={busy}
-              onChange={(event) =>
-                setMeasuredAction(event.target.value as MeasuredAction)
-              }
-            >
-              <option value="Consume">
-                {t("inventory.adjustment.Consume")}
-              </option>
-              <option value="Discard">
-                {t("inventory.adjustment.Discard")}
-              </option>
-              <option value="Correct">
-                {t("inventory.adjustment.Correct")}
-              </option>
-            </select>
-          </label>
+          <ChoiceChips
+            label={t("inventory.fields.adjustmentType")}
+            testId="inventory-adjust-type"
+            options={(["Consume", "Discard", "Correct"] as const).map(
+              (value) => ({
+                value,
+                label: t(`inventory.adjustment.${value}`),
+              }),
+            )}
+            value={measuredAction}
+            disabled={busy}
+            onChange={setMeasuredAction}
+          />
           <label className="block max-w-xs">
             <span className="text-sm">{t("inventory.fields.amount")}</span>
             <Input
@@ -592,26 +582,19 @@ export function ProductionInventoryDetail() {
           <h2 className="font-display text-xl">
             {t("inventory.actions.changeAvailability")}
           </h2>
-          <label className="block max-w-xs space-y-1">
-            <span className="text-sm">
-              {t("inventory.fields.availability")}
-            </span>
-            <select
-              data-testid="inventory-availability"
-              className="flex h-11 w-full rounded-xl border border-input bg-card px-3 text-[15px] focus-visible:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-              value={availability}
-              disabled={busy || !session.csrfToken}
-              onChange={(event) =>
-                setAvailability(event.target.value as AvailabilityState)
-              }
-            >
-              {(["Available", "Low", "Unavailable"] as const).map((state) => (
-                <option key={state} value={state}>
-                  {t(`inventory.availability.${state}`)}
-                </option>
-              ))}
-            </select>
-          </label>
+          <ChoiceChips
+            label={t("inventory.fields.availability")}
+            testId="inventory-availability"
+            options={(["Available", "Low", "Unavailable"] as const).map(
+              (state) => ({
+                value: state,
+                label: t(`inventory.availability.${state}`),
+              }),
+            )}
+            value={availability}
+            disabled={busy || !session.csrfToken}
+            onChange={setAvailability}
+          />
           {adjustError && (
             <p role="alert" className="text-sm text-destructive">
               {adjustError}

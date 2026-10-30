@@ -62,9 +62,13 @@ The success green and the emerald accent are different hues and roles. Success a
   - `secondary`: a quiet surface button with a border.
   - `ghost`: tertiary actions.
   - `destructive`: only inside confirmations. A delete entry point is a ghost button with destructive text at the bottom of the page.
+- **ChoiceChips** (`components/choice/ChoiceChips.tsx`): one choice among up to about six short options. It is a labelled group of toggle buttons with `aria-pressed`, and the chosen chip carries the accent. Use it instead of a native select for action types, places, and states. Longer or open lists stay in a select or combobox.
 - **Inputs and selects:** 44px high, `rounded-xl`, on the `card` surface with an `input` border. On focus, the border turns `ring` and a soft ring halo appears.
 - **Rows:** lists use `divide-y` rows, with the name in 17px semibold and the detail in muted 14px.
 - **Empty fields:** hidden. A page never lists "Nenhum" for data that was not entered.
+- **Quantities:** 1,000 g or ml and above are shown in kg or L in lists.
+- **Dates near today:** shown as "hoje", "amanhã", or the weekday, day, and month. The year appears only when it is not the current one.
+- **Focused tasks:** guided cooking hides the bottom bar on phones and offers "Sair (o preparo fica salvo)" at the top.
 
 ## Themes
 

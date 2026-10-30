@@ -1,3 +1,4 @@
+import { Plus, Sparkles, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useProductionI18n } from "@/app/i18n/ProductionI18nProvider";
@@ -194,21 +195,23 @@ export function MenuPage() {
         </p>
       ) : null}
 
-      <ol className="space-y-4">
+      {/* One surface with a row per day instead of a card per day (review M2). */}
+      <ol className="surface divide-y divide-border overflow-hidden">
         {groups.map((group) => (
           <li
             key={group.key}
             data-testid={`menu-day-${group.key}`}
-            className="space-y-2 rounded-2xl border border-border p-4"
+            className="space-y-2 p-4"
           >
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h2 className="font-display text-lg">{group.title}</h2>
               {editable ? (
-                <div className="flex flex-wrap gap-1">
+                <div className="flex gap-1">
                   <Button
                     type="button"
                     size="sm"
-                    variant="secondary"
+                    variant="ghost"
+                    aria-expanded={addingTo === group.key}
                     data-testid={`menu-add-${group.key}`}
                     onClick={() => {
                       setSuggestingFor(null);
@@ -217,12 +220,16 @@ export function MenuPage() {
                       );
                     }}
                   >
-                    {t("planning.addMeal")}
+                    <Plus aria-hidden="true" />
+                    <span className="sr-only sm:not-sr-only">
+                      {t("planning.addMeal")}
+                    </span>
                   </Button>
                   <Button
                     type="button"
                     size="sm"
-                    variant="secondary"
+                    variant="ghost"
+                    aria-expanded={suggestingFor === group.key}
                     data-testid={`menu-ai-${group.key}`}
                     onClick={() => {
                       setAddingTo(null);
@@ -231,7 +238,10 @@ export function MenuPage() {
                       );
                     }}
                   >
-                    {t("planning.ai.open")}
+                    <Sparkles aria-hidden="true" />
+                    <span className="sr-only sm:not-sr-only">
+                      {t("planning.ai.open")}
+                    </span>
                   </Button>
                 </div>
               ) : null}
@@ -368,7 +378,7 @@ function EntryRow({
   return (
     <li
       data-testid="menu-entry"
-      className="space-y-2 rounded-xl bg-secondary/40 p-3"
+      className="space-y-2 rounded-xl border border-border bg-background p-3"
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
@@ -445,9 +455,10 @@ function EntryRow({
               data-testid="menu-entry-remove"
               aria-label={t("planning.remove", { name: entry.recipeName })}
               disabled={busy}
+              title={t("planning.remove", { name: entry.recipeName })}
               onClick={onRemove}
             >
-              ✕
+              <Trash2 aria-hidden="true" />
             </Button>
           </div>
         ) : null}
@@ -551,7 +562,10 @@ function Readiness({ entry }: { entry: MenuEntry }) {
     )
     .join(", ");
   return (
-    <p className="text-xs text-destructive" data-testid="menu-entry-readiness">
+    <p
+      className="mt-1 inline-block rounded-full bg-warning-soft px-2.5 py-0.5 text-xs font-semibold text-warning"
+      data-testid="menu-entry-readiness"
+    >
       {t("planning.readiness.missing", { items })}
     </p>
   );

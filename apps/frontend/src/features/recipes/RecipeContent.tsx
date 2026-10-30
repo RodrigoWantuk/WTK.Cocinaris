@@ -257,13 +257,23 @@ export function RecipeContent({
                   <h3 className="font-medium">
                     {index + 1}. {stage.title}
                   </h3>
-                  {stage.activeMinutes !== undefined ||
-                  stage.passiveMinutes !== undefined ? (
+                  {stage.activeMinutes || stage.passiveMinutes ? (
                     <p className="text-xs text-muted-foreground">
-                      {t("recipes.detail.stageTime", {
-                        active: stage.activeMinutes ?? 0,
-                        passive: stage.passiveMinutes ?? 0,
-                      })}
+                      {/* Zero minutes are left out (review M8). */}
+                      {[
+                        stage.activeMinutes
+                          ? t("recipes.detail.stageActive", {
+                              minutes: stage.activeMinutes,
+                            })
+                          : null,
+                        stage.passiveMinutes
+                          ? t("recipes.detail.stagePassive", {
+                              minutes: stage.passiveMinutes,
+                            })
+                          : null,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
                     </p>
                   ) : null}
                   {stage.instructions.map((instruction, stepIndex) => (

@@ -9,6 +9,7 @@ import { useProductionI18n } from "@/app/i18n/ProductionI18nProvider";
 import { parseLocaleDecimal } from "@/lib/localeDecimal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { ChoiceChips } from "@/components/choice/ChoiceChips";
 import { localizeInventoryKey } from "./inventoryLabels";
 import {
   allowedTransitions,
@@ -106,41 +107,31 @@ export function LotTransitionPanel({
       <h2 className="font-display text-xl">
         {t("inventory.transition.title")}
       </h2>
-      <label className="block space-y-1">
-        <span className="text-sm">{t("inventory.transition.kind")}</span>
-        <select
-          data-testid="inventory-transition-kind"
-          className="flex h-11 w-full rounded-xl border border-input bg-card px-3 text-[15px] focus-visible:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-          value={kind}
-          onChange={(event) => setKind(event.target.value as TransitionKind)}
-        >
-          {kinds.map((option) => (
-            <option key={option} value={option}>
-              {t(`inventory.transition.${option}`)}
-            </option>
-          ))}
-        </select>
-      </label>
+      <ChoiceChips
+        label={t("inventory.transition.kind")}
+        testId="inventory-transition-kind"
+        options={kinds.map((option) => ({
+          value: option,
+          label: t(`inventory.transition.${option}`),
+        }))}
+        value={kind}
+        onChange={setKind}
+      />
       {options.length > 0 && (
-        <label className="block space-y-1">
-          <span className="text-sm">{t("inventory.transition.target")}</span>
-          <select
-            data-testid="inventory-transition-target"
-            className="flex h-11 w-full rounded-xl border border-input bg-card px-3 text-[15px] focus-visible:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-            value={target}
-            onChange={(event) =>
-              setTarget(event.target.value as StorageLocation | "")
-            }
-          >
-            {options.map((option) => (
-              <option key={option ?? "keep"} value={option ?? ""}>
-                {option
-                  ? localizeInventoryKey(t, "inventory.location", option)
-                  : t("inventory.transition.keepLocation")}
-              </option>
-            ))}
-          </select>
-        </label>
+        <ChoiceChips
+          label={t("inventory.transition.target")}
+          testId="inventory-transition-target"
+          options={options.map((option) => ({
+            value: option ?? "keep",
+            label: option
+              ? localizeInventoryKey(t, "inventory.location", option)
+              : t("inventory.transition.keepLocation"),
+          }))}
+          value={target === "" ? "keep" : target}
+          onChange={(next) =>
+            setTarget(next === "keep" ? "" : (next as StorageLocation))
+          }
+        />
       )}
       {partialAllowed && unit && (
         <label className="block space-y-1">

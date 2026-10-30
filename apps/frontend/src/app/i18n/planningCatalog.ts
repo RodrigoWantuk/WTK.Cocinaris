@@ -250,7 +250,7 @@ const ptBR: Record<string, string> = {
   "shopping.title": "Lista de compras",
   "shopping.back": "Voltar para o cardápio",
   "shopping.hint":
-    "Calculada a partir das refeições que ainda faltam, de hoje em diante, e do que você tem na despensa. Marcar um item não muda a despensa; registre a compra para atualizá-la.",
+    "O que falta para as refeições do cardápio, já descontando a despensa.",
   "shopping.empty": "Nenhuma refeição pendente neste cardápio.",
   "shopping.category.required": "Comprar",
   "shopping.section.produce": "Hortifruti",
@@ -409,7 +409,7 @@ const en: Record<string, string> = {
   "shopping.title": "Shopping list",
   "shopping.back": "Back to the menu",
   "shopping.hint":
-    "Worked out from the meals still to cook, from today on, and what is in your pantry. Checking an item off does not change the pantry; record the purchase to update it.",
+    "What the menu's meals still need, after what is in your pantry.",
   "shopping.empty": "No meals left to cook in this menu.",
   "shopping.category.required": "To buy",
   "shopping.section.produce": "Produce",
@@ -570,7 +570,7 @@ const es: Record<string, string> = {
   "shopping.title": "Lista de la compra",
   "shopping.back": "Volver al menú",
   "shopping.hint":
-    "Calculada a partir de las comidas que faltan, de hoy en adelante, y de lo que tienes en la despensa. Marcar un artículo no cambia la despensa; registra la compra para actualizarla.",
+    "Lo que falta para las comidas del menú, ya descontando la despensa.",
   "shopping.empty": "No quedan comidas por cocinar en este menú.",
   "shopping.category.required": "Comprar",
   "shopping.section.produce": "Frutas y verduras",

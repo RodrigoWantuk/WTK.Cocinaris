@@ -55,10 +55,21 @@ export function RecipeThumbnail({
           />
         ) : (
           <div
-            className="flex h-full w-full flex-col items-center justify-center gap-1 text-muted-foreground"
+            className="flex h-full w-full flex-col items-center justify-center gap-1 bg-accent text-accent-foreground"
             data-testid="recipe-thumbnail-placeholder"
           >
-            <UtensilsCrossed aria-hidden="true" className="h-6 w-6" />
+            {/* Without a photo, the dish's initial on the accent tint reads as a cover rather than
+                an empty slot (review L3); the icon remains for names without a letter. */}
+            {name.trim() ? (
+              <span
+                aria-hidden="true"
+                className="font-display text-3xl leading-none"
+              >
+                {name.trim()[0]!.toUpperCase()}
+              </span>
+            ) : (
+              <UtensilsCrossed aria-hidden="true" className="h-6 w-6" />
+            )}
             {thumbnail.state === "pending" && disclose ? (
               <span className="text-xs">{t("recipes.thumbnail.pending")}</span>
             ) : null}

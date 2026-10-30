@@ -15,6 +15,14 @@ export function formatQuantityLabel(
 ): string {
   if (quantity.kind === "measured") {
     const prefix = quantity.estimated ? "~" : "";
+    // From 1,000 g or ml on, kilograms and liters read faster in a list (review M3).
+    if (
+      (quantity.unit === "Gram" || quantity.unit === "Milliliter") &&
+      quantity.value >= 1000
+    ) {
+      const large = quantity.unit === "Gram" ? "kg" : "L";
+      return `${prefix}${formatLocaleDecimal(Math.round(quantity.value / 10) / 100, locale)} ${large}`;
+    }
     return `${prefix}${formatLocaleDecimal(quantity.value, locale)} ${t(`inventory.unit.${quantity.unit}`)}`;
   }
   return t(`inventory.availability.${quantity.availability}`);

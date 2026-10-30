@@ -495,7 +495,7 @@ export function RecipeGeneratePage() {
           </p>
         </div>
         {errorKey ? (
-          <p role="status" className="text-sm text-warning-foreground">
+          <p role="status" className="text-sm text-warning">
             {t(errorKey)}
           </p>
         ) : null}
@@ -599,7 +599,7 @@ export function RecipeGeneratePage() {
         }}
       />
       {errorKey ? (
-        <p role="status" className="text-sm text-warning-foreground">
+        <p role="status" className="text-sm text-warning">
           {t(errorKey)}
         </p>
       ) : null}

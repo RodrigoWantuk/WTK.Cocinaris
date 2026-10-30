@@ -319,6 +319,15 @@ export function CookingPage() {
 
   const header = (
     <div>
+      {execution.status === "InProgress" ? (
+        <Link
+          to="/app/hoje"
+          data-testid="cooking-leave"
+          className="mb-2 inline-flex text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+        >
+          {t("cooking.leave")}
+        </Link>
+      ) : null}
       <p className="text-sm text-muted-foreground">{t("page.title.cooking")}</p>
       <h1 className="font-display text-3xl">{execution.recipeName}</h1>
       <p className="mt-1 text-muted-foreground">

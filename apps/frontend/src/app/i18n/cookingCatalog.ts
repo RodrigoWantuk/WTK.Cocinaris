@@ -12,6 +12,8 @@ export const REQUIRED_COOKING_I18N_KEYS = [
   "recipes.detail.inPantry",
   "recipes.detail.partialPantry",
   "recipes.detail.stageTime",
+  "recipes.detail.stageActive",
+  "recipes.detail.stagePassive",
   "recipes.detail.cues",
   "recipes.unit.g",
   "recipes.unit.ml",
@@ -79,6 +81,7 @@ export const REQUIRED_COOKING_I18N_KEYS = [
   "cooking.review.status.not_tracked",
   "cooking.review.status.skipped",
   "cooking.adjust.title",
+  "cooking.leave",
   "cooking.adjust.count",
   "cooking.adjust.hint",
   "cooking.adjust.edit",
@@ -164,6 +167,7 @@ const ptBR: Record<Key, string> = {
   "cooking.adjust.error.save":
     "Não foi possível salvar o ajuste. Tente de novo.",
   "page.title.cooking": "Cozinhando",
+  "cooking.leave": "← Sair (o preparo fica salvo)",
   "recipes.detail.cook": "Cozinhar agora",
   "recipes.detail.resume": "Continuar cozinhando",
   "recipes.detail.starting": "Preparando…",
@@ -174,6 +178,8 @@ const ptBR: Record<Key, string> = {
   "recipes.detail.partialPantry": "Faltam {{amount}}",
   "recipes.detail.stageTime":
     "{{active}} min de trabalho · {{passive}} min de espera",
+  "recipes.detail.stageActive": "{{minutes}} min de trabalho",
+  "recipes.detail.stagePassive": "{{minutes}} min de espera",
   "recipes.detail.cues": "Como saber que deu certo",
   "recipes.unit.g": "g",
   "recipes.unit.ml": "ml",
@@ -317,6 +323,7 @@ const en: Record<Key, string> = {
   "cooking.adjust.error.amount": "Enter a valid amount.",
   "cooking.adjust.error.save": "Could not save the change. Try again.",
   "page.title.cooking": "Cooking",
+  "cooking.leave": "← Leave (your progress is kept)",
   "recipes.detail.cook": "Cook now",
   "recipes.detail.resume": "Continue cooking",
   "recipes.detail.starting": "Getting ready…",
@@ -327,6 +334,8 @@ const en: Record<Key, string> = {
   "recipes.detail.partialPantry": "{{amount}} missing",
   "recipes.detail.stageTime":
     "{{active}} min hands-on · {{passive}} min waiting",
+  "recipes.detail.stageActive": "{{minutes}} min hands-on",
+  "recipes.detail.stagePassive": "{{minutes}} min waiting",
   "recipes.detail.cues": "How to tell it worked",
   "recipes.unit.g": "g",
   "recipes.unit.ml": "ml",
@@ -467,6 +476,7 @@ const es: Record<Key, string> = {
   "cooking.adjust.error.save":
     "No se pudo guardar el cambio. Inténtalo de nuevo.",
   "page.title.cooking": "Cocinando",
+  "cooking.leave": "← Salir (el progreso se guarda)",
   "recipes.detail.cook": "Cocinar ahora",
   "recipes.detail.resume": "Seguir cocinando",
   "recipes.detail.starting": "Preparando…",
@@ -477,6 +487,8 @@ const es: Record<Key, string> = {
   "recipes.detail.partialPantry": "Faltan {{amount}}",
   "recipes.detail.stageTime":
     "{{active}} min de trabajo · {{passive}} min de espera",
+  "recipes.detail.stageActive": "{{minutes}} min de trabajo",
+  "recipes.detail.stagePassive": "{{minutes}} min de espera",
   "recipes.detail.cues": "Cómo saber que salió bien",
   "recipes.unit.g": "g",
   "recipes.unit.ml": "ml",

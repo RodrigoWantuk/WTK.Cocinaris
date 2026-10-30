@@ -30,8 +30,9 @@ const EMPTY_QUERY: SubmittedQuery = {
 };
 
 /**
- * Authenticated production inventory list with explicit search/filter submission
- * and cursor pagination. Typing in the search box does not trigger requests.
+ * Authenticated production inventory list with live filters and cursor pagination. The place
+ * and status filters apply at once; the search applies 300 ms after the last keystroke (or on
+ * Enter), so typing sends one request, not one per letter (PLAN-0057 review M3).
  */
 export function ProductionInventoryList() {
   const repo = useInventoryRepository();
@@ -61,6 +62,24 @@ export function ProductionInventoryList() {
     return () => controller.abort();
   }, [repo]);
   const abortRef = useRef<AbortController | null>(null);
+
+  // Debounced search: the latest text wins; status and place apply immediately.
+  useEffect(() => {
+    const handle = window.setTimeout(() => {
+      setQuery((current) =>
+        current.search === draftSearch.trim() &&
+        current.status === draftStatus &&
+        current.storageLocation === draftLocation
+          ? current
+          : {
+              search: draftSearch.trim(),
+              status: draftStatus,
+              storageLocation: draftLocation,
+            },
+      );
+    }, 300);
+    return () => window.clearTimeout(handle);
+  }, [draftSearch, draftStatus, draftLocation]);
 
   useEffect(() => {
     const requestId = ++requestIdRef.current;
@@ -211,76 +230,93 @@ export function ProductionInventoryList() {
       )}
 
       <form
-        className="flex flex-wrap gap-2"
+        className="space-y-3"
         onSubmit={(event) => {
           event.preventDefault();
           submitFilters();
         }}
       >
-        <label className="min-w-[12rem] flex-1">
-          <span className="sr-only">{t("inventory.search")}</span>
-          <Input
-            data-testid="inventory-search"
-            value={draftSearch}
-            onChange={(event) => setDraftSearch(event.target.value)}
-            placeholder={t("inventory.search")}
-          />
-        </label>
-        <label>
-          <span className="sr-only">{t("inventory.filter.status")}</span>
-          <select
-            data-testid="inventory-filter-status"
-            className="flex h-11 rounded-xl border border-input bg-background px-3 text-[15px]"
-            value={draftStatus}
-            onChange={(event) =>
-              setDraftStatus(event.target.value as LotStatusFilter)
-            }
+        <div className="flex gap-2">
+          <label className="flex-1">
+            <span className="sr-only">{t("inventory.search")}</span>
+            <Input
+              type="search"
+              data-testid="inventory-search"
+              value={draftSearch}
+              onChange={(event) => setDraftSearch(event.target.value)}
+              placeholder={t("inventory.search")}
+            />
+          </label>
+          <label>
+            <span className="sr-only">{t("inventory.filter.status")}</span>
+            <select
+              data-testid="inventory-filter-status"
+              className="flex h-11 rounded-xl border border-input bg-card px-3 text-[15px] focus-visible:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+              value={draftStatus}
+              onChange={(event) =>
+                setDraftStatus(event.target.value as LotStatusFilter)
+              }
+            >
+              <option value="">{t("inventory.filter.statusAll")}</option>
+              <option value="active">
+                {t("inventory.filter.statusActive")}
+              </option>
+              <option value="depleted">
+                {t("inventory.filter.statusDepleted")}
+              </option>
+              <option value="deleted">
+                {t("inventory.filter.statusDeleted")}
+              </option>
+            </select>
+          </label>
+          {/* Enter applies the search at once; the button stays for assistive technology. */}
+          <Button
+            type="submit"
+            variant="secondary"
+            className="sr-only"
+            data-testid="inventory-search-submit"
           >
-            <option value="">{t("inventory.filter.statusAll")}</option>
-            <option value="active">{t("inventory.filter.statusActive")}</option>
-            <option value="depleted">
-              {t("inventory.filter.statusDepleted")}
-            </option>
-            <option value="deleted">
-              {t("inventory.filter.statusDeleted")}
-            </option>
-          </select>
-        </label>
-        <label>
-          <span className="sr-only">{t("inventory.filter.location")}</span>
-          <select
-            data-testid="inventory-filter-location"
-            className="flex h-11 rounded-xl border border-input bg-background px-3 text-[15px]"
-            value={draftLocation}
-            onChange={(event) =>
-              setDraftLocation(event.target.value as LocationFilter)
-            }
-          >
-            <option value="">{t("inventory.filter.locationAll")}</option>
-            {(["Pantry", "Refrigerator", "Freezer", "Other"] as const).map(
-              (loc) => (
-                <option key={loc} value={loc}>
-                  {t(`inventory.location.${loc}`)}
-                </option>
-              ),
-            )}
-          </select>
-        </label>
-        <Button
-          type="submit"
-          variant="secondary"
-          data-testid="inventory-search-submit"
+            {t("inventory.actions.search")}
+          </Button>
+        </div>
+        <div
+          role="group"
+          aria-label={t("inventory.filter.location")}
+          className="flex flex-wrap gap-2"
+          data-testid="inventory-filter-location"
         >
-          {t("inventory.actions.search")}
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          data-testid="inventory-clear-filters"
-          onClick={clearFilters}
-        >
-          {t("inventory.actions.clearFilters")}
-        </Button>
+          {(["", "Pantry", "Refrigerator", "Freezer", "Other"] as const).map(
+            (loc) => (
+              <button
+                key={loc || "all"}
+                type="button"
+                aria-pressed={draftLocation === loc}
+                data-testid={`inventory-filter-location-${loc || "all"}`}
+                onClick={() => setDraftLocation(loc as LocationFilter)}
+                className={`h-9 rounded-full border px-3.5 text-sm font-semibold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
+                  draftLocation === loc
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-border bg-card text-foreground hover:bg-secondary"
+                }`}
+              >
+                {loc
+                  ? t(`inventory.location.${loc}`)
+                  : t("inventory.filter.locationAll")}
+              </button>
+            ),
+          )}
+          {draftSearch || draftStatus || draftLocation ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              data-testid="inventory-clear-filters"
+              onClick={clearFilters}
+            >
+              {t("inventory.actions.clearFilters")}
+            </Button>
+          ) : null}
+        </div>
       </form>
 
       <p role="status" aria-live="polite" className="sr-only">
