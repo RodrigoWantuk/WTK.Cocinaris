@@ -490,7 +490,8 @@ describe("today page", () => {
     // Cooking in progress comes first, then the accepted menu's meal for the browser's local day;
     // cooking that meal links the session.
     const menuEntry = await screen.findByTestId("today-menu-entry");
-    expect(menuEntry).toHaveTextContent("Feijoada · Dinner");
+    expect(menuEntry).toHaveTextContent("Dinner");
+    expect(menuEntry).toHaveTextContent("Feijoada");
     expect(getToday).toHaveBeenCalledWith(localIsoDate(), expect.anything());
     expect(
       screen

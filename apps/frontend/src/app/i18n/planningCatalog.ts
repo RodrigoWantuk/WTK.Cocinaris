@@ -111,6 +111,14 @@ export const REQUIRED_PLANNING_I18N_KEYS = [
   "today.menu.today",
   "today.menu.flexible",
   "today.menu.open",
+  "today.quick.label",
+  "today.quick.generateDetail",
+  "today.quick.addDetail",
+  "today.quick.menu",
+  "today.quick.menuDetail",
+  "today.quick.shoppingDetail",
+  "today.menu.ready",
+  "today.menu.missing",
   "cooking.review.status.protected",
   "cooking.review.protected",
   "cooking.review.reserved",
@@ -306,6 +314,14 @@ const ptBR: Record<string, string> = {
   "today.menu.today": "hoje",
   "today.menu.flexible": "quando der nesta semana",
   "today.menu.open": "Ver cardápio",
+  "today.quick.label": "Atalhos",
+  "today.quick.generateDetail": "Com o que você tem",
+  "today.quick.addDetail": "O que chegou",
+  "today.quick.menu": "Cardápio",
+  "today.quick.menuDetail": "Planeje a semana",
+  "today.quick.shoppingDetail": "O que falta",
+  "today.menu.ready": "Tudo na despensa",
+  "today.menu.missing": "Faltam {{count}} itens",
 };
 
 const en: Record<string, string> = {
@@ -464,6 +480,14 @@ const en: Record<string, string> = {
   "today.menu.today": "today",
   "today.menu.flexible": "some time this week",
   "today.menu.open": "Open menu",
+  "today.quick.label": "Shortcuts",
+  "today.quick.generateDetail": "With what you have",
+  "today.quick.addDetail": "What just came in",
+  "today.quick.menu": "Menu",
+  "today.quick.menuDetail": "Plan the week",
+  "today.quick.shoppingDetail": "What is missing",
+  "today.menu.ready": "Everything in the pantry",
+  "today.menu.missing": "{{count}} items missing",
 };
 
 const es: Record<string, string> = {
@@ -626,6 +650,14 @@ const es: Record<string, string> = {
   "today.menu.today": "hoy",
   "today.menu.flexible": "cuando puedas esta semana",
   "today.menu.open": "Ver menú",
+  "today.quick.label": "Atajos",
+  "today.quick.generateDetail": "Con lo que tienes",
+  "today.quick.addDetail": "Lo que acaba de llegar",
+  "today.quick.menu": "Menú",
+  "today.quick.menuDetail": "Planea la semana",
+  "today.quick.shoppingDetail": "Lo que falta",
+  "today.menu.ready": "Todo en la despensa",
+  "today.menu.missing": "Faltan {{count}} ingredientes",
 };
 
 export const planningCatalogs: Record<

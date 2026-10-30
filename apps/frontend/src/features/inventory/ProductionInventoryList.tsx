@@ -1,4 +1,11 @@
 import { useEffect, useRef, useState } from "react";
+import {
+  Archive,
+  ChevronRight,
+  MapPin,
+  Refrigerator,
+  Snowflake,
+} from "lucide-react";
 import { Link } from "react-router-dom";
 import { useInventoryRepository } from "./InventoryProvider";
 import { formatQuantityLabel } from "./quantityDisplay";
@@ -22,6 +29,15 @@ interface SubmittedQuery {
   status: LotStatusFilter;
   storageLocation: LocationFilter;
 }
+
+/** Places in the order people look for food. */
+const LOCATION_ORDER = ["Refrigerator", "Freezer", "Pantry", "Other"];
+const LOCATION_ICON: Record<string, typeof Refrigerator> = {
+  Refrigerator,
+  Freezer: Snowflake,
+  Pantry: Archive,
+  Other: MapPin,
+};
 
 const EMPTY_QUERY: SubmittedQuery = {
   search: "",
@@ -204,7 +220,7 @@ export function ProductionInventoryList() {
         <section
           data-testid="inventory-attention-panel"
           aria-labelledby="inventory-attention-title"
-          className="space-y-2 rounded-2xl bg-warning-soft p-4"
+          className="space-y-3 rounded-2xl border border-warning/20 bg-warning-soft p-4"
         >
           <h2 id="inventory-attention-title" className="font-medium">
             {t("inventory.attention.title")}
@@ -215,9 +231,9 @@ export function ProductionInventoryList() {
                 <Link
                   to={`/app/despensa/${item.lotId}`}
                   data-testid={`inventory-attention-link-${item.lotId}`}
-                  className="flex flex-wrap items-center justify-between gap-2 rounded-lg px-2 py-1 hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-card px-3 py-2 transition-colors duration-150 hover:bg-card/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
-                  <span className="text-sm">{item.productName}</span>
+                  <span className="font-medium">{item.productName}</span>
                   <AttentionBadge attention={item.attention} />
                 </Link>
               </li>
@@ -360,53 +376,89 @@ export function ProductionInventoryList() {
         </div>
       )}
 
-      <ul className="divide-y divide-border border-y border-border">
-        {items.map((item) => (
-          <li key={item.lotId}>
-            <Link
-              to={`/app/despensa/${item.lotId}`}
-              data-testid={`inventory-lot-link-${item.lotId}`}
-              className="-mx-2 block rounded-xl px-2 py-4 hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      {/* Grouped by place, in the order people look (PLAN-0058): fridge, freezer, cupboard,
+          other. Each group is one surface of rows with the amount on the right. */}
+      <div className="space-y-6">
+        {LOCATION_ORDER.map((location) => {
+          const group = items.filter(
+            (item) =>
+              (LOCATION_ORDER.includes(item.storageLocation)
+                ? item.storageLocation
+                : "Other") === location,
+          );
+          if (group.length === 0) return null;
+          const Icon = LOCATION_ICON[location];
+          return (
+            <section
+              key={location}
+              aria-labelledby={`inventory-group-${location}`}
+              data-testid={`inventory-group-${location}`}
+              className="space-y-2"
             >
-              <div className="flex items-start justify-between gap-3">
-                <h2 className="text-[17px] font-semibold">
-                  {item.productName}
-                </h2>
-                <span className="text-sm text-muted-foreground">
-                  {localizeInventoryKey(
-                    t,
-                    "inventory.location",
-                    item.storageLocation,
-                  )}
-                  {item.customLocation ? ` · ${item.customLocation}` : ""}
+              <h2
+                id={`inventory-group-${location}`}
+                className="flex items-center gap-2 text-sm font-semibold text-muted-foreground"
+              >
+                <Icon aria-hidden="true" className="h-4 w-4" />
+                {localizeInventoryKey(t, "inventory.location", location)}
+                <span className="tabular rounded-full bg-secondary px-2 text-xs">
+                  {group.length}
                 </span>
-              </div>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {formatQuantityLabel(
-                  item.quantity,
-                  locale as ProductionLocale,
-                  t,
-                )}
-              </p>
-              {item.autoRemoveOn ? (
-                <p
-                  className="mt-1 text-xs text-muted-foreground"
-                  data-testid={`inventory-auto-remove-${item.lotId}`}
-                >
-                  {t("inventory.autoRemoveOn.list", {
-                    date: new Date(
-                      `${item.autoRemoveOn}T12:00:00`,
-                    ).toLocaleDateString(locale),
-                  })}
-                </p>
-              ) : null}
-              <div className="mt-2">
-                <AttentionBadge attention={item.attention} />
-              </div>
-            </Link>
-          </li>
-        ))}
-      </ul>
+              </h2>
+              <ul className="surface divide-y divide-border overflow-hidden">
+                {group.map((item) => (
+                  <li key={item.lotId}>
+                    <Link
+                      to={`/app/despensa/${item.lotId}`}
+                      data-testid={`inventory-lot-link-${item.lotId}`}
+                      className="flex items-center gap-3 px-4 py-3 transition-colors duration-150 hover:bg-secondary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+                    >
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-[16px] font-semibold">
+                          {item.productName}
+                        </span>
+                        {item.customLocation ? (
+                          <span className="block text-xs text-muted-foreground">
+                            {item.customLocation}
+                          </span>
+                        ) : null}
+                        {item.autoRemoveOn ? (
+                          <span
+                            className="block text-xs text-muted-foreground"
+                            data-testid={`inventory-auto-remove-${item.lotId}`}
+                          >
+                            {t("inventory.autoRemoveOn.list", {
+                              date: new Date(
+                                `${item.autoRemoveOn}T12:00:00`,
+                              ).toLocaleDateString(locale),
+                            })}
+                          </span>
+                        ) : null}
+                        {item.attention && item.attention.state !== "Normal" ? (
+                          <span className="mt-1 block">
+                            <AttentionBadge attention={item.attention} />
+                          </span>
+                        ) : null}
+                      </span>
+                      <span className="tabular shrink-0 text-right text-[15px] font-medium">
+                        {formatQuantityLabel(
+                          item.quantity,
+                          locale as ProductionLocale,
+                          t,
+                        )}
+                      </span>
+                      <ChevronRight
+                        aria-hidden="true"
+                        className="h-4 w-4 shrink-0 text-muted-foreground"
+                      />
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          );
+        })}
+      </div>
 
       {nextCursor && (
         <Button
