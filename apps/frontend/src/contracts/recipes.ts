@@ -176,8 +176,12 @@ export interface ExecutionProposalLine {
   requiredQuantity: number;
   /** Lot canonical unit: `Gram`, `Milliliter`, or `Unit`. */
   unit: string;
-  /** `ready`, `insufficient`, `protected`, `lot_unavailable`, or `not_tracked`. */
+  /** `ready`, `insufficient`, `protected`, `lot_unavailable`, `not_tracked`, or `skipped`. */
   status: string;
+  /** The session's change to this ingredient (PLAN-0042 Phase 2): `substitute`, `quantity`, or `skip`. */
+  adjustment?: string | null;
+  /** The recipe's own name when the cook used something else; `displayName` is then the substitute. */
+  originalName?: string | null;
   lotId: string | null;
   proposedQuantity: number | null;
   /** Quantity of the lot the owner protected; never proposed (PLAN-0029 Phase 3). */
@@ -208,6 +212,17 @@ export interface ExecutionPantryLot {
   reservedFor: ExecutionProposalLine["reservedElsewhere"];
 }
 
+/**
+ * A change the cook made to one ingredient while cooking (PLAN-0042 Phase 2). `quantity` is the
+ * amount used this time, in the proposal line's unit.
+ */
+export interface RecipeExecutionAdjustment {
+  ingredientId: string;
+  kind: "substitute" | "quantity" | "skip";
+  substituteName: string | null;
+  quantity: number | null;
+}
+
 /** One recipe execution; `proposal` is present while in progress. */
 export interface RecipeExecution {
   executionId: string;
@@ -227,6 +242,8 @@ export interface RecipeExecution {
     lines: ExecutionProposalLine[];
     pantryLots: ExecutionPantryLot[];
   } | null;
+  /** The session's ingredient changes; kept after completion for the recipe editor. */
+  adjustments: RecipeExecutionAdjustment[];
 }
 
 /** Compact in-progress execution. */
@@ -456,6 +473,12 @@ export interface RecipeRepository {
   ): Promise<RecipeExecution>;
   abandonExecution(
     executionId: string,
+    options: { csrfToken: string; signal?: AbortSignal },
+  ): Promise<RecipeExecution>;
+  /** Replaces the session's ingredient adjustments; returns the session with its new proposal. */
+  setExecutionAdjustments(
+    executionId: string,
+    adjustments: RecipeExecutionAdjustment[],
     options: { csrfToken: string; signal?: AbortSignal },
   ): Promise<RecipeExecution>;
 }

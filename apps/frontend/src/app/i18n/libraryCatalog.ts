@@ -64,6 +64,8 @@ export const REQUIRED_LIBRARY_I18N_KEYS = [
   "editor.hint.edit",
   "editor.hint.variation",
   "editor.cookingNotes",
+  "editor.cookingAdjustments",
+  "editor.cookingAdjustmentsHint",
   "editor.cookingRating",
   "editor.name",
   "editor.servings",
@@ -185,6 +187,9 @@ const ptBR: Record<string, string> = {
   "editor.hint.variation":
     "A variação vira uma receita nova, ligada a esta. A original não muda.",
   "editor.cookingNotes": "Suas anotações deste preparo",
+  "editor.cookingAdjustments": "Ajustes do preparo já aplicados",
+  "editor.cookingAdjustmentsHint":
+    "Trocas e quantidades foram passadas para as porções da receita; o que você não usou ficou como opcional. Revise antes de salvar.",
   "editor.cookingRating": "Nota que você deu: {{value}} de 5",
   "editor.name": "Nome",
   "editor.servings": "Porções",
@@ -308,6 +313,9 @@ const en: Record<string, string> = {
   "editor.hint.variation":
     "The variation becomes a new recipe linked to this one. The original does not change.",
   "editor.cookingNotes": "Your notes from this cooking",
+  "editor.cookingAdjustments": "Changes from this cooking, already applied",
+  "editor.cookingAdjustmentsHint":
+    "Swaps and amounts were converted to the recipe's portions; what you left out is now optional. Review before saving.",
   "editor.cookingRating": "Your rating: {{value}} of 5",
   "editor.name": "Name",
   "editor.servings": "Servings",
@@ -432,6 +440,9 @@ const es: Record<string, string> = {
   "editor.hint.variation":
     "La variante se convierte en una receta nueva vinculada a esta. La original no cambia.",
   "editor.cookingNotes": "Tus notas de esta preparación",
+  "editor.cookingAdjustments": "Cambios de esta preparación, ya aplicados",
+  "editor.cookingAdjustmentsHint":
+    "Los cambios y cantidades se pasaron a las porciones de la receta; lo que no usaste quedó como opcional. Revisa antes de guardar.",
   "editor.cookingRating": "Tu nota: {{value}} de 5",
   "editor.name": "Nombre",
   "editor.servings": "Porciones",

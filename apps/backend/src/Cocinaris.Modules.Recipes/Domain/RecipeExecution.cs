@@ -74,6 +74,37 @@ public sealed class RecipeExecution
     /// </summary>
     public Guid? MenuEntryId { get; private init; }
 
+    /// <summary>Gets the cook's ingredient changes in this session (PLAN-0042 Phase 2), at most one per ingredient.</summary>
+    public IReadOnlyList<RecipeExecutionAdjustment> Adjustments { get; private set; } = [];
+
+    /// <summary>
+    /// Replaces the session's ingredient adjustments. Only an in-progress session can change, and
+    /// the list must be valid: well-formed entries, at most <see cref="RecipeExecutionAdjustment.MaxCount"/>,
+    /// one per ingredient.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">Thrown when the execution is not in progress.</exception>
+    /// <exception cref="ArgumentException">Thrown when the list is invalid.</exception>
+    public void SetAdjustments(IReadOnlyList<RecipeExecutionAdjustment> adjustments, DateTimeOffset now)
+    {
+        EnsureInProgress();
+        if (adjustments.Count > RecipeExecutionAdjustment.MaxCount || adjustments.Select(item => item.IngredientId).Distinct(StringComparer.Ordinal).Count() != adjustments.Count)
+        {
+            throw new ArgumentException($"At most {RecipeExecutionAdjustment.MaxCount} adjustments, one per ingredient.");
+        }
+
+        foreach (var adjustment in adjustments)
+        {
+            if (!adjustment.IsValid(out var error))
+            {
+                throw new ArgumentException(error);
+            }
+        }
+
+        Adjustments = adjustments.Select(item => item with { SubstituteName = item.SubstituteName?.Trim() }).ToList();
+        UpdatedAt = now;
+        Version = Guid.NewGuid();
+    }
+
     /// <summary>Starts cooking a recipe revision.</summary>
     /// <exception cref="ArgumentException">Thrown when identity or servings are invalid.</exception>
     public static RecipeExecution Start(Guid ownerUserId, Guid recipeId, int revisionNumber, int servings, DateTimeOffset now, Guid? menuEntryId = null)
@@ -99,7 +130,7 @@ public sealed class RecipeExecution
     }
 
     /// <summary>Restores a persisted execution without exposing persistence types to the domain.</summary>
-    public static RecipeExecution Restore(Guid id, Guid ownerUserId, Guid recipeId, int revisionNumber, int servings, RecipeExecutionStatus status, DateTimeOffset startedAt, DateTimeOffset updatedAt, DateTimeOffset? finishedAt, Guid? inventoryBatchId, Guid? completionKey, int? rating, string? notes, Guid version, Guid? menuEntryId = null) => new()
+    public static RecipeExecution Restore(Guid id, Guid ownerUserId, Guid recipeId, int revisionNumber, int servings, RecipeExecutionStatus status, DateTimeOffset startedAt, DateTimeOffset updatedAt, DateTimeOffset? finishedAt, Guid? inventoryBatchId, Guid? completionKey, int? rating, string? notes, Guid version, Guid? menuEntryId = null, IReadOnlyList<RecipeExecutionAdjustment>? adjustments = null) => new()
     {
         Id = id,
         OwnerUserId = ownerUserId,
@@ -115,7 +146,8 @@ public sealed class RecipeExecution
         Rating = rating,
         Notes = notes,
         Version = version,
-        MenuEntryId = menuEntryId
+        MenuEntryId = menuEntryId,
+        Adjustments = adjustments ?? []
     };
 
     /// <summary>Records completion. Only an in-progress execution can complete.</summary>

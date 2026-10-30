@@ -8,6 +8,7 @@ import {
   type RecipeApiErrorCode,
   type RecipeCandidate,
   type RecipeExecution,
+  type RecipeExecutionAdjustment,
   type RecipeExecutionSummary,
   type RecipeDetail,
   type RecipeGenerationSession,
@@ -270,6 +271,10 @@ function mapExecution(dto: ExecutionDto): RecipeExecution {
             ),
             unit: String(line.unit),
             status: String(line.status),
+            adjustment:
+              typeof line.adjustment === "string" ? line.adjustment : null,
+            originalName:
+              typeof line.originalName === "string" ? line.originalName : null,
             lotId: typeof line.lotId === "string" ? line.lotId : null,
             proposedQuantity:
               line.proposedQuantity === null ||
@@ -304,6 +309,15 @@ function mapExecution(dto: ExecutionDto): RecipeExecution {
           })),
         }
       : null,
+    adjustments: (dto.adjustments ?? [])
+      .filter((item) => ["substitute", "quantity", "skip"].includes(item.kind))
+      .map((item) => ({
+        ingredientId: String(item.ingredientId),
+        kind: item.kind as RecipeExecutionAdjustment["kind"],
+        substituteName:
+          typeof item.substituteName === "string" ? item.substituteName : null,
+        quantity: typeof item.quantity === "number" ? item.quantity : null,
+      })),
   };
 }
 
@@ -960,6 +974,38 @@ export function createLiveRecipeRepository(options?: {
         );
         if (!response.ok || !data) {
           await throwForFailure(response, "Unable to finish cooking.", error);
+        }
+        assertData(data, response);
+        return mapExecution(data);
+      } catch (err) {
+        wrapAbort(err);
+      }
+    },
+
+    async setExecutionAdjustments(
+      executionId,
+      adjustments,
+      { csrfToken, signal },
+    ) {
+      try {
+        const { data, error, response } = await client.PUT(
+          "/api/v1/recipes/executions/{executionId}/adjustments",
+          {
+            params: {
+              path: { executionId },
+              header: { "X-CSRF-TOKEN": csrfToken },
+            },
+            body: { adjustments },
+            signal,
+            credentials: "include",
+          },
+        );
+        if (!response.ok || !data) {
+          await throwForFailure(
+            response,
+            "Unable to save the cooking adjustments.",
+            error,
+          );
         }
         assertData(data, response);
         return mapExecution(data);

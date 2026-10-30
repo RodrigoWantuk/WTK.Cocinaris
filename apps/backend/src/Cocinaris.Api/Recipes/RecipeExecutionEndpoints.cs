@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using Cocinaris.Modules.Recipes.Application;
+using Cocinaris.Modules.Recipes.Domain;
 
 namespace Cocinaris.Api.Recipes;
 
@@ -25,6 +26,14 @@ public static class RecipeExecutionEndpoints
             .Produces<RecipeExecutionResponse>()
             .ProducesProblem(400)
             .ProducesProblem(404)
+            .ProducesProblem(412)
+            .ProducesProblem(422);
+        group.MapPut("/executions/{executionId:guid}/adjustments", (RecipeExecutionApiService service, Guid executionId, RecipeExecutionAdjustmentsRequest body, HttpContext context, CancellationToken cancellationToken) => service.SetAdjustmentsAsync(executionId, body, context, cancellationToken))
+            .RequireRateLimiting("mutation")
+            .Produces<RecipeExecutionResponse>()
+            .ProducesProblem(400)
+            .ProducesProblem(404)
+            .ProducesProblem(409)
             .ProducesProblem(412)
             .ProducesProblem(422);
         group.MapPost("/executions/{executionId:guid}/abandonment", (RecipeExecutionApiService service, Guid executionId, HttpContext context, CancellationToken cancellationToken) => service.AbandonAsync(executionId, context, cancellationToken))
@@ -67,6 +76,10 @@ public sealed class RecipeExecutionApiService(RecipeExecutionApplicationService 
         return ToResult(await application.CompleteAsync(command, cancellationToken), request.HttpContext.TraceIdentifier, ToResponse);
     }
 
+    /// <summary>Replaces the session's ingredient adjustments (PLAN-0042 Phase 2).</summary>
+    public async Task<IResult> SetAdjustmentsAsync(Guid executionId, RecipeExecutionAdjustmentsRequest body, HttpContext context, CancellationToken cancellationToken) =>
+        ToResult(await application.SetAdjustmentsAsync(executionId, (body.Adjustments ?? []).Select(item => new RecipeExecutionAdjustment(item.IngredientId ?? string.Empty, item.Kind ?? string.Empty, item.SubstituteName, item.Quantity)).ToList(), cancellationToken), context.TraceIdentifier, ToResponse);
+
     /// <summary>Abandons an execution without touching inventory.</summary>
     public async Task<IResult> AbandonAsync(Guid executionId, HttpContext context, CancellationToken cancellationToken) =>
         ToResult(await application.AbandonAsync(executionId, cancellationToken), context.TraceIdentifier, ToResponse);
@@ -75,9 +88,10 @@ public sealed class RecipeExecutionApiService(RecipeExecutionApplicationService 
         view.ExecutionId, view.RecipeId, view.RevisionNumber, view.RecipeName, view.Servings, view.RecipeServings, view.Status, view.StartedAt, view.FinishedAt, view.InventoryBatchId, view.Rating, view.Notes, view.NormalizedRecipeJson,
         view.Proposal is { } proposal
             ? new RecipeExecutionProposalResponse(
-                proposal.Lines.Select(line => new RecipeExecutionProposalLineResponse(line.IngredientId, line.DisplayName, line.Optional, line.RequiredQuantity, line.Unit, line.Status, line.LotId, line.ProposedQuantity, line.ProtectedQuantity, (line.ReservedElsewhere ?? []).Select(item => new RecipeExecutionReservationResponse(item.MenuEntryId, item.RecipeName, item.PlannedDate, item.Quantity)).ToList())).ToList(),
+                proposal.Lines.Select(line => new RecipeExecutionProposalLineResponse(line.IngredientId, line.DisplayName, line.Optional, line.RequiredQuantity, line.Unit, line.Status, line.LotId, line.ProposedQuantity, line.ProtectedQuantity, (line.ReservedElsewhere ?? []).Select(item => new RecipeExecutionReservationResponse(item.MenuEntryId, item.RecipeName, item.PlannedDate, item.Quantity)).ToList(), line.Adjustment, line.OriginalName)).ToList(),
                 proposal.PantryLots.Select(lot => new RecipeExecutionPantryLotResponse(lot.LotId, lot.ProductName, lot.Quantity, lot.Unit, lot.StorageLocation, lot.Version, lot.ProtectedQuantity, lot.ReservedQuantity, (lot.ReservedFor ?? []).Select(item => new RecipeExecutionReservationResponse(item.MenuEntryId, item.RecipeName, item.PlannedDate, item.Quantity)).ToList())).ToList())
-            : null);
+            : null,
+        (view.Adjustments ?? []).Select(item => new RecipeExecutionAdjustmentResponse(item.IngredientId, item.Kind, item.SubstituteName, item.Quantity)).ToList());
 
     private static IResult ToResult<TApp, THttp>(RecipeApplicationResult<TApp> result, string traceId, Func<TApp, THttp> map)
     {
@@ -127,12 +141,12 @@ public sealed record RecipeExecutionLeftoverRequest(int Portions, string Storage
 /// <summary>Completion body. Every field is the user's confirmed choice; none is inferred server-side.</summary>
 public sealed record CompleteRecipeExecutionRequest(IReadOnlyList<RecipeExecutionConsumptionRequest>? Consumptions, RecipeExecutionLeftoverRequest? Leftover, int? Rating, string? Notes);
 
-/// <summary>One proposal line; <c>status</c> is <c>ready</c>, <c>insufficient</c>, <c>lot_unavailable</c>, or <c>not_tracked</c>.</summary>
+/// <summary>One proposal line; <c>status</c> is <c>ready</c>, <c>insufficient</c>, <c>lot_unavailable</c>, <c>not_tracked</c>, or <c>skipped</c> (left out this time). <c>Adjustment</c> is the session's change to it (<c>substitute</c>, <c>quantity</c>, <c>skip</c>), and <c>OriginalName</c> the recipe's name when substituted.</summary>
 /// <remarks>
 /// <c>Status</c> adds <c>protected</c> (PLAN-0029 Phase 3). <c>ProtectedQuantity</c> is never proposed;
 /// <c>ReservedElsewhere</c> lists other menu meals counting on the same lot.
 /// </remarks>
-public sealed record RecipeExecutionProposalLineResponse(string IngredientId, string DisplayName, bool Optional, decimal RequiredQuantity, string Unit, string Status, Guid? LotId, decimal? ProposedQuantity, decimal ProtectedQuantity, IReadOnlyList<RecipeExecutionReservationResponse> ReservedElsewhere);
+public sealed record RecipeExecutionProposalLineResponse(string IngredientId, string DisplayName, bool Optional, decimal RequiredQuantity, string Unit, string Status, Guid? LotId, decimal? ProposedQuantity, decimal ProtectedQuantity, IReadOnlyList<RecipeExecutionReservationResponse> ReservedElsewhere, string? Adjustment, string? OriginalName);
 
 /// <summary>Quantity of a lot another menu meal counts on.</summary>
 public sealed record RecipeExecutionReservationResponse(Guid MenuEntryId, string RecipeName, DateOnly? PlannedDate, decimal Quantity);
@@ -144,8 +158,27 @@ public sealed record RecipeExecutionPantryLotResponse(Guid LotId, string Product
 /// <summary>Deterministic, editable completion proposal.</summary>
 public sealed record RecipeExecutionProposalResponse(IReadOnlyList<RecipeExecutionProposalLineResponse> Lines, IReadOnlyList<RecipeExecutionPantryLotResponse> PantryLots);
 
-/// <summary>One recipe execution. <c>status</c> is <c>InProgress</c>, <c>Completed</c>, or <c>Abandoned</c>; <c>proposal</c> is present while in progress.</summary>
-public sealed record RecipeExecutionResponse(Guid ExecutionId, Guid RecipeId, int RevisionNumber, string RecipeName, int Servings, int RecipeServings, string Status, DateTimeOffset StartedAt, DateTimeOffset? FinishedAt, Guid? InventoryBatchId, int? Rating, string? Notes, string NormalizedRecipeJson, RecipeExecutionProposalResponse? Proposal);
+/// <summary>One recipe execution. <c>status</c> is <c>InProgress</c>, <c>Completed</c>, or <c>Abandoned</c>; <c>proposal</c> is present while in progress; <c>adjustments</c> are the session's ingredient changes (PLAN-0042 Phase 2).</summary>
+public sealed record RecipeExecutionResponse(Guid ExecutionId, Guid RecipeId, int RevisionNumber, string RecipeName, int Servings, int RecipeServings, string Status, DateTimeOffset StartedAt, DateTimeOffset? FinishedAt, Guid? InventoryBatchId, int? Rating, string? Notes, string NormalizedRecipeJson, RecipeExecutionProposalResponse? Proposal, IReadOnlyList<RecipeExecutionAdjustmentResponse> Adjustments);
 
 /// <summary>Compact in-progress execution.</summary>
 public sealed record RecipeExecutionSummaryResponse(Guid ExecutionId, Guid RecipeId, string RecipeName, int Servings, DateTimeOffset StartedAt);
+
+/// <summary>One ingredient change made while cooking (PLAN-0042 Phase 2).</summary>
+/// <param name="IngredientId">Recipe ingredient.</param>
+/// <param name="Kind"><c>substitute</c>, <c>quantity</c>, or <c>skip</c>.</param>
+/// <param name="SubstituteName">What was used instead, for <c>substitute</c>.</param>
+/// <param name="Quantity">Amount used this time, in the proposal line's unit.</param>
+public sealed record RecipeExecutionAdjustmentResponse(string IngredientId, string Kind, string? SubstituteName, decimal? Quantity);
+
+/// <summary>Request body replacing a session's ingredient adjustments; an empty list clears them.</summary>
+/// <param name="Adjustments">At most 40, one per ingredient.</param>
+public sealed record RecipeExecutionAdjustmentsRequest(IReadOnlyList<RecipeExecutionAdjustmentRequestItem>? Adjustments);
+
+/// <summary>One requested ingredient adjustment.</summary>
+/// <param name="IngredientId">Recipe ingredient.</param>
+/// <param name="Kind"><c>substitute</c>, <c>quantity</c>, or <c>skip</c>.</param>
+/// <param name="SubstituteName">What was used instead (1–120 characters), for <c>substitute</c>.</param>
+/// <param name="Quantity">Amount used this time (required for <c>quantity</c>, optional for <c>substitute</c>).</param>
+public sealed record RecipeExecutionAdjustmentRequestItem(string? IngredientId, string? Kind, string? SubstituteName, decimal? Quantity);
+

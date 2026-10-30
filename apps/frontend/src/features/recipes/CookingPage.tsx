@@ -12,6 +12,7 @@ import {
 import { formatLocaleDecimal, parseLocaleDecimal } from "@/lib/localeDecimal";
 import { parseNormalizedRecipeJson } from "./parseNormalizedRecipe";
 import { RecipeContent } from "./RecipeContent";
+import { CookingAdjustments } from "./CookingAdjustments";
 import {
   FinishScreen,
   PrepScreen,
@@ -79,6 +80,8 @@ function writeChecked(executionId: string, keys: Set<string> | null) {
 interface ReviewLine {
   key: string;
   name: string;
+  /** The recipe's name when the cook used something else (PLAN-0042 Phase 2). */
+  originalName: string | null;
   status: string;
   include: boolean;
   lotId: string;
@@ -140,6 +143,7 @@ export function CookingPage() {
             value.proposal.lines.map((line, index) => ({
               key: `${line.ingredientId}-${index}`,
               name: line.displayName,
+              originalName: line.originalName ?? null,
               status: line.status,
               include: line.lotId !== null && (line.proposedQuantity ?? 0) > 0,
               lotId: line.lotId ?? "",
@@ -417,6 +421,9 @@ export function CookingPage() {
             parsed.stages.length > 0 ? goToStep(0) : setMode("finish")
           }
         />
+        {execution.status === "InProgress" ? (
+          <CookingAdjustments execution={execution} onChanged={setExecution} />
+        ) : null}
         {guideLinks}
       </div>
     );
@@ -493,6 +500,9 @@ export function CookingPage() {
             onToggle={toggle}
           />
         ) : null}
+        {execution.status === "InProgress" ? (
+          <CookingAdjustments execution={execution} onChanged={setExecution} />
+        ) : null}
         <div className="flex flex-wrap gap-2">
           <Button
             type="button"
@@ -568,6 +578,12 @@ export function CookingPage() {
                     }
                   />
                   {t("cooking.review.use")}: {line.name}
+                  {line.originalName ? (
+                    <span className="font-normal text-muted-foreground">
+                      {" "}
+                      {t("cooking.adjust.instead", { name: line.originalName })}
+                    </span>
+                  ) : null}
                 </label>
                 <p className="mt-1 text-xs text-muted-foreground">
                   {t(`cooking.review.status.${line.status}`)}

@@ -5,8 +5,8 @@
 - **Priority:** High
 - **Owner:** Claude Code (claimed 2026-10-29)
 - **Created:** 2026-10-29
-- **Last updated:** 2026-10-29
-- **Branch:** `agent/plan-0042-cook-and-reconcile` (Phase 1, merged and deleted); Phase 2 finalization on `agent/plan-0038-recipe-library`
+- **Last updated:** 2026-10-30
+- **Branch:** `agent/plan-0042-cook-and-reconcile` (Phase 1, merged and deleted); Phase 2 finalization on `agent/plan-0038-recipe-library`; Phase 2 remainder on `agent/plan-0042-cooking-adjustments`
 - **Pull request:** Phase 1 merged via [PR #50](https://github.com/RodrigoWantuk/WTK.Cocinaris/pull/50) at `595af8e`
 - **Roadmap entry:** [`PLAN-0031-amendment-2026-10-28-coverage-review.md`](PLAN-0031-amendment-2026-10-28-coverage-review.md) (PLAN-0042, G-14)
 - **Related documents:** `docs/domain/recipes-and-cooking.md` (execution start, finalization), `docs/domain/inventory-lifecycle.md` (recipe completion reconciliation), `docs/product/user-journeys.md`
@@ -33,7 +33,7 @@ Language and detail cannot be checked deterministically. They are recorded as ev
 | Phase | Outcome | Depends on |
 | --- | --- | --- |
 | 1 | Start a recipe execution explicitly; cooking view with stage checklist; deterministic, editable completion proposal from the pinned revision and the pantry; completion that consumes the confirmed lots and stores leftovers in one database transaction; abandonment; resume from the home | PLAN-0028, PLAN-0023 preparation contract, PLAN-0037 |
-| 2 | Execution-local substitutions and notes; save changes as a new revision or a derived recipe at finalization (finalization delivered with PLAN-0038; substitutions during cooking remain) | PLAN-0038 |
+| 2 | Execution-local substitutions and notes; save changes as a new revision or a derived recipe at finalization (finalization delivered with PLAN-0038; changes during cooking delivered 2026-10-30) | PLAN-0038 |
 | 3 | Menu-entry executions (delivered with PLAN-0029 Phase 1: `menuEntryId` on start); reservations and protections in the proposal (delivered with PLAN-0029 Phase 3; reservations are derived, so a cooked meal releases them by no longer counting); preparation-route due windows | PLAN-0029 |
 | 4 | Stage detail levels by profile, sensory references, timers | Phase 1 |
 
@@ -115,7 +115,10 @@ Text troubleshooting is PLAN-0045.
 - **Not run:** full backend and frontend suites; the browser smoke matrix; the full local gates (owner direction: lean validation).
 - **Phase 1:** merged via PR #50 at `595af8e` and deployed from `main`.
 - **Phase 2:** the finalization part was delivered with PLAN-0038. After completion, "Salvar ajustes na receita" and "Criar variação" open the recipe editor with the session's notes, and the saved revision or derived recipe records the session (`sourceExecutionId`).
-- **Exact next action:** Phase 2 remainder: record substitutions and quantity changes during cooking in the execution, and pre-fill the editor from them. Alternatively Phase 3, after PLAN-0029.
+- **Phase 2 remainder (2026-10-30, branch `agent/plan-0042-cooking-adjustments`):** changes during cooking. The session stores a list of per-ingredient adjustments (`substitute` with a name and optional amount, `quantity`, `skip`) in `recipes.recipe_executions."AdjustmentsJson"` (jsonb, default `[]`, migration `AddExecutionAdjustments`). `PUT /api/v1/recipes/executions/{executionId}/adjustments` replaces the list while the session is in progress (unknown ingredient ids, duplicates, more than 40, or bad values are `validation_failed`; a finished session is `domain_rule_violated`). The proposal follows the adjustments (substitute looked up by its own name, quantity used as given, `skipped` lines) and the editor opened from the finished screen applies them to the draft (rename, amounts converted back to the recipe's servings, skipped → optional) and lists them. The inventory OpenAPI transformer no longer adds the lot `If-Match`/`Idempotency-Key` headers to non-inventory paths ending in `/adjustments`.
+  - Validation: unit `RecipeExecutionTests` (5 passing, 2 new); integration `CookingAdjustmentApiTests` (new) with `RecipeExecutionApiTests` execution tests, `ProfileContractAndSecurityTests`, and migration tests (48 run, 47 passing; the one failure was `IdeasWrittenForOnePersonAreServedToAnotherWithoutAnyAiCall`, a test-order flake fixed in this run: the three ideas can tie on score, so the test now accepts any of the second person's lots and rejects the first person's; then 5/5 passing in isolation); architecture tests (14 passing); `dotnet format` verified; OpenAPI regenerated (additions only), client regenerated and drift check passed; frontend `src/features/recipes` (5 files, 31 tests, including a new cooking-adjustment test and `applyCookingAdjustments.test.ts`) and `src/app` (61 tests) passing; typecheck, ESLint, and Prettier clean.
+  - Not run: full suites; browser journey.
+- **Exact next action:** After the owner merges, deploy `main`. Phase 3 remainder (preparation-route due windows) and Phase 4 are open; the owner's next priority is PLAN-0029 Phase 4.
 - **Blockers:** None.
 
 ## Progress log
@@ -135,3 +138,8 @@ Text troubleshooting is PLAN-0045.
 
 - The owner merged PR #50 (`595af8e`), and `main` was deployed.
 - Phase 2 finalization was delivered on the PLAN-0038 branch: the finished screen saves changes as a revision or a derived recipe that cites the completed session. Substitutions recorded during cooking remain open.
+
+### 2026-10-30T13:00:00Z — Claude Code
+
+- Delivered the Phase 2 remainder: changes made while cooking (substitute, different amount, left out) are stored on the session, drive the completion proposal, and are applied to the editor draft opened after cooking. The saved recipe changes only when the owner saves.
+- Fixed the order-dependent assertion in the idea library integration test found while validating.
