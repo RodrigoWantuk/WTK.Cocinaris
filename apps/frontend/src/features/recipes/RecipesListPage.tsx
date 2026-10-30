@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { PenLine, Sparkles } from "lucide-react";
+import { BookOpen, PenLine, SearchX, Sparkles } from "lucide-react";
+import { EmptyState } from "@/components/feedback/EmptyState";
 import { RecipeCard } from "./RecipeCard";
 import { SavedCandidatesSection } from "./SavedCandidatesSection";
 import { usePendingThumbnailRefresh } from "./usePendingThumbnailRefresh";
@@ -213,22 +214,22 @@ export function RecipesListPage() {
       ) : null}
 
       {items.length === 0 ? (
-        <div
-          data-testid="recipes-empty"
-          role="status"
-          className="surface flex flex-col items-center gap-2 p-8 text-center"
-        >
-          {emptyKey ? (
-            <p>{t(emptyKey)}</p>
-          ) : (
-            <>
-              <p className="font-display text-xl">{t("recipes.empty")}</p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {t("recipes.empty.guidance")}
-              </p>
-            </>
-          )}
-        </div>
+        <EmptyState
+          testId="recipes-empty"
+          icon={emptyKey ? SearchX : BookOpen}
+          title={emptyKey ? t(emptyKey) : t("recipes.empty")}
+          detail={emptyKey ? undefined : t("recipes.empty.guidance")}
+          actions={
+            emptyKey ? undefined : (
+              <Button asChild>
+                <Link to="/app/receitas/gerar">
+                  <Sparkles aria-hidden="true" />
+                  {t("recipes.actions.generate")}
+                </Link>
+              </Button>
+            )
+          }
+        />
       ) : (
         // A grid of image cards (PLAN-0058): two per row on phones, three from `sm`, four on
         // wide screens, so the library reads as dishes rather than a list of names.

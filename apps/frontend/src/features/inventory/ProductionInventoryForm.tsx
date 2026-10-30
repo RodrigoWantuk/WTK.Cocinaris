@@ -610,48 +610,53 @@ export function ProductionInventoryForm({ mode }: { mode: "create" | "edit" }) {
         </p>
       )}
 
-      <label className="block space-y-1">
-        <span className="font-semibold">
-          {t("inventory.fields.productName")}
-        </span>
-        <ProductNameCombobox
-          value={productName}
-          onChange={setProductName}
-          repository={repo}
-          language={locale}
-          disabled={busy || !editReady}
-          invalid={Boolean(fieldErrors.productName)}
-        />
-      </label>
-      {mode === "create" && !productName.trim() && (
-        <div
-          className="flex flex-wrap gap-2"
-          role="group"
-          aria-label={t("inventory.staples.label")}
-          data-testid="inventory-staples"
-        >
-          {staples.map((staple) => (
-            <button
-              key={staple.name}
-              type="button"
-              disabled={busy}
-              onClick={() => {
-                setProductName(staple.name);
-                setUnit(staple.unit);
-                setStorage(staple.storage);
-              }}
-              className="h-9 rounded-full border border-border px-3 text-sm font-medium hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              {staple.name}
-            </button>
-          ))}
-        </div>
-      )}
+      {/* Three short steps on surfaces (PLAN-0058): what, how much, where. */}
+      <section className="surface space-y-3 p-4">
+        <label className="block space-y-2">
+          <span className="flex items-center gap-2 font-semibold">
+            <StepNumber value={1} />
+            {t("inventory.fields.productName")}
+          </span>
+          <ProductNameCombobox
+            value={productName}
+            onChange={setProductName}
+            repository={repo}
+            language={locale}
+            disabled={busy || !editReady}
+            invalid={Boolean(fieldErrors.productName)}
+          />
+        </label>
+        {mode === "create" && !productName.trim() && (
+          <div
+            className="flex flex-wrap gap-2"
+            role="group"
+            aria-label={t("inventory.staples.label")}
+            data-testid="inventory-staples"
+          >
+            {staples.map((staple) => (
+              <button
+                key={staple.name}
+                type="button"
+                disabled={busy}
+                onClick={() => {
+                  setProductName(staple.name);
+                  setUnit(staple.unit);
+                  setStorage(staple.storage);
+                }}
+                className="h-9 rounded-full border border-border bg-card px-3 text-sm font-medium transition-colors duration-150 hover:border-primary/40 hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                {staple.name}
+              </button>
+            ))}
+          </div>
+        )}
+      </section>
 
       {mode === "create" && (
-        <>
+        <section className="surface space-y-3 p-4">
           <fieldset className="space-y-2">
-            <legend className="mb-2 font-semibold">
+            <legend className="mb-2 flex items-center gap-2 font-semibold">
+              <StepNumber value={2} />
               {t("inventory.fields.quantityMode")}
             </legend>
             <div className="flex flex-wrap gap-2">
@@ -660,8 +665,8 @@ export function ProductionInventoryForm({ mode }: { mode: "create" | "edit" }) {
                   key={option}
                   className={`relative inline-flex h-11 cursor-pointer items-center rounded-full px-4 text-[15px] font-semibold focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 ${
                     quantityMode === option
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-secondary text-secondary-foreground"
+                      ? "border border-primary bg-primary text-primary-foreground"
+                      : "border border-border bg-card text-foreground hover:bg-secondary"
                   }`}
                 >
                   <input
@@ -698,7 +703,7 @@ export function ProductionInventoryForm({ mode }: { mode: "create" | "edit" }) {
               <label className="space-y-1">
                 <span>{t("inventory.fields.unit")}</span>
                 <select
-                  className="flex h-11 w-full rounded-xl border border-input bg-background px-3 text-[15px]"
+                  className="flex h-11 w-full rounded-xl border border-input bg-card px-3 text-[15px] focus-visible:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
                   value={unit}
                   disabled={busy}
                   onChange={(event) =>
@@ -725,7 +730,7 @@ export function ProductionInventoryForm({ mode }: { mode: "create" | "edit" }) {
             <label className="block space-y-1">
               <span>{t("inventory.fields.availability")}</span>
               <select
-                className="flex h-11 w-full rounded-xl border border-input bg-background px-3 text-[15px]"
+                className="flex h-11 w-full rounded-xl border border-input bg-card px-3 text-[15px] focus-visible:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
                 value={availability}
                 disabled={busy}
                 onChange={(event) =>
@@ -742,69 +747,71 @@ export function ProductionInventoryForm({ mode }: { mode: "create" | "edit" }) {
               </select>
             </label>
           )}
-        </>
+        </section>
       )}
 
-      <fieldset className="space-y-2">
-        <legend className="mb-2 font-semibold">
-          {t("inventory.fields.location")}
-        </legend>
-        <div className="flex flex-wrap gap-2">
-          {(["Pantry", "Refrigerator", "Freezer", "Other"] as const).map(
-            (loc) => (
-              <label
-                key={loc}
-                className={`relative inline-flex h-11 cursor-pointer items-center rounded-full px-4 text-[15px] font-semibold focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 ${
-                  storageLocation === loc
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-secondary text-secondary-foreground"
-                }`}
+      <section className="surface space-y-3 p-4">
+        <fieldset className="space-y-2">
+          <legend className="mb-2 flex items-center gap-2 font-semibold">
+            <StepNumber value={mode === "create" ? 3 : 2} />
+            {t("inventory.fields.location")}
+          </legend>
+          <div className="flex flex-wrap gap-2">
+            {(["Pantry", "Refrigerator", "Freezer", "Other"] as const).map(
+              (loc) => (
+                <label
+                  key={loc}
+                  className={`relative inline-flex h-11 cursor-pointer items-center rounded-full px-4 text-[15px] font-semibold focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 ${
+                    storageLocation === loc
+                      ? "border border-primary bg-primary text-primary-foreground"
+                      : "border border-border bg-card text-foreground hover:bg-secondary"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="storage-location"
+                    className="sr-only"
+                    data-testid={`inventory-location-${loc}`}
+                    checked={storageLocation === loc}
+                    disabled={busy || !editReady}
+                    onChange={() => setStorage(loc)}
+                  />
+                  {t(`inventory.location.${loc}`)}
+                </label>
+              ),
+            )}
+          </div>
+        </fieldset>
+
+        {storageLocation === "Other" && (
+          <label className="block space-y-1">
+            <span>{t("inventory.fields.customLocation")}</span>
+            <Input
+              data-testid="inventory-custom-location"
+              value={customLocation}
+              disabled={busy || !editReady}
+              maxLength={CUSTOM_LOCATION_MAX}
+              onChange={(event) => setCustomLocation(event.target.value)}
+              required
+              aria-invalid={Boolean(fieldErrors.customLocation)}
+              aria-describedby={
+                fieldErrors.customLocation ? "custom-location-error" : undefined
+              }
+            />
+            {fieldErrors.customLocation && (
+              <span
+                id="custom-location-error"
+                role="alert"
+                className="text-sm text-destructive"
               >
-                <input
-                  type="radio"
-                  name="storage-location"
-                  className="sr-only"
-                  data-testid={`inventory-location-${loc}`}
-                  checked={storageLocation === loc}
-                  disabled={busy || !editReady}
-                  onChange={() => setStorage(loc)}
-                />
-                {t(`inventory.location.${loc}`)}
-              </label>
-            ),
-          )}
-        </div>
-      </fieldset>
-
-      {storageLocation === "Other" && (
-        <label className="block space-y-1">
-          <span>{t("inventory.fields.customLocation")}</span>
-          <Input
-            data-testid="inventory-custom-location"
-            value={customLocation}
-            disabled={busy || !editReady}
-            maxLength={CUSTOM_LOCATION_MAX}
-            onChange={(event) => setCustomLocation(event.target.value)}
-            required
-            aria-invalid={Boolean(fieldErrors.customLocation)}
-            aria-describedby={
-              fieldErrors.customLocation ? "custom-location-error" : undefined
-            }
-          />
-          {fieldErrors.customLocation && (
-            <span
-              id="custom-location-error"
-              role="alert"
-              className="text-sm text-destructive"
-            >
-              {fieldErrors.customLocation}
-            </span>
-          )}
-        </label>
-      )}
-
+                {fieldErrors.customLocation}
+              </span>
+            )}
+          </label>
+        )}
+      </section>
       <details
-        className="group space-y-4"
+        className="surface group p-4"
         open={mode === "edit" ? true : undefined}
         data-testid="inventory-more-details"
       >
@@ -815,7 +822,7 @@ export function ProductionInventoryForm({ mode }: { mode: "create" | "edit" }) {
           <label className="block space-y-1">
             <span>{t("inventory.fields.packageState")}</span>
             <select
-              className="flex h-11 w-full rounded-xl border border-input bg-background px-3 text-[15px]"
+              className="flex h-11 w-full rounded-xl border border-input bg-card px-3 text-[15px] focus-visible:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
               value={packageState}
               disabled={busy || !editReady}
               onChange={(event) =>
@@ -909,5 +916,17 @@ export function ProductionInventoryForm({ mode }: { mode: "create" | "edit" }) {
         </Button>
       </div>
     </form>
+  );
+}
+
+/** The number of a form step, in an accent circle; decorative, the legend carries the meaning. */
+function StepNumber({ value }: { value: number }) {
+  return (
+    <span
+      aria-hidden="true"
+      className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground"
+    >
+      {value}
+    </span>
   );
 }

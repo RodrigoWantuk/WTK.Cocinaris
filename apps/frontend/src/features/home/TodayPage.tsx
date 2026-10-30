@@ -9,6 +9,7 @@ import {
   ChevronRight,
   Clock,
   Plus,
+  Refrigerator,
   ShoppingBasket,
   ShoppingCart,
   Snowflake,
@@ -92,6 +93,76 @@ function HomeSection({
         ) : null}
       </div>
       {children}
+    </section>
+  );
+}
+
+/**
+ * First-run welcome (PLAN-0058): shown while the person has no recipes yet, it turns the empty
+ * home into three steps, each a link to where it happens. It disappears by itself once a recipe
+ * exists; nothing is stored to hide it.
+ */
+function WelcomeCard() {
+  const { t } = useProductionI18n();
+  const steps = [
+    {
+      to: "/app/despensa/novo",
+      icon: Refrigerator,
+      title: t("today.welcome.step1"),
+      detail: t("today.welcome.step1Detail"),
+    },
+    {
+      to: "/app/receitas/gerar",
+      icon: Sparkles,
+      title: t("today.welcome.step2"),
+      detail: t("today.welcome.step2Detail"),
+    },
+    {
+      to: "/app/cardapio",
+      icon: CalendarDays,
+      title: t("today.welcome.step3"),
+      detail: t("today.welcome.step3Detail"),
+    },
+  ];
+  return (
+    <section
+      aria-labelledby="today-welcome"
+      data-testid="today-welcome"
+      className="overflow-hidden rounded-2xl border border-primary/20 bg-accent text-accent-foreground"
+    >
+      <div className="p-5">
+        <ChefHat aria-hidden="true" className="h-8 w-8" />
+        <h2 id="today-welcome" className="mt-3 font-display text-2xl">
+          {t("today.welcome.title")}
+        </h2>
+        <p className="mt-1 text-sm opacity-90">{t("today.welcome.detail")}</p>
+      </div>
+      <ol className="divide-y divide-primary/10 border-t border-primary/10 bg-card text-foreground">
+        {steps.map(({ to, icon: Icon, title, detail }, index) => (
+          <li key={to}>
+            <Link
+              to={to}
+              className="flex items-center gap-3 p-4 transition-colors duration-150 hover:bg-secondary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+            >
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                <Icon aria-hidden="true" className="h-5 w-5" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block font-semibold">
+                  {index + 1}. {title}
+                </span>
+                <span className="block text-sm text-muted-foreground">
+                  {detail}
+                </span>
+              </span>
+              <ChevronRight
+                aria-hidden="true"
+                className="h-5 w-5 shrink-0 text-muted-foreground"
+              />
+            </Link>
+          </li>
+        ))}
+      </ol>
     </section>
   );
 }
@@ -357,6 +428,12 @@ export function TodayPage() {
       t("recipes.detail.servings", { count: recipe.servings }),
     ].filter((value): value is string => Boolean(value));
 
+  const firstRun =
+    saved.status === "ready" &&
+    saved.items.length === 0 &&
+    cooking.status === "ready" &&
+    cooking.items.length === 0;
+
   return (
     <div data-testid="today-page" className="space-y-8">
       <header>
@@ -365,6 +442,8 @@ export function TodayPage() {
         </p>
         <h1 className="font-display text-3xl">{t("home.primaryQuestion")}</h1>
       </header>
+
+      {firstRun ? <WelcomeCard /> : null}
 
       {/* Resuming what is on the stove comes before anything new. */}
       {cooking.status === "ready" && cooking.items.length > 0 ? (
@@ -540,43 +619,45 @@ export function TodayPage() {
         )}
       </HomeSection>
 
-      <HomeSection
-        id="today-recipes"
-        testId="today-recipes"
-        title={t("today.recipes.title")}
-        link={{ to: "/app/receitas", label: t("today.recipes.all") }}
-      >
-        {saved.status === "loading" ? (
-          <p role="status" className="text-sm text-muted-foreground">
-            {t("app.loading")}
-          </p>
-        ) : saved.status === "failed" ? (
-          <p className="text-sm text-muted-foreground">
-            {t("today.recipes.unavailable")}
-          </p>
-        ) : saved.items.length === 0 ? (
-          <p className="surface p-4 text-sm text-muted-foreground">
-            {t("today.recipes.empty")}
-          </p>
-        ) : (
-          <ul className="-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-1 sm:mx-0 sm:grid sm:grid-cols-3 sm:overflow-visible sm:px-0">
-            {saved.items.slice(0, 6).map((recipe) => (
-              <li
-                key={recipe.recipeId}
-                className="w-44 shrink-0 snap-start sm:w-auto"
-              >
-                <RecipeCard
-                  recipeId={recipe.recipeId}
-                  name={recipe.name}
-                  thumbnail={recipe.thumbnail}
-                  meta={recipeMeta(recipe)}
-                  className="h-full"
-                />
-              </li>
-            ))}
-          </ul>
-        )}
-      </HomeSection>
+      {firstRun ? null : (
+        <HomeSection
+          id="today-recipes"
+          testId="today-recipes"
+          title={t("today.recipes.title")}
+          link={{ to: "/app/receitas", label: t("today.recipes.all") }}
+        >
+          {saved.status === "loading" ? (
+            <p role="status" className="text-sm text-muted-foreground">
+              {t("app.loading")}
+            </p>
+          ) : saved.status === "failed" ? (
+            <p className="text-sm text-muted-foreground">
+              {t("today.recipes.unavailable")}
+            </p>
+          ) : saved.items.length === 0 ? (
+            <p className="surface p-4 text-sm text-muted-foreground">
+              {t("today.recipes.empty")}
+            </p>
+          ) : (
+            <ul className="-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-1 sm:mx-0 sm:grid sm:grid-cols-3 sm:overflow-visible sm:px-0">
+              {saved.items.slice(0, 6).map((recipe) => (
+                <li
+                  key={recipe.recipeId}
+                  className="w-44 shrink-0 snap-start sm:w-auto"
+                >
+                  <RecipeCard
+                    recipeId={recipe.recipeId}
+                    name={recipe.name}
+                    thumbnail={recipe.thumbnail}
+                    meta={recipeMeta(recipe)}
+                    className="h-full"
+                  />
+                </li>
+              ))}
+            </ul>
+          )}
+        </HomeSection>
+      )}
     </div>
   );
 }
