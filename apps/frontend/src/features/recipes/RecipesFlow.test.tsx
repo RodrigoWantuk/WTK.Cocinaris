@@ -270,10 +270,11 @@ describe("Recipes generate flow", () => {
     );
 
     const panel = await screen.findByTestId("recipes-guidance");
-    // Collapsed by default: one line for people who do not want it.
-    expect(panel).not.toHaveAttribute("open");
-    await user.click(within(panel).getByText(/steer the suggestions/i));
+    // Meal kind and time are visible chips; the rest waits behind "More options".
+    const more = within(panel).getByText("More options").closest("details");
+    expect(more).not.toHaveAttribute("open");
     await user.click(screen.getByTestId("recipes-guidance-meal-snack"));
+    await user.click(within(panel).getByText("More options"));
     await user.click(screen.getByTestId("recipes-guidance-family-eggs"));
     await user.selectOptions(
       screen.getByTestId("recipes-guidance-cuisine"),

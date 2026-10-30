@@ -45,6 +45,10 @@ import {
   useOptionalUnsavedChangesCoordinator,
 } from "@/features/profile/UnsavedChangesCoordinator";
 import { ProfileWorkspaceStatusBanner } from "@/features/profile/ProfileWorkspaceStatusBanner";
+import { applyTheme, readThemePreference } from "@/app/theme/theme";
+
+// Apply the stored or system theme before the first render, so the page does not flash light.
+if (typeof document !== "undefined") applyTheme(readThemePreference());
 
 /**
  * Public entry route. A visitor who already has a session goes straight to the home. Everyone

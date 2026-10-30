@@ -1,7 +1,37 @@
+import { UserRound } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useProductionI18n } from "@/app/i18n/ProductionI18nProvider";
 import type { ProductionLocale } from "@/app/i18n/productionCatalog";
+import { useThemePreference, type ThemePreference } from "@/app/theme/theme";
+
+const THEMES: ThemePreference[] = ["system", "light", "dark"];
+
+/** Theme buttons (system, light, dark) for the account menu; the choice is kept per device. */
+export function ThemeChoice() {
+  const { t } = useProductionI18n();
+  const [preference, setPreference] = useThemePreference();
+  return (
+    <div role="group" aria-label={t("theme.label")} className="flex gap-1">
+      {THEMES.map((option) => (
+        <button
+          key={option}
+          type="button"
+          data-testid={`production-theme-${option}`}
+          aria-pressed={preference === option}
+          onClick={() => setPreference(option)}
+          className={`h-9 rounded-lg px-3 text-sm font-semibold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+            preference === option
+              ? "bg-primary text-primary-foreground"
+              : "bg-secondary text-secondary-foreground hover:bg-secondary/70"
+          }`}
+        >
+          {t(`theme.${option}`)}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 /** Interface language buttons; used in the account menu and, signed out, in the header. */
 export function LanguageChoice() {
@@ -15,10 +45,10 @@ export function LanguageChoice() {
           data-testid={`production-lang-${code}`}
           aria-pressed={locale === code}
           onClick={() => setLocale(code as ProductionLocale)}
-          className={`h-9 rounded-full px-3 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+          className={`h-9 rounded-lg px-3 text-sm font-semibold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
             locale === code
               ? "bg-primary text-primary-foreground"
-              : "bg-secondary text-secondary-foreground"
+              : "bg-secondary text-secondary-foreground hover:bg-secondary/70"
           }`}
         >
           {code === "pt-BR" ? "PT" : code.toUpperCase()}
@@ -29,8 +59,8 @@ export function LanguageChoice() {
 }
 
 /**
- * Avatar button opening the account menu: profile and household, interface language, and sign
- * out. Closes on Escape, on a click outside, and after navigating. Sign out goes through
+ * Avatar button opening the account menu: profile, interface language, theme, and sign out.
+ * Without a display name the avatar is a person icon, never "?" (which reads as help). Closes on Escape, on a click outside, and after navigating. Sign out goes through
  * `onLogout`, which asks before discarding unsaved profile edits.
  */
 export function AccountMenu({
@@ -43,7 +73,7 @@ export function AccountMenu({
   const { t } = useProductionI18n();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
-  const initial = (displayName?.trim()[0] ?? "?").toUpperCase();
+  const initial = displayName?.trim()[0]?.toUpperCase() ?? null;
 
   useEffect(() => {
     if (!open) return;
@@ -70,9 +100,9 @@ export function AccountMenu({
         aria-expanded={open}
         aria-label={t("account.menu")}
         onClick={() => setOpen((value) => !value)}
-        className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary text-base font-semibold text-secondary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-card text-base font-semibold text-foreground transition-colors duration-150 hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
       >
-        {initial}
+        {initial ?? <UserRound aria-hidden="true" className="h-5 w-5" />}
       </button>
       {open ? (
         <div
@@ -95,6 +125,12 @@ export function AccountMenu({
               {t("lang.label")}
             </p>
             <LanguageChoice />
+          </div>
+          <div className="space-y-2 px-1">
+            <p className="text-xs font-medium text-muted-foreground">
+              {t("theme.label")}
+            </p>
+            <ThemeChoice />
           </div>
           <button
             type="button"

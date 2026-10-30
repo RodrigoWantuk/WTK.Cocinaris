@@ -81,6 +81,18 @@ public sealed record ExecutionProposalLineView(string IngredientId, string Displ
 /// </remarks>
 public sealed record ExecutionPantryLotView(Guid LotId, string ProductName, decimal Quantity, string Unit, string StorageLocation, Guid Version, decimal ProtectedQuantity = 0, decimal ReservedQuantity = 0, IReadOnlyList<LotReservationView>? ReservedFor = null);
 
+/// <summary>
+/// Whether the pantry covers one ingredient of a recipe at its own servings (PLAN-0057, review
+/// finding H2). <see cref="Status"/> is <c>available</c>, <c>partial</c> (some of it, see
+/// <see cref="MissingQuantity"/>), or <c>missing</c> (no matching pantry item, or only protected
+/// quantity). Advisory and read-only: it never reserves or changes the pantry.
+/// </summary>
+/// <param name="IngredientId">Ingredient identifier in the revision.</param>
+/// <param name="Status"><c>available</c>, <c>partial</c>, or <c>missing</c>.</param>
+/// <param name="Unit"><c>Gram</c>, <c>Milliliter</c>, or <c>Unit</c>.</param>
+/// <param name="MissingQuantity">Quantity the pantry lacks, in <paramref name="Unit"/>; zero when available.</param>
+public sealed record RecipeAvailabilityLineView(string IngredientId, string Status, string Unit, decimal MissingQuantity);
+
 /// <summary>Deterministic completion proposal: what to deduct, editable by the user before confirming.</summary>
 public sealed record ExecutionProposalView(IReadOnlyList<ExecutionProposalLineView> Lines, IReadOnlyList<ExecutionPantryLotView> PantryLots);
 
@@ -147,6 +159,36 @@ public sealed class RecipeExecutionApplicationService(
         return execution is null
             ? Failure<RecipeExecutionView>("resource_not_found", "The recipe execution was not found.")
             : RecipeApplicationResult<RecipeExecutionView>.Succeeded(await ViewAsync(execution, user.Id, cancellationToken));
+    }
+
+    /// <summary>
+    /// What the pantry covers of a recipe's current revision at its own servings, using the same
+    /// deterministic matching and protections as the cooking proposal. Read-only.
+    /// </summary>
+    /// <param name="recipeId">Owned recipe.</param>
+    /// <param name="cancellationToken">Cancellation.</param>
+    public async Task<RecipeApplicationResult<IReadOnlyList<RecipeAvailabilityLineView>>> GetAvailabilityAsync(Guid recipeId, CancellationToken cancellationToken)
+    {
+        var user = await currentUser.GetCurrentAsync(cancellationToken);
+        var recipe = await recipeStore.FindDetailAsync(user.Id, recipeId, cancellationToken);
+        if (recipe is null)
+        {
+            return Failure<IReadOnlyList<RecipeAvailabilityLineView>>("resource_not_found", "The recipe was not found.");
+        }
+
+        var lots = await inventory.ListActiveAsync(user.Id, MaxPantryLots, cancellationToken);
+        var committed = await commitments.GetAsync(user.Id, cancellationToken);
+        var names = lots.Select(lot => lot.ProductName).Concat(RecipeIngredientReader.Read(recipe.NormalizedRecipeJson).Select(ingredient => ingredient.Name));
+        var keys = await matching.KeysAsync(user.Id, names, cancellationToken);
+        var proposal = BuildProposal(recipe.NormalizedRecipeJson, recipe.Servings, recipe.Servings, lots, committed, matchKeys: keys);
+        return RecipeApplicationResult<IReadOnlyList<RecipeAvailabilityLineView>>.Succeeded(proposal.Lines
+            .Select(line =>
+            {
+                var have = line.ProposedQuantity ?? 0;
+                var status = line.Status == "ready" ? "available" : have > 0 ? "partial" : "missing";
+                return new RecipeAvailabilityLineView(line.IngredientId, status, line.Unit, status == "available" ? 0 : Math.Max(0, line.RequiredQuantity - have));
+            })
+            .ToList());
     }
 
     /// <summary>Lists the owner's in-progress executions.</summary>

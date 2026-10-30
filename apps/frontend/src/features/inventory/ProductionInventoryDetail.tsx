@@ -333,29 +333,18 @@ export function ProductionInventoryDetail() {
             <Link to="/app/despensa">{t("inventory.actions.back")}</Link>
           </p>
           <h1 className="mt-1 font-display text-3xl">{lot.productName}</h1>
-          <p className="mt-2 text-muted-foreground">
+          <p className="tabular mt-2 text-muted-foreground">
             {formatQuantityLabel(lot.quantity, locale as ProductionLocale, t)}
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Button asChild variant="secondary">
-            <Link
-              to={`/app/despensa/${lot.lotId}/editar`}
-              data-testid="inventory-edit"
-            >
-              {t("inventory.actions.edit")}
-            </Link>
-          </Button>
-          <Button
-            type="button"
-            variant="destructive"
-            data-testid="inventory-delete"
-            disabled={busy || !session.csrfToken}
-            onClick={() => void onDelete()}
+        <Button asChild variant="secondary">
+          <Link
+            to={`/app/despensa/${lot.lotId}/editar`}
+            data-testid="inventory-edit"
           >
-            {t("inventory.actions.delete")}
-          </Button>
-        </div>
+            {t("inventory.actions.edit")}
+          </Link>
+        </Button>
       </div>
 
       {(conflict || missingPrecondition) && (
@@ -413,36 +402,41 @@ export function ProductionInventoryDetail() {
             {lot.customLocation ? ` · ${lot.customLocation}` : ""}
           </dd>
         </div>
-        <div>
-          <dt className="text-muted-foreground">
-            {t("inventory.fields.packageState")}
-          </dt>
-          <dd>
-            {localizeInventoryKey(t, "inventory.package", lot.packageState)}
-          </dd>
-        </div>
-        <div>
-          <dt className="text-muted-foreground">
-            {t("inventory.fields.printedDate")}
-          </dt>
-          <dd data-testid="inventory-printed-date">
-            {lot.printedExpirationDate
-              ? formatCalendarDateForDisplay(lot.printedExpirationDate, locale)
-              : t("inventory.fields.none")}
-          </dd>
-        </div>
-        <div>
-          <dt className="text-muted-foreground">
-            {t("inventory.fields.lifecycleState")}
-          </dt>
-          <dd data-testid="inventory-lifecycle-state">
-            {localizeInventoryKey(
-              t,
-              "inventory.lifecycle",
-              lot.lifecycle.state,
-            )}
-          </dd>
-        </div>
+        {/* Empty fields are left out (PLAN-0057 review H3); only what is known is shown. */}
+        {lot.packageState && lot.packageState !== "Unknown" ? (
+          <div>
+            <dt className="text-muted-foreground">
+              {t("inventory.fields.packageState")}
+            </dt>
+            <dd>
+              {localizeInventoryKey(t, "inventory.package", lot.packageState)}
+            </dd>
+          </div>
+        ) : null}
+        {lot.printedExpirationDate ? (
+          <div>
+            <dt className="text-muted-foreground">
+              {t("inventory.fields.printedDate")}
+            </dt>
+            <dd data-testid="inventory-printed-date">
+              {formatCalendarDateForDisplay(lot.printedExpirationDate, locale)}
+            </dd>
+          </div>
+        ) : null}
+        {lot.lifecycle.state !== "AsAcquired" ? (
+          <div>
+            <dt className="text-muted-foreground">
+              {t("inventory.fields.lifecycleState")}
+            </dt>
+            <dd data-testid="inventory-lifecycle-state">
+              {localizeInventoryKey(
+                t,
+                "inventory.lifecycle",
+                lot.lifecycle.state,
+              )}
+            </dd>
+          </div>
+        ) : null}
         {(
           [
             ["openedAt", lot.lifecycle.openedAt],
@@ -478,17 +472,19 @@ export function ProductionInventoryDetail() {
             </dd>
           </div>
         )}
-        <div className="sm:col-span-2">
-          <dt className="text-muted-foreground">
-            {t("inventory.fields.notes")}
-          </dt>
-          <dd>{lot.notes || t("inventory.fields.none")}</dd>
-        </div>
+        {lot.notes ? (
+          <div className="sm:col-span-2">
+            <dt className="text-muted-foreground">
+              {t("inventory.fields.notes")}
+            </dt>
+            <dd>{lot.notes}</dd>
+          </div>
+        ) : null}
       </dl>
       {lot.attention && lot.attention.state !== "Normal" && (
         <section
           data-testid="inventory-detail-attention"
-          className="space-y-2 rounded-xl border border-border p-4"
+          className="surface space-y-2 p-4"
         >
           <AttentionBadge attention={lot.attention} detailed />
           <p className="text-xs text-muted-foreground">
@@ -497,9 +493,11 @@ export function ProductionInventoryDetail() {
         </section>
       )}
       {/* Outside the <dl>: a definition list may only contain term/description groups. */}
-      <p className="text-xs text-muted-foreground">
-        {t("inventory.printedDateDisclaimer")}
-      </p>
+      {lot.printedExpirationDate ? (
+        <p className="text-xs text-muted-foreground">
+          {t("inventory.printedDateDisclaimer")}
+        </p>
+      ) : null}
 
       {!session.csrfToken && (
         <p role="alert" data-testid="inventory-missing-csrf">
@@ -513,28 +511,8 @@ export function ProductionInventoryDetail() {
         </p>
       )}
 
-      <LotTransitionPanel
-        lot={lot}
-        busy={busy || !session.csrfToken}
-        onSubmit={runTransition}
-        onInvalidQuantity={() =>
-          setTransitionError(t("inventory.error.invalidDecimal"))
-        }
-      />
-      {transitionError && (
-        <p
-          role="alert"
-          data-testid="inventory-transition-error"
-          className="text-sm text-destructive"
-        >
-          {transitionError}
-        </p>
-      )}
-
-      <LotCommitmentsPanel lot={lot} />
-
       {lot.quantity.kind === "measured" && (
-        <section className="space-y-3 rounded-xl border p-4">
+        <section className="surface space-y-3 p-4">
           <h2 className="font-display text-xl">
             {t("inventory.actions.adjust")}
           </h2>
@@ -544,7 +522,7 @@ export function ProductionInventoryDetail() {
             </span>
             <select
               data-testid="inventory-adjust-type"
-              className="flex h-11 w-full rounded-xl border border-input bg-background px-3 text-[15px]"
+              className="flex h-11 w-full rounded-xl border border-input bg-card px-3 text-[15px] focus-visible:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
               value={measuredAction}
               disabled={busy}
               onChange={(event) =>
@@ -610,7 +588,7 @@ export function ProductionInventoryDetail() {
       )}
 
       {lot.quantity.kind === "qualitative" && (
-        <section className="space-y-3 rounded-xl border p-4">
+        <section className="surface space-y-3 p-4">
           <h2 className="font-display text-xl">
             {t("inventory.actions.changeAvailability")}
           </h2>
@@ -620,7 +598,7 @@ export function ProductionInventoryDetail() {
             </span>
             <select
               data-testid="inventory-availability"
-              className="flex h-11 w-full rounded-xl border border-input bg-background px-3 text-[15px]"
+              className="flex h-11 w-full rounded-xl border border-input bg-card px-3 text-[15px] focus-visible:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
               value={availability}
               disabled={busy || !session.csrfToken}
               onChange={(event) =>
@@ -649,6 +627,33 @@ export function ProductionInventoryDetail() {
           </Button>
         </section>
       )}
+
+      <LotTransitionPanel
+        lot={lot}
+        busy={busy || !session.csrfToken}
+        onSubmit={runTransition}
+        onInvalidQuantity={() =>
+          setTransitionError(t("inventory.error.invalidDecimal"))
+        }
+      />
+      {transitionError && (
+        <p
+          role="alert"
+          data-testid="inventory-transition-error"
+          className="text-sm text-destructive"
+        >
+          {transitionError}
+        </p>
+      )}
+
+      <details className="surface p-4" data-testid="inventory-commitments">
+        <summary className="cursor-pointer font-medium">
+          {t("inventory.commitments.summary")}
+        </summary>
+        <div className="mt-3">
+          <LotCommitmentsPanel lot={lot} />
+        </div>
+      </details>
 
       <section className="space-y-3">
         <h2 className="font-display text-xl">{t("inventory.history.title")}</h2>
@@ -684,10 +689,7 @@ export function ProductionInventoryDetail() {
           className="space-y-2"
         >
           {history.map((entry) => (
-            <li
-              key={entry.entryId}
-              className="rounded-lg border px-3 py-2 text-sm"
-            >
+            <li key={entry.entryId} className="surface px-3 py-2 text-sm">
               <span className="font-medium">
                 {localizeInventoryKey(t, "inventory.history.kind", entry.kind)}
               </span>
@@ -733,6 +735,19 @@ export function ProductionInventoryDetail() {
           ))}
         </ol>
       </section>
+
+      <div className="border-t border-border pt-4">
+        <Button
+          type="button"
+          variant="ghost"
+          className="text-destructive hover:bg-destructive/10"
+          data-testid="inventory-delete"
+          disabled={busy || !session.csrfToken}
+          onClick={() => void onDelete()}
+        >
+          {t("inventory.actions.delete")}
+        </Button>
+      </div>
     </div>
   );
 }

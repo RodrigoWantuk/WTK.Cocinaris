@@ -76,7 +76,8 @@ export function guidanceCount(value: SuggestionGuidance): number {
  * "may use" (default), or "don't use". Excluded items are never sent to the AI; required items must
  * appear in every candidate (the backend enforces it).
  *
- * Collapsed by default inside a native `<details>`, so people who do not want it see one line.
+ * Meal kind and time are visible chips (the quick choices); dish families, cuisine, and pantry
+ * items sit in a native `<details>` ("Mais opções") so the page stays short.
  * Toggle chips expose `aria-pressed`; each pantry item is a labelled radio group.
  *
  * @param lots Measured pantry lots (the only ones the AI sees).
@@ -144,176 +145,178 @@ export function SuggestionGuidancePanel({
   );
 
   return (
-    <details
-      className="rounded-2xl border border-border bg-card p-4"
-      data-testid="recipes-guidance"
-    >
-      <summary className="cursor-pointer font-medium">
-        {t("recipes.guidance.title")}
-        {count > 0 ? (
-          <span className="ml-2 text-sm text-muted-foreground">
-            {t("recipes.guidance.count", { count })}
-          </span>
-        ) : null}
-      </summary>
-      <div className="mt-4 space-y-5">
-        <p className="text-sm text-muted-foreground">
-          {t("recipes.guidance.hint")}
-        </p>
-
-        <fieldset className="space-y-2">
-          <legend className="text-sm font-medium">
-            {t("recipes.guidance.mealKind")}
-          </legend>
-          <div className="flex flex-wrap gap-2">
-            {MEAL_KINDS.map((code) =>
-              chip(
-                value.mealKind === code,
-                t(`recipes.guidance.mealKind.${code}`),
-                () =>
-                  onChange({
-                    ...value,
-                    mealKind: value.mealKind === code ? null : code,
-                  }),
-                `recipes-guidance-meal-${code}`,
-              ),
-            )}
-          </div>
-        </fieldset>
-
-        <fieldset className="space-y-2">
-          <legend className="text-sm font-medium">
-            {t("recipes.guidance.families", { max: MAX_FAMILIES })}
-          </legend>
-          <div className="flex flex-wrap gap-2">
-            {DISH_FAMILIES.map((code) =>
-              chip(
-                value.dishFamilies.includes(code),
-                t(`recipes.guidance.family.${code}`),
-                () => toggleFamily(code),
-                `recipes-guidance-family-${code}`,
-                value.dishFamilies.length >= MAX_FAMILIES,
-              ),
-            )}
-          </div>
-        </fieldset>
-
-        <div className="space-y-2">
-          <label htmlFor={`${groupId}-cuisine`} className="text-sm font-medium">
-            {t("recipes.guidance.cuisine")}
-          </label>
-          <select
-            id={`${groupId}-cuisine`}
-            className="block w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-            value={value.cuisine ?? ""}
-            disabled={disabled}
-            data-testid="recipes-guidance-cuisine"
-            onChange={(event) =>
-              onChange({ ...value, cuisine: event.target.value || null })
-            }
-          >
-            <option value="">{t("recipes.guidance.cuisine.any")}</option>
-            {CUISINES.map((code) => (
-              <option key={code} value={code}>
-                {t(`recipes.guidance.cuisine.${code}`)}
-              </option>
-            ))}
-          </select>
+    <div className="space-y-5" data-testid="recipes-guidance">
+      <p className="text-sm text-muted-foreground">
+        {t("recipes.guidance.hint")}
+      </p>
+      <fieldset className="space-y-2">
+        <legend className="text-sm font-medium">
+          {t("recipes.guidance.mealKind")}
+        </legend>
+        <div className="flex flex-wrap gap-2">
+          {MEAL_KINDS.map((code) =>
+            chip(
+              value.mealKind === code,
+              t(`recipes.guidance.mealKind.${code}`),
+              () =>
+                onChange({
+                  ...value,
+                  mealKind: value.mealKind === code ? null : code,
+                }),
+              `recipes-guidance-meal-${code}`,
+            ),
+          )}
         </div>
-
-        <fieldset className="space-y-2">
-          <legend className="text-sm font-medium">
-            {t("recipes.guidance.time")}
-          </legend>
-          <div className="flex flex-wrap gap-2">
-            {TIMES.map((code) =>
-              chip(
-                value.time === code,
-                t(`recipes.guidance.time.${code}`),
-                () =>
-                  onChange({
-                    ...value,
-                    time: value.time === code ? null : code,
-                  }),
-                `recipes-guidance-time-${code}`,
-              ),
-            )}
-          </div>
-        </fieldset>
-
-        {lots.length > 0 ? (
+      </fieldset>
+      <fieldset className="space-y-2">
+        <legend className="text-sm font-medium">
+          {t("recipes.guidance.time")}
+        </legend>
+        <div className="flex flex-wrap gap-2">
+          {TIMES.map((code) =>
+            chip(
+              value.time === code,
+              t(`recipes.guidance.time.${code}`),
+              () =>
+                onChange({
+                  ...value,
+                  time: value.time === code ? null : code,
+                }),
+              `recipes-guidance-time-${code}`,
+            ),
+          )}
+        </div>
+      </fieldset>
+      <details className="surface p-4">
+        <summary className="cursor-pointer font-medium">
+          {t("recipes.guidance.title")}
+          {count > 0 ? (
+            <span className="ml-2 text-sm text-muted-foreground">
+              {t("recipes.guidance.count", { count })}
+            </span>
+          ) : null}
+        </summary>
+        <div className="mt-4 space-y-5">
           <fieldset className="space-y-2">
             <legend className="text-sm font-medium">
-              {t("recipes.guidance.pantry")}
+              {t("recipes.guidance.families", { max: MAX_FAMILIES })}
             </legend>
-            <p className="text-xs text-muted-foreground">
-              {t("recipes.guidance.pantryHint", { max: MAX_REQUIRED })}
-            </p>
-            <ul className="divide-y divide-border">
-              {lots.map((lot) => {
-                const choice = required.has(lot.lotId)
-                  ? "must"
-                  : excluded.has(lot.lotId)
-                    ? "never"
-                    : "may";
-                return (
-                  <li
-                    key={lot.lotId}
-                    className="flex flex-wrap items-center justify-between gap-2 py-2"
-                  >
-                    <span className="min-w-0">
-                      <span className="font-medium">{lot.name}</span>{" "}
-                      <span className="text-xs text-muted-foreground">
-                        {lot.amount}
-                      </span>
-                    </span>
-                    <span
-                      role="radiogroup"
-                      aria-label={t("recipes.guidance.pantryItem", {
-                        name: lot.name,
-                      })}
-                      className="flex gap-3 text-sm"
-                      data-testid={`recipes-guidance-lot-${lot.lotId}`}
-                    >
-                      {(["must", "may", "never"] as const).map((option) => (
-                        <label key={option} className="flex items-center gap-1">
-                          <input
-                            type="radio"
-                            name={`${groupId}-${lot.lotId}`}
-                            value={option}
-                            checked={choice === option}
-                            disabled={
-                              disabled ||
-                              (option === "must" &&
-                                choice !== "must" &&
-                                value.requiredLotIds.length >= MAX_REQUIRED)
-                            }
-                            onChange={() => setLotChoice(lot.lotId, option)}
-                          />
-                          {t(`recipes.guidance.lot.${option}`)}
-                        </label>
-                      ))}
-                    </span>
-                  </li>
-                );
-              })}
-            </ul>
+            <div className="flex flex-wrap gap-2">
+              {DISH_FAMILIES.map((code) =>
+                chip(
+                  value.dishFamilies.includes(code),
+                  t(`recipes.guidance.family.${code}`),
+                  () => toggleFamily(code),
+                  `recipes-guidance-family-${code}`,
+                  value.dishFamilies.length >= MAX_FAMILIES,
+                ),
+              )}
+            </div>
           </fieldset>
-        ) : null}
 
-        {count > 0 ? (
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            disabled={disabled}
-            data-testid="recipes-guidance-clear"
-            onClick={() => onChange(EMPTY_GUIDANCE)}
-          >
-            {t("recipes.guidance.clear")}
-          </Button>
-        ) : null}
-      </div>
-    </details>
+          <div className="space-y-2">
+            <label
+              htmlFor={`${groupId}-cuisine`}
+              className="text-sm font-medium"
+            >
+              {t("recipes.guidance.cuisine")}
+            </label>
+            <select
+              id={`${groupId}-cuisine`}
+              className="block h-11 w-full rounded-xl border border-input bg-card px-3 text-[15px] focus-visible:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+              value={value.cuisine ?? ""}
+              disabled={disabled}
+              data-testid="recipes-guidance-cuisine"
+              onChange={(event) =>
+                onChange({ ...value, cuisine: event.target.value || null })
+              }
+            >
+              <option value="">{t("recipes.guidance.cuisine.any")}</option>
+              {CUISINES.map((code) => (
+                <option key={code} value={code}>
+                  {t(`recipes.guidance.cuisine.${code}`)}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {lots.length > 0 ? (
+            <fieldset className="space-y-2">
+              <legend className="text-sm font-medium">
+                {t("recipes.guidance.pantry")}
+              </legend>
+              <p className="text-xs text-muted-foreground">
+                {t("recipes.guidance.pantryHint", { max: MAX_REQUIRED })}
+              </p>
+              <ul className="divide-y divide-border">
+                {lots.map((lot) => {
+                  const choice = required.has(lot.lotId)
+                    ? "must"
+                    : excluded.has(lot.lotId)
+                      ? "never"
+                      : "may";
+                  return (
+                    <li
+                      key={lot.lotId}
+                      className="flex flex-wrap items-center justify-between gap-2 py-2"
+                    >
+                      <span className="min-w-0">
+                        <span className="font-medium">{lot.name}</span>{" "}
+                        <span className="text-xs text-muted-foreground">
+                          {lot.amount}
+                        </span>
+                      </span>
+                      <span
+                        role="radiogroup"
+                        aria-label={t("recipes.guidance.pantryItem", {
+                          name: lot.name,
+                        })}
+                        className="flex gap-3 text-sm"
+                        data-testid={`recipes-guidance-lot-${lot.lotId}`}
+                      >
+                        {(["must", "may", "never"] as const).map((option) => (
+                          <label
+                            key={option}
+                            className="flex items-center gap-1"
+                          >
+                            <input
+                              type="radio"
+                              name={`${groupId}-${lot.lotId}`}
+                              value={option}
+                              checked={choice === option}
+                              disabled={
+                                disabled ||
+                                (option === "must" &&
+                                  choice !== "must" &&
+                                  value.requiredLotIds.length >= MAX_REQUIRED)
+                              }
+                              onChange={() => setLotChoice(lot.lotId, option)}
+                            />
+                            {t(`recipes.guidance.lot.${option}`)}
+                          </label>
+                        ))}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </fieldset>
+          ) : null}
+
+          {count > 0 ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              disabled={disabled}
+              data-testid="recipes-guidance-clear"
+              onClick={() => onChange(EMPTY_GUIDANCE)}
+            >
+              {t("recipes.guidance.clear")}
+            </Button>
+          ) : null}
+        </div>
+      </details>
+    </div>
   );
 }

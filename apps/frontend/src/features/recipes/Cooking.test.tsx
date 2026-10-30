@@ -487,14 +487,15 @@ describe("today page", () => {
       "/app/receitas/gerar",
     );
 
-    // The accepted menu's meal comes first, for the browser's local day, and cooking it links the session.
+    // Cooking in progress comes first, then the accepted menu's meal for the browser's local day;
+    // cooking that meal links the session.
     const menuEntry = await screen.findByTestId("today-menu-entry");
     expect(menuEntry).toHaveTextContent("Feijoada · Dinner");
     expect(getToday).toHaveBeenCalledWith(localIsoDate(), expect.anything());
     expect(
       screen
-        .getByTestId("today-menu")
-        .compareDocumentPosition(screen.getByTestId("today-cooking")) &
+        .getByTestId("today-cooking")
+        .compareDocumentPosition(screen.getByTestId("today-menu")) &
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
     await userEvent

@@ -9,6 +9,8 @@ export const REQUIRED_COOKING_I18N_KEYS = [
   "recipes.detail.equipment",
   "recipes.detail.optional",
   "recipes.detail.notInPantry",
+  "recipes.detail.inPantry",
+  "recipes.detail.partialPantry",
   "recipes.detail.stageTime",
   "recipes.detail.cues",
   "recipes.unit.g",
@@ -167,7 +169,9 @@ const ptBR: Record<Key, string> = {
   "recipes.detail.starting": "Preparando…",
   "recipes.detail.equipment": "Equipamentos",
   "recipes.detail.optional": "opcional",
-  "recipes.detail.notInPantry": "comprar ou já ter em casa",
+  "recipes.detail.notInPantry": "Não está na despensa",
+  "recipes.detail.inPantry": "Na despensa",
+  "recipes.detail.partialPantry": "Faltam {{amount}}",
   "recipes.detail.stageTime":
     "{{active}} min de trabalho · {{passive}} min de espera",
   "recipes.detail.cues": "Como saber que deu certo",
@@ -227,7 +231,7 @@ const ptBR: Record<Key, string> = {
   "cooking.done.nothing": "Nenhum item da despensa foi alterado.",
   "cooking.done.pantry": "Ver despensa",
   "cooking.done.home": "Voltar para Hoje",
-  "today.cta.title": "O que cozinho agora?",
+  "today.cta.title": "Sem ideia do que fazer?",
   "today.cta.detail":
     "Sugerimos três receitas com o que você tem, respeitando suas preferências e restrições.",
   "today.cta.generate": "Sugerir receitas",
@@ -318,7 +322,9 @@ const en: Record<Key, string> = {
   "recipes.detail.starting": "Getting ready…",
   "recipes.detail.equipment": "Equipment",
   "recipes.detail.optional": "optional",
-  "recipes.detail.notInPantry": "buy or have at home",
+  "recipes.detail.notInPantry": "Not in your pantry",
+  "recipes.detail.inPantry": "In your pantry",
+  "recipes.detail.partialPantry": "{{amount}} missing",
   "recipes.detail.stageTime":
     "{{active}} min hands-on · {{passive}} min waiting",
   "recipes.detail.cues": "How to tell it worked",
@@ -375,7 +381,7 @@ const en: Record<Key, string> = {
   "cooking.done.nothing": "No pantry item was changed.",
   "cooking.done.pantry": "Open pantry",
   "cooking.done.home": "Back to Today",
-  "today.cta.title": "What can I cook now?",
+  "today.cta.title": "Not sure what to make?",
   "today.cta.detail":
     "We suggest three recipes from what you have, respecting your preferences and restrictions.",
   "today.cta.generate": "Suggest recipes",
@@ -466,7 +472,9 @@ const es: Record<Key, string> = {
   "recipes.detail.starting": "Preparando…",
   "recipes.detail.equipment": "Equipos",
   "recipes.detail.optional": "opcional",
-  "recipes.detail.notInPantry": "comprar o tener en casa",
+  "recipes.detail.notInPantry": "No está en tu despensa",
+  "recipes.detail.inPantry": "En tu despensa",
+  "recipes.detail.partialPantry": "Faltan {{amount}}",
   "recipes.detail.stageTime":
     "{{active}} min de trabajo · {{passive}} min de espera",
   "recipes.detail.cues": "Cómo saber que salió bien",
@@ -526,7 +534,7 @@ const es: Record<Key, string> = {
   "cooking.done.nothing": "No se cambió ningún artículo de la despensa.",
   "cooking.done.pantry": "Ver despensa",
   "cooking.done.home": "Volver a Hoy",
-  "today.cta.title": "¿Qué cocino ahora?",
+  "today.cta.title": "¿Sin ideas de qué hacer?",
   "today.cta.detail":
     "Sugerimos tres recetas con lo que tienes, respetando tus preferencias y restricciones.",
   "today.cta.generate": "Sugerir recetas",

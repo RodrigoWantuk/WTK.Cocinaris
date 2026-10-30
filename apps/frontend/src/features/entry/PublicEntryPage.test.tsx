@@ -72,7 +72,7 @@ describe("PublicEntryPage", () => {
     const { events } = renderEntry();
     expect(
       await screen.findByTestId("production-landing-title"),
-    ).toHaveTextContent(/Turn available food/);
+    ).toHaveTextContent(/Cook with what you already have/);
     expect(screen.getByTestId("production-landing-subtitle")).toHaveTextContent(
       /not just a recipe generator/i,
     );

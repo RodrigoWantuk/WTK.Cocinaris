@@ -764,6 +764,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/recipes/{recipeId}/availability": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** GET /api/v1/recipes/{recipeId}/availability */
+        get: operations["getApiV1RecipesRecipeIdAvailability"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/recipes/{recipeId}/derivations": {
         parameters: {
             query?: never;
@@ -1713,6 +1730,20 @@ export interface components {
         RecipeArchiveRequest: {
             /** @description True to archive, false to bring it back to the library. */
             archived: boolean;
+        };
+        /** @description Whether the pantry covers one recipe ingredient at the recipe's servings (advisory). */
+        RecipeAvailabilityLineResponse: {
+            /** @description Ingredient identifier in the revision. */
+            ingredientId: string;
+            /**
+             * Format: double
+             * @description Quantity the pantry lacks, in Unit; zero when available.
+             */
+            missingQuantity: number | string;
+            /** @description `available`, `partial`, or `missing`. */
+            status: string;
+            /** @description `Gram`, `Milliliter`, or `Unit`. */
+            unit: string;
         };
         /** @description HTTP projection of one cook-now candidate. */
         RecipeCandidateResponse: {
@@ -6304,6 +6335,55 @@ export interface operations {
             };
             /** @description The request content type is not supported. */
             415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    getApiV1RecipesRecipeIdAvailability: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                recipeId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecipeAvailabilityLineResponse"][];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

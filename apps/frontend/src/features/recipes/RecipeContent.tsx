@@ -1,5 +1,9 @@
 import { useProductionI18n } from "@/app/i18n/ProductionI18nProvider";
-import { formatLocaleDecimal } from "@/lib/localeDecimal";
+import {
+  formatLocaleDecimal,
+  type SupportedDecimalLocale,
+} from "@/lib/localeDecimal";
+import type { RecipeAvailabilityLine } from "@/contracts/recipes";
 import {
   formatKitchenAmount,
   householdMeasure,
@@ -9,6 +13,13 @@ import type {
   ParsedIngredient,
   ParsedNormalizedRecipe,
 } from "./parseNormalizedRecipe";
+
+/** Unit labels for pantry quantities (lot units). */
+const PANTRY_UNIT_KEYS: Record<string, string> = {
+  Gram: "recipes.unit.g",
+  Milliliter: "recipes.unit.ml",
+  Unit: "recipes.unit.unit",
+};
 
 /** Formats a recipe quantity in the recipe's canonical unit (`g`, `ml`, `unit`). */
 export function useRecipeQuantity() {
@@ -61,21 +72,45 @@ export function useHouseholdMeasure() {
  * @param checkable Show checkboxes (cooking view).
  * @param checked Checked ingredient and stage keys (`i:<index>`, `s:<index>`).
  * @param onToggle Called with a key when its checkbox changes.
+ * @param availability What the pantry covers per ingredient (PLAN-0057); no pantry status is
+ *   shown while it is null or absent. Basics the recipe assumes never get a status.
  */
 export function RecipeContent({
   recipe,
   checkable = false,
   checked,
   onToggle,
+  availability,
 }: {
   recipe: ParsedNormalizedRecipe;
   checkable?: boolean;
   checked?: ReadonlySet<string>;
   onToggle?: (key: string) => void;
+  availability?: RecipeAvailabilityLine[] | null;
 }) {
-  const { t } = useProductionI18n();
+  const { t, locale } = useProductionI18n();
   const quantity = useRecipeQuantity();
   const household = useHouseholdMeasure();
+  const pantry = new Map(
+    (availability ?? []).map((line) => [line.ingredientId, line]),
+  );
+  const pantryStatus = (
+    ingredientId: string | undefined,
+    sourceType?: string,
+  ) => {
+    const line = ingredientId ? pantry.get(ingredientId) : undefined;
+    if (!line || sourceType === "assumption") return null;
+    if (line.status === "available")
+      return { tone: "success", text: t("recipes.detail.inPantry") };
+    if (line.status === "partial")
+      return {
+        tone: "warning",
+        text: t("recipes.detail.partialPantry", {
+          amount: `${formatLocaleDecimal(line.missingQuantity, locale as SupportedDecimalLocale)} ${t(PANTRY_UNIT_KEYS[line.unit] ?? "recipes.unit.unit")}`,
+        }),
+      };
+    return { tone: "muted", text: t("recipes.detail.notInPantry") };
+  };
   const box = (key: string, label: string) =>
     checkable ? (
       <input
@@ -106,10 +141,10 @@ export function RecipeContent({
               const kitchen = household(ingredient);
               const notes = [
                 ingredient.optional ? t("recipes.detail.optional") : null,
-                ingredient.sourceType === "additional"
-                  ? t("recipes.detail.notInPantry")
-                  : null,
               ].filter(Boolean);
+              const status = checkable
+                ? null
+                : pantryStatus(ingredient.ingredientId, ingredient.sourceType);
               const label = `${ingredient.displayName}${amount ? ` — ${amount}` : ""}`;
               const key =
                 ingredient.ingredientId ?? `${ingredient.displayName}-${index}`;
@@ -131,8 +166,24 @@ export function RecipeContent({
                           {notes.join(", ")}
                         </span>
                       ) : null}
+                      {status ? (
+                        <span className="mt-1 block">
+                          <span
+                            data-testid="recipe-ingredient-pantry"
+                            className={
+                              status.tone === "success"
+                                ? "status-pill status-success"
+                                : status.tone === "warning"
+                                  ? "status-pill status-warning"
+                                  : "text-sm text-muted-foreground"
+                            }
+                          >
+                            {status.text}
+                          </span>
+                        </span>
+                      ) : null}
                     </span>
-                    <span className="shrink-0 text-right">
+                    <span className="tabular shrink-0 text-right">
                       <span className="block">{amount}</span>
                       {kitchen ? (
                         <span
