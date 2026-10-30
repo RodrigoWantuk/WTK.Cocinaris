@@ -59,6 +59,8 @@ public static class RecipeAiServiceCollectionExtensions
         services.AddScoped<IRecipeIdeaStore, PostgreSqlRecipeIdeaStore>();
         services.AddScoped<RecipeIdeaLibrary>();
         services.AddScoped<RecipeCookNowApplicationService>();
+        services.AddScoped<ISavedCandidateStore, PostgreSqlSavedCandidateStore>();
+        services.AddScoped<RecipeSavedCandidateService>();
         services.AddScoped<RecipeApiService>();
         services.AddScoped<IRecipeExecutionStore, PostgreSqlRecipeExecutionStore>();
         services.AddScoped<IRecipeExecutionUnitOfWork, PostgreSqlRecipeExecutionUnitOfWork>();

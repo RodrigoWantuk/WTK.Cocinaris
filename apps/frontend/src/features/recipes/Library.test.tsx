@@ -207,6 +207,65 @@ describe("recipe library (PLAN-0038)", () => {
     }
   });
 
+  it("lists saved ideas, cooks one into a recipe, and removes another", async () => {
+    const user = userEvent.setup();
+    const saved = (id: string, name: string) => ({
+      savedId: id,
+      sessionId: "s-1",
+      candidate: {
+        candidateId: `c-${id}`,
+        candidateStrategy: "on_hand_first",
+        name,
+        targetMealType: "dinner",
+        dishFormat: "plate",
+        primaryTechnique: "saute",
+        primaryIngredientRefs: ["rice"],
+        summary: `${name} summary`,
+        servings: 2,
+        activeMinutes: 10,
+        passiveMinutes: 5,
+        totalMinutes: 15,
+        difficulty: "easy",
+        requiredEquipmentIds: [],
+        requiredCapabilities: [],
+      },
+      createdAt: "2026-10-30T12:00:00Z",
+    });
+    const cookSavedCandidate = vi.fn(async () => DETAIL);
+    const deleteSavedCandidate = vi.fn(async () => undefined);
+    renderAt(
+      repoWith({
+        listSavedCandidates: async () => [
+          saved("a", "Arroz de forno"),
+          saved("b", "Sopa de cebola"),
+        ],
+        cookSavedCandidate,
+        deleteSavedCandidate,
+      }),
+      "/app/receitas",
+    );
+
+    const section = await screen.findByTestId("saved-candidates");
+    expect(within(section).getByText("Sopa de cebola")).toBeInTheDocument();
+    await user.click(screen.getByTestId("saved-candidate-remove-b"));
+    await waitFor(() =>
+      expect(screen.queryByTestId("saved-candidate-b")).not.toBeInTheDocument(),
+    );
+    expect(deleteSavedCandidate).toHaveBeenCalledWith("b", {
+      csrfToken: expect.any(String),
+    });
+
+    await user.click(screen.getByTestId("saved-candidate-cook-a"));
+    expect(cookSavedCandidate).toHaveBeenCalledWith(
+      "a",
+      expect.objectContaining({
+        csrfToken: expect.any(String),
+        idempotencyKey: expect.any(String),
+      }),
+    );
+    expect(await screen.findByTestId("recipes-detail")).toBeInTheDocument();
+  });
+
   it("saves an edit as the next revision, keeping row identifiers", async () => {
     const user = userEvent.setup();
     const reviseRecipe = vi.fn(async () => ({

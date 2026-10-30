@@ -36,6 +36,27 @@ public static class RecipeEndpoints
             .ProducesProblem(412)
             .ProducesProblem(422)
             .ProducesProblem(503);
+        // Saved candidates (PLAN-0056 Phase 3): keep candidates for later and cook them on demand.
+        group.MapPost("/generation-sessions/{sessionId:guid}/saved-candidates", (RecipeApiService service, Guid sessionId, SelectCandidateRequest body, HttpContext context, CancellationToken cancellationToken) => service.SaveCandidateAsync(sessionId, body, context, cancellationToken))
+            .RequireRateLimiting("mutation")
+            .Produces<SavedCandidateResponse>(StatusCodes.Status201Created)
+            .ProducesProblem(404);
+        group.MapGet("/saved-candidates", (RecipeApiService service, HttpContext context, CancellationToken cancellationToken) => service.ListSavedCandidatesAsync(context, cancellationToken))
+            .Produces<IReadOnlyList<SavedCandidateResponse>>();
+        group.MapDelete("/saved-candidates/{savedId:guid}", (RecipeApiService service, Guid savedId, HttpContext context, CancellationToken cancellationToken) => service.DeleteSavedCandidateAsync(savedId, context, cancellationToken))
+            .RequireRateLimiting("mutation")
+            .Produces(StatusCodes.Status204NoContent)
+            .ProducesProblem(404);
+        group.MapPost("/saved-candidates/{savedId:guid}/recipe", (RecipeApiService service, Guid savedId, HttpRequest request, CancellationToken cancellationToken) => service.CookSavedCandidateAsync(savedId, request, cancellationToken))
+            .RequireRateLimiting("mutation")
+            .Produces<RecipeDetailResponse>(StatusCodes.Status201Created)
+            .Produces<RecipeDetailResponse>(StatusCodes.Status200OK)
+            .ProducesProblem(400)
+            .ProducesProblem(404)
+            .ProducesProblem(409)
+            .ProducesProblem(412)
+            .ProducesProblem(422)
+            .ProducesProblem(503);
         group.MapRecipeLibraryEndpoints();
         group.MapRecipeExecutionEndpoints();
         return group;
@@ -61,8 +82,29 @@ public static class RecipeEndpoints
 }
 
 /// <summary>HTTP transport adapter for cook-now recipe application commands and queries.</summary>
-public sealed class RecipeApiService(RecipeCookNowApplicationService application, MenuPlanningApplicationService planning)
+public sealed class RecipeApiService(RecipeCookNowApplicationService application, MenuPlanningApplicationService planning, RecipeSavedCandidateService saved)
 {
+    /// <summary>Saves one candidate of an owned session for later; saving it again returns the same entry.</summary>
+    public async Task<IResult> SaveCandidateAsync(Guid sessionId, SelectCandidateRequest body, HttpContext context, CancellationToken cancellationToken) =>
+        ToResult(await saved.SaveAsync(sessionId, body.CandidateId, cancellationToken), context.TraceIdentifier, ToResponse);
+
+    /// <summary>Lists the owner's saved candidates, newest first.</summary>
+    public async Task<IResult> ListSavedCandidatesAsync(HttpContext context, CancellationToken cancellationToken) =>
+        ToResult(await saved.ListAsync(cancellationToken), context.TraceIdentifier, items => items.Select(ToResponse).ToList());
+
+    /// <summary>Removes a saved candidate.</summary>
+    public async Task<IResult> DeleteSavedCandidateAsync(Guid savedId, HttpContext context, CancellationToken cancellationToken)
+    {
+        var result = await saved.DeleteAsync(savedId, cancellationToken);
+        return result.Problem is { } problem
+            ? Problem(problem.ErrorCode, problem.Detail, StatusFor(problem.ErrorCode), context.TraceIdentifier, problem.Errors)
+            : Results.NoContent();
+    }
+
+    /// <summary>Cooks a saved candidate: creates the recipe (AI expansion or library idea); requires an Idempotency-Key.</summary>
+    public async Task<IResult> CookSavedCandidateAsync(Guid savedId, HttpRequest request, CancellationToken cancellationToken) =>
+        ToResult(await saved.CookAsync(savedId, ParseIdempotencyKey(request), request.HttpContext.TraceIdentifier, RequestLanguage(request), cancellationToken), request.HttpContext.TraceIdentifier, ToResponse);
+
     private const int MaxPlannedNames = 20;
 
     /// <summary>
@@ -154,6 +196,25 @@ public sealed class RecipeApiService(RecipeCookNowApplicationService application
         var status = result.Success == RecipeApplicationSuccess.Created ? StatusCodes.Status201Created : StatusCodes.Status200OK;
         return Results.Json(map(result.Value!), statusCode: status);
     }
+
+    private static SavedCandidateResponse ToResponse(SavedCandidateView view) => new(view.SavedId, view.SessionId, ToResponse(view.Candidate), view.CreatedAt);
+
+    private static RecipeCandidateResponse ToResponse(RecipeCandidateView item) => new(
+        item.CandidateId,
+        item.CandidateStrategy,
+        item.Name,
+        item.TargetMealType,
+        item.DishFormat,
+        item.PrimaryTechnique,
+        item.PrimaryIngredientRefs,
+        item.Summary,
+        item.Servings,
+        item.ActiveMinutes,
+        item.PassiveMinutes,
+        item.TotalMinutes,
+        item.Difficulty,
+        item.RequiredEquipmentIds,
+        item.RequiredCapabilities);
 
     private static RecipeGenerationSessionResponse ToResponse(RecipeGenerationSessionView view) => new(
         view.SessionId,
@@ -249,6 +310,13 @@ public sealed record MenuPlanningSlotRequest(Guid MenuId, DateOnly? PlannedDate,
 /// <summary>HTTP body for selecting one cook-now candidate.</summary>
 /// <param name="CandidateId">Stable candidate identifier from the generation session.</param>
 public sealed record SelectCandidateRequest(string CandidateId);
+
+/// <summary>A candidate the owner saved for later (PLAN-0056 Phase 3).</summary>
+/// <param name="SavedId">Saved entry id.</param>
+/// <param name="SessionId">Generation session it came from.</param>
+/// <param name="Candidate">The candidate as it was suggested.</param>
+/// <param name="CreatedAt">When it was saved.</param>
+public sealed record SavedCandidateResponse(Guid SavedId, Guid SessionId, RecipeCandidateResponse Candidate, DateTimeOffset CreatedAt);
 
 /// <summary>HTTP projection of one cook-now generation session.</summary>
 public sealed record RecipeGenerationSessionResponse(Guid SessionId, string Status, IReadOnlyList<RecipeCandidateResponse>? Candidates, string? FailureReason);

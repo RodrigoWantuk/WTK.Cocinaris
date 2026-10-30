@@ -4,6 +4,14 @@
  */
 
 /** One cook-now candidate returned by a generation session. */
+/** A candidate kept for later (PLAN-0056 Phase 3). */
+export interface SavedCandidate {
+  savedId: string;
+  sessionId: string;
+  candidate: RecipeCandidate;
+  createdAt: string;
+}
+
 export interface RecipeCandidate {
   candidateId: string;
   candidateStrategy: string;
@@ -383,6 +391,32 @@ export interface RecipeRepository {
   selectCandidate(
     sessionId: string,
     candidateId: string,
+    options: {
+      csrfToken: string;
+      idempotencyKey: string;
+      language?: string;
+      signal?: AbortSignal;
+    },
+  ): Promise<RecipeDetail>;
+  /** Keeps a candidate for later (PLAN-0056 Phase 3); saving it again returns the same entry. */
+  saveCandidate(
+    sessionId: string,
+    candidateId: string,
+    options: { csrfToken: string; signal?: AbortSignal },
+  ): Promise<SavedCandidate>;
+  /** The owner's saved candidates, newest first. */
+  listSavedCandidates(signal?: AbortSignal): Promise<SavedCandidate[]>;
+  /** Removes a saved candidate. */
+  deleteSavedCandidate(
+    savedId: string,
+    options: { csrfToken: string; signal?: AbortSignal },
+  ): Promise<void>;
+  /**
+   * Turns a saved candidate into a recipe against the current pantry. The same `idempotencyKey`
+   * returns the same recipe; the entry then leaves the saved list.
+   */
+  cookSavedCandidate(
+    savedId: string,
     options: {
       csrfToken: string;
       idempotencyKey: string;

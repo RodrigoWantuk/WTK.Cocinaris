@@ -24,6 +24,10 @@ export const executionStubs: Pick<
   | "deriveRecipe"
   | "setFavorite"
   | "setArchived"
+  | "saveCandidate"
+  | "listSavedCandidates"
+  | "deleteSavedCandidate"
+  | "cookSavedCandidate"
 > = {
   startExecution: unused,
   getExecution: unused,
@@ -37,6 +41,10 @@ export const executionStubs: Pick<
   deriveRecipe: unused,
   setFavorite: unused,
   setArchived: unused,
+  saveCandidate: unused,
+  listSavedCandidates: async () => [],
+  deleteSavedCandidate: unused,
+  cookSavedCandidate: unused,
 };
 
 /** Completes a test recipe detail with the library defaults of a generated, unorganized recipe. */

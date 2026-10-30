@@ -1431,6 +1431,43 @@ namespace Cocinaris.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Cocinaris.Infrastructure.Persistence.SavedCandidateEntryRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("CandidateId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("CandidateJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<Guid?>("CookedRecipeId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("OwnerUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("SessionId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OwnerUserId", "CreatedAt");
+
+                    b.HasIndex("OwnerUserId", "SessionId", "CandidateId")
+                        .IsUnique();
+
+                    b.ToTable("saved_candidates", "recipes");
+                });
+
             modelBuilder.Entity("Cocinaris.Infrastructure.Persistence.ShoppingCheckRecord", b =>
                 {
                     b.Property<Guid>("MenuPlanId")
@@ -2079,6 +2116,15 @@ namespace Cocinaris.Infrastructure.Persistence.Migrations
                         .WithMany()
                         .HasForeignKey("RecipeId", "OwnerUserId")
                         .HasPrincipalKey("Id", "OwnerUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Cocinaris.Infrastructure.Persistence.SavedCandidateEntryRecord", b =>
+                {
+                    b.HasOne("Cocinaris.Modules.Identity.InternalUser", null)
+                        .WithMany()
+                        .HasForeignKey("OwnerUserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
