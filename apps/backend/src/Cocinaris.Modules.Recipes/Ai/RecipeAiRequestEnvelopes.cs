@@ -122,12 +122,64 @@ public static class RecipeAiRequestEnvelopes
             envelope["policy"]!["estimatedQuantities"] = "Items with quantityIsEstimate are the owner's approximation. Do not depend on using all of such an item.";
         }
 
+        if (BuildGuidance(context) is { } guidance)
+        {
+            envelope["suggestionGuidance"] = guidance;
+        }
+
         if (repair is not null)
         {
             envelope["repair"] = BuildRepairObject(repair);
         }
 
         return envelope.ToJsonString(SerializerOptions);
+    }
+
+    /// <summary>
+    /// The person's direction (PLAN-0056) as closed codes. <c>requiredInventoryItemIds</c> and
+    /// <c>maxTotalMinutes</c> are hard: the semantic validator rejects candidates that ignore them.
+    /// Kind, families, and cuisine are preferences the model follows. Written only when set, so
+    /// unguided envelopes are unchanged.
+    /// </summary>
+    private static JsonObject? BuildGuidance(RecipeSuggestRequestContext context)
+    {
+        var guidance = context.Guidance;
+        var required = context.InventoryItems.Where(item => item.MustUse).Select(item => (JsonNode)item.ItemId).ToArray();
+        if (guidance is null || (!guidance.HasStylePreferences && guidance.MaxTotalMinutes is null && required.Length == 0))
+        {
+            return null;
+        }
+
+        var node = new JsonObject
+        {
+            ["rules"] = "Every candidate must list each requiredInventoryItemIds item in inventoryUses, and time.totalMinutes must not exceed maxTotalMinutes when present. Follow mealKind, dishFamilies, and cuisine when present; at least one candidate must match each of them."
+        };
+        if (guidance.MealKind is not null)
+        {
+            node["mealKind"] = guidance.MealKind;
+        }
+
+        if (guidance.DishFamilies.Count > 0)
+        {
+            node["dishFamilies"] = ToStringArray(guidance.DishFamilies);
+        }
+
+        if (guidance.Cuisine is not null)
+        {
+            node["cuisine"] = guidance.Cuisine;
+        }
+
+        if (guidance.MaxTotalMinutes is { } minutes)
+        {
+            node["maxTotalMinutes"] = minutes;
+        }
+
+        if (required.Length > 0)
+        {
+            node["requiredInventoryItemIds"] = new JsonArray(required);
+        }
+
+        return node;
     }
 
     private static string BuildExpandEnvelope(RecipeExpandRequestContext context, RepairPayload? repair)
@@ -257,6 +309,11 @@ public static class RecipeAiRequestEnvelopes
         if (item.QuantityIsEstimate)
         {
             node["quantityIsEstimate"] = true;
+        }
+
+        if (item.MustUse)
+        {
+            node["mustUse"] = true;
         }
 
         return node;

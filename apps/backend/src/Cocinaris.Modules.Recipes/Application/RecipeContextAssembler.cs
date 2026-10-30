@@ -23,13 +23,14 @@ public sealed class RecipeContextAssembler(IInventoryLotReadStore inventoryReadS
     private const int DefaultServings = 2;
 
     /// <inheritdoc />
-    public async Task<RecipeSuggestRequestContext> AssembleSuggestContextAsync(Guid ownerUserId, string requestId, int contextBudgetCharacters, CancellationToken cancellationToken, MenuPlanningTarget? menuTarget = null)
+    public async Task<RecipeSuggestRequestContext> AssembleSuggestContextAsync(Guid ownerUserId, string requestId, int contextBudgetCharacters, CancellationToken cancellationToken, MenuPlanningTarget? menuTarget = null, RecipeSuggestionGuidance? guidance = null)
     {
         var (inventoryItems, equipment, presets) = await AssembleSharedAsync(ownerUserId, cancellationToken);
+        inventoryItems = ApplyGuidance(inventoryItems, guidance);
         if (menuTarget is null)
         {
             var cookNow = BoundBySuggestBudget(inventoryItems, equipment, contextBudgetCharacters);
-            return new RecipeSuggestRequestContext(requestId, cookNow.InventoryItems, cookNow.Equipment, presets, new RecipeExecutionContext("cook_now", AvailableLeadMinutes: null));
+            return new RecipeSuggestRequestContext(requestId, cookNow.InventoryItems, cookNow.Equipment, presets, new RecipeExecutionContext("cook_now", AvailableLeadMinutes: null), guidance);
         }
 
         // A planned meal may only count on stock nobody else counts on: physical quantity minus
@@ -47,7 +48,28 @@ public sealed class RecipeContextAssembler(IInventoryLotReadStore inventoryReadS
             bounded.InventoryItems,
             bounded.Equipment,
             presets with { Servings = menuTarget.Servings },
-            new RecipeExecutionContext("menu_planning", AvailableLeadMinutes: null, menuTarget.PlannedDate, menuTarget.MealType, menuTarget.AlreadyPlannedRecipeNames.Take(20).ToList()));
+            new RecipeExecutionContext("menu_planning", AvailableLeadMinutes: null, menuTarget.PlannedDate, menuTarget.MealType, menuTarget.AlreadyPlannedRecipeNames.Take(20).ToList()),
+            guidance);
+    }
+
+    /// <summary>
+    /// Drops excluded lots (they never reach the AI, owner request 2026-10-30) and marks required
+    /// lots, moving them to the front so budget truncation, which keeps the first items, keeps them.
+    /// </summary>
+    private static IReadOnlyList<RecipeInventoryContextItem> ApplyGuidance(IReadOnlyList<RecipeInventoryContextItem> items, RecipeSuggestionGuidance? guidance)
+    {
+        if (guidance is null)
+        {
+            return items;
+        }
+
+        var excluded = guidance.ExcludedLotIds.Select(id => id.ToString("n")).ToHashSet(StringComparer.Ordinal);
+        var required = guidance.RequiredLotIds.Select(id => id.ToString("n")).ToHashSet(StringComparer.Ordinal);
+        return items
+            .Where(item => !excluded.Contains(item.ItemId))
+            .Select(item => required.Contains(item.ItemId) ? item with { MustUse = true } : item)
+            .OrderByDescending(item => item.MustUse)
+            .ToList();
     }
 
     /// <inheritdoc />

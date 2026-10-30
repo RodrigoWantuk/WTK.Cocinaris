@@ -643,6 +643,7 @@ export function createLiveRecipeRepository(options?: {
       idempotencyKey,
       language,
       menuPlanning,
+      guidance,
       signal,
     }) {
       try {
@@ -655,7 +656,13 @@ export function createLiveRecipeRepository(options?: {
                 "Idempotency-Key": idempotencyKey,
               },
             },
-            body: menuPlanning ? { menuPlanning } : undefined,
+            body:
+              menuPlanning || guidance
+                ? {
+                    menuPlanning: menuPlanning ?? null,
+                    guidance: guidance ?? null,
+                  }
+                : undefined,
             headers: language ? { "Accept-Language": language } : undefined,
             signal,
             credentials: "include",

@@ -235,6 +235,119 @@ describe("Recipes generate flow", () => {
     );
   });
 
+  it("sends the chosen guidance and pantry choices", async () => {
+    const user = userEvent.setup();
+    const requestCandidates = vi.fn(async () => ({
+      sessionId: "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+      status: "CandidatesReady",
+      candidates: [
+        candidate("c1", "A"),
+        candidate("c2", "B"),
+        candidate("c3", "C"),
+      ],
+      failureReason: null,
+    }));
+    const recipeRepo: RecipeRepository = {
+      ...executionStubs,
+      listRecipes: async () => [],
+      getRecipe: async () => {
+        throw new Error("not used");
+      },
+      requestCandidates,
+      getGenerationSession: async () => {
+        throw new Error("not used");
+      },
+      selectCandidate: async () => {
+        throw new Error("not used");
+      },
+    };
+    renderGenerateTree(
+      recipeRepo,
+      createInventoryStub(),
+      <Routes>
+        <Route path="/app/receitas/gerar" element={<RecipeGeneratePage />} />
+      </Routes>,
+    );
+
+    const panel = await screen.findByTestId("recipes-guidance");
+    // Collapsed by default: one line for people who do not want it.
+    expect(panel).not.toHaveAttribute("open");
+    await user.click(within(panel).getByText(/steer the suggestions/i));
+    await user.click(screen.getByTestId("recipes-guidance-meal-snack"));
+    await user.click(screen.getByTestId("recipes-guidance-family-eggs"));
+    await user.selectOptions(
+      screen.getByTestId("recipes-guidance-cuisine"),
+      "brazilian",
+    );
+    await user.click(screen.getByTestId("recipes-guidance-time-quick"));
+    await user.click(
+      within(screen.getByTestId("recipes-guidance-lot-lot-1")).getByRole(
+        "radio",
+        { name: "Use" },
+      ),
+    );
+    expect(screen.getByTestId("recipes-guidance-meal-snack")).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    await user.click(screen.getByTestId("recipes-confirm-generate"));
+
+    await screen.findByTestId("recipes-candidate-list");
+    expect(requestCandidates).toHaveBeenCalledWith(
+      expect.objectContaining({
+        guidance: {
+          mealKind: "snack",
+          dishFamilies: ["eggs"],
+          cuisine: "brazilian",
+          time: "quick",
+          requiredLotIds: ["lot-1"],
+          excludedLotIds: [],
+        },
+      }),
+    );
+  });
+
+  it("sends no guidance when nothing is chosen", async () => {
+    const user = userEvent.setup();
+    const requestCandidates = vi.fn(async () => ({
+      sessionId: "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+      status: "CandidatesReady",
+      candidates: [
+        candidate("c1", "A"),
+        candidate("c2", "B"),
+        candidate("c3", "C"),
+      ],
+      failureReason: null,
+    }));
+    const recipeRepo: RecipeRepository = {
+      ...executionStubs,
+      listRecipes: async () => [],
+      getRecipe: async () => {
+        throw new Error("not used");
+      },
+      requestCandidates,
+      getGenerationSession: async () => {
+        throw new Error("not used");
+      },
+      selectCandidate: async () => {
+        throw new Error("not used");
+      },
+    };
+    renderGenerateTree(
+      recipeRepo,
+      createInventoryStub(),
+      <Routes>
+        <Route path="/app/receitas/gerar" element={<RecipeGeneratePage />} />
+      </Routes>,
+    );
+
+    await user.click(await screen.findByTestId("recipes-confirm-generate"));
+    await screen.findByTestId("recipes-candidate-list");
+    expect(requestCandidates).toHaveBeenLastCalledWith(
+      expect.objectContaining({ guidance: undefined }),
+    );
+  });
+
   it("shows provider unavailable and allows retry", async () => {
     const user = userEvent.setup();
     let failOnce = true;

@@ -61,6 +61,7 @@ Duplicates are recognized by their signature (language, level, restrictions, mea
 | Score | 0.8 × coverage + 0.2 × (selected + 1) / (offered + 2) |
 | Already owned | Ideas whose name matches one of the person's recipes are skipped |
 | Choice | Three ideas with distinct strategies and distinct dishes (format, technique, main ingredients), as the protocol requires |
+| Guidance (PLAN-0056) | A request with a meal kind, dish family, or cuisine goes to the AI, because ideas carry no such tags yet. Required pantry items must be used by every chosen idea, and a time limit must be met. Excluded items are absent from the pantry the library sees. |
 | Validation | The rebuilt answer must pass `RecipeProtocolValidator` against the request the AI would have received |
 
 A rebuilt candidate takes the person's largest lot for each ingredient (by catalog ingredient and unit). Ingredients they lack become ingredients to buy (at most 5). Quantities stay those of the idea. The cooking proposal scales them to the portions chosen when cooking.
