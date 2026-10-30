@@ -131,4 +131,6 @@ public sealed class RecipeExecutionRecord
     public Guid Version { get; set; }
     /// <summary>Gets or sets the menu entry the session was started from; cleared if the entry is removed.</summary>
     public Guid? MenuEntryId { get; set; }
+    /// <summary>Gets or sets the session's ingredient adjustments as JSON (PLAN-0042 Phase 2); <c>[]</c> when none.</summary>
+    public string AdjustmentsJson { get; set; } = "[]";
 }

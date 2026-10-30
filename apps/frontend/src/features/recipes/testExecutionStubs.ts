@@ -28,6 +28,7 @@ export const executionStubs: Pick<
   | "listSavedCandidates"
   | "deleteSavedCandidate"
   | "cookSavedCandidate"
+  | "setExecutionAdjustments"
 > = {
   startExecution: unused,
   getExecution: unused,
@@ -45,6 +46,7 @@ export const executionStubs: Pick<
   listSavedCandidates: async () => [],
   deleteSavedCandidate: unused,
   cookSavedCandidate: unused,
+  setExecutionAdjustments: unused,
 };
 
 /** Completes a test recipe detail with the library defaults of a generated, unorganized recipe. */

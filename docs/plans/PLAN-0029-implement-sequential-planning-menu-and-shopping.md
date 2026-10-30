@@ -238,3 +238,7 @@ Owner direction 2026-10-30: "Siga com plano 42 e 29, não temos pressa em compar
 ### 2026-10-30T15:00:00Z — Claude Code
 
 - Delivered Phase 4 after the owner's "Siga com plano 42 e 29": package sizes the owner confirms, with whole packages and the expected remainder on the shopping line; the planned-versus-actual notice after a purchase; and "Prepare-se" reminders (buy, thaw, use by) on "Hoje".
+
+### 2026-10-30T16:00:00Z — Claude Code
+
+- Merged `main` (PLAN-0042 PR #70) into the Phase 4 branch to resolve the registry conflict. The model snapshot holds both migrations and the regenerated OpenAPI contract equals the merged one. Re-run after the merge: unit 8/8, integration (Phase 4, cooking adjustments, migrations) 22/22, frontend planning/recipes/app 102/102, typecheck and `dotnet format` clean.

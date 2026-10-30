@@ -28,6 +28,7 @@ export function createUnavailableRecipeRepository(): RecipeRepository {
     listSavedCandidates: async () => [],
     deleteSavedCandidate: async () => fail(),
     cookSavedCandidate: async () => fail(),
+    setExecutionAdjustments: async () => fail(),
     getGenerationSession: async () => fail(),
     selectCandidate: async () => fail(),
     startExecution: async () => fail(),

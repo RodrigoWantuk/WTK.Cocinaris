@@ -577,6 +577,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/recipes/executions/{executionId}/adjustments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** PUT /api/v1/recipes/executions/{executionId}/adjustments */
+        put: operations["putApiV1RecipesExecutionsExecutionIdAdjustments"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/recipes/executions/{executionId}/completion": {
         parameters: {
             query?: never;
@@ -1823,6 +1840,39 @@ export interface components {
              */
             updatedAt: string;
         };
+        /** @description One requested ingredient adjustment. */
+        RecipeExecutionAdjustmentRequestItem: {
+            /** @description Recipe ingredient. */
+            ingredientId: null | string;
+            /** @description `substitute`, `quantity`, or `skip`. */
+            kind: null | string;
+            /**
+             * Format: double
+             * @description Amount used this time (required for `quantity`, optional for `substitute`).
+             */
+            quantity: null | number | string;
+            /** @description What was used instead (1–120 characters), for `substitute`. */
+            substituteName: null | string;
+        };
+        /** @description One ingredient change made while cooking (PLAN-0042 Phase 2). */
+        RecipeExecutionAdjustmentResponse: {
+            /** @description Recipe ingredient. */
+            ingredientId: string;
+            /** @description `substitute`, `quantity`, or `skip`. */
+            kind: string;
+            /**
+             * Format: double
+             * @description Amount used this time, in the proposal line's unit.
+             */
+            quantity: null | number | string;
+            /** @description What was used instead, for `substitute`. */
+            substituteName: null | string;
+        };
+        /** @description Request body replacing a session's ingredient adjustments; an empty list clears them. */
+        RecipeExecutionAdjustmentsRequest: {
+            /** @description At most 40, one per ingredient. */
+            adjustments: null | components["schemas"]["RecipeExecutionAdjustmentRequestItem"][];
+        };
         /** @description One confirmed lot consumption in the lot's canonical unit (`Gram`, `Milliliter`, `Unit`). */
         RecipeExecutionConsumptionRequest: {
             /**
@@ -1875,13 +1925,15 @@ export interface components {
             /** Format: uuid */
             version: string;
         };
-        /** @description One proposal line; `status` is `ready`, `insufficient`, `lot_unavailable`, or `not_tracked`. */
+        /** @description One proposal line; `status` is `ready`, `insufficient`, `lot_unavailable`, `not_tracked`, or `skipped` (left out this time). `Adjustment` is the session's change to it (`substitute`, `quantity`, `skip`), and `OriginalName` the recipe's name when substituted. */
         RecipeExecutionProposalLineResponse: {
+            adjustment: null | string;
             displayName: string;
             ingredientId: string;
             /** Format: uuid */
             lotId: null | string;
             optional: boolean;
+            originalName: null | string;
             /** Format: double */
             proposedQuantity: null | number | string;
             /** Format: double */
@@ -1907,8 +1959,9 @@ export interface components {
             quantity: number | string;
             recipeName: string;
         };
-        /** @description One recipe execution. `status` is `InProgress`, `Completed`, or `Abandoned`; `proposal` is present while in progress. */
+        /** @description One recipe execution. `status` is `InProgress`, `Completed`, or `Abandoned`; `proposal` is present while in progress; `adjustments` are the session's ingredient changes (PLAN-0042 Phase 2). */
         RecipeExecutionResponse: {
+            adjustments: components["schemas"]["RecipeExecutionAdjustmentResponse"][];
             /** Format: uuid */
             executionId: string;
             /** Format: date-time */
@@ -5358,6 +5411,107 @@ export interface operations {
             };
             /** @description Precondition Failed */
             412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    putApiV1RecipesExecutionsExecutionIdAdjustments: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Required CSRF token issued by GET /api/v1/session. */
+                "X-CSRF-TOKEN": string;
+            };
+            path: {
+                executionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecipeExecutionAdjustmentsRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecipeExecutionResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description The request content type is not supported. */
+            415: {
                 headers: {
                     [name: string]: unknown;
                 };

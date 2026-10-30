@@ -219,6 +219,54 @@ function buildContent(
   };
 }
 
+/** Lot unit of an adjustment and the editor unit it corresponds to. */
+const LOT_UNIT_TO_EDITOR: Record<string, string> = {
+  g: "g",
+  ml: "ml",
+  unit: "unit",
+};
+
+/**
+ * Carries the changes a cooking session recorded (PLAN-0042 Phase 2) into an editor draft:
+ * a substitution renames the ingredient and drops its pantry link, an amount used is converted
+ * back to the recipe's portions, and an ingredient left out becomes optional (not removed, so
+ * nothing is lost). Amounts apply only to rows in grams, milliliters, or units, which are the
+ * units an adjustment is recorded in. Returns the new draft and the names of the rows changed.
+ */
+export function applyCookingAdjustments(
+  draft: Draft,
+  execution: RecipeExecution,
+  locale: SupportedDecimalLocale,
+): { draft: Draft; changed: string[] } {
+  const byId = new Map(
+    execution.adjustments.map((item) => [item.ingredientId, item]),
+  );
+  const ratio = execution.recipeServings / Math.max(1, execution.servings);
+  const changed: string[] = [];
+  const scaled = (value: number) =>
+    formatLocaleDecimal(Math.round(value * ratio * 1000) / 1000, locale);
+  const ingredients = draft.ingredients.map((row) => {
+    const adjustment = row.ingredientId
+      ? byId.get(row.ingredientId)
+      : undefined;
+    if (!adjustment) return row;
+    changed.push(row.displayName);
+    const amount =
+      adjustment.quantity !== null && LOT_UNIT_TO_EDITOR[row.unit]
+        ? { quantity: scaled(adjustment.quantity) }
+        : {};
+    if (adjustment.kind === "skip") return { ...row, optional: true };
+    if (adjustment.kind === "quantity") return { ...row, ...amount };
+    return {
+      ...row,
+      ...amount,
+      displayName: adjustment.substituteName ?? row.displayName,
+      fromPantry: false,
+    };
+  });
+  return { draft: { ...draft, ingredients }, changed };
+}
+
 /**
  * Writes a new recipe, saves an edit as the next revision, or creates a variation (derived
  * recipe). With `?execucao=<id>` the page was opened after cooking: the cooking notes are shown as
@@ -255,6 +303,26 @@ export function RecipeEditorPage({ mode }: { mode: RecipeEditorMode }) {
   const [saving, setSaving] = useState(false);
   // One key per intended creation; a retry after a network failure reuses it.
   const keyRef = useRef<string>(crypto.randomUUID());
+  // The session's ingredient changes are applied once, after both the recipe and the session load.
+  const [applied, setApplied] = useState<string[] | null>(null);
+
+  useEffect(() => {
+    if (
+      !base ||
+      !draft ||
+      !execution ||
+      applied !== null ||
+      execution.adjustments.length === 0
+    )
+      return;
+    const result = applyCookingAdjustments(
+      draft,
+      execution,
+      locale as SupportedDecimalLocale,
+    );
+    setDraft(result.draft);
+    setApplied(result.changed);
+  }, [base, draft, execution, applied, locale]);
 
   useEffect(() => {
     if (mode === "new") return;
@@ -445,6 +513,19 @@ export function RecipeEditorPage({ mode }: { mode: RecipeEditorMode }) {
         <h1 className="font-display text-3xl">{title}</h1>
         <p className="mt-1 text-muted-foreground">{t(`editor.hint.${mode}`)}</p>
       </div>
+
+      {applied && applied.length > 0 ? (
+        <aside
+          data-testid="recipe-editor-cooking-adjustments"
+          className="rounded-2xl border border-border bg-secondary/40 p-4 text-sm"
+        >
+          <p className="font-medium">{t("editor.cookingAdjustments")}</p>
+          <p className="mt-1">{applied.join(", ")}</p>
+          <p className="mt-1 text-muted-foreground">
+            {t("editor.cookingAdjustmentsHint")}
+          </p>
+        </aside>
+      ) : null}
 
       {execution && (execution.notes || execution.rating) ? (
         <aside

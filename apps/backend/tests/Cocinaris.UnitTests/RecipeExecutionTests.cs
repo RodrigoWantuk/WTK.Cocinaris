@@ -64,6 +64,50 @@ public sealed class RecipeExecutionTests
         Assert.Throws<ArgumentException>(() => RecipeExecution.Start(Guid.NewGuid(), Guid.NewGuid(), 1, 25, Now));
     }
 
+    [Fact]
+    public void AdjustmentsChangeTheProposalForThisSessionOnly()
+    {
+        // PLAN-0042 Phase 2: cream swapped for milk, flour amount changed, eggs left out.
+        var cream = Lot("cream", 200m, "Milliliter");
+        var milk = Lot("Leite", 1000m, "Milliliter");
+        var flour = Lot("flour", 500m, "Gram");
+        var eggs = Lot("eggs", 6m, "Unit");
+        var json = Recipe(Inventory("cream", cream.LotId, 100, "ml"), Inventory("flour", flour.LotId, 200, "g"), Inventory("eggs", eggs.LotId, 2, "unit"));
+        IReadOnlyList<RecipeExecutionAdjustment> adjustments =
+        [
+            new("cream", "substitute", "Leite", 150m),
+            new("flour", "quantity", null, 250m),
+            new("eggs", "skip", null, null)
+        ];
+
+        var proposal = RecipeExecutionApplicationService.BuildProposal(json, recipeServings: 2, servings: 4, [cream, milk, flour, eggs], adjustments: adjustments);
+
+        var substituted = proposal.Lines.Single(line => line.IngredientId == "cream");
+        Assert.Equal(("Leite", "cream", "substitute", milk.LotId, 150m), (substituted.DisplayName, substituted.OriginalName, substituted.Adjustment, substituted.LotId, substituted.RequiredQuantity));
+        // An amount the cook gave is used as given, not scaled by the servings.
+        Assert.Equal((250m, "ready", flour.LotId), (proposal.Lines.Single(line => line.IngredientId == "flour").RequiredQuantity, proposal.Lines.Single(line => line.IngredientId == "flour").Status, proposal.Lines.Single(line => line.IngredientId == "flour").LotId));
+        var skipped = proposal.Lines.Single(line => line.IngredientId == "eggs");
+        Assert.Equal(("skipped", (Guid?)null, (decimal?)null), (skipped.Status, skipped.LotId, skipped.ProposedQuantity));
+    }
+
+    [Fact]
+    public void AdjustmentsAreValidatedAndOnlyWhileCooking()
+    {
+        var execution = RecipeExecution.Start(Guid.NewGuid(), Guid.NewGuid(), 1, 2, Now);
+        Assert.Throws<ArgumentException>(() => execution.SetAdjustments([new("a", "substitute", " ", null)], Now));
+        Assert.Throws<ArgumentException>(() => execution.SetAdjustments([new("a", "quantity", null, null)], Now));
+        Assert.Throws<ArgumentException>(() => execution.SetAdjustments([new("a", "skip", null, 3m)], Now));
+        Assert.Throws<ArgumentException>(() => execution.SetAdjustments([new("a", "skip", null, null), new("a", "skip", null, null)], Now));
+        Assert.Throws<ArgumentException>(() => execution.SetAdjustments([new("a", "melt", null, null)], Now));
+
+        var version = execution.Version;
+        execution.SetAdjustments([new("a", "substitute", "  Leite  ", null)], Now);
+        Assert.Equal("Leite", execution.Adjustments.Single().SubstituteName);
+        Assert.NotEqual(version, execution.Version);
+        execution.Abandon(Now);
+        Assert.Throws<InvalidOperationException>(() => execution.SetAdjustments([], Now));
+    }
+
     private static InventoryLotReadModel Lot(string name, decimal value, string unit) =>
         new(Guid.NewGuid(), Guid.NewGuid(), name, value, unit, null, "Refrigerator", null, null, null, null, Guid.NewGuid(), Now, Now, null);
 

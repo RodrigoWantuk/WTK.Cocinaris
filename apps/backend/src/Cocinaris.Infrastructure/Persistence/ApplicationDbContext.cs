@@ -443,6 +443,7 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
                 table.HasCheckConstraint("ck_recipe_executions_rating", "\"Rating\" IS NULL OR \"Rating\" BETWEEN 1 AND 5");
                 table.HasCheckConstraint("ck_recipe_executions_finished", "(\"Status\" = 'InProgress') = (\"FinishedAt\" IS NULL)");
                 table.HasCheckConstraint("ck_recipe_executions_completion", "(\"Status\" = 'Completed') = (\"CompletionKey\" IS NOT NULL)");
+                entity.Property(x => x.AdjustmentsJson).HasColumnType("jsonb").HasDefaultValueSql("'[]'::jsonb");
             });
             entity.HasKey(x => x.Id);
             entity.Property(x => x.Status).HasMaxLength(20).IsRequired();
