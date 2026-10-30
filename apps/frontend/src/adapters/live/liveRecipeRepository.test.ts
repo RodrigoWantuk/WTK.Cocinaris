@@ -107,6 +107,16 @@ describe("createLiveRecipeRepository", () => {
           state: "ready",
           url: `/api/v1/recipes/${id}/thumbnail?v=0123456789abcdef`,
         }),
+        row(id, {
+          state: "ready",
+          url: `/api/v1/recipes/${id}/thumbnail?revision=2&v=0123456789abcdef.w1`,
+          smallUrl: `/api/v1/recipes/${id}/thumbnail?revision=2&size=small&v=0123456789abcdef.w1`,
+        }),
+        row(id, {
+          state: "ready",
+          url: `/api/v1/recipes/${id}/thumbnail?v=0123456789abcdef.w1`,
+          smallUrl: "https://attacker.example/small.webp",
+        }),
         row(id, { state: "ready", url: "https://attacker.example/x.png" }),
         row(id, { state: "pending", url: null }),
         row(id, undefined),
@@ -117,10 +127,22 @@ describe("createLiveRecipeRepository", () => {
       {
         state: "ready",
         url: `/api/v1/recipes/${id}/thumbnail?v=0123456789abcdef`,
+        smallUrl: null,
       },
-      { state: "none", url: null },
-      { state: "pending", url: null },
-      { state: "none", url: null },
+      {
+        state: "ready",
+        url: `/api/v1/recipes/${id}/thumbnail?revision=2&v=0123456789abcdef.w1`,
+        smallUrl: `/api/v1/recipes/${id}/thumbnail?revision=2&size=small&v=0123456789abcdef.w1`,
+      },
+      // A rejected card URL falls back to the full image; the full one is still accepted.
+      {
+        state: "ready",
+        url: `/api/v1/recipes/${id}/thumbnail?v=0123456789abcdef.w1`,
+        smallUrl: null,
+      },
+      { state: "none", url: null, smallUrl: null },
+      { state: "pending", url: null, smallUrl: null },
+      { state: "none", url: null, smallUrl: null },
     ]);
   });
 

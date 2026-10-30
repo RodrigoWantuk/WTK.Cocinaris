@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { RecipeThumbnail } from "./RecipeThumbnail";
+import { usePendingThumbnailRefresh } from "./usePendingThumbnailRefresh";
 import { useRecipeRepository } from "./RecipeProvider";
 import { RecipeApiError, type RecipeSummary } from "@/contracts/recipes";
 import { useProductionI18n } from "@/app/i18n/ProductionI18nProvider";
@@ -76,6 +77,13 @@ export function RecipesListPage() {
     })();
     return () => controller.abort();
   }, [repo, reloadToken, filter, search]);
+
+  // A new recipe's image is generated after the first read; reload quietly until it is ready.
+  usePendingThumbnailRefresh(
+    items.some((recipe) => recipe.thumbnail?.state === "pending"),
+    items,
+    () => setReloadToken((token) => token + 1),
+  );
 
   const toggleFavorite = async (recipe: RecipeSummary) => {
     if (!session.csrfToken) return;
@@ -247,6 +255,7 @@ export function RecipesListPage() {
                   <RecipeThumbnail
                     thumbnail={recipe.thumbnail ?? { state: "none", url: null }}
                     name={recipe.name}
+                    size="small"
                     className="w-28 shrink-0 sm:w-36"
                   />
                   <span className="min-w-0 flex-1">

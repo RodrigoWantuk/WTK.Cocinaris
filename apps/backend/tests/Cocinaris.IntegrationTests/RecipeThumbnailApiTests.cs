@@ -74,14 +74,29 @@ public sealed partial class RecipeExecutionApiTests
         Assert.Equal("ready", ready.GetProperty("thumbnail").GetProperty("state").GetString());
         var image = await owner.GetAsync(url);
         Assert.Equal(HttpStatusCode.OK, image.StatusCode);
-        Assert.Equal("image/png", image.Content.Headers.ContentType!.MediaType);
+        Assert.Equal("image/webp", image.Content.Headers.ContentType!.MediaType);
         Assert.Contains("private", image.Headers.CacheControl!.ToString());
-        var bytes = await image.Content.ReadAsByteArrayAsync();
-        Assert.Equal(0x89, bytes[0]);
+        Assert.Equal(("image/webp", 1024, 576), Size(await image.Content.ReadAsByteArrayAsync()));
+        var smallUrl = ready.GetProperty("thumbnail").GetProperty("smallUrl").GetString()!;
+        Assert.Contains("size=small", smallUrl);
+        Assert.Equal(("image/webp", 480, 270), Size(await owner.GetByteArrayAsync(smallUrl)));
+        // The provider original is kept next to the served WebP sizes.
+        Assert.Equal(3, Directory.GetFiles(storage).Length);
+        // An image stored before WebP encoding has only its original; the first read encodes it.
+        foreach (var webp in Directory.GetFiles(storage, "*.webp"))
+        {
+            File.Delete(webp);
+        }
+
+        Assert.Equal(("image/webp", 480, 270), Size(await owner.GetByteArrayAsync(smallUrl)));
+        Assert.Equal(2, Directory.GetFiles(storage, "*.webp").Length);
 
         Assert.Equal(HttpStatusCode.NotFound, (await other.GetAsync(url)).StatusCode);
         Directory.Delete(storage, recursive: true);
     }
+
+    private static (string MediaType, int Width, int Height) Size(byte[] bytes) =>
+        ImageInspector.Inspect(bytes) is { } image ? (image.MediaType, image.Width, image.Height) : ("unknown", 0, 0);
 
     private static async Task<Guid> SeedVisualRecipeAsync(WebApplicationFactory<Program> host, string subject, string name, string visual = Visual)
     {

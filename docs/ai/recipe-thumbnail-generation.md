@@ -338,6 +338,21 @@ Do not store as asset metadata:
 - raw provider response envelopes;
 - private recipe notes or imported source text.
 
+### Served formats and sizes (owner request, 2026-10-30)
+
+The provider returns 230–330 KB JPEGs at 1024 × 576. Cocinaris keeps that original and serves WebP files encoded from it (SkiaSharp, `SkiaThumbnailImageEncoder`):
+
+| File | Size | Quality | Measured on the first two images | Used by |
+| --- | --- | --- | --- | --- |
+| `<renderKey>.<ext>` | provider original | — | 230 KB, 322 KB | archive; served only if encoding fails |
+| `<renderKey>.full.webp` | 1024 × 576 | 80 | 46 KB, 75 KB | recipe page (`url`), loaded eagerly with high fetch priority |
+| `<renderKey>.small.webp` | 480 × 270 | 75 | 13 KB, 19 KB | recipe cards (`smallUrl`, `?size=small`), loaded lazily |
+
+- **When encoding happens.** The job writes both WebP files before the asset becomes `Ready`. An image stored before WebP existed is encoded on its first read.
+- **Re-encoding.** Keeping the original means a later encoder change re-encodes without paying for a new image.
+- **Cache busting.** URLs carry `v=<renderKey prefix>.w1`, so a browser that cached the earlier JPEG under the old URL fetches the WebP. Responses stay `private, max-age=2592000, immutable`.
+- **Pending images.** While an image is `pending`, the recipe page and the list refresh quietly (after 3, 4, 5, 8, 10, 15, 20, and 30 seconds, then stop), so the image appears without a reload. The job polls every 3 seconds (`Ai:Images:PollSeconds`).
+
 Orphaned, superseded, rejected, and failed-upload objects require retention and cleanup policies. Removing one recipe association must not delete a generic shared asset still referenced elsewhere. Account export and deletion must remove private associations and obey the approved generated-media retention policy.
 
 ## Safety, rights, and honesty

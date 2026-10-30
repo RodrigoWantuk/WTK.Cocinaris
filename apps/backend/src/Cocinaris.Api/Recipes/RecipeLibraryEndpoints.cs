@@ -26,8 +26,8 @@ public static class RecipeLibraryEndpoints
         group.MapGet("/{recipeId:guid}/revisions/{revisionNumber:int}", (RecipeLibraryApiService service, Guid recipeId, int revisionNumber, HttpContext context, CancellationToken cancellationToken) => service.GetAsync(recipeId, revisionNumber, context, cancellationToken))
             .Produces<RecipeDetailResponse>()
             .ProducesProblem(404);
-        group.MapGet("/{recipeId:guid}/thumbnail", (RecipeLibraryApiService service, Guid recipeId, int? revision, HttpContext context, CancellationToken cancellationToken) => service.GetThumbnailAsync(recipeId, revision, context, cancellationToken))
-            .Produces(StatusCodes.Status200OK, contentType: "image/png")
+        group.MapGet("/{recipeId:guid}/thumbnail", (RecipeLibraryApiService service, Guid recipeId, int? revision, string? size, HttpContext context, CancellationToken cancellationToken) => service.GetThumbnailAsync(recipeId, revision, size, context, cancellationToken))
+            .Produces(StatusCodes.Status200OK, contentType: "image/webp")
             .ProducesProblem(404);
         group.MapGet("/{recipeId:guid}/history", (RecipeLibraryApiService service, Guid recipeId, HttpContext context, CancellationToken cancellationToken) => service.GetHistoryAsync(recipeId, context, cancellationToken))
             .Produces<RecipeHistoryResponse>()
@@ -70,11 +70,13 @@ public sealed class RecipeLibraryApiService(RecipeLibraryApplicationService appl
 
     /// <summary>
     /// Streams an owned recipe's dish image. The URL carries a version, so the browser may keep it,
-    /// but only privately: it sits behind the owner's session.
+    /// but only privately: it sits behind the owner's session. <paramref name="size"/> <c>small</c>
+    /// serves the 480 × 270 card image; anything else serves the full 1024 × 576 image.
     /// </summary>
-    public async Task<IResult> GetThumbnailAsync(Guid recipeId, int? revision, HttpContext context, CancellationToken cancellationToken)
+    public async Task<IResult> GetThumbnailAsync(Guid recipeId, int? revision, string? size, HttpContext context, CancellationToken cancellationToken)
     {
-        var image = await application.OpenThumbnailAsync(recipeId, revision, cancellationToken);
+        var served = string.Equals(size, "small", StringComparison.Ordinal) ? RecipeThumbnailSize.Small : RecipeThumbnailSize.Full;
+        var image = await application.OpenThumbnailAsync(recipeId, revision, served, cancellationToken);
         if (image is not { } found)
         {
             return Results.Problem(detail: "The image was not found.", statusCode: StatusCodes.Status404NotFound, extensions: new Dictionary<string, object?> { ["errorCode"] = "resource_not_found", ["traceId"] = Activity.Current?.Id ?? context.TraceIdentifier });
@@ -131,9 +133,13 @@ public sealed class RecipeLibraryApiService(RecipeLibraryApplicationService appl
 
     private static RecipeThumbnailResponse Thumbnail(Guid recipeId, int? revisionNumber, RecipeThumbnailView? view) => view switch
     {
-        { State: "ready", Version: { } version } => new RecipeThumbnailResponse("ready", $"/api/v1/recipes/{recipeId}/thumbnail?{(revisionNumber is { } number ? $"revision={number}&" : "")}v={version}"),
-        { State: "pending" } => new RecipeThumbnailResponse("pending", null),
-        _ => new RecipeThumbnailResponse("none", null)
+        // ".w1" marks the WebP encoding: a browser that cached the earlier PNG or JPEG under the old URL fetches the WebP.
+        { State: "ready", Version: { } version } => new RecipeThumbnailResponse(
+            "ready",
+            $"/api/v1/recipes/{recipeId}/thumbnail?{(revisionNumber is { } number ? $"revision={number}&" : "")}v={version}.w1",
+            $"/api/v1/recipes/{recipeId}/thumbnail?{(revisionNumber is { } small ? $"revision={small}&" : "")}size=small&v={version}.w1"),
+        { State: "pending" } => new RecipeThumbnailResponse("pending", null, null),
+        _ => new RecipeThumbnailResponse("none", null, null)
     };
 
     private static RecipeDetailResponse ToResponse(RecipeLibraryDetailView view) => new(

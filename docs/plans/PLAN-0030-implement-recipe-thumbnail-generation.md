@@ -117,3 +117,17 @@ Implement the complete optional recipe thumbnail vertical slice as specified by 
 - Implemented recipe thumbnails with OpenRouter FLUX 3 Image Klein at 16:9, tier 768 (1024 × 576), following the owner's decision. Delivered the cache, queue, job, budget, storage, serving, and frontend.
 - Changed the prompt to `recipe-thumbnail-style-v2` at the owner's request. It now asks for a natural, photorealistic photograph of home-cooked food with soft daylight, true colors, and real textures, and it rules out illustrated, 3D-rendered, over-saturated, or artificially perfect looks. The style version is part of the render key, so no `v1` image is reused. Validation: `RecipeThumbnailTests` (unit) pass. Next: deploy with the branch, then the owner adds the OpenRouter key.
 - Delivery moved to draft PR #58, because PR #57 was squash-merged before these commits were pushed. The content is unchanged.
+
+### 2026-10-30 — Claude Code (served size)
+
+- The owner reported that the recipe image was slow to load. Three causes were found and fixed:
+  - **File size.** The provider's 230–330 KB JPEG was served everywhere, including list cards. Images are now served as WebP: 1024 × 576 at quality 80 (46–75 KB) on the recipe page and 480 × 270 at quality 75 (13–19 KB) in lists (`smallUrl`, `?size=small`), encoded with SkiaSharp 4.153.1 (MIT). The original is kept, and older images are encoded on first read.
+  - **Lazy loading.** The recipe page lazy-loaded its main image; it now loads eagerly with high fetch priority.
+  - **Waiting for generation.** A new image only appeared after a manual reload, up to 10 s of job polling plus generation later. The job now polls every 3 s, and the page and list refresh quietly while an image is pending.
+- URLs carry `v=<key>.w1`; the frontend's strict URL check accepts the suffix and the small URL.
+- Validation:
+  - `RecipeThumbnailApiTests` (integration) pass: WebP full and small sizes served, the original kept, and lazy re-encoding after deleting the WebP files.
+  - Frontend: recipe feature and live repository tests pass (35), including a page that shows the image after it is generated without a reload.
+  - Typecheck, lint, format, OpenAPI export and API client drift, `dotnet format`, and the vulnerability check are clean.
+- Next: the owner merges this PR and deploys `main`. Existing images are converted on their first read.
+

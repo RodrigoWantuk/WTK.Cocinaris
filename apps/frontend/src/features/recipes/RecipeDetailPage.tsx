@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useSession } from "@/app/session/SessionProvider";
 import { RecipeThumbnail } from "./RecipeThumbnail";
+import { usePendingThumbnailRefresh } from "./usePendingThumbnailRefresh";
 import { RecipeContent } from "./RecipeContent";
 import { useRecipeRepository } from "./RecipeProvider";
 import {
@@ -147,6 +148,29 @@ export function RecipeDetailPage() {
     return () => controller.abort();
   }, [recipeId, revisionNumber, repo, reloadToken]);
 
+  // Only the image changes while it is generated, so the refresh updates just that and never
+  // shows the loading state or touches anything the cook is reading.
+  const refreshThumbnail = useCallback(() => {
+    const load =
+      revisionNumber === null
+        ? repo.getRecipe(recipeId)
+        : repo.getRecipeRevision(recipeId, revisionNumber);
+    void load
+      .then((fresh) =>
+        setDetail((current) =>
+          current && current.recipeId === fresh.recipeId
+            ? { ...current, thumbnail: fresh.thumbnail }
+            : current,
+        ),
+      )
+      .catch(() => undefined);
+  }, [repo, recipeId, revisionNumber]);
+  usePendingThumbnailRefresh(
+    detail?.thumbnail?.state === "pending",
+    detail,
+    refreshThumbnail,
+  );
+
   const parsed = useMemo(
     () =>
       detail ? parseNormalizedRecipeJson(detail.normalizedRecipeJson) : null,
@@ -202,6 +226,7 @@ export function RecipeDetailPage() {
           thumbnail={detail.thumbnail}
           name={detail.name}
           disclose
+          priority
         />
       ) : null}
       <div>

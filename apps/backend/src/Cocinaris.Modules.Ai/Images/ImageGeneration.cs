@@ -118,7 +118,7 @@ public sealed class RecipeThumbnailOptions
     public int TimeoutSeconds { get; set; } = 90;
 
     /// <summary>Gets or sets how often the job looks for pending thumbnails, in seconds.</summary>
-    public int PollSeconds { get; set; } = 10;
+    public int PollSeconds { get; set; } = 3;
 
     /// <summary>Gets or sets the directory holding generated images; empty uses the default data directory.</summary>
     public string? StoragePath { get; set; }

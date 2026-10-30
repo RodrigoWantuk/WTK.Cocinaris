@@ -34,10 +34,14 @@ export interface RecipeGenerationSession {
 export type RecipeOrigin = "generated" | "manual" | "derived" | string;
 
 /** Owned recipe library row (PLAN-0038). */
-/** A recipe's dish image (PLAN-0030); `url` is a same-origin API path when `ready`. */
+/**
+ * A recipe's dish image (PLAN-0030), as same-origin API paths when `ready`: `url` is the full
+ * 1024 × 576 WebP for the recipe page, `smallUrl` the 480 × 270 WebP for cards.
+ */
 export interface RecipeThumbnail {
   state: "ready" | "pending" | "none";
   url: string | null;
+  smallUrl?: string | null;
 }
 
 export interface RecipeSummary {

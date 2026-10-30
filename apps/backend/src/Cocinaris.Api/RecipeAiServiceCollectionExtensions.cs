@@ -143,9 +143,11 @@ public static class RecipeAiServiceCollectionExtensions
                 provider.GetRequiredService<RecipeThumbnailOptions>().Model));
         }
 
+        services.AddSingleton<IThumbnailImageEncoder, SkiaThumbnailImageEncoder>();
         services.AddScoped(provider => new RecipeThumbnailService(
             provider.GetRequiredService<IRecipeThumbnailStore>(),
             provider.GetRequiredService<IRecipeThumbnailFileStore>(),
+            provider.GetRequiredService<IThumbnailImageEncoder>(),
             provider.GetService<IImageGenerationProvider>(),
             provider.GetRequiredService<AiUsageGovernor>(),
             provider.GetRequiredService<RecipeThumbnailOptions>(),
