@@ -211,6 +211,23 @@ export function validateSuggestSemantics(response, request = null) {
         }
       }
 
+      // PLAN-0056: the person's required pantry items and time limit are hard rules.
+      const guidance = request.suggestionGuidance;
+      const usedIds = new Set((candidate.inventoryUses ?? []).map((use) => use.inventoryItemId));
+      for (const requiredId of guidance?.requiredInventoryItemIds ?? []) {
+        if (!usedIds.has(requiredId)) {
+          errors.push(`${prefix} does not use required inventory item ${requiredId}`);
+        }
+      }
+      if (
+        typeof guidance?.maxTotalMinutes === "number" &&
+        candidate.time?.totalMinutes > guidance.maxTotalMinutes
+      ) {
+        errors.push(
+          `${prefix} takes ${candidate.time.totalMinutes} minutes, more than the requested ${guidance.maxTotalMinutes}`,
+        );
+      }
+
       const mode = request.executionContext?.executionMode;
       const lead = request.executionContext?.availableLeadMinutes;
       if (

@@ -35,6 +35,19 @@ export type RecipeOrigin = "generated" | "manual" | "derived" | string;
 
 /** Owned recipe library row (PLAN-0038). */
 /**
+ * Direction for a suggestion request (PLAN-0056): closed codes and lot ids, never free text.
+ * `requiredLotIds` must appear in every candidate; `excludedLotIds` are never sent to the AI.
+ */
+export interface SuggestionGuidance {
+  mealKind: "full_meal" | "light_meal" | "snack" | null;
+  dishFamilies: string[];
+  cuisine: string | null;
+  time: "quick" | "medium" | null;
+  requiredLotIds: string[];
+  excludedLotIds: string[];
+}
+
+/**
  * A recipe's dish image (PLAN-0030), as same-origin API paths when `ready`: `url` is the full
  * 1024 × 576 WebP for the recipe page, `smallUrl` the 480 × 270 WebP for cards.
  */
@@ -353,6 +366,8 @@ export interface RecipeRepository {
     csrfToken: string;
     idempotencyKey: string;
     language?: string;
+    /** Optional direction for the three candidates (PLAN-0056); omitted when empty. */
+    guidance?: SuggestionGuidance;
     menuPlanning?: {
       menuId: string;
       plannedDate: string | null;

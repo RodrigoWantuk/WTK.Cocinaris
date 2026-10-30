@@ -5,7 +5,8 @@ namespace Cocinaris.Modules.Recipes.Application;
 /// <param name="CorrelationId">Request correlation identifier.</param>
 /// <param name="RequestLanguage">Interface language of the request (<c>pt-BR</c>, <c>en</c>, <c>es</c>), used when the profile declares none.</param>
 /// <param name="MenuTarget">Menu slot to plan (PLAN-0029 Phase 2); null for cook-now.</param>
-public sealed record RequestCandidatesCommand(Guid? IdempotencyKey, string CorrelationId, string? RequestLanguage = null, MenuPlanningTarget? MenuTarget = null);
+/// <param name="Guidance">The person's direction for this request (PLAN-0056); null for none.</param>
+public sealed record RequestCandidatesCommand(Guid? IdempotencyKey, string CorrelationId, string? RequestLanguage = null, MenuPlanningTarget? MenuTarget = null, Ai.RecipeSuggestionGuidance? Guidance = null);
 
 /// <summary>A menu slot the candidates are for, resolved by the caller from an owned menu.</summary>
 /// <param name="PlannedDate">Day of the meal, or null for "some day in the period".</param>

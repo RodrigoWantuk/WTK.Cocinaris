@@ -2,6 +2,7 @@ using System.Diagnostics;
 using Cocinaris.Api.Observability;
 using Cocinaris.Api.Services;
 using Cocinaris.Modules.Planning.Application;
+using Cocinaris.Modules.Recipes.Ai;
 using Cocinaris.Modules.Recipes.Application;
 using Microsoft.AspNetCore.Antiforgery;
 
@@ -100,7 +101,10 @@ public sealed class RecipeApiService(RecipeCookNowApplicationService application
             target = new MenuPlanningTarget(slot.PlannedDate, slot.MealType, slot.Servings, names);
         }
 
-        var command = new RequestCandidatesCommand(ParseIdempotencyKey(request), request.HttpContext.TraceIdentifier, RequestLanguage(request), target);
+        var guidance = body?.Guidance is { } given
+            ? new RecipeSuggestionGuidance(given.MealKind, given.DishFamilies ?? [], given.Cuisine, given.Time, given.RequiredLotIds ?? [], given.ExcludedLotIds ?? [])
+            : null;
+        var command = new RequestCandidatesCommand(ParseIdempotencyKey(request), request.HttpContext.TraceIdentifier, RequestLanguage(request), target, guidance);
         var result = await application.RequestCandidatesAsync(command, cancellationToken);
         return ToResult(result, request.HttpContext.TraceIdentifier, ToResponse);
     }
@@ -220,7 +224,20 @@ public sealed class RecipeApiService(RecipeCookNowApplicationService application
 
 /// <summary>Optional body for requesting candidates; without it the request is cook-now.</summary>
 /// <param name="MenuPlanning">Menu slot to plan (PLAN-0029 Phase 2).</param>
-public sealed record RequestCandidatesRequest(MenuPlanningSlotRequest? MenuPlanning);
+/// <param name="Guidance">The person's direction for the three candidates (PLAN-0056).</param>
+public sealed record RequestCandidatesRequest(MenuPlanningSlotRequest? MenuPlanning, SuggestionGuidanceRequest? Guidance = null);
+
+/// <summary>
+/// Direction for a suggestion request (PLAN-0056). Closed codes only; unknown codes are rejected.
+/// Required lots must be used by every candidate; excluded lots are never sent to the AI.
+/// </summary>
+/// <param name="MealKind"><c>full_meal</c>, <c>light_meal</c>, or <c>snack</c>.</param>
+/// <param name="DishFamilies">Up to three of <c>pasta</c>, <c>rice</c>, <c>meat</c>, <c>poultry</c>, <c>fish_seafood</c>, <c>eggs</c>, <c>vegetarian</c>, <c>soup_broth</c>, <c>salad</c>, <c>sandwich_wrap</c>, <c>baked</c>, <c>dessert</c>.</param>
+/// <param name="Cuisine">One of <c>brazilian</c>, <c>italian</c>, <c>mexican</c>, <c>japanese</c>, <c>chinese</c>, <c>indian</c>, <c>middle_eastern</c>, <c>mediterranean</c>, <c>french</c>, <c>spanish</c>, <c>american</c>, <c>portuguese</c>.</param>
+/// <param name="Time"><c>quick</c> (20 minutes or less) or <c>medium</c> (45 or less).</param>
+/// <param name="RequiredLotIds">Pantry lots every candidate must use (at most 5).</param>
+/// <param name="ExcludedLotIds">Pantry lots to leave out entirely (at most 50).</param>
+public sealed record SuggestionGuidanceRequest(string? MealKind, IReadOnlyList<string>? DishFamilies, string? Cuisine, string? Time, IReadOnlyList<Guid>? RequiredLotIds, IReadOnlyList<Guid>? ExcludedLotIds);
 
 /// <summary>A slot of an owned menu.</summary>
 /// <param name="MenuId">Menu.</param>

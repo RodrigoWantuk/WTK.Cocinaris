@@ -123,6 +123,22 @@ public static partial class RecipeSuggestSemantics
             }
         }
 
+        // PLAN-0056: the person's required pantry items and time limit are hard rules.
+        var guidance = request.Prop("suggestionGuidance");
+        var usedIds = candidate.InventoryUses.Select(use => use.InventoryItemId).ToHashSet(StringComparer.Ordinal);
+        foreach (var requiredId in guidance.Prop("requiredInventoryItemIds").AsArray().Select(item => ((JsonElement?)item).AsString()).OfType<string>())
+        {
+            if (!usedIds.Contains(requiredId))
+            {
+                errors.Add($"{prefix} does not use required inventory item {requiredId}");
+            }
+        }
+
+        if (guidance.Prop("maxTotalMinutes").AsNumber() is { } maxMinutes && candidate.Time.TotalMinutes > maxMinutes)
+        {
+            errors.Add($"{prefix} takes {candidate.Time.TotalMinutes} minutes, more than the requested {maxMinutes}");
+        }
+
         var mode = request.Prop("executionContext").Prop("executionMode").AsString();
         var lead = request.Prop("executionContext").Prop("availableLeadMinutes").AsNumber();
         if (mode == "cook_now" && lead is not null && candidate.PreparationProfile.MinimumLeadMinutes > lead)

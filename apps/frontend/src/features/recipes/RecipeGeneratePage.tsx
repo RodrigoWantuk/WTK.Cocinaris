@@ -7,12 +7,24 @@ import {
   type RecipeCandidate,
   type RecipeGenerationSession,
 } from "@/contracts/recipes";
-import { InventoryApiError } from "@/adapters/live/inventoryTypes";
+import {
+  InventoryApiError,
+  type InventoryQuantity,
+} from "@/adapters/live/inventoryTypes";
 import { useSession } from "@/app/session/SessionProvider";
 import { useProductionI18n } from "@/app/i18n/ProductionI18nProvider";
 import { Button } from "@/components/ui/button";
 import { FeatureUnavailable } from "@/components/runtime/FeatureUnavailable";
 import { isRetryableRecipeError, recipeErrorMessageKey } from "./recipeErrors";
+import {
+  EMPTY_GUIDANCE,
+  guidanceCount,
+  SuggestionGuidancePanel,
+  type GuidanceLot,
+} from "./SuggestionGuidancePanel";
+import { formatQuantityLabel } from "@/features/inventory/quantityDisplay";
+import type { ProductionLocale } from "@/app/i18n/productionCatalog";
+import type { SuggestionGuidance } from "@/contracts/recipes";
 
 type Phase =
   | "checking-inventory"
@@ -67,6 +79,15 @@ export function RecipeGeneratePage() {
   );
   const selectIdempotencyRef = useRef<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const [guidance, setGuidance] = useState<SuggestionGuidance>(EMPTY_GUIDANCE);
+  const [pantryLots, setPantryLots] = useState<
+    { lotId: string; name: string; quantity: InventoryQuantity }[]
+  >([]);
+  const guidanceLots: GuidanceLot[] = pantryLots.map((lot) => ({
+    lotId: lot.lotId,
+    name: lot.name,
+    amount: formatQuantityLabel(lot.quantity, locale as ProductionLocale, t),
+  }));
 
   useEffect(() => {
     const controller = new AbortController();
@@ -74,12 +95,23 @@ export function RecipeGeneratePage() {
     setPhase("checking-inventory");
     void (async () => {
       try {
+        // One page of active lots: the empty check, and the items the guidance panel offers. Only
+        // measured lots are listed, because only those reach the AI (PLAN-0056).
         const page = await inventoryRepo.listLots({
           status: "active",
-          pageSize: 1,
+          pageSize: 100,
           signal: controller.signal,
         });
         if (controller.signal.aborted) return;
+        setPantryLots(
+          page.items
+            .filter((lot) => lot.quantity.kind === "measured")
+            .map((lot) => ({
+              lotId: lot.lotId,
+              name: lot.productName,
+              quantity: lot.quantity,
+            })),
+        );
         setPhase(page.items.length === 0 ? "empty-inventory" : "confirm");
       } catch (err) {
         if (controller.signal.aborted) return;
@@ -173,6 +205,7 @@ export function RecipeGeneratePage() {
         csrfToken: session.csrfToken,
         language: locale,
         idempotencyKey: requestIdempotencyKey,
+        guidance: guidanceCount(guidance) > 0 ? guidance : undefined,
         signal: controller.signal,
       });
       if (controller.signal.aborted) return;
@@ -509,6 +542,15 @@ export function RecipeGeneratePage() {
       <p className="text-sm text-muted-foreground">
         {t("recipes.generate.confirmDetail")}
       </p>
+      <SuggestionGuidancePanel
+        lots={guidanceLots}
+        value={guidance}
+        onChange={(next) => {
+          setGuidance(next);
+          // New guidance is a new request, so it must not replay an earlier one.
+          setRequestIdempotencyKey(crypto.randomUUID());
+        }}
+      />
       {errorKey ? (
         <p role="status" className="text-sm text-warning-foreground">
           {t(errorKey)}

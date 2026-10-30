@@ -3,9 +3,10 @@ namespace Cocinaris.Modules.Recipes.Ai;
 /// <summary>
 /// One bounded on-hand inventory item exposed to the AI Gateway as untrusted structured context.
 /// <c>QuantityIsEstimate</c> tells the model the amount is the owner's approximation (PLAN-0054), so
-/// a recipe should not depend on its last gram.
+/// a recipe should not depend on its last gram. <c>MustUse</c> marks a lot the person requires every
+/// candidate to use (PLAN-0056).
 /// </summary>
-public sealed record RecipeInventoryContextItem(string ItemId, string UserName, decimal Quantity, string Unit, string AvailabilitySource, string? IngredientRef, bool QuantityIsEstimate = false);
+public sealed record RecipeInventoryContextItem(string ItemId, string UserName, decimal Quantity, string Unit, string AvailabilitySource, string? IngredientRef, bool QuantityIsEstimate = false, bool MustUse = false);
 
 /// <summary>One bounded declared equipment item exposed to the AI Gateway.</summary>
 public sealed record RecipeEquipmentContextItem(string EquipmentId, string Name, IReadOnlyList<string> Capabilities);
@@ -29,12 +30,14 @@ public sealed record RecipeUserPresets(int Servings, IReadOnlyList<string> Prefe
 public sealed record RecipeExecutionContext(string ExecutionMode, int? AvailableLeadMinutes, DateOnly? PlannedDate = null, string? TargetMealType = null, IReadOnlyList<string>? AlreadyPlannedRecipeNames = null);
 
 /// <summary>Complete bounded context assembled for one <c>recipe.suggest_candidates.v1</c> request.</summary>
+/// <remarks><paramref name="Guidance"/> is the person's direction for this request (PLAN-0056); excluded lots are already absent from <paramref name="InventoryItems"/>.</remarks>
 public sealed record RecipeSuggestRequestContext(
     string RequestId,
     IReadOnlyList<RecipeInventoryContextItem> InventoryItems,
     IReadOnlyList<RecipeEquipmentContextItem> Equipment,
     RecipeUserPresets Presets,
-    RecipeExecutionContext ExecutionContext);
+    RecipeExecutionContext ExecutionContext,
+    RecipeSuggestionGuidance? Guidance = null);
 
 /// <summary>Minimal selected-candidate projection carried into an expansion request.</summary>
 public sealed record RecipeSelectedCandidateContext(

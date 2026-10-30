@@ -3877,6 +3877,17 @@
       "RequestCandidatesRequest": {
         "description": "Optional body for requesting candidates; without it the request is cook-now.",
         "properties": {
+          "guidance": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/SuggestionGuidanceRequest",
+                "description": "The person's direction for the three candidates (PLAN-0056)."
+              }
+            ]
+          },
           "menuPlanning": {
             "oneOf": [
               {
@@ -4247,6 +4258,73 @@
         },
         "required": [
           "servings"
+        ],
+        "type": "object"
+      },
+      "SuggestionGuidanceRequest": {
+        "description": "Direction for a suggestion request (PLAN-0056). Closed codes only; unknown codes are rejected.\nRequired lots must be used by every candidate; excluded lots are never sent to the AI.",
+        "properties": {
+          "cuisine": {
+            "description": "One of `brazilian`, `italian`, `mexican`, `japanese`, `chinese`, `indian`, `middle_eastern`, `mediterranean`, `french`, `spanish`, `american`, `portuguese`.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "dishFamilies": {
+            "description": "Up to three of `pasta`, `rice`, `meat`, `poultry`, `fish_seafood`, `eggs`, `vegetarian`, `soup_broth`, `salad`, `sandwich_wrap`, `baked`, `dessert`.",
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "null",
+              "array"
+            ]
+          },
+          "excludedLotIds": {
+            "description": "Pantry lots to leave out entirely (at most 50).",
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "type": [
+              "null",
+              "array"
+            ]
+          },
+          "mealKind": {
+            "description": "`full_meal`, `light_meal`, or `snack`.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "requiredLotIds": {
+            "description": "Pantry lots every candidate must use (at most 5).",
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "type": [
+              "null",
+              "array"
+            ]
+          },
+          "time": {
+            "description": "`quick` (20 minutes or less) or `medium` (45 or less).",
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "required": [
+          "mealKind",
+          "dishFamilies",
+          "cuisine",
+          "time",
+          "requiredLotIds",
+          "excludedLotIds"
         ],
         "type": "object"
       },

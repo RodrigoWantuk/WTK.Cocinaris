@@ -88,6 +88,28 @@ For `menu_planning`, `executionContext` adds:
 
 The recommended strategy set is `on_hand_first`, `planned_purchase_reuse`, and `exploratory`. `availabilitySnapshot` quantities already exclude protections and other meals' reservations.
 
+## Suggestion guidance (PLAN-0056 Phase 2)
+
+Before asking for three candidates, the person may steer them. The HTTP body field `guidance` accepts closed codes only:
+- `mealKind`: `full_meal`, `light_meal`, or `snack`;
+- `dishFamilies`: up to 3 of 12 families;
+- `cuisine`: one of 12 cuisines;
+- `time`: `quick` (20 min or less) or `medium` (45 min or less);
+- `requiredLotIds`: up to 5 pantry lots;
+- `excludedLotIds`: up to 50 pantry lots.
+
+Unknown codes, more than the limits, a lot both required and excluded, or a required lot that is not in the measured pantry return `400 validation_failed`. No free text is accepted, so nothing the person writes reaches the model as an instruction.
+
+- **Excluded lots** are removed while the context is assembled. They never appear in the request, not even their names.
+- **Required lots** stay first in `availabilitySnapshot.items`, so budget truncation never drops them, and carry `mustUse: true`.
+- **The request** carries `suggestionGuidance` with:
+  - `rules`;
+  - `mealKind`, `dishFamilies`, and `cuisine` (preferences the model follows);
+  - `maxTotalMinutes` and `requiredInventoryItemIds` (hard rules).
+
+  It is written only when something is set, so unguided requests are unchanged.
+- **Deterministic validation** (`RecipeSuggestSemantics`, mirrored in `packages/contracts/ai/recipe/lib/validate-core.mjs`) rejects a candidate that does not list every required item in `inventoryUses` or whose `time.totalMinutes` exceeds `maxTotalMinutes`. A rejected answer goes through the normal repair.
+
 ## Output language and detail checks (PLAN-0040)
 
 The request's `outputLanguage` and `instructionStyle` are enforced as far as deterministic code can, after schema and semantic validation (`RecipeOutputQuality`).

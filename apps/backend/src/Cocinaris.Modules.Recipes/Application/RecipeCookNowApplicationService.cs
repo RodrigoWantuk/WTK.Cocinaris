@@ -52,6 +52,11 @@ public sealed class RecipeCookNowApplicationService(
             return Failure<RecipeGenerationSessionView>("ai_capability_unavailable", "The recipe suggestion capability is not registered.");
         }
 
+        if (command.Guidance?.Validate() is { Count: > 0 } guidanceErrors)
+        {
+            return Failure<RecipeGenerationSessionView>("validation_failed", "The suggestion guidance is invalid.", guidanceErrors);
+        }
+
         var user = await currentUser.GetCurrentAsync(cancellationToken);
         var now = timeProvider.GetUtcNow();
         var session = RecipeGenerationSession.Create(user.Id, command.IdempotencyKey.Value, now, command.MenuTarget is null ? "cook_now" : "menu_planning");
@@ -61,8 +66,16 @@ public sealed class RecipeCookNowApplicationService(
             return RecipeApplicationResult<RecipeGenerationSessionView>.Succeeded(ToSessionView(claim.Session));
         }
 
-        var context = await contextAssembler.AssembleSuggestContextAsync(user.Id, Guid.NewGuid().ToString("n"), definition.ContextBudgetCharacters, cancellationToken, command.MenuTarget);
+        var context = await contextAssembler.AssembleSuggestContextAsync(user.Id, Guid.NewGuid().ToString("n"), definition.ContextBudgetCharacters, cancellationToken, command.MenuTarget, command.Guidance);
         context = context with { Presets = WithOutputLanguage(context.Presets, command.RequestLanguage) };
+        // A required item must be in the pantry with a measured quantity; otherwise no candidate could use it.
+        if (command.Guidance is { RequiredLotIds.Count: > 0 } guidance && context.InventoryItems.Count(item => item.MustUse) != guidance.RequiredLotIds.Count)
+        {
+            claim.Session.MarkFailed("guidance_required_unavailable", timeProvider.GetUtcNow());
+            await generationStore.SaveAsync(claim.Session, cancellationToken);
+            return Failure<RecipeGenerationSessionView>("validation_failed", "A required pantry item is not available.", new Dictionary<string, string[]> { ["guidance.requiredLotIds"] = ["A required pantry item is not available."] });
+        }
+
         if (ideas is not null && await ideas.TrySuggestAsync(user.Id, context, cancellationToken) is { } fromLibrary)
         {
             claim.Session.AttachValidatedCandidates(JsonSerializer.Serialize(fromLibrary, SerializerOptions), timeProvider.GetUtcNow());

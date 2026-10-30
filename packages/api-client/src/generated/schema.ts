@@ -1878,6 +1878,7 @@ export interface components {
         };
         /** @description Optional body for requesting candidates; without it the request is cook-now. */
         RequestCandidatesRequest: {
+            guidance?: null | components["schemas"]["SuggestionGuidanceRequest"];
             menuPlanning: null | components["schemas"]["MenuPlanningSlotRequest"];
         };
         /** @description Pantry commitments from From; read-only, never changes physical quantity. */
@@ -2006,6 +2007,22 @@ export interface components {
              * @description Portions to cook, 1 to 24; the recipe's servings when omitted.
              */
             servings: null | number | string;
+        };
+        /** @description Direction for a suggestion request (PLAN-0056). Closed codes only; unknown codes are rejected.
+         *     Required lots must be used by every candidate; excluded lots are never sent to the AI. */
+        SuggestionGuidanceRequest: {
+            /** @description One of `brazilian`, `italian`, `mexican`, `japanese`, `chinese`, `indian`, `middle_eastern`, `mediterranean`, `french`, `spanish`, `american`, `portuguese`. */
+            cuisine: null | string;
+            /** @description Up to three of `pasta`, `rice`, `meat`, `poultry`, `fish_seafood`, `eggs`, `vegetarian`, `soup_broth`, `salad`, `sandwich_wrap`, `baked`, `dessert`. */
+            dishFamilies: null | string[];
+            /** @description Pantry lots to leave out entirely (at most 50). */
+            excludedLotIds: null | string[];
+            /** @description `full_meal`, `light_meal`, or `snack`. */
+            mealKind: null | string;
+            /** @description Pantry lots every candidate must use (at most 5). */
+            requiredLotIds: null | string[];
+            /** @description `quick` (20 minutes or less) or `medium` (45 or less). */
+            time: null | string;
         };
         /** @description A meal of an accepted menu for the requested day. */
         TodayMenuEntryResponse: {

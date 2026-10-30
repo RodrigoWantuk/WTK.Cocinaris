@@ -156,7 +156,9 @@ public sealed class RecipeIdeaLibrary(
     public async Task<SuggestCandidatesResponse?> TrySuggestAsync(Guid ownerUserId, RecipeSuggestRequestContext context, CancellationToken cancellationToken)
     {
         var presets = context.Presets;
-        if (!options.Enabled || string.IsNullOrWhiteSpace(presets.OutputLanguage) || context.InventoryItems.Count == 0 || NextRandom() < options.NoveltyShare)
+        // Ideas carry no meal-kind, family, or cuisine tags yet, so a request that asks for them goes to the AI.
+        if (!options.Enabled || string.IsNullOrWhiteSpace(presets.OutputLanguage) || context.InventoryItems.Count == 0 || context.Guidance is { HasStylePreferences: true }
+            || NextRandom() < options.NoveltyShare)
         {
             return null;
         }
@@ -198,7 +200,7 @@ public sealed class RecipeIdeaLibrary(
         {
             var generic = idea.Content.Candidate;
             var fingerprint = string.Join('|', new[] { generic.DishFormat, generic.PrimaryTechnique }.Concat(generic.PrimaryIngredientRefs));
-            if (strategies.Contains(idea.Strategy) || fingerprints.Contains(fingerprint) || Rebuild(idea, pantry, equipment) is not { } candidate)
+            if (strategies.Contains(idea.Strategy) || fingerprints.Contains(fingerprint) || Rebuild(idea, pantry, equipment) is not { } candidate || !FitsGuidance(candidate, context))
             {
                 continue;
             }
@@ -329,6 +331,14 @@ public sealed class RecipeIdeaLibrary(
 
         var generic = idea.Content.Candidate;
         return CopyCandidate(generic, $"{CandidatePrefix}{idea.Id:n}", generic.PrimaryIngredientRefs, generic.Servings, generic.RequiredEquipmentIds.Select(code => equipment[code].EquipmentId).Distinct(StringComparer.Ordinal).ToList(), uses, additional);
+    }
+
+    /// <summary>Whether a rebuilt candidate uses every required lot and fits the time limit (PLAN-0056).</summary>
+    private static bool FitsGuidance(SuggestCandidate candidate, RecipeSuggestRequestContext context)
+    {
+        var used = candidate.InventoryUses.Select(use => use.InventoryItemId).ToHashSet(StringComparer.Ordinal);
+        return context.InventoryItems.Where(item => item.MustUse).All(item => used.Contains(item.ItemId))
+            && (context.Guidance?.MaxTotalMinutes is not { } minutes || candidate.Time.TotalMinutes <= minutes);
     }
 
     /// <summary>Average share of each required ingredient the pantry covers, by catalog ingredient and unit.</summary>
