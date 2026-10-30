@@ -431,7 +431,8 @@ public sealed class InventoryLotApplicationWorkflow(
 
     /// <summary>Projects a lot view onto the facts the attention advisor evaluates.</summary>
     public static InventoryAttentionFacts ToAttentionFacts(InventoryLotView lot) =>
-        new(lot.PrintedExpirationDate, lot.Lifecycle?.PreparedShelfLifeDate, lot.StorageLocation, lot.PackageState, lot.Lifecycle?.State ?? "AsAcquired", lot.Lifecycle?.FrozenAt, lot.Lifecycle?.ThawStartedAt, lot.Lifecycle?.ThawedAt);
+        new(lot.PrintedExpirationDate, lot.Lifecycle?.PreparedShelfLifeDate, lot.StorageLocation, lot.PackageState, lot.Lifecycle?.State ?? "AsAcquired", lot.Lifecycle?.FrozenAt, lot.Lifecycle?.ThawStartedAt, lot.Lifecycle?.ThawedAt,
+            Ingredients.IngredientCatalog.Default.KeepsWhenOpened(lot.ProductName));
 
     /// <summary>Lists immutable transaction history for one owner-scoped lot.</summary>
     public async Task<InventoryApplicationResult<IReadOnlyList<InventoryHistoryEntry>>> HistoryAsync(Guid lotId, CancellationToken cancellationToken)

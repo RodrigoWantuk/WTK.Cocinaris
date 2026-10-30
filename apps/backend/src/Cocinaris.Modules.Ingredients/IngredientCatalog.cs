@@ -10,7 +10,8 @@ namespace Cocinaris.Modules.Ingredients;
 /// <param name="Slug">Stable readable key, for example <c>chicken-breast</c>.</param>
 /// <param name="Category">Coarse kitchen category, for example <c>poultry</c>.</param>
 /// <param name="Names">Names by language code (<c>en</c>, <c>pt</c>, <c>es</c>), first name preferred.</param>
-public sealed record IngredientCatalogItem(int Id, string Slug, string Category, IReadOnlyDictionary<string, IReadOnlyList<string>> Names)
+/// <param name="KeepsWhenOpened">Curated food-safety fact: a dry, shelf-stable food (rice, flour, sugar, salt, spices, oil) that stays usable for months in the pantry once opened (PLAN-0056).</param>
+public sealed record IngredientCatalogItem(int Id, string Slug, string Category, IReadOnlyDictionary<string, IReadOnlyList<string>> Names, bool KeepsWhenOpened = false)
 {
     /// <summary>
     /// The text embedded for this ingredient: every name in every language, so a name typed in any
@@ -75,6 +76,35 @@ public sealed class IngredientCatalog
     /// <summary>Gets the content version: the schema version and a SHA-256 prefix of the catalog content.</summary>
     public string Version { get; }
 
+    /// <summary>Words that may follow a curated name without changing what the food is (raw, white, dry, type 1…).</summary>
+    private static readonly HashSet<string> DryDescriptors = new(StringComparer.Ordinal)
+    {
+        "cru", "crua", "crus", "cruas", "branco", "branca", "brancos", "brancas", "integral", "integrais", "parboilizado", "parboilizada", "polido",
+        "agulhinha", "tipo", "1", "2", "seco", "seca", "secos", "secas", "em", "po", "grao", "graos", "refinado", "refinada", "cristal", "fino", "fina",
+        "grosso", "grossa", "moido", "moida", "raw", "dry", "dried", "uncooked", "white", "whole", "plain", "crudo", "cruda", "blanco", "blanca", "entero", "molido", "molida"
+    };
+
+    /// <summary>
+    /// Whether a pantry product name is a food that keeps once opened (PLAN-0056). The name must
+    /// be a curated name of such an ingredient, optionally followed only by dry descriptors
+    /// ("Arroz Branco Cru", "Farinha de trigo integral"). Anything else is false, so "feijão preto
+    /// cozido", "arroz doce", or a learned alias never qualify: this decision is curated only.
+    /// </summary>
+    public bool KeepsWhenOpened(string productName)
+    {
+        var words = IngredientText.Normalize(productName).Replace('-', ' ').Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        for (var length = words.Length; length > 0; length--)
+        {
+            var prefix = string.Join(' ', words[..length]);
+            if (Aliases.TryGetValue(prefix, out var item) || Aliases.TryGetValue(string.Join('-', words[..length]), out item))
+            {
+                return item.KeepsWhenOpened && words[length..].All(DryDescriptors.Contains);
+            }
+        }
+
+        return false;
+    }
+
     /// <summary>Parses a catalog document; used for the embedded catalog and by tests.</summary>
     public static IngredientCatalog Parse(string json)
     {
@@ -85,7 +115,8 @@ public sealed class IngredientCatalog
                 item.Id,
                 item.Slug ?? throw new InvalidOperationException($"Ingredient {item.Id} has no slug."),
                 item.Category ?? "other",
-                (item.Names ?? []).ToDictionary(entry => entry.Key, entry => (IReadOnlyList<string>)entry.Value.Where(name => !string.IsNullOrWhiteSpace(name)).Select(name => name.Trim()).ToList(), StringComparer.Ordinal)))
+                (item.Names ?? []).ToDictionary(entry => entry.Key, entry => (IReadOnlyList<string>)entry.Value.Where(name => !string.IsNullOrWhiteSpace(name)).Select(name => name.Trim()).ToList(), StringComparer.Ordinal),
+                item.KeepsWhenOpened))
             .ToList();
         if (items.Count == 0 || items.Select(item => item.Id).Distinct().Count() != items.Count || items.Select(item => item.Slug).Distinct(StringComparer.Ordinal).Count() != items.Count)
         {
@@ -112,5 +143,6 @@ public sealed class IngredientCatalog
         [property: JsonPropertyName("id")] int Id,
         [property: JsonPropertyName("slug")] string? Slug,
         [property: JsonPropertyName("category")] string? Category,
-        [property: JsonPropertyName("names")] Dictionary<string, List<string>>? Names);
+        [property: JsonPropertyName("names")] Dictionary<string, List<string>>? Names,
+        [property: JsonPropertyName("keepsWhenOpened")] bool KeepsWhenOpened = false);
 }

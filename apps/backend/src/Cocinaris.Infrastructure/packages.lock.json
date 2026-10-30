@@ -347,6 +347,7 @@
         "type": "Project",
         "dependencies": {
           "Cocinaris.Modules.Identity": "[1.0.0, )",
+          "Cocinaris.Modules.Ingredients": "[1.0.0, )",
           "Cocinaris.SharedKernel": "[1.0.0, )"
         }
       },

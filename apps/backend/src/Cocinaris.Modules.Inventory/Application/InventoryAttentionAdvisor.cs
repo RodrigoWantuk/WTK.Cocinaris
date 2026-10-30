@@ -30,7 +30,11 @@ public enum InventoryAttentionEvidence
     Unknown
 }
 
-/// <summary>Lifecycle and shelf-life facts of one lot that the advisor evaluates.</summary>
+/// <summary>
+/// Lifecycle and shelf-life facts of one lot that the advisor evaluates. <c>KeepsWhenOpened</c> is
+/// the curated catalog fact that the product is a dry, shelf-stable food that stays usable once
+/// opened (PLAN-0056, <see cref="Cocinaris.Modules.Ingredients.IngredientCatalog.KeepsWhenOpened"/>).
+/// </summary>
 public sealed record InventoryAttentionFacts(
     DateOnly? PrintedExpirationDate,
     DateOnly? PreparedShelfLifeDate,
@@ -39,7 +43,8 @@ public sealed record InventoryAttentionFacts(
     string LifecycleState,
     DateTimeOffset? FrozenAt,
     DateTimeOffset? ThawStartedAt,
-    DateTimeOffset? ThawedAt);
+    DateTimeOffset? ThawedAt,
+    bool KeepsWhenOpened = false);
 
 /// <summary>
 /// Advisory, explainable attention result. <see cref="Reasons"/> are stable codes that clients
@@ -114,16 +119,25 @@ public static class InventoryAttentionAdvisor
         {
             var result = Classify(date, today, InventoryAttentionEvidence.PrintedDate, "printed_date");
             // A printed date describes the sealed package; once opened it no longer supports a
-            // confident "fine for now".
-            return opened && result.State == InventoryAttentionState.Normal
+            // confident "fine for now", except for dry foods that keep once opened.
+            return opened && !KeepsInPantry(facts) && result.State == InventoryAttentionState.Normal
                 ? result with { State = InventoryAttentionState.EstimateUncertain, Reasons = ["printed_date", "opened_after_printed_date"] }
                 : result;
+        }
+
+        // Owner report 2026-10-30: an opened bag of raw rice asked for attention forever. Dry,
+        // shelf-stable foods kept in the pantry stay usable for months once opened (curated list).
+        if (opened && KeepsInPantry(facts))
+        {
+            return new(InventoryAttentionState.Normal, null, InventoryAttentionEvidence.CuratedRule, ["keeps_when_opened"]);
         }
 
         return opened
             ? new(InventoryAttentionState.EstimateUncertain, null, InventoryAttentionEvidence.Unknown, ["opened_without_date"])
             : new(InventoryAttentionState.Normal, null, InventoryAttentionEvidence.Unknown, ["no_date"]);
     }
+
+    private static bool KeepsInPantry(InventoryAttentionFacts facts) => facts.KeepsWhenOpened && facts.StorageLocation == "Pantry";
 
     private static InventoryAttention Classify(DateOnly estimate, DateOnly today, InventoryAttentionEvidence evidence, string source)
     {

@@ -99,6 +99,7 @@ export const REQUIRED_INVENTORY_I18N_KEYS = [
   "inventory.attention.reason.date_soon",
   "inventory.attention.reason.opened_after_printed_date",
   "inventory.attention.reason.opened_without_date",
+  "inventory.attention.reason.keeps_when_opened",
   "inventory.attention.reason.no_date",
   "inventory.attention.reason.frozen",
   "inventory.attention.reason.frozen_long_time",
@@ -274,6 +275,8 @@ const en: Record<InventoryI18nKey, string> = {
     "The printed date applies to the sealed package, and it is open.",
   "inventory.attention.reason.opened_without_date":
     "It is open and has no date.",
+  "inventory.attention.reason.keeps_when_opened":
+    "A dry food that keeps for months once opened.",
   "inventory.attention.reason.no_date": "No date recorded.",
   "inventory.attention.reason.frozen":
     "Frozen: the printed date stops counting.",
@@ -472,6 +475,8 @@ const ptBR: Record<InventoryI18nKey, string> = {
     "A data impressa vale para a embalagem fechada, e ela está aberta.",
   "inventory.attention.reason.opened_without_date":
     "Está aberto e não tem data.",
+  "inventory.attention.reason.keeps_when_opened":
+    "Alimento seco que dura meses depois de aberto.",
   "inventory.attention.reason.no_date": "Nenhuma data registrada.",
   "inventory.attention.reason.frozen":
     "Congelado: a data impressa deixa de contar.",
@@ -674,6 +679,8 @@ const es: Record<InventoryI18nKey, string> = {
     "La fecha impresa vale para el envase cerrado, y está abierto.",
   "inventory.attention.reason.opened_without_date":
     "Está abierto y no tiene fecha.",
+  "inventory.attention.reason.keeps_when_opened":
+    "Alimento seco que dura meses una vez abierto.",
   "inventory.attention.reason.no_date": "No hay fecha registrada.",
   "inventory.attention.reason.frozen":
     "Congelado: la fecha impresa deja de contar.",

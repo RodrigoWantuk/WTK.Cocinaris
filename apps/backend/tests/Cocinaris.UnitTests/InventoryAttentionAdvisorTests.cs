@@ -7,8 +7,8 @@ public sealed class InventoryAttentionAdvisorTests
     private static readonly DateOnly Today = new(2026, 10, 29);
     private static readonly TimeZoneInfo Utc = TimeZoneInfo.Utc;
 
-    private static InventoryAttentionFacts Facts(DateOnly? printed = null, string storage = "Pantry", string? package = null, string state = "AsAcquired", DateOnly? prepared = null, DateTimeOffset? frozenAt = null, DateTimeOffset? thawStartedAt = null, DateTimeOffset? thawedAt = null) =>
-        new(printed, prepared, storage, package, state, frozenAt, thawStartedAt, thawedAt);
+    private static InventoryAttentionFacts Facts(DateOnly? printed = null, string storage = "Pantry", string? package = null, string state = "AsAcquired", DateOnly? prepared = null, DateTimeOffset? frozenAt = null, DateTimeOffset? thawStartedAt = null, DateTimeOffset? thawedAt = null, bool keeps = false) =>
+        new(printed, prepared, storage, package, state, frozenAt, thawStartedAt, thawedAt, keeps);
 
     [Theory]
     [InlineData(-8, InventoryAttentionState.LikelyDiscard, "date_passed_long_ago")]
@@ -37,6 +37,33 @@ public sealed class InventoryAttentionAdvisorTests
         Assert.Equal(InventoryAttentionState.Normal, result.State);
         Assert.Equal(InventoryAttentionEvidence.Unknown, result.Evidence);
     }
+
+    [Fact]
+    public void DryFoodsThatKeepOnceOpenedNeedNoAttentionInThePantry()
+    {
+        // Owner report 2026-10-30: an opened bag of raw rice asked for attention forever.
+        var rice = InventoryAttentionAdvisor.Evaluate(Facts(package: "Opened", keeps: true), Today, Utc);
+        Assert.Equal((InventoryAttentionState.Normal, InventoryAttentionEvidence.CuratedRule), (rice.State, rice.Evidence));
+        Assert.Equal(["keeps_when_opened"], rice.Reasons);
+        Assert.Equal(InventoryAttentionState.Normal, InventoryAttentionAdvisor.Evaluate(Facts(printed: Today.AddDays(90), package: "Opened", keeps: true), Today, Utc).State);
+        // The rule never hides a date that is close or passed, and it applies only in the pantry.
+        Assert.Equal(InventoryAttentionState.UseSoon, InventoryAttentionAdvisor.Evaluate(Facts(printed: Today.AddDays(3), package: "Opened", keeps: true), Today, Utc).State);
+        Assert.Equal(InventoryAttentionState.EstimateUncertain, InventoryAttentionAdvisor.Evaluate(Facts(storage: "Refrigerator", package: "Opened", keeps: true), Today, Utc).State);
+    }
+
+    [Theory]
+    [InlineData("Arroz Branco Cru", true)]
+    [InlineData("arroz", true)]
+    [InlineData("Farinha de Trigo Branca", true)]
+    [InlineData("Polvilho Azedo", true)]
+    [InlineData("Açúcar refinado", true)]
+    [InlineData("Arroz doce", false)]
+    [InlineData("Feijão preto cozido", false)]
+    [InlineData("Arroz Tio João", false)]
+    [InlineData("Requeijão cremoso", false)]
+    [InlineData("Extrato de tomate", false)]
+    public void OnlyCuratedDryFoodsKeepOnceOpened(string name, bool keeps) =>
+        Assert.Equal(keeps, Cocinaris.Modules.Ingredients.IngredientCatalog.Default.KeepsWhenOpened(name));
 
     [Fact]
     public void OpeningMakesADistantPrintedDateAndAMissingDateUncertain()
