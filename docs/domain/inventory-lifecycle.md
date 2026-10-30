@@ -107,7 +107,8 @@ The backend computes attention at read time, in the calendar of the time zone sa
 | Thawing or thawed outside the refrigerator | Curated rule | `check condition` |
 | Thawing or thawed in the refrigerator | Curated rule: thaw date + 2 days, or the printed date when it is earlier | date classification below |
 | Prepared lot with a recorded shelf-life date | Prepared record | date classification |
-| Printed date | Printed date | date classification. An opened package whose result would be `normal` becomes `estimate uncertain`, because the date describes the sealed package. |
+| Printed date | Printed date | date classification. An opened package whose result would be `normal` becomes `estimate uncertain`, because the date describes the sealed package, unless the food keeps once opened (next row). |
+| Opened, in the pantry, a dry food that keeps once opened | Curated rule | `normal` with reason `keeps_when_opened` (a close or passed printed date still wins) |
 | No date, opened | Unknown | `estimate uncertain` |
 | No date, sealed or unknown | Unknown | `normal` (pantry staples are not flagged) |
 
@@ -276,3 +277,9 @@ Each attention item should expose relevant actions:
 - inspect evidence and confidence.
 
 The system must help prevent forgetting without claiming certainty or blocking user choice.
+
+### Foods that keep once opened (PLAN-0056)
+
+The curated catalog marks 36 dry, shelf-stable ingredients with `keepsWhenOpened` (rice, pasta, flours, starches, oats, sugar, honey, salt, spices, cocoa, leavening, vanilla, oils, vinegar, coffee, dry beans and lentils, raisins). A pantry lot qualifies only when its name is a curated name of such an ingredient, optionally followed by dry descriptors: for example "Arroz Branco Cru" or "Farinha de trigo integral".
+
+Names with any other word never qualify, for example "Feijão preto cozido", "Arroz doce", or a brand name. Learned or embedding-based aliases never qualify either. The rule is advisory and curated, and it applies only in the pantry.
