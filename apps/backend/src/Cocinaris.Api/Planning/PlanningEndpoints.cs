@@ -156,7 +156,8 @@ public sealed class PlanningApiService(MenuPlanningApplicationService applicatio
                 item.ToBuyQuantity,
                 item.Checked,
                 item.Uses.Select(use => new ShoppingUseResponse(use.EntryId, use.RecipeName, use.PlannedDate, use.Quantity, use.Optional)).ToList(),
-                item.AvailableIsEstimate)).ToList()));
+                item.AvailableIsEstimate,
+                item.StoreSection)).ToList()));
 
     /// <summary>Checks or unchecks a shopping line.</summary>
     public async Task<IResult> SetCheckedAsync(Guid menuId, ShoppingCheckRequest body, HttpContext context, CancellationToken cancellationToken) =>
@@ -314,7 +315,8 @@ public sealed record ShoppingListResponse(Guid MenuId, DateOnly From, int MealCo
 /// <param name="Checked">Whether the owner checked it off.</param>
 /// <param name="Uses">Meals that need it.</param>
 /// <param name="AvailableIsEstimate">Whether <paramref name="AvailableQuantity"/> includes an estimated pantry amount.</param>
-public sealed record ShoppingItemResponse(string ItemKey, string DisplayName, string Unit, string Category, decimal RequiredQuantity, decimal AvailableQuantity, decimal ToBuyQuantity, bool Checked, IReadOnlyList<ShoppingUseResponse> Uses, bool AvailableIsEstimate);
+/// <param name="StoreSection">Store section to group the line by: <c>produce</c>, <c>butcher_fish</c>, <c>dairy_eggs</c>, <c>bakery</c>, <c>dry_goods</c>, <c>drinks</c>, or <c>other</c> (PLAN-0037 Phase 3).</param>
+public sealed record ShoppingItemResponse(string ItemKey, string DisplayName, string Unit, string Category, decimal RequiredQuantity, decimal AvailableQuantity, decimal ToBuyQuantity, bool Checked, IReadOnlyList<ShoppingUseResponse> Uses, bool AvailableIsEstimate, string StoreSection);
 
 /// <summary>One meal that needs a shopping line.</summary>
 public sealed record ShoppingUseResponse(Guid EntryId, string RecipeName, DateOnly? PlannedDate, decimal Quantity, bool Optional);

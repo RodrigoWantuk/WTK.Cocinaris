@@ -192,3 +192,10 @@ When a planned meal is not prepared, the system may:
 - update future shopping requirements.
 
 Automation follows explicit user policy and remains reversible.
+
+### Store sections (PLAN-0037 Phase 3)
+
+Lines still to buy (required, basics, optional) are grouped by store section in shopping-trip order: produce, meat and fish, dairy and eggs, bakery, dry goods, drinks, other. The section comes from the curated catalog category of the line's ingredient (PLAN-0055); a name the catalog does not know goes to "other". Basics and optional lines carry a small label inside their section.
+
+Lines the pantry covers ("runs out", "already have") keep their own blocks below. Recording a purchase from meat and fish or dairy and eggs suggests the refrigerator; the person can change it.
+

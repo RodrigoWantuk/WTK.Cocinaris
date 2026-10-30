@@ -121,6 +121,7 @@ function mapShopping(dto: ShoppingDto): ShoppingList {
       requiredQuantity: num(item.requiredQuantity),
       availableQuantity: num(item.availableQuantity),
       ...(item.availableIsEstimate ? { availableIsEstimate: true } : {}),
+      storeSection: item.storeSection ? String(item.storeSection) : "other",
       toBuyQuantity: num(item.toBuyQuantity),
       checked: item.checked === true,
       uses: (item.uses ?? []).map((use) => ({

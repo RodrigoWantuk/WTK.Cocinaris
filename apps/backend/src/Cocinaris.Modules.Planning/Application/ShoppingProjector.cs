@@ -35,7 +35,8 @@ public sealed record ShoppingUseView(Guid EntryId, string RecipeName, DateOnly? 
 /// <param name="Checked">Whether the owner checked the line off.</param>
 /// <param name="Uses">The meals that need it, in plan order.</param>
 /// <param name="AvailableIsEstimate">Whether any matched lot holds an estimated amount, so <paramref name="AvailableQuantity"/> is approximate (PLAN-0054).</param>
-public sealed record ShoppingItemView(string ItemKey, string DisplayName, string Unit, string Category, decimal RequiredQuantity, decimal AvailableQuantity, decimal ToBuyQuantity, bool Checked, IReadOnlyList<ShoppingUseView> Uses, bool AvailableIsEstimate = false);
+/// <param name="StoreSection">Store section of the line's catalog ingredient (<see cref="StoreSections"/>, PLAN-0037 Phase 3); <c>other</c> when the name is not a catalog ingredient.</param>
+public sealed record ShoppingItemView(string ItemKey, string DisplayName, string Unit, string Category, decimal RequiredQuantity, decimal AvailableQuantity, decimal ToBuyQuantity, bool Checked, IReadOnlyList<ShoppingUseView> Uses, bool AvailableIsEstimate = false, string StoreSection = StoreSections.Other);
 
 /// <summary>
 /// Derives a shopping list from the meals still to cook and the current pantry (PLAN-0029).
@@ -118,7 +119,8 @@ public static class ShoppingProjector
                 var category = toBuy > 0
                     ? item.HasRequired ? "required" : item.HasAssumed ? "assumed" : "optional"
                     : remaining.GetValueOrDefault(item.Key) <= 0 ? "runs_out" : "available";
-                return new ShoppingItemView(item.Key, item.DisplayName, item.Unit, category, item.Required, stock.GetValueOrDefault(item.Key), toBuy, checkedKeys.Contains(item.Key), item.Uses, estimated.Contains(item.Key));
+                return new ShoppingItemView(item.Key, item.DisplayName, item.Unit, category, item.Required, stock.GetValueOrDefault(item.Key), toBuy, checkedKeys.Contains(item.Key), item.Uses, estimated.Contains(item.Key),
+                    StoreSections.OfMatchKey(item.Key[..item.Key.LastIndexOf('|')], IngredientCatalog.Default));
             })
             .OrderBy(item => Array.IndexOf(CategoryOrder, item.Category))
             .ThenBy(item => item.DisplayName, StringComparer.CurrentCultureIgnoreCase)

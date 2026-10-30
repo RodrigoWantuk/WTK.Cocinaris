@@ -1,6 +1,6 @@
 # PLAN-0030: Implement Recipe Thumbnail Generation
 
-- **Status:** In Progress
+- **Status:** Completed
 - **Type:** Implementation
 - **Priority:** Medium
 - **Owner:** Claude Code
@@ -102,13 +102,19 @@ Implement the complete optional recipe thumbnail vertical slice as specified by 
 
 ## Execution state
 
-- **Current checkpoint:** implemented and tested, deployed disabled until the owner adds the OpenRouter key. The prompt is `recipe-thumbnail-style-v2`, which asks for a natural photograph; it is committed but not yet deployed.
+- **Current checkpoint:** completed and in production use:
+  - images enabled with the OpenRouter key;
+  - natural-photo prompt `style-v2`;
+  - WebP serving (#61);
+  - reuse of a similar dish's image by score (PLAN-0055 Phase 3, #68).
+
+  Everything is deployed (`3b91dc1`). The earlier entries below describe the history.
 - **Validation:**
   - **Unit tests:** canonical keys, prompt, invalid descriptors, and image inspection (6).
   - **Integration test (PostgreSQL):** an image is queued on read, two recipes with the same look share one generation, the ledger is settled, and the image is served to the owner as `image/png` with a private cache and refused to another owner.
   - **Backend suites:** unit and architecture tests pass.
-- **Exact next action:** the owner adds `Ai__Providers__OpenRouter__ApiKey` and `Ai__Images__Enabled=true` to `/etc/wtk-cocinaris/api.env` and restarts the service. The first generated image then confirms the 1024 × 576 size, and the ledger cost in `scripts/ops/ai-usage-report.sh` confirms US$ 0.008.
-- **Blockers:** the OpenRouter key (owner).
+- **Exact next action:** none. Tune `Ai:Images:ReuseThreshold` from the reuse ratio query in `docs/ai/recipe-thumbnail-generation.md` once real images accumulate.
+- **Blockers:** none.
 
 ## Progress log
 
