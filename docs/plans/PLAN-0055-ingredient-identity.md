@@ -29,7 +29,7 @@ Stop unnecessary AI calls for recipes and images by first giving ingredients a s
 | --- | --- | --- |
 | 1 | Curated catalog, alias table, non-blocking resolution job (catalog → trigram → embeddings with exact-text cache), cross-language matching in the cooking proposal, shopping list, and menu reservations; pgvector in every environment | Delivered in this run |
 | 2 | Shared recipe-idea library: generic ideas indexed by canonical main ingredients, deterministic retrieval → hard filters → scoring, AI only when nothing fits, plus a novelty share | Delivered ([ADR-0011](../architecture/decisions/0011-shared-recipe-idea-library.md), [`docs/ai/recipe-idea-library.md`](../ai/recipe-idea-library.md)) |
-| 3 | Dish-image reuse by score: a visual signature from canonical visible components and dish format; reuse the best image at or above a threshold, generate below it | After Phase 2 |
+| 3 | Dish-image reuse by score: a visual signature from canonical visible components and dish format; reuse the best image at or above a threshold, generate below it | Delivered ([rules](../ai/recipe-thumbnail-generation.md#reuse-by-similarity-plan-0055-phase-3-owner-decision-2026-10-30)) |
 | 4 | Live-model evaluation and threshold tuning with real names (needs the OpenRouter key) | When the key is active |
 
 ## Phase 1 scope delivered
@@ -82,17 +82,24 @@ Stop unnecessary AI calls for recipes and images by first giving ingredients a s
 - [x] Choosing a library idea builds the recipe with the person's lots and makes no AI call. Anything that does not fit falls back to the AI as before.
 - [x] A configurable novelty share still sends some requests to the AI.
 
+## Phase 3 acceptance criteria
+
+- [x] Before generating, the job scores ready images of the same dish format and reuses the best one at or above the threshold (0.8 by default), with no image credit, quota, or ledger row.
+- [x] Reworded descriptions of the same dish reuse an image; a different main ingredient or dish format generates its own.
+- [x] A reuse records its source and score, serves the source's files, and never chains to another reuse; only images under the current render policy qualify.
+
 ## Execution state
 
-- **Current checkpoint:** Phase 1 merged (#60) and deployed from the branch. Phase 2 (idea library) is implemented, tested, and documented on `agent/plan-0055-recipe-idea-library`. The same branch carries the fix for suggestion requests that failed on the first try (owner report 2026-10-30).
+- **Current checkpoint:** Phases 1 and 2 merged and deployed. Phase 3 (image reuse by score) is on `agent/plan-0055-image-reuse`.
 - **Validation (2026-10-30, host `rwantuk`):**
-  - Unit tests: 156 passed.
-  - Integration tests: 37 passed (`RecipeExecutionApiTests` including the new end-to-end library test, `RecipeAiGateway*`, and `PostgreSqlMigrationTests`).
-  - The library test: person A, with Portuguese pantry names, builds three ideas through the AI. Person B, with English names, then gets three library suggestions and a recipe using B's own lot, with zero AI ledger rows. Ideas contain no lot ids or typed names, and a person with an extra restriction gets none.
+  - Unit tests: 179 passed, including the similarity cases.
+  - Architecture tests: 14 passed.
+  - Migration tests: 21 passed.
+  - Integration tests: `ASimilarDishReusesTheImageAndADifferentOneGeneratesItsOwn` passed (three recipes, two generations, one reuse with score ≥ 0.8 served as WebP), and `AThumbnailIsQueued…` still passes.
 - **Exact next action:**
-  1. The owner merges this PR and #62 (deploy build root), then deploys `main`.
-  2. Phase 3: dish-image reuse by score and threshold.
-  3. Phase 4: the owner runs the live evaluation.
+  1. The owner merges this PR and deploys `main`.
+  2. Phase 4: the owner runs the live ingredient evaluation (`docs/ai/ingredient-identity.md#evaluation`).
+  3. Watch the reuse ratio query in the thumbnail document to tune `Ai:Images:ReuseThreshold` with real images.
 - **Blockers:** none.
 
 ## Progress log
@@ -125,4 +132,9 @@ Stop unnecessary AI calls for recipes and images by first giving ingredients a s
   - a failed call records content-free labels of the broken rules in the ledger's quality flags (for example `invalid:candidates.summary has words max`).
 
   The next failure will show which rule the model breaks, so it can be fixed in the prompt.
+
+### 2026-10-30 — Claude Code (Phase 3)
+
+- Delivered dish-image reuse by deterministic similarity, as listed above.
+- The image job checks for a reusable image before quotas and budget, so a reuse is immediate and free.
 

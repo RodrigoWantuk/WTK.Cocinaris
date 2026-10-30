@@ -518,6 +518,7 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             entity.Property(x => x.FileName).HasMaxLength(80);
             entity.Property(x => x.MediaType).HasMaxLength(32);
             entity.Property(x => x.FailureCode).HasMaxLength(40);
+            entity.Property(x => x.SourceRenderKey).HasMaxLength(64);
             entity.HasIndex(x => new { x.State, x.NextAttemptAt });
         });
 

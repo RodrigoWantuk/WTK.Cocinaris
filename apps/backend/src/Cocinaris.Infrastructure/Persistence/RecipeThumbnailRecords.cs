@@ -31,6 +31,10 @@ public sealed class RecipeThumbnailRecord
     public int? Height { get; set; }
     /// <summary>Gets or sets the bounded failure, deferral, or size note.</summary>
     public string? FailureCode { get; set; }
+    /// <summary>Gets or sets the render key of the similar dish whose image this one reuses (PLAN-0055 Phase 3); null when generated.</summary>
+    public string? SourceRenderKey { get; set; }
+    /// <summary>Gets or sets the similarity score of that reuse.</summary>
+    public double? ReuseScore { get; set; }
     /// <summary>Gets or sets the UTC creation instant.</summary>
     public DateTimeOffset CreatedAt { get; set; }
     /// <summary>Gets or sets the UTC instant of the last change.</summary>

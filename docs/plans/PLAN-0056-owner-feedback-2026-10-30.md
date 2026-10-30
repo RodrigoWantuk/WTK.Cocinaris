@@ -1,6 +1,6 @@
 # PLAN-0056: Owner Feedback 2026-10-30 — Pantry Entry, Auto-Removal, Guided Suggestions, Saved Candidates, Attention Fix
 
-- **Status:** In Progress
+- **Status:** Completed
 - **Type:** Implementation
 - **Priority:** High (owner testing feedback)
 - **Owner:** Claude Code (claimed 2026-10-30)
@@ -115,14 +115,14 @@ Also reported the same day and handled in PLAN-0055 (PR #63): suggestions someti
 
 ## Execution state
 
-- **Current checkpoint:** PLAN-0056 is complete: Phases 1–3 merged and deployed, Phase 4 (items 1 and 2) in draft PR #67.
+- **Current checkpoint:** completed. Phases 1–4 are merged (#64, #65, #66, #67) and deployed (`21f31fa`, 2026-10-30).
 - **Validation (2026-10-30, host `rwantuk`):**
   - Backend unit tests: 176 passed.
   - Architecture tests: 14 passed.
   - Integration tests: 57 of 58 passed in the inventory, recipe, migration, and Plan0005 suites, including the new auto-removal and name-suggestion tests.
   - The failing test, `Plan0005P0GapTests.LogoutInvalidatesProtectedInventoryAccess`, also fails on a clean `main` worktree. It needs the development OIDC provider on `127.0.0.1:8080`, which only the full local gates start, so it is an environment dependency, not a regression.
   - Frontend: 155 inventory, adapter, i18n, and recipe tests plus the new form and list tests passed. Typecheck, lint, and format are clean. The OpenAPI and API client drift check is clean.
-- **Exact next action:** the owner merges PR #67, then deploy `main`. PLAN-0056 can then be marked completed.
+- **Exact next action:** none; new owner feedback goes into a new plan.
 - **Blockers:** none.
 
 ## Progress log
