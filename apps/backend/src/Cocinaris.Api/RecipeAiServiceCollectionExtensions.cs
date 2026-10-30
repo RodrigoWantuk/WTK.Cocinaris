@@ -4,6 +4,7 @@ using Cocinaris.Modules.Ai.Images;
 using Cocinaris.Modules.Ai.Providers;
 using Cocinaris.Modules.Ai.Usage;
 using Cocinaris.Modules.Recipes.Application;
+using Cocinaris.Modules.Recipes.Ideas;
 using Cocinaris.Modules.Recipes.Thumbnails;
 using Cocinaris.Api.Recipes;
 using Microsoft.Extensions.Options;
@@ -49,6 +50,14 @@ public static class RecipeAiServiceCollectionExtensions
         services.AddScoped<IRecipeLibraryStore, PostgreSqlRecipeLibraryStore>();
         services.AddScoped<IRecipeCookNowUnitOfWork, PostgreSqlRecipeCookNowUnitOfWork>();
         services.AddScoped<IRecipeContextAssembler, RecipeContextAssembler>();
+        // Shared recipe-idea library (PLAN-0055 Phase 2): answers suggestions and selections without the AI when it can.
+        services.AddOptions<RecipeIdeaOptions>()
+            .Bind(configuration.GetSection("Recipes:Ideas"))
+            .Validate(options => options.IsValid(), "Recipe idea library options must be coherent.")
+            .ValidateOnStart();
+        services.AddSingleton(provider => provider.GetRequiredService<IOptions<RecipeIdeaOptions>>().Value);
+        services.AddScoped<IRecipeIdeaStore, PostgreSqlRecipeIdeaStore>();
+        services.AddScoped<RecipeIdeaLibrary>();
         services.AddScoped<RecipeCookNowApplicationService>();
         services.AddScoped<RecipeApiService>();
         services.AddScoped<IRecipeExecutionStore, PostgreSqlRecipeExecutionStore>();

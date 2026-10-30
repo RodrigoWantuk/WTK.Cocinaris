@@ -28,7 +28,7 @@ Stop unnecessary AI calls for recipes and images by first giving ingredients a s
 | Phase | Outcome | Status |
 | --- | --- | --- |
 | 1 | Curated catalog, alias table, non-blocking resolution job (catalog → trigram → embeddings with exact-text cache), cross-language matching in the cooking proposal, shopping list, and menu reservations; pgvector in every environment | Delivered in this run |
-| 2 | Shared recipe-idea library: generic ideas indexed by canonical main ingredients, deterministic retrieval → hard filters → scoring, AI only for the gap, plus a novelty share | Next |
+| 2 | Shared recipe-idea library: generic ideas indexed by canonical main ingredients, deterministic retrieval → hard filters → scoring, AI only when nothing fits, plus a novelty share | Delivered ([ADR-0011](../architecture/decisions/0011-shared-recipe-idea-library.md), [`docs/ai/recipe-idea-library.md`](../ai/recipe-idea-library.md)) |
 | 3 | Dish-image reuse by score: a visual signature from canonical visible components and dish format; reuse the best image at or above a threshold, generate below it | After Phase 2 |
 | 4 | Live-model evaluation and threshold tuning with real names (needs the OpenRouter key) | When the key is active |
 
@@ -73,24 +73,27 @@ Stop unnecessary AI calls for recipes and images by first giving ingredients a s
 - [x] Development, tests, and the host have pgvector; deploy refuses to run without it.
 - [ ] Live-model evaluation with the real provider (Phase 4): the test exists; its run with the key is pending (owner command in `docs/ai/ingredient-identity.md#evaluation`).
 
+## Phase 2 acceptance criteria
+
+- [x] After an AI expansion, a generic idea is stored only when every ingredient resolves to the catalog, every equipment item has a stable code, and no private term or owner-typed name appears in its text.
+- [x] Ideas hold no owner, lot id, or equipment id, and the names are catalog names in the output language.
+- [x] An idea is served only to a person whose restriction codes are all among the idea's, in the same language, detail, and skill.
+- [x] A suggestion request that three distinct, sufficiently covered ideas can answer makes no AI call and no usage reservation. The answer passes the same protocol validation as AI output, for the person's own lots.
+- [x] Choosing a library idea builds the recipe with the person's lots and makes no AI call. Anything that does not fit falls back to the AI as before.
+- [x] A configurable novelty share still sends some requests to the AI.
+
 ## Execution state
 
-- **Current checkpoint:** Phase 1 implemented, tested, and documented on `agent/plan-0055-ingredient-identity`.
+- **Current checkpoint:** Phase 1 merged (#60) and deployed from the branch. Phase 2 (idea library) is implemented, tested, and documented on `agent/plan-0055-recipe-idea-library`. The same branch carries the fix for suggestion requests that failed on the first try (owner report 2026-10-30).
 - **Validation (2026-10-30, host `rwantuk`):**
-  - Backend build: clean (warnings as errors).
-  - Unit tests: 155 passed, including 18 new `IngredientIdentityTests`.
-  - Architecture tests: 14 passed.
-  - Integration tests (Testcontainers, `pgvector/pgvector:0.8.7-pg18-trixie`): 10 passed in `RecipeExecutionApiTests`, including the 2 new ingredient identity tests (catalog matching through HTTP; the job end to end with trigram, embedding, ledger, and exact-text cache reuse).
-  - Migration tests: 21 passed.
-  - `dotnet format --verify-no-changes`: clean (EF had written UTF-8 BOMs on the new migration files; removed per `.editorconfig`).
-- **Not verified:** the live OpenRouter embeddings call (no key yet), and threshold quality on real names.
-- **Deployment:** the branch has not been deployed in this commit; the deploy outcome is recorded in the next progress entry or in the PR.
+  - Unit tests: 156 passed.
+  - Integration tests: 37 passed (`RecipeExecutionApiTests` including the new end-to-end library test, `RecipeAiGateway*`, and `PostgreSqlMigrationTests`).
+  - The library test: person A, with Portuguese pantry names, builds three ideas through the AI. Person B, with English names, then gets three library suggestions and a recipe using B's own lot, with zero AI ledger rows. Ideas contain no lot ids or typed names, and a person with an extra restriction gets none.
 - **Exact next action:**
-  1. The owner merges PR #58, then this PR.
-  2. Deploy `main`. The deploy creates the extensions and runs the migration.
-  3. Set `Ai__Embeddings__Enabled=true` once `Ai__Providers__OpenRouter__ApiKey` is in `/etc/wtk-cocinaris/api.env`.
-  4. Start Phase 2 (shared recipe-idea library) with its own design section in `docs/ai/`.
-- **Blockers:** none for Phase 2. Phase 4 needs the OpenRouter key (owner).
+  1. The owner merges this PR and #62 (deploy build root), then deploys `main`.
+  2. Phase 3: dish-image reuse by score and threshold.
+  3. Phase 4: the owner runs the live evaluation.
+- **Blockers:** none.
 
 ## Progress log
 
@@ -107,4 +110,19 @@ Stop unnecessary AI calls for recipes and images by first giving ingredients a s
 - On the host: the owner deployed the branch and enabled `Ai__Embeddings__Enabled` with the OpenRouter key. The catalog synced with the Qwen space in its evaluation. No names were queued yet, because no unknown names had been read.
 - Queuing the fixture names directly in the deployment database was refused by the session's permission policy. Added `IngredientLiveEvaluationTests` instead: an opt-in test that runs the real model against a throwaway database when `COCINARIS_EVAL_OPENROUTER_API_KEY` is set, and fails only on wrong links. Without the key it returns at once (verified).
 - Next: the owner runs the command in `docs/ai/ingredient-identity.md#evaluation`. Thresholds are tuned only from its output. Then start Phase 2.
+
+### 2026-10-30 — Claude Code (Phase 2 and suggestion failures)
+
+- Delivered the shared recipe-idea library (ADR-0011):
+  - capture after AI expansion, with a privacy guard and generic names;
+  - hard filters in SQL (language, level, restriction superset, meal type, pantry overlap, equipment subset);
+  - coverage-based scoring and three distinct ideas;
+  - deterministic rebuild for the person, validated like AI output;
+  - selection without AI, AI fallback otherwise, and a novelty share of 0.25.
+- The first test run showed the privacy guard dropping a fake recipe whose summary said "pantry staples". That is by design; the test now uses a neutral summary.
+- **Owner report: suggestions sometimes failed on the first request.** The ledger showed two failed suggestion calls (22:59 and 00:25 UTC). Each was the initial answer plus one repair, both breaking a validation rule; the next request worked. The rule was not recorded. Changes:
+  - suggestions now get two repairs instead of one;
+  - a failed call records content-free labels of the broken rules in the ledger's quality flags (for example `invalid:candidates.summary has words max`).
+
+  The next failure will show which rule the model breaks, so it can be fixed in the prompt.
 
