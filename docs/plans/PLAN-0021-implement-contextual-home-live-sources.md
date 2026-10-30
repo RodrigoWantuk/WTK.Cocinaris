@@ -5,7 +5,7 @@
 - **Priority:** High
 - **Owner:** Claude Code (deterministic tiers claimed 2026-10-29)
 - **Created:** 2026-08-02
-- **Last updated:** 2026-10-29
+- **Last updated:** 2026-10-30
 - **Branch:** `agent/plan-0042-cook-and-reconcile` (deterministic tiers delivered with PLAN-0042 Phase 1; merged and deleted)
 - **Pull request:** Deterministic tiers merged via [PR #50](https://github.com/RodrigoWantuk/WTK.Cocinaris/pull/50) at `595af8e`
 - **Dependencies:** PLAN-0011 presentation boundary; PLAN-0020 production profile UI; PLAN-0022 recipe contract decisions (Completed); accepted menu/planning read contract from PLAN-0029
@@ -130,3 +130,7 @@ Represent:
 ### 2026-10-29T12:40:00Z — Claude Code
 
 - The deterministic tiers were merged via PR #50. The accepted-menu tier was delivered with PLAN-0029 Phase 1.
+
+### 2026-10-30T18:00:00Z — Claude Code (registry reconciliation, PLAN-0057 Phase 0)
+
+- The "Prepare-se" section on Hoje (PLAN-0029 Phase 4, #71) adds pre-meal reminders after the menu tier.

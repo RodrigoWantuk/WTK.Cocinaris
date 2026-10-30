@@ -96,10 +96,7 @@ Stop unnecessary AI calls for recipes and images by first giving ingredients a s
   - Architecture tests: 14 passed.
   - Migration tests: 21 passed.
   - Integration tests: `ASimilarDishReusesTheImageAndADifferentOneGeneratesItsOwn` passed (three recipes, two generations, one reuse with score ≥ 0.8 served as WebP), and `AThumbnailIsQueued…` still passes.
-- **Exact next action:**
-  1. The owner merges this PR and deploys `main`.
-  2. Phase 4: the owner runs the live ingredient evaluation (`docs/ai/ingredient-identity.md#evaluation`).
-  3. Watch the reuse ratio query in the thumbnail document to tune `Ai:Images:ReuseThreshold` with real images.
+- **Exact next action:** The owner runs the Phase 4 live ingredient evaluation (`docs/ai/ingredient-identity.md#evaluation`); then tune the resolution thresholds and `Ai:Images:ReuseThreshold` from the results and the reuse ratio query.
 - **Blockers:** none.
 
 ## Progress log
@@ -138,3 +135,6 @@ Stop unnecessary AI calls for recipes and images by first giving ingredients a s
 - Delivered dish-image reuse by deterministic similarity, as listed above.
 - The image job checks for a reusable image before quotas and budget, so a reuse is immediate and free.
 
+### 2026-10-30T18:00:00Z — Claude Code (registry reconciliation, PLAN-0057 Phase 0)
+
+- Phase 3 merged via #68 and deployed. Only the owner-run Phase 4 evaluation remains.

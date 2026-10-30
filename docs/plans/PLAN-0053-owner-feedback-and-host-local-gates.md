@@ -1,11 +1,11 @@
 # PLAN-0053: Owner Feedback Fixes and Host-Local Merge Gates
 
-- **Status:** In Progress
+- **Status:** Blocked
 - **Type:** Implementation
 - **Priority:** High
 - **Owner:** Claude Code (claimed 2026-10-28)
 - **Created:** 2026-10-28
-- **Last updated:** 2026-10-28
+- **Last updated:** 2026-10-30
 - **Branch:** `agent/plan-0053-owner-feedback-local-gates`
 - **Pull request:** Not opened
 - **Related documents:** `docs/product/entry-and-contextual-home.md`, `docs/product/audience-and-profile.md`, `docs/security/privacy-and-data-protection.md`, `docs/development/environment.md`, `AGENTS.md` §9 and §11
@@ -76,9 +76,9 @@ In §11, read "Do not merge failing checks" as "do not merge a head whose local 
 
 - **Current run delivery target:** All included items.
 - **Current checkpoint:** D-5 and D-6 implemented, and the frontend validated (Vitest 51 files / 423 tests, typecheck, lint, format, guards). The local gate script is written; the gitleaks false positive is allowlisted, and the full history scan is clean.
-- **Exact next action:** Run `scripts/ci/run-local-gates.sh` on the final head, deploy, open the draft PR.
+- **Exact next action:** The owner updates `AGENTS.md` §9/§11 with the wording in this plan (local gates instead of CI); then mark the plan completed.
 - **Blockers:** `AGENTS.md` change awaits the owner.
-- **Working tree state:** Uncommitted, about to be committed.
+- **Working tree state:** Clean; merged via #48.
 
 ## Progress log
 
@@ -100,3 +100,7 @@ In §11, read "Do not merge failing checks" as "do not merge a head whose local 
   - Removed the leftover gate worktree.
 - Reproduced the owner's profile failure in the proxy replica and verified the fix (details in item 8). The fix's header alone already prevents the defect behind the old template, because Caddy does not transform `no-transform` responses.
 - Implemented items 6 and 7 with tests. Frontend checks: Vitest 51 files / 424 tests, typecheck, lint, format.
+
+### 2026-10-30T18:00:00Z — Claude Code (registry reconciliation, PLAN-0057 Phase 0)
+
+- The work merged via #48 and is deployed. GitHub Actions does not run for this repository, so `scripts/ci/run-local-gates.sh` is the gate. The only open item is the owner's `AGENTS.md` change, so the plan is Blocked on it.

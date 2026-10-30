@@ -1,11 +1,11 @@
 # PLAN-0054: Everyday-Cook Realignment — Design System, Easy Pantry, Dual Measures, Beginner Cooking, Shared Household
 
-- **Status:** In Progress
+- **Status:** Paused
 - **Type:** Implementation (product realignment)
 - **Priority:** Highest (runs before the pending phases of PLAN-0029, PLAN-0037, PLAN-0042, PLAN-0045)
 - **Owner:** Claude Code (claimed 2026-10-29)
 - **Created:** 2026-10-29
-- **Last updated:** 2026-10-29
+- **Last updated:** 2026-10-30
 - **Branch:** `agent/plan-0054-everyday-cook-realignment` (Phase 0)
 - **Pull request:** #57 squash-merged at the Phase 2a head (`1cb3970`, merge `6c8f56c`); the later commits (Phase 2b, 3, 4) are delivered unchanged in draft PR #58 from `agent/plan-0054-phases-2-4-and-plan-0030`
 - **Decisions:** [`docs/product/everyday-cook-realignment-2026-10-29.md`](../product/everyday-cook-realignment-2026-10-29.md)
@@ -113,9 +113,7 @@ Phase 5 is large and changes the data model. It follows Phases 1–4 because tho
   - **Frontend:** typecheck and lint are clean, and Prettier and the guards pass. Vitest passes 461 tests, including the new guided path (preparation, step and timer, one-tap finish with leftover and rating) and the overview and review paths.
   - **Replica:** phone captures of the recipe page, preparation, step, and finish screens.
   - **Backend:** no change in Phases 3–4.
-- **Exact next action:**
-  - The owner tests Phases 1–4 on production.
-  - Then Phase 5, the shared household: the superseding ADR for ownership (`AGENTS.md` §4) first, then members, invitations, and the shared pantry, menu, and shopping. Phase 5 needs owner review of the ADR before implementation.
+- **Exact next action:** Paused. Phase 5 (shared household) was deferred by the owner on 2026-10-30 ("não temos pressa em compartilhar casa"); when resumed, start with the ownership ADR for the owner's review. Phases 6 and 7 follow.
 - **Blockers:** Phase 5 needs the owner's agreement with the ownership ADR.
 
 ## Progress log
@@ -159,3 +157,7 @@ Phase 5 is large and changes the data model. It follows Phases 1–4 because tho
 ### 2026-10-30 — Claude Code
 
 - PR #57 was squash-merged at its Phase 2a head (`1cb3970`), so the commits for Phase 2b, Phase 3, Phase 4, and PLAN-0030 never reached `main`. They were rebased unchanged onto `main` (the tree is identical to the former branch head `1f6093a`) as `agent/plan-0054-phases-2-4-and-plan-0030`, in draft PR #58. Next: the owner tests and merges PR #58; Phase 5 is unchanged.
+
+### 2026-10-30T18:00:00Z — Claude Code (registry reconciliation, PLAN-0057 Phase 0)
+
+- Phases 0–4 are merged (#57, #58) and deployed; dish images were delivered by PLAN-0030, so that limit no longer applies. Status set to Paused after the owner deferred Phase 5.
