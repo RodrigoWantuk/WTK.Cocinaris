@@ -1,8 +1,19 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import type { InventoryLotView } from "@/adapters/live/inventoryTypes";
 import { useProductionI18n } from "@/app/i18n/ProductionI18nProvider";
 import { useSession } from "@/app/session/SessionProvider";
+import {
+  CalendarDays,
+  ChefHat,
+  ChevronRight,
+  Clock,
+  Plus,
+  ShoppingBasket,
+  ShoppingCart,
+  Snowflake,
+  Sparkles,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type {
   RecipeExecutionSummary,
@@ -20,6 +31,8 @@ import {
 } from "@/features/planning/planningDates";
 import { formatLocaleDecimal } from "@/lib/localeDecimal";
 import { mealTypeLabel } from "@/features/recipes/recipeLabels";
+import { RecipeCard } from "@/features/recipes/RecipeCard";
+import { RecipeThumbnail } from "@/features/recipes/RecipeThumbnail";
 import { buildHomeGreeting, readBrowserTimeZone } from "./dayPart";
 
 const UNIT_KEYS: Record<string, string> = {
@@ -48,10 +61,125 @@ function useSource<T>(load: (signal: AbortSignal) => Promise<T[]>): Source<T> {
   return state;
 }
 
+/** A section of the home page: a heading, an optional "see all" link, and its content. */
+function HomeSection({
+  id,
+  title,
+  link,
+  children,
+  testId,
+}: {
+  id: string;
+  title: string;
+  link?: { to: string; label: string };
+  children: ReactNode;
+  testId?: string;
+}) {
+  return (
+    <section aria-labelledby={id} data-testid={testId} className="space-y-3">
+      <div className="flex items-baseline justify-between gap-2">
+        <h2 id={id} className="font-display text-xl">
+          {title}
+        </h2>
+        {link ? (
+          <Link
+            to={link.to}
+            className="inline-flex items-center gap-0.5 text-sm font-medium text-primary underline-offset-4 hover:underline"
+          >
+            {link.label}
+            <ChevronRight aria-hidden="true" className="h-4 w-4" />
+          </Link>
+        ) : null}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+/**
+ * The four everyday starting points as large tiles (PLAN-0058): suggest recipes (the main
+ * action, on the accent), add to the pantry, the week's menu, and the shopping list.
+ */
+function QuickActions() {
+  const { t } = useProductionI18n();
+  const tiles = [
+    {
+      to: "/app/despensa/novo",
+      icon: Plus,
+      title: t("today.cta.addItem"),
+      detail: t("today.quick.addDetail"),
+      testId: "today-add-item",
+    },
+    {
+      to: "/app/cardapio",
+      icon: CalendarDays,
+      title: t("today.quick.menu"),
+      detail: t("today.quick.menuDetail"),
+      testId: "today-quick-menu",
+    },
+    {
+      to: "/app/compras",
+      icon: ShoppingBasket,
+      title: t("today.prep.shopping"),
+      detail: t("today.quick.shoppingDetail"),
+      testId: "today-quick-shopping",
+    },
+  ];
+  const tile =
+    "flex min-h-[5.5rem] flex-col justify-between gap-2 rounded-2xl p-4 transition-[background-color,border-color,transform] duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background motion-safe:active:scale-[0.98]";
+  return (
+    <nav
+      aria-label={t("today.quick.label")}
+      className="grid grid-cols-3 gap-3 sm:grid-cols-4"
+    >
+      <Link
+        to="/app/receitas/gerar"
+        data-testid="today-generate"
+        className={`${tile} col-span-3 bg-primary text-primary-foreground hover:bg-primary/90 sm:col-span-1`}
+      >
+        <Sparkles aria-hidden="true" className="h-6 w-6" />
+        <span>
+          <span className="block text-base font-semibold">
+            {t("today.cta.generate")}
+          </span>
+          <span className="block text-sm opacity-90">
+            {t("today.quick.generateDetail")}
+          </span>
+        </span>
+      </Link>
+      {tiles.map(({ to, icon: Icon, title, detail, testId }) => (
+        <Link
+          key={to}
+          to={to}
+          data-testid={testId}
+          className={`${tile} surface items-start hover:border-input/60 hover:bg-secondary/40`}
+        >
+          <Icon aria-hidden="true" className="h-6 w-6 text-primary" />
+          <span>
+            <span className="block text-sm font-semibold leading-tight">
+              {title}
+            </span>
+            <span className="hidden text-sm text-muted-foreground sm:block">
+              {detail}
+            </span>
+          </span>
+        </Link>
+      ))}
+    </nav>
+  );
+}
+
+const PREP_ICON = {
+  buy: ShoppingCart,
+  thaw: Snowflake,
+  use_by: Clock,
+} as const;
+
 /**
  * "Prepare-se" (PLAN-0029 Phase 4): what to buy, thaw, or use first for the menu meals of today
- * and tomorrow. The reminders are derived on every read, so each disappears once its cause does;
- * nothing here changes the pantry or the menu. Renders nothing when there is nothing to do.
+ * and tomorrow, one row each with an icon for the kind of task. The reminders are derived on
+ * every read, so each disappears once its cause does; nothing here changes the pantry or the
+ * menu. Renders nothing when there is nothing to do.
  */
 function PreparationSection({ items }: { items: PreparationReminder[] }) {
   const { t, locale } = useProductionI18n();
@@ -78,64 +206,64 @@ function PreparationSection({ items }: { items: PreparationReminder[] }) {
           });
 
   return (
-    <section
-      aria-labelledby="today-preparation"
-      data-testid="today-preparation"
-      className="surface p-4"
+    <HomeSection
+      id="today-preparation"
+      testId="today-preparation"
+      title={t("today.prep.title")}
     >
-      <h2 id="today-preparation" className="font-display text-xl">
-        {t("today.prep.title")}
-      </h2>
-      <p className="text-sm text-muted-foreground">{t("today.prep.hint")}</p>
-      <ul className="mt-2 divide-y divide-border">
-        {items.map((item) => (
-          <li
-            key={`${item.entryId}-${item.kind}-${item.lotId ?? item.itemName}`}
-            data-testid="today-preparation-item"
-            className="flex flex-wrap items-center justify-between gap-2 py-2"
-          >
-            <span>
-              {day(item.dueDate) !== day(item.plannedDate) ? (
-                <span className="mr-2 rounded-full bg-secondary px-2 py-0.5 text-xs text-secondary-foreground">
-                  {day(item.dueDate)}
+      <ul className="surface divide-y divide-border overflow-hidden">
+        {items.map((item) => {
+          const Icon = PREP_ICON[item.kind as keyof typeof PREP_ICON] ?? Clock;
+          const to =
+            item.kind === "buy"
+              ? `/app/cardapio/${item.menuId}/compras`
+              : item.lotId
+                ? `/app/despensa/${item.lotId}`
+                : `/app/cardapio/${item.menuId}`;
+          return (
+            <li
+              key={`${item.entryId}-${item.kind}-${item.lotId ?? item.itemName}`}
+              data-testid="today-preparation-item"
+            >
+              <Link
+                to={to}
+                aria-label={`${action(item)} · ${t(item.kind === "buy" ? "today.prep.shopping" : "today.prep.pantry")}`}
+                className="flex items-center gap-3 p-4 transition-colors duration-150 hover:bg-secondary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+              >
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent text-accent-foreground">
+                  <Icon aria-hidden="true" className="h-5 w-5" />
                 </span>
-              ) : null}
-              <span className="font-medium">{action(item)}</span>
-              <span className="block text-sm text-muted-foreground">
-                {t("today.prep.for", {
-                  recipe: item.recipeName,
-                  day: day(item.plannedDate),
-                })}
-              </span>
-            </span>
-            {item.kind === "buy" ? (
-              <Link
-                to={`/app/cardapio/${item.menuId}/compras`}
-                className="text-sm underline underline-offset-4"
-              >
-                {t("today.prep.shopping")}
+                <span className="min-w-0 flex-1">
+                  <span className="block font-medium">{action(item)}</span>
+                  <span className="block text-sm text-muted-foreground">
+                    {day(item.dueDate) !== day(item.plannedDate)
+                      ? `${day(item.dueDate)} · `
+                      : ""}
+                    {t("today.prep.for", {
+                      recipe: item.recipeName,
+                      day: day(item.plannedDate),
+                    })}
+                  </span>
+                </span>
+                <ChevronRight
+                  aria-hidden="true"
+                  className="h-5 w-5 shrink-0 text-muted-foreground"
+                />
               </Link>
-            ) : item.lotId ? (
-              <Link
-                to={`/app/despensa/${item.lotId}`}
-                className="text-sm underline underline-offset-4"
-              >
-                {t("today.prep.pantry")}
-              </Link>
-            ) : null}
-          </li>
-        ))}
+            </li>
+          );
+        })}
       </ul>
-    </section>
+    </HomeSection>
   );
 }
 
 /**
- * Production "Hoje" (PLAN-0021 deterministic tiers, PLAN-0042 resume, PLAN-0029 menu). Every
- * section reads an authoritative source independently: the accepted menu's meals for the owner's
- * current day (first, as the home suggestion order requires), in-progress cooking, the inventory
- * attention list, and saved recipes. Reading mutates nothing, and a failed source hides only its
- * own section's content. Nothing here is a fixture.
+ * Production "Hoje" (PLAN-0021 tiers, PLAN-0042 resume, PLAN-0029 menu; layout PLAN-0058). The
+ * page answers "what do we cook today?" in task order: what is on the stove, today's planned
+ * meals as image cards, the four starting points, what to prepare, what to use soon, and the
+ * person's recipes as a carousel of image cards. Every section reads an authoritative source
+ * independently; a failed source hides only its own section, and reading mutates nothing.
  */
 export function TodayPage() {
   const { t } = useProductionI18n();
@@ -218,6 +346,17 @@ export function TodayPage() {
       })
     : t(`home.greeting.anonymous.${greeting.dayPart}`);
 
+  const thumbnails = new Map(
+    saved.status === "ready"
+      ? saved.items.map((recipe) => [recipe.recipeId, recipe.thumbnail])
+      : [],
+  );
+  const recipeMeta = (recipe: RecipeSummary) =>
+    [
+      recipe.mealTypes[0] ? mealTypeLabel(t, recipe.mealTypes[0]) : null,
+      t("recipes.detail.servings", { count: recipe.servings }),
+    ].filter((value): value is string => Boolean(value));
+
   return (
     <div data-testid="today-page" className="space-y-8">
       <header>
@@ -232,60 +371,109 @@ export function TodayPage() {
         <section
           aria-labelledby="today-cooking"
           data-testid="today-cooking"
-          className="rounded-2xl border border-primary/30 bg-accent p-4 text-accent-foreground"
+          className="space-y-3"
         >
-          <h2 id="today-cooking" className="font-display text-xl">
+          <h2 id="today-cooking" className="sr-only">
             {t("today.cooking.title")}
           </h2>
-          <ul className="mt-2 space-y-2">
-            {cooking.items.map((item) => (
-              <li
-                key={item.executionId}
-                className="flex flex-wrap items-center justify-between gap-2"
-              >
-                <span className="font-medium">{item.recipeName}</span>
-                <Button asChild size="sm">
-                  <Link to={`/app/receitas/cozinhar/${item.executionId}`}>
-                    {t("today.cooking.resume")}
-                  </Link>
-                </Button>
-              </li>
-            ))}
-          </ul>
+          {cooking.items.map((item) => (
+            <div
+              key={item.executionId}
+              className="flex items-center gap-3 rounded-2xl border border-primary/30 bg-accent p-3 text-accent-foreground"
+            >
+              <span className="w-20 shrink-0 sm:w-28">
+                <RecipeThumbnail
+                  thumbnail={
+                    thumbnails.get(item.recipeId) ?? {
+                      state: "none",
+                      url: null,
+                    }
+                  }
+                  name={item.recipeName}
+                  size="small"
+                />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide">
+                  <ChefHat aria-hidden="true" className="h-3.5 w-3.5" />
+                  {t("today.cooking.title")}
+                </span>
+                <span className="mt-0.5 block truncate font-semibold">
+                  {item.recipeName}
+                </span>
+              </span>
+              <Button asChild size="sm">
+                <Link to={`/app/receitas/cozinhar/${item.executionId}`}>
+                  {t("today.cooking.resume")}
+                </Link>
+              </Button>
+            </div>
+          ))}
         </section>
       ) : null}
 
       {menu.status === "ready" && menu.items.length > 0 ? (
-        <section
-          aria-labelledby="today-menu"
-          data-testid="today-menu"
-          className="surface p-4"
+        <HomeSection
+          id="today-menu"
+          testId="today-menu"
+          title={t("today.menu.title")}
+          link={{
+            to: `/app/cardapio/${menu.items[0]!.menuId}`,
+            label: t("today.menu.open"),
+          }}
         >
-          <h2 id="today-menu" className="font-display text-xl">
-            {t("today.menu.title")}
-          </h2>
-          <ul className="mt-2 space-y-2">
-            {menu.items.map((item) => (
-              <li
-                key={item.entry.entryId}
-                data-testid="today-menu-entry"
-                className="flex flex-wrap items-center justify-between gap-2"
-              >
-                <span>
-                  <span className="font-medium">{item.entry.recipeName}</span>
-                  <span className="text-sm text-muted-foreground">
-                    {" "}
-                    ·{" "}
-                    {item.entry.plannedDate === null
-                      ? t("today.menu.flexible")
-                      : item.entry.mealType
-                        ? mealTypeLabel(t, item.entry.mealType)
-                        : t("today.menu.today")}
-                  </span>
-                </span>
-                <span className="flex gap-2">
+          <ul className="grid gap-3 sm:grid-cols-2">
+            {menu.items.map((item) => {
+              const readiness = item.entry.readiness;
+              return (
+                <li
+                  key={item.entry.entryId}
+                  data-testid="today-menu-entry"
+                  className="surface flex flex-col gap-3 p-3"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="w-28 shrink-0 sm:w-32">
+                      <RecipeThumbnail
+                        thumbnail={
+                          thumbnails.get(item.entry.recipeId) ?? {
+                            state: "none",
+                            url: null,
+                          }
+                        }
+                        name={item.entry.recipeName}
+                        size="small"
+                      />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-primary">
+                        {item.entry.plannedDate === null
+                          ? t("today.menu.flexible")
+                          : item.entry.mealType
+                            ? mealTypeLabel(t, item.entry.mealType)
+                            : t("today.menu.today")}
+                      </p>
+                      <p className="mt-0.5 text-lg font-semibold leading-snug">
+                        {item.entry.recipeName}
+                      </p>
+                      {readiness ? (
+                        <p
+                          className={`mt-2 inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                            readiness.readiness === "ready"
+                              ? "bg-success-soft text-success"
+                              : "bg-warning-soft text-warning"
+                          }`}
+                        >
+                          {readiness.readiness === "ready"
+                            ? t("today.menu.ready")
+                            : t("today.menu.missing", {
+                                count: readiness.missing.length,
+                              })}
+                        </p>
+                      ) : null}
+                    </div>
+                  </div>
                   <Button
-                    size="sm"
+                    className="mt-auto w-full"
                     data-testid="today-menu-cook"
                     disabled={startingEntry !== null || !session.csrfToken}
                     onClick={() => void cookMenuEntry(item)}
@@ -296,82 +484,52 @@ export function TodayPage() {
                         : "recipes.detail.cook",
                     )}
                   </Button>
-                  <Button asChild size="sm" variant="ghost">
-                    <Link to={`/app/cardapio/${item.menuId}`}>
-                      {t("today.menu.open")}
-                    </Link>
-                  </Button>
-                </span>
-              </li>
-            ))}
+                </li>
+              );
+            })}
           </ul>
           {menuError ? (
-            <p role="alert" className="mt-2 text-sm text-destructive">
+            <p role="alert" className="text-sm text-destructive">
               {t("planning.error.cook")}
             </p>
           ) : null}
-        </section>
+        </HomeSection>
       ) : null}
+
+      <QuickActions />
 
       {preparation.status === "ready" ? (
         <PreparationSection items={preparation.items} />
       ) : null}
 
-      <section aria-labelledby="today-cta" className="surface p-5">
-        <h2 id="today-cta" className="font-display text-2xl">
-          {t("today.cta.title")}
-        </h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {t("today.cta.detail")}
-        </p>
-        <div className="mt-4 flex flex-wrap gap-2">
-          <Button asChild>
-            <Link to="/app/receitas/gerar" data-testid="today-generate">
-              {t("today.cta.generate")}
-            </Link>
-          </Button>
-          <Button asChild variant="secondary">
-            <Link to="/app/despensa/novo" data-testid="today-add-item">
-              {t("today.cta.addItem")}
-            </Link>
-          </Button>
-        </div>
-      </section>
-
-      <section aria-labelledby="today-attention" data-testid="today-attention">
-        <div className="flex items-baseline justify-between gap-2">
-          <h2 id="today-attention" className="font-display text-xl">
-            {t("today.attention.title")}
-          </h2>
-          <Link
-            to="/app/despensa"
-            className="text-sm underline underline-offset-4"
-          >
-            {t("today.attention.all")}
-          </Link>
-        </div>
+      <HomeSection
+        id="today-attention"
+        testId="today-attention"
+        title={t("today.attention.title")}
+        link={{ to: "/app/despensa", label: t("today.attention.all") }}
+      >
         {attention.status === "loading" ? (
-          <p role="status" className="mt-2 text-sm text-muted-foreground">
+          <p role="status" className="text-sm text-muted-foreground">
             {t("app.loading")}
           </p>
         ) : attention.status === "failed" ? (
-          <p className="mt-2 text-sm text-muted-foreground">
+          <p className="text-sm text-muted-foreground">
             {t("today.attention.unavailable")}
           </p>
         ) : attention.items.length === 0 ? (
-          <p className="mt-2 text-sm text-muted-foreground">
+          <p className="surface p-4 text-sm text-muted-foreground">
             {t("today.attention.empty")}
           </p>
         ) : (
-          <ul className="surface mt-2 divide-y divide-border">
-            {attention.items.slice(0, 5).map((lot) => (
+          <ul className="-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-1 sm:mx-0 sm:grid sm:grid-cols-3 sm:overflow-visible sm:px-0">
+            {attention.items.slice(0, 6).map((lot) => (
               <li
                 key={lot.lotId}
-                className="flex flex-wrap items-center justify-between gap-2 p-3"
+                className="surface w-56 shrink-0 snap-start space-y-2 p-4 sm:w-auto"
               >
                 <Link
                   to={`/app/despensa/${lot.lotId}`}
-                  className="font-medium underline-offset-4 hover:underline"
+                  className="block font-semibold underline-offset-4 hover:underline"
                 >
                   {lot.productName}
                 </Link>
@@ -380,47 +538,45 @@ export function TodayPage() {
             ))}
           </ul>
         )}
-      </section>
+      </HomeSection>
 
-      <section aria-labelledby="today-recipes" data-testid="today-recipes">
-        <div className="flex items-baseline justify-between gap-2">
-          <h2 id="today-recipes" className="font-display text-xl">
-            {t("today.recipes.title")}
-          </h2>
-          <Link
-            to="/app/receitas"
-            className="text-sm underline underline-offset-4"
-          >
-            {t("today.recipes.all")}
-          </Link>
-        </div>
+      <HomeSection
+        id="today-recipes"
+        testId="today-recipes"
+        title={t("today.recipes.title")}
+        link={{ to: "/app/receitas", label: t("today.recipes.all") }}
+      >
         {saved.status === "loading" ? (
-          <p role="status" className="mt-2 text-sm text-muted-foreground">
+          <p role="status" className="text-sm text-muted-foreground">
             {t("app.loading")}
           </p>
         ) : saved.status === "failed" ? (
-          <p className="mt-2 text-sm text-muted-foreground">
+          <p className="text-sm text-muted-foreground">
             {t("today.recipes.unavailable")}
           </p>
         ) : saved.items.length === 0 ? (
-          <p className="mt-2 text-sm text-muted-foreground">
+          <p className="surface p-4 text-sm text-muted-foreground">
             {t("today.recipes.empty")}
           </p>
         ) : (
-          <ul className="mt-2 space-y-1">
-            {saved.items.slice(0, 3).map((recipe) => (
-              <li key={recipe.recipeId}>
-                <Link
-                  to={`/app/receitas/${recipe.recipeId}`}
-                  className="underline-offset-4 hover:underline"
-                >
-                  {recipe.name}
-                </Link>
+          <ul className="-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-1 sm:mx-0 sm:grid sm:grid-cols-3 sm:overflow-visible sm:px-0">
+            {saved.items.slice(0, 6).map((recipe) => (
+              <li
+                key={recipe.recipeId}
+                className="w-44 shrink-0 snap-start sm:w-auto"
+              >
+                <RecipeCard
+                  recipeId={recipe.recipeId}
+                  name={recipe.name}
+                  thumbnail={recipe.thumbnail}
+                  meta={recipeMeta(recipe)}
+                  className="h-full"
+                />
               </li>
             ))}
           </ul>
         )}
-      </section>
+      </HomeSection>
     </div>
   );
 }

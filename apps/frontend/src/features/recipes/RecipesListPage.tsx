@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { RecipeThumbnail } from "./RecipeThumbnail";
+import { PenLine, Sparkles } from "lucide-react";
+import { RecipeCard } from "./RecipeCard";
 import { SavedCandidatesSection } from "./SavedCandidatesSection";
 import { usePendingThumbnailRefresh } from "./usePendingThumbnailRefresh";
 import { useRecipeRepository } from "./RecipeProvider";
@@ -11,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FeatureUnavailable } from "@/components/runtime/FeatureUnavailable";
 import { recipeLibraryErrorKey } from "./recipeErrors";
-import { mealTypesLabel } from "./recipeLabels";
+import { mealTypeLabel } from "./recipeLabels";
 
 type LibraryFilter = "all" | "favorites" | "archived";
 
@@ -146,19 +147,23 @@ export function RecipesListPage() {
 
   return (
     <div data-testid="recipes-list" className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
+      <div className="space-y-4">
         <div>
           <h1 className="font-display text-3xl">{t("recipes.title")}</h1>
           <p className="mt-1 text-muted-foreground">{t("recipes.subtitle")}</p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-col gap-2 sm:flex-row">
           <Button asChild data-testid="recipes-generate-link">
             <Link to="/app/receitas/gerar">
+              <Sparkles aria-hidden="true" />
               {t("recipes.actions.generate")}
             </Link>
           </Button>
           <Button asChild variant="secondary" data-testid="recipes-new-link">
-            <Link to="/app/receitas/nova">{t("library.new")}</Link>
+            <Link to="/app/receitas/nova">
+              <PenLine aria-hidden="true" />
+              {t("library.new")}
+            </Link>
           </Button>
         </div>
       </div>
@@ -211,7 +216,7 @@ export function RecipesListPage() {
         <div
           data-testid="recipes-empty"
           role="status"
-          className="rounded-2xl border border-border bg-secondary/40 p-6"
+          className="surface flex flex-col items-center gap-2 p-8 text-center"
         >
           {emptyKey ? (
             <p>{t(emptyKey)}</p>
@@ -225,12 +230,16 @@ export function RecipesListPage() {
           )}
         </div>
       ) : (
-        <ul className="space-y-3" aria-label={t("recipes.title")}>
+        // A grid of image cards (PLAN-0058): two per row on phones, three from `sm`, four on
+        // wide screens, so the library reads as dishes rather than a list of names.
+        <ul
+          className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4"
+          aria-label={t("recipes.title")}
+        >
           {items.map((recipe) => {
             const meta = [
-              t("recipes.detail.servings", { count: recipe.servings }),
-              recipe.mealTypes.length > 0
-                ? mealTypesLabel(t, recipe.mealTypes)
+              recipe.mealTypes[0]
+                ? mealTypeLabel(t, recipe.mealTypes[0])
                 : null,
               recipe.timesCooked > 0
                 ? t("library.cooked", { count: recipe.timesCooked }) +
@@ -238,66 +247,35 @@ export function RecipesListPage() {
                     ? ` · ${t("library.rating", { value: recipe.lastRating })}`
                     : "")
                 : t("library.cooked.never"),
-            ].filter(Boolean);
-            const badge =
-              recipe.origin === "manual"
-                ? t("library.origin.manual")
-                : recipe.origin === "derived"
-                  ? t("library.origin.derived")
-                  : null;
+              recipe.origin === "derived" ? t("library.origin.derived") : null,
+              recipe.archivedAt ? t("library.archived") : null,
+            ].filter((value): value is string => Boolean(value));
             return (
-              <li
-                key={recipe.recipeId}
-                className="flex items-stretch gap-2 rounded-2xl border border-border bg-card"
-              >
-                <Link
-                  to={`/app/receitas/${recipe.recipeId}`}
-                  data-testid={`recipes-item-${recipe.recipeId}`}
-                  className="flex flex-1 items-center gap-4 rounded-2xl p-3 hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                >
-                  <RecipeThumbnail
-                    thumbnail={recipe.thumbnail ?? { state: "none", url: null }}
-                    name={recipe.name}
-                    size="small"
-                    className="w-28 shrink-0 sm:w-36"
-                  />
-                  <span className="min-w-0 flex-1">
-                    <h2 className="font-display text-xl">{recipe.name}</h2>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      {meta.join(" · ")}
-                    </p>
-                    {badge || recipe.archivedAt ? (
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        {[
-                          badge,
-                          recipe.archivedAt ? t("library.archived") : null,
-                        ]
-                          .filter(Boolean)
-                          .join(" · ")}
-                      </p>
-                    ) : null}
-                  </span>
-                </Link>
-                {recipe.archivedAt ? null : (
-                  <button
-                    type="button"
-                    data-testid={`recipes-favorite-${recipe.recipeId}`}
-                    aria-pressed={recipe.isFavorite}
-                    aria-label={t(
-                      recipe.isFavorite
-                        ? "library.favorite.remove"
-                        : "library.favorite.add",
-                      { name: recipe.name },
-                    )}
-                    disabled={!session.csrfToken}
-                    onClick={() => void toggleFavorite(recipe)}
-                    className="shrink-0 rounded-2xl px-4 text-2xl text-primary hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  >
-                    <span aria-hidden="true">
-                      {recipe.isFavorite ? "★" : "☆"}
-                    </span>
-                  </button>
-                )}
+              <li key={recipe.recipeId}>
+                <RecipeCard
+                  recipeId={recipe.recipeId}
+                  name={recipe.name}
+                  thumbnail={recipe.thumbnail}
+                  meta={meta}
+                  testId={`recipes-item-${recipe.recipeId}`}
+                  className="h-full"
+                  favorite={
+                    recipe.archivedAt
+                      ? undefined
+                      : {
+                          active: recipe.isFavorite,
+                          label: t(
+                            recipe.isFavorite
+                              ? "library.favorite.remove"
+                              : "library.favorite.add",
+                            { name: recipe.name },
+                          ),
+                          disabled: !session.csrfToken,
+                          onToggle: () => void toggleFavorite(recipe),
+                          testId: `recipes-favorite-${recipe.recipeId}`,
+                        }
+                  }
+                />
               </li>
             );
           })}

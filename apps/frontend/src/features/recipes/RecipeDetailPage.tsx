@@ -12,7 +12,14 @@ import {
   type RecipeAvailabilityLine,
 } from "@/contracts/recipes";
 import { useProductionI18n } from "@/app/i18n/ProductionI18nProvider";
-import { MoreHorizontal, Star } from "lucide-react";
+import {
+  ChefHat,
+  ChevronDown,
+  Clock,
+  MoreHorizontal,
+  Star,
+  Users,
+} from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { FeatureUnavailable } from "@/components/runtime/FeatureUnavailable";
 import { parseNormalizedRecipeJson } from "./parseNormalizedRecipe";
@@ -246,17 +253,43 @@ export function RecipeDetailPage() {
       ) : null}
       <div>
         {/* The version number lives in the history; the page leads with the dish (review M8). */}
-        <h1 className="font-display text-3xl">{detail.name}</h1>
-        <p className="mt-2 text-muted-foreground">
+        <h1 className="font-display text-3xl leading-tight">{detail.name}</h1>
+        {/* Key facts as tiles (PLAN-0058): time, servings, and how often it was cooked. */}
+        <dl className="mt-4 grid grid-cols-3 gap-2">
           {[
-            totalMinutes > 0
-              ? t("recipes.detail.totalTime", { minutes: totalMinutes })
-              : null,
-            t("recipes.detail.servings", { count: detail.servings }),
-          ]
-            .filter(Boolean)
-            .join(" · ")}
-        </p>
+            {
+              icon: Clock,
+              label: t("recipes.detail.factTime"),
+              value:
+                totalMinutes > 0
+                  ? t("recipes.detail.factMinutes", { minutes: totalMinutes })
+                  : "—",
+            },
+            {
+              icon: Users,
+              label: t("recipes.detail.factServings"),
+              value: String(detail.servings),
+            },
+            {
+              icon: ChefHat,
+              label: t("recipes.detail.factCooked"),
+              value: String(
+                history?.cooking.filter((entry) => entry.status === "Completed")
+                  .length ?? "—",
+              ),
+            },
+          ].map(({ icon: Icon, label, value }) => (
+            <div key={label} className="surface flex flex-col gap-1 p-3">
+              <Icon aria-hidden="true" className="h-5 w-5 text-primary" />
+              <dt className="text-xs font-medium text-muted-foreground">
+                {label}
+              </dt>
+              <dd className="tabular text-lg font-semibold leading-none">
+                {value}
+              </dd>
+            </div>
+          ))}
+        </dl>
         {detail.mealTypes.length > 0 ? (
           <ul
             aria-label={t("recipes.detail.mealTypes")}
@@ -414,104 +447,111 @@ export function RecipeDetailPage() {
         <RecipeContent recipe={parsed} availability={availability} />
       ) : null}
 
-      <section
-        aria-labelledby="recipe-history"
+      <details
         data-testid="recipes-history"
-        className="space-y-4 border-t border-border pt-6"
+        className="surface group p-4 sm:p-5"
       >
-        <h2 id="recipe-history" className="font-display text-xl">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-2 font-display text-xl [&::-webkit-details-marker]:hidden">
           {t("recipes.history.title")}
-        </h2>
-        {historyFailed ? (
-          <p className="text-sm text-muted-foreground">
-            {t("recipes.history.unavailable")}
-          </p>
-        ) : null}
-        {history ? (
-          <div className="grid gap-6 sm:grid-cols-2">
-            <div>
-              <h3 className="font-medium">{t("recipes.history.cooking")}</h3>
-              {history.cooking.length === 0 ? (
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {t("recipes.history.cooking.empty")}
-                </p>
-              ) : (
-                <ul className="mt-2 space-y-2 text-sm">
-                  {history.cooking.map((entry) => (
-                    <li
-                      key={entry.executionId}
-                      data-testid="recipes-history-cooking"
-                    >
-                      <p>
-                        {entry.status === "Completed"
-                          ? t("recipes.history.cooked", {
-                              date: date(entry.finishedAt),
-                              count: entry.servings,
-                            })
-                          : t("recipes.history.abandoned", {
-                              date: date(entry.finishedAt),
-                            })}
-                        {entry.rating
-                          ? ` · ${t("recipes.history.rating", { value: entry.rating })}`
-                          : ""}
-                      </p>
-                      {entry.notes ? (
-                        <p className="whitespace-pre-line text-muted-foreground">
-                          {entry.notes}
+          <ChevronDown
+            aria-hidden="true"
+            className="h-5 w-5 text-muted-foreground transition-transform duration-150 group-open:rotate-180"
+          />
+        </summary>
+        <div className="mt-4 space-y-4">
+          {historyFailed ? (
+            <p className="text-sm text-muted-foreground">
+              {t("recipes.history.unavailable")}
+            </p>
+          ) : null}
+          {history ? (
+            <div className="grid gap-6 sm:grid-cols-2">
+              <div>
+                <h3 className="font-medium">{t("recipes.history.cooking")}</h3>
+                {history.cooking.length === 0 ? (
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {t("recipes.history.cooking.empty")}
+                  </p>
+                ) : (
+                  <ul className="mt-2 space-y-2 text-sm">
+                    {history.cooking.map((entry) => (
+                      <li
+                        key={entry.executionId}
+                        data-testid="recipes-history-cooking"
+                      >
+                        <p>
+                          {entry.status === "Completed"
+                            ? t("recipes.history.cooked", {
+                                date: date(entry.finishedAt),
+                                count: entry.servings,
+                              })
+                            : t("recipes.history.abandoned", {
+                                date: date(entry.finishedAt),
+                              })}
+                          {entry.rating
+                            ? ` · ${t("recipes.history.rating", { value: entry.rating })}`
+                            : ""}
                         </p>
-                      ) : null}
-                    </li>
-                  ))}
+                        {entry.notes ? (
+                          <p className="whitespace-pre-line text-muted-foreground">
+                            {entry.notes}
+                          </p>
+                        ) : null}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+              <div>
+                <h3 className="font-medium">
+                  {t("recipes.history.revisions")}
+                </h3>
+                <ul className="mt-2 space-y-2 text-sm">
+                  {history.revisions.map((entry) => {
+                    const label = t("recipes.history.revision", {
+                      number: entry.revisionNumber,
+                    });
+                    const current =
+                      entry.revisionNumber === detail.currentRevisionNumber;
+                    return (
+                      <li
+                        key={entry.revisionNumber}
+                        data-testid="recipes-history-revision"
+                      >
+                        {entry.revisionNumber === detail.revisionNumber ? (
+                          <span className="font-medium">{label}</span>
+                        ) : (
+                          <Link
+                            className="underline"
+                            to={
+                              current
+                                ? `/app/receitas/${detail.recipeId}`
+                                : `/app/receitas/${detail.recipeId}/versoes/${entry.revisionNumber}`
+                            }
+                          >
+                            {label}
+                          </Link>
+                        )}
+                        {current ? ` (${t("recipes.history.current")})` : ""} ·{" "}
+                        {t(`recipes.history.origin.${entry.origin}`)}
+                        {entry.sourceExecutionId
+                          ? ` ${t("recipes.history.fromCooking")}`
+                          : ""}{" "}
+                        · {date(entry.createdAt)}
+                        {entry.changeReason ? (
+                          <span className="block text-muted-foreground">
+                            {entry.changeReason}
+                          </span>
+                        ) : null}
+                      </li>
+                    );
+                  })}
                 </ul>
-              )}
+              </div>
             </div>
-            <div>
-              <h3 className="font-medium">{t("recipes.history.revisions")}</h3>
-              <ul className="mt-2 space-y-2 text-sm">
-                {history.revisions.map((entry) => {
-                  const label = t("recipes.history.revision", {
-                    number: entry.revisionNumber,
-                  });
-                  const current =
-                    entry.revisionNumber === detail.currentRevisionNumber;
-                  return (
-                    <li
-                      key={entry.revisionNumber}
-                      data-testid="recipes-history-revision"
-                    >
-                      {entry.revisionNumber === detail.revisionNumber ? (
-                        <span className="font-medium">{label}</span>
-                      ) : (
-                        <Link
-                          className="underline"
-                          to={
-                            current
-                              ? `/app/receitas/${detail.recipeId}`
-                              : `/app/receitas/${detail.recipeId}/versoes/${entry.revisionNumber}`
-                          }
-                        >
-                          {label}
-                        </Link>
-                      )}
-                      {current ? ` (${t("recipes.history.current")})` : ""} ·{" "}
-                      {t(`recipes.history.origin.${entry.origin}`)}
-                      {entry.sourceExecutionId
-                        ? ` ${t("recipes.history.fromCooking")}`
-                        : ""}{" "}
-                      · {date(entry.createdAt)}
-                      {entry.changeReason ? (
-                        <span className="block text-muted-foreground">
-                          {entry.changeReason}
-                        </span>
-                      ) : null}
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          </div>
-        ) : null}
-      </section>
+          ) : null}
+        </div>
+      </details>
     </div>
   );
 }

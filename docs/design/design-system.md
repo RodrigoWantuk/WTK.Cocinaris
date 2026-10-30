@@ -70,6 +70,20 @@ The success green and the emerald accent are different hues and roles. Success a
 - **Dates near today:** shown as "hoje", "amanhã", or the weekday, day, and month. The year appears only when it is not the current one.
 - **Focused tasks:** guided cooking hides the bottom bar on phones and offers "Sair (o preparo fica salvo)" at the top.
 
+## Page patterns (PLAN-0058)
+
+- **Recipes are shown as image cards, not as text.**
+  - `features/recipes/RecipeCard.tsx` renders a card with the image (or the dish initial on a tint picked from its name), the name in up to two lines, and one line of facts.
+  - The library uses a grid: two cards per row on phones, three from `sm`, four on wide screens.
+  - The home uses a horizontal snap carousel on phones that becomes a grid from `sm`.
+- **Home sections** have a heading with an optional accent "Ver …" link (`HomeSection`), and they follow the task order: cooking now, today's menu, starting points, preparation, use soon, recipes.
+- **Starting points** are tiles. The main action is a full-width accent tile, and the others are compact surface tiles with an icon.
+- **Task lists** are rows on one surface. Each row has an icon in an accent circle, the task, its context, and a chevron, and the whole row is a link.
+- **Key facts** (time, servings, times cooked) are small tiles with an icon, a label, and a value.
+- **Steps** are a numbered timeline with one surface card per stage. Time chips have icons, and the "how to tell it worked" cue sits in an accent box.
+- **Ingredients** are rows with a pantry status icon (success, warning, muted), the household measure under the name, and the amount on the right. A summary such as "Você tem 2 de 4" sits in the header.
+- **Pantry lists** are grouped by place (fridge, freezer, cupboard, other). Each group has an icon and a count, and the rows sit on one surface.
+
 ## Themes
 
 - The theme follows the operating system by default (`prefers-color-scheme`).

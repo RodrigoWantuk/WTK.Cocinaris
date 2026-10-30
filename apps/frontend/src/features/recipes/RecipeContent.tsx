@@ -1,3 +1,11 @@
+import {
+  CheckCircle2,
+  Circle,
+  CircleDot,
+  CookingPot,
+  Hourglass,
+  Timer,
+} from "lucide-react";
 import { useProductionI18n } from "@/app/i18n/ProductionI18nProvider";
 import {
   formatLocaleDecimal,
@@ -111,6 +119,23 @@ export function RecipeContent({
       };
     return { tone: "muted", text: t("recipes.detail.notInPantry") };
   };
+  // "Você tem 3 de 5" over the ingredients the pantry can answer for (basics excluded).
+  const counted = recipe.ingredients.filter(
+    (ingredient) =>
+      ingredient.sourceType !== "assumption" &&
+      ingredient.ingredientId &&
+      pantry.has(ingredient.ingredientId),
+  );
+  const pantrySummary =
+    !checkable && availability && counted.length > 0
+      ? t("recipes.detail.pantrySummary", {
+          have: counted.filter(
+            (ingredient) =>
+              pantry.get(ingredient.ingredientId!)?.status === "available",
+          ).length,
+          total: counted.length,
+        })
+      : null;
   const box = (key: string, label: string) =>
     checkable ? (
       <input
@@ -125,15 +150,31 @@ export function RecipeContent({
   return (
     <div className="space-y-6">
       {recipe.ingredients.length > 0 ? (
-        <section aria-labelledby="recipe-content-ingredients">
-          <h2 id="recipe-content-ingredients" className="font-display text-xl">
-            {t("recipes.detail.ingredients")}
-          </h2>
+        <section
+          aria-labelledby="recipe-content-ingredients"
+          className={checkable ? "" : "surface p-4 sm:p-5"}
+        >
+          <div className="flex items-baseline justify-between gap-2">
+            <h2
+              id="recipe-content-ingredients"
+              className="font-display text-xl"
+            >
+              {t("recipes.detail.ingredients")}
+            </h2>
+            {pantrySummary ? (
+              <p
+                data-testid="recipe-pantry-summary"
+                className="text-sm font-medium text-muted-foreground"
+              >
+                {pantrySummary}
+              </p>
+            ) : null}
+          </div>
           <ul
             className={
               checkable
                 ? "mt-2 space-y-1 text-sm"
-                : "mt-2 divide-y divide-border border-y border-border"
+                : "mt-3 divide-y divide-border"
             }
           >
             {recipe.ingredients.map((ingredient, index) => {
@@ -151,14 +192,32 @@ export function RecipeContent({
               if (!checkable) {
                 // Reading view (PLAN-0054 design system): one row per ingredient, the name on
                 // the left and both measures on the right.
+                const StatusIcon =
+                  status?.tone === "success"
+                    ? CheckCircle2
+                    : status?.tone === "warning"
+                      ? CircleDot
+                      : Circle;
                 return (
                   <li
                     key={key}
                     data-testid="recipe-ingredient"
-                    className="flex items-baseline justify-between gap-4 py-3"
+                    className="flex items-start gap-3 py-3"
                   >
-                    <span>
-                      <span className="text-[17px] font-semibold">
+                    {availability ? (
+                      <StatusIcon
+                        aria-hidden="true"
+                        className={`mt-0.5 h-5 w-5 shrink-0 ${
+                          status?.tone === "success"
+                            ? "text-success"
+                            : status?.tone === "warning"
+                              ? "text-warning"
+                              : "text-muted-foreground/60"
+                        }`}
+                      />
+                    ) : null}
+                    <span className="min-w-0 flex-1">
+                      <span className="text-[16px] font-semibold">
                         {ingredient.displayName}
                       </span>
                       {notes.length > 0 ? (
@@ -166,25 +225,6 @@ export function RecipeContent({
                           {notes.join(", ")}
                         </span>
                       ) : null}
-                      {status ? (
-                        <span className="mt-1 block">
-                          <span
-                            data-testid="recipe-ingredient-pantry"
-                            className={
-                              status.tone === "success"
-                                ? "status-pill status-success"
-                                : status.tone === "warning"
-                                  ? "status-pill status-warning"
-                                  : "text-sm text-muted-foreground"
-                            }
-                          >
-                            {status.text}
-                          </span>
-                        </span>
-                      ) : null}
-                    </span>
-                    <span className="tabular shrink-0 text-right">
-                      <span className="block">{amount}</span>
                       {kitchen ? (
                         <span
                           data-testid="recipe-ingredient-household"
@@ -193,6 +233,23 @@ export function RecipeContent({
                           {kitchen}
                         </span>
                       ) : null}
+                      {status ? (
+                        <span
+                          data-testid="recipe-ingredient-pantry"
+                          className={`block text-sm ${
+                            status.tone === "success"
+                              ? "text-success"
+                              : status.tone === "warning"
+                                ? "font-medium text-warning"
+                                : "text-muted-foreground"
+                          }`}
+                        >
+                          {status.text}
+                        </span>
+                      ) : null}
+                    </span>
+                    <span className="tabular shrink-0 text-right font-medium">
+                      {amount}
                     </span>
                   </li>
                 );
@@ -236,7 +293,20 @@ export function RecipeContent({
           <h2 id="recipe-content-equipment" className="font-display text-xl">
             {t("recipes.detail.equipment")}
           </h2>
-          <p className="mt-2 text-sm">{recipe.equipment.join(", ")}</p>
+          <ul className="mt-3 flex flex-wrap gap-2">
+            {recipe.equipment.map((item) => (
+              <li
+                key={item}
+                className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1 text-sm"
+              >
+                <CookingPot
+                  aria-hidden="true"
+                  className="h-4 w-4 text-muted-foreground"
+                />
+                {item}
+              </li>
+            ))}
+          </ul>
         </section>
       ) : null}
 
@@ -245,45 +315,74 @@ export function RecipeContent({
           <h2 id="recipe-content-stages" className="font-display text-xl">
             {t("recipes.detail.stages")}
           </h2>
-          <ol className="mt-3 space-y-5">
+          {/* Reading view: a numbered timeline, one card per stage (PLAN-0058); the cooking
+              view keeps the compact list with checkboxes. */}
+          <ol className={checkable ? "mt-3 space-y-5" : "mt-4 space-y-4"}>
             {recipe.stages.map((stage, index) => (
               <li
                 key={stage.stageId ?? `${stage.title}-${index}`}
                 data-testid="recipe-stage"
-                className="flex gap-3"
+                className={checkable ? "flex gap-3" : "relative flex gap-4"}
               >
-                {box(`s:${index}`, stage.title || String(index + 1))}
-                <div className="space-y-1">
-                  <h3 className="font-medium">
-                    {index + 1}. {stage.title}
+                {checkable ? (
+                  box(`s:${index}`, stage.title || String(index + 1))
+                ) : (
+                  <span
+                    aria-hidden="true"
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground"
+                  >
+                    {index + 1}
+                  </span>
+                )}
+                <div
+                  className={
+                    checkable
+                      ? "space-y-1"
+                      : "surface min-w-0 flex-1 space-y-2 p-4"
+                  }
+                >
+                  <h3 className={checkable ? "font-medium" : "font-semibold"}>
+                    {checkable ? `${index + 1}. ` : ""}
+                    {stage.title}
                   </h3>
                   {stage.activeMinutes || stage.passiveMinutes ? (
-                    <p className="text-xs text-muted-foreground">
+                    <p className="flex flex-wrap gap-x-3 gap-y-1 text-xs font-medium text-muted-foreground">
                       {/* Zero minutes are left out (review M8). */}
-                      {[
-                        stage.activeMinutes
-                          ? t("recipes.detail.stageActive", {
-                              minutes: stage.activeMinutes,
-                            })
-                          : null,
-                        stage.passiveMinutes
-                          ? t("recipes.detail.stagePassive", {
-                              minutes: stage.passiveMinutes,
-                            })
-                          : null,
-                      ]
-                        .filter(Boolean)
-                        .join(" · ")}
+                      {stage.activeMinutes ? (
+                        <span className="inline-flex items-center gap-1">
+                          <Timer aria-hidden="true" className="h-3.5 w-3.5" />
+                          {t("recipes.detail.stageActive", {
+                            minutes: stage.activeMinutes,
+                          })}
+                        </span>
+                      ) : null}
+                      {stage.passiveMinutes ? (
+                        <span className="inline-flex items-center gap-1">
+                          <Hourglass
+                            aria-hidden="true"
+                            className="h-3.5 w-3.5"
+                          />
+                          {t("recipes.detail.stagePassive", {
+                            minutes: stage.passiveMinutes,
+                          })}
+                        </span>
+                      ) : null}
                     </p>
                   ) : null}
                   {stage.instructions.map((instruction, stepIndex) => (
-                    <p key={stepIndex} className="text-sm leading-relaxed">
+                    <p key={stepIndex} className="text-[15px] leading-relaxed">
                       {instruction}
                     </p>
                   ))}
                   {stage.sensoryCues.length > 0 ? (
-                    <p className="text-sm text-muted-foreground">
-                      <span className="font-medium">
+                    <p
+                      className={
+                        checkable
+                          ? "text-sm text-muted-foreground"
+                          : "rounded-xl bg-accent px-3 py-2 text-sm text-accent-foreground"
+                      }
+                    >
+                      <span className="font-semibold">
                         {t("recipes.detail.cues")}:
                       </span>{" "}
                       {stage.sensoryCues.join("; ")}

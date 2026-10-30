@@ -4,6 +4,27 @@ import { useProductionI18n } from "@/app/i18n/ProductionI18nProvider";
 import type { RecipeThumbnail as RecipeThumbnailValue } from "@/contracts/recipes";
 
 /**
+ * Soft tints for recipes without a photo, picked from the name so each dish keeps its own color
+ * and a shelf of placeholders does not look identical (PLAN-0058). Every pair keeps the text at
+ * 4.5:1 or more in both themes.
+ */
+const PLACEHOLDER_TONES = [
+  "bg-emerald-50 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200",
+  "bg-amber-50 text-amber-800 dark:bg-amber-950 dark:text-amber-200",
+  "bg-rose-50 text-rose-800 dark:bg-rose-950 dark:text-rose-200",
+  "bg-sky-50 text-sky-800 dark:bg-sky-950 dark:text-sky-200",
+  "bg-violet-50 text-violet-800 dark:bg-violet-950 dark:text-violet-200",
+  "bg-orange-50 text-orange-800 dark:bg-orange-950 dark:text-orange-200",
+] as const;
+
+function placeholderTone(name: string): string {
+  let hash = 0;
+  for (const character of name)
+    hash = (hash * 31 + character.charCodeAt(0)) | 0;
+  return PLACEHOLDER_TONES[Math.abs(hash) % PLACEHOLDER_TONES.length]!;
+}
+
+/**
  * A recipe's dish image in 16:9 (PLAN-0030). When the image is ready, it shows the generated
  * photo, marked as illustrative and AI-made by `disclose`. While it is being made, or when there
  * is none, it shows a neutral placeholder, so the layout never shifts and the recipe is never
@@ -55,7 +76,7 @@ export function RecipeThumbnail({
           />
         ) : (
           <div
-            className="flex h-full w-full flex-col items-center justify-center gap-1 bg-accent text-accent-foreground"
+            className={`flex h-full w-full flex-col items-center justify-center gap-1 ${placeholderTone(name)}`}
             data-testid="recipe-thumbnail-placeholder"
           >
             {/* Without a photo, the dish's initial on the accent tint reads as a cover rather than

@@ -10,6 +10,7 @@ export const REQUIRED_COOKING_I18N_KEYS = [
   "recipes.detail.optional",
   "recipes.detail.notInPantry",
   "recipes.detail.inPantry",
+  "recipes.detail.pantrySummary",
   "recipes.detail.partialPantry",
   "recipes.detail.stageTime",
   "recipes.detail.stageActive",
@@ -175,6 +176,7 @@ const ptBR: Record<Key, string> = {
   "recipes.detail.optional": "opcional",
   "recipes.detail.notInPantry": "Não está na despensa",
   "recipes.detail.inPantry": "Na despensa",
+  "recipes.detail.pantrySummary": "Você tem {{have}} de {{total}}",
   "recipes.detail.partialPantry": "Faltam {{amount}}",
   "recipes.detail.stageTime":
     "{{active}} min de trabalho · {{passive}} min de espera",
@@ -331,6 +333,7 @@ const en: Record<Key, string> = {
   "recipes.detail.optional": "optional",
   "recipes.detail.notInPantry": "Not in your pantry",
   "recipes.detail.inPantry": "In your pantry",
+  "recipes.detail.pantrySummary": "You have {{have}} of {{total}}",
   "recipes.detail.partialPantry": "{{amount}} missing",
   "recipes.detail.stageTime":
     "{{active}} min hands-on · {{passive}} min waiting",
@@ -484,6 +487,7 @@ const es: Record<Key, string> = {
   "recipes.detail.optional": "opcional",
   "recipes.detail.notInPantry": "No está en tu despensa",
   "recipes.detail.inPantry": "En tu despensa",
+  "recipes.detail.pantrySummary": "Tienes {{have}} de {{total}}",
   "recipes.detail.partialPantry": "Faltan {{amount}}",
   "recipes.detail.stageTime":
     "{{active}} min de trabajo · {{passive}} min de espera",

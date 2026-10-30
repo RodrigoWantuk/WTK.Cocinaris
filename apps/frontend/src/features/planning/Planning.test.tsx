@@ -528,15 +528,16 @@ describe("menu planning (PLAN-0029)", () => {
 
     const section = await screen.findByTestId("today-preparation");
     const items = within(section).getAllByTestId("today-preparation-item");
+    // Each reminder is one row link: the task, then when and for which meal.
     expect(items[0]).toHaveTextContent(
-      "TodayThaw Peito de frango (it is in the freezer)for Frango cremoso · Tomorrow",
+      "Thaw Peito de frango (it is in the freezer)Today · for Frango cremoso · Tomorrow",
     );
     expect(
-      within(items[0]!).getByRole("link", { name: "See in pantry" }),
+      within(items[0]!).getByRole("link", { name: /See in pantry/ }),
     ).toHaveAttribute("href", "/app/despensa/lot-9");
     expect(items[1]).toHaveTextContent("Buy Cebola (1 pcs)");
     expect(
-      within(items[1]!).getByRole("link", { name: "Shopping list" }),
+      within(items[1]!).getByRole("link", { name: /Shopping list/ }),
     ).toHaveAttribute("href", "/app/cardapio/menu-1/compras");
     expect(getPreparation).toHaveBeenCalledWith(
       localIsoDate(),
