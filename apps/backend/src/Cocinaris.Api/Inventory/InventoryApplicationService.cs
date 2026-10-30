@@ -54,14 +54,14 @@ public sealed class InventoryApplicationService(
     public async Task<IResult> CreateAsync(CreateLotRequest request, HttpRequest requestContext, CancellationToken cancellationToken)
     {
         var key = Guid.TryParse(requestContext.Headers["Idempotency-Key"], out var parsed) ? parsed : (Guid?)null;
-        var command = new CreateInventoryLotCommand(request.ProductName, request.Quantity?.MeasuredValue, request.Quantity?.Unit, request.Quantity?.AvailabilityState, request.StorageLocation, request.CustomLocation, request.PackageState, request.PrintedExpirationDate, request.Notes, key, requestContext.HttpContext.TraceIdentifier, request.Quantity?.Estimated == true);
+        var command = new CreateInventoryLotCommand(request.ProductName, request.Quantity?.MeasuredValue, request.Quantity?.Unit, request.Quantity?.AvailabilityState, request.StorageLocation, request.CustomLocation, request.PackageState, request.PrintedExpirationDate, request.Notes, key, requestContext.HttpContext.TraceIdentifier, request.Quantity?.Estimated == true, request.AutoRemoveOn);
         return ToLotResult("create", await createLot.CreateAsync(command, cancellationToken), requestContext.HttpContext.TraceIdentifier);
     }
 
     /// <summary>Maps a metadata-correction DTO and decoded ETag precondition to the application command.</summary>
     public async Task<IResult> UpdateAsync(Guid lotId, UpdateLotRequest request, HttpRequest requestContext, CancellationToken cancellationToken)
     {
-        var command = new UpdateInventoryLotCommand(lotId, request.ProductName, request.StorageLocation, request.CustomLocation, request.PackageState, request.PrintedExpirationDate, request.Notes, ReadPrecondition(lotId, requestContext), requestContext.HttpContext.TraceIdentifier);
+        var command = new UpdateInventoryLotCommand(lotId, request.ProductName, request.StorageLocation, request.CustomLocation, request.PackageState, request.PrintedExpirationDate, request.Notes, ReadPrecondition(lotId, requestContext), requestContext.HttpContext.TraceIdentifier, request.AutoRemoveOn);
         return ToLotResult("metadata_update", await updateLot.UpdateAsync(command, cancellationToken), requestContext.HttpContext.TraceIdentifier);
     }
 
@@ -132,7 +132,7 @@ public sealed class InventoryApplicationService(
     private LotResponse ToResponse(InventoryLotView item, string version, InventoryAttention? known = null)
     {
         var advice = known ?? InventoryAttentionAdvisor.Evaluate(InventoryLotApplicationWorkflow.ToAttentionFacts(item), calendar.Today, calendar.Zone);
-        return new(item.LotId, item.ProductId, item.ProductName, ToQuantity(item.Quantity)!, item.StorageLocation, item.CustomLocation, item.PackageState, item.PrintedExpirationDate, item.Notes, version, item.CreatedAt, item.UpdatedAt, ToLifecycle(item.Lifecycle), new LotAttentionResponse(advice.State.ToString(), advice.EstimatedUseBy, advice.Evidence.ToString(), advice.Reasons));
+        return new(item.LotId, item.ProductId, item.ProductName, ToQuantity(item.Quantity)!, item.StorageLocation, item.CustomLocation, item.PackageState, item.PrintedExpirationDate, item.Notes, version, item.CreatedAt, item.UpdatedAt, ToLifecycle(item.Lifecycle), new LotAttentionResponse(advice.State.ToString(), advice.EstimatedUseBy, advice.Evidence.ToString(), advice.Reasons), item.AutoRemoveOn);
     }
     // Idempotency replays stored before lifecycle support carry no lifecycle; those lots were AsAcquired.
     private static LotLifecycleResponse ToLifecycle(InventoryLifecycleView? lifecycle) => lifecycle is null ? new LotLifecycleResponse("AsAcquired", null, null, null, null, null) : new LotLifecycleResponse(lifecycle.State, lifecycle.OpenedAt, lifecycle.FrozenAt, lifecycle.ThawStartedAt, lifecycle.ThawedAt, lifecycle.ParentLotId);

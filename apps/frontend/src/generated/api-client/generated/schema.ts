@@ -160,6 +160,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/inventory/name-suggestions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** GET /api/v1/inventory/name-suggestions */
+        get: operations["getApiV1InventoryName-suggestions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/inventory/preparations": {
         parameters: {
             query?: never;
@@ -981,8 +998,10 @@ export interface components {
             reheatingPreference: components["schemas"]["ProfileFieldDtoOfstring"];
             repeatMealPreference: components["schemas"]["ProfileFieldDtoOfstring"];
         };
-        /** @description Creates one manually entered, user-owned inventory lot. */
+        /** @description Creates one manually entered, user-owned inventory lot. `AutoRemoveOn`: the day after which the lot is removed automatically (PLAN-0056). */
         CreateLotRequest: {
+            /** Format: date */
+            autoRemoveOn?: null | string;
             customLocation: null | string;
             notes: null | string;
             packageState: ("Sealed" | "Opened" | "Unknown") | null;
@@ -1182,9 +1201,11 @@ export interface components {
             quantity: number | string;
             recipeName: string;
         };
-        /** @description Returns the current representation of an inventory lot. */
+        /** @description Returns the current representation of an inventory lot, including its automatic removal date (PLAN-0056). */
         LotResponse: {
             attention: components["schemas"]["LotAttentionResponse"];
+            /** Format: date */
+            autoRemoveOn?: null | string;
             /** Format: date-time */
             createdAt: string;
             customLocation: null | string;
@@ -1304,6 +1325,13 @@ export interface components {
             /** Format: double */
             quantity: number | string;
             unit: string;
+        };
+        /** @description A suggested pantry product name (PLAN-0056 Phase 4). */
+        NameSuggestionResponse: {
+            /** @description Name to fill in. */
+            name: string;
+            /** @description `pantry` (used before) or `catalog` (curated ingredient). */
+            source: string;
         };
         /**
          * @description Explicit preference or restriction command action.
@@ -2128,8 +2156,10 @@ export interface components {
             targetCustomLocation: null | string;
             targetStorageLocation: ("Pantry" | "Refrigerator" | "Freezer" | "Other") | null;
         };
-        /** @description Corrects mutable lot metadata without accepting any authoritative owner identifier. */
+        /** @description Corrects mutable lot metadata without accepting any authoritative owner identifier. `AutoRemoveOn` replaces the removal date (null clears it). */
         UpdateLotRequest: {
+            /** Format: date */
+            autoRemoveOn?: null | string;
             customLocation: null | string;
             notes: null | string;
             packageState: ("Sealed" | "Opened" | "Unknown") | null;
@@ -2984,6 +3014,46 @@ export interface operations {
             };
             /** @description The mutation rate limit was exceeded. */
             429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    "getApiV1InventoryName-suggestions": {
+        parameters: {
+            query?: {
+                q?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NameSuggestionResponse"][];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
                 headers: {
                     [name: string]: unknown;
                 };

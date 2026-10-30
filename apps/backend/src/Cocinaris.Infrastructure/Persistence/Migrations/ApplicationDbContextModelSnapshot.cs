@@ -432,6 +432,9 @@ namespace Cocinaris.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<DateOnly?>("AutoRemoveOn")
+                        .HasColumnType("date");
+
                     b.Property<string>("AvailabilityState")
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
@@ -517,6 +520,9 @@ namespace Cocinaris.Infrastructure.Persistence.Migrations
                         .HasColumnType("bigint");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("AutoRemoveOn")
+                        .HasFilter("\"AutoRemoveOn\" IS NOT NULL AND \"DeletedAt\" IS NULL");
 
                     b.HasIndex("ConcurrencyToken")
                         .IsUnique();

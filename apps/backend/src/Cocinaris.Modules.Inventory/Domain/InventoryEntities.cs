@@ -89,6 +89,13 @@ public sealed class InventoryLot
         UpdatedAt = now;
     }
 
+    /// <summary>
+    /// Gets the day after which the owner wants the lot removed automatically, or null (PLAN-0056,
+    /// owner report 2: "depois do dia tal, apague automaticamente"). The removal is an ordinary
+    /// deletion with reason <c>auto_remove_date</c>, so it is recorded in the lot's history.
+    /// </summary>
+    public DateOnly? AutoRemoveOn { get; private set; }
+
     /// <summary>Gets the internal lot identifier.</summary>
     public Guid Id { get; private set; }
 
@@ -144,8 +151,9 @@ public sealed class InventoryLot
         PrintedExpiration? printedExpiration,
         PrivateNotes? notes,
         DateTimeOffset now,
-        LotLifecycle? lifecycle = null) =>
-        new(Guid.NewGuid(), ownerUserId, productId, quantity, storage, packageState, printedExpiration, notes, now, lifecycle ?? LotLifecycle.AsAcquired);
+        LotLifecycle? lifecycle = null,
+        DateOnly? autoRemoveOn = null) =>
+        new(Guid.NewGuid(), ownerUserId, productId, quantity, storage, packageState, printedExpiration, notes, now, lifecycle ?? LotLifecycle.AsAcquired) { AutoRemoveOn = autoRemoveOn };
 
     /// <summary>Restores a lot for an application command while preserving its concurrency and deletion state.</summary>
     public static InventoryLot Restore(
@@ -162,7 +170,8 @@ public sealed class InventoryLot
         DateTimeOffset createdAt,
         DateTimeOffset updatedAt,
         DateTimeOffset? deletedAt,
-        LotLifecycle? lifecycle = null)
+        LotLifecycle? lifecycle = null,
+        DateOnly? autoRemoveOn = null)
     {
         if (id == Guid.Empty || ownerUserId == Guid.Empty || productId == Guid.Empty || version < 1 || concurrencyToken == Guid.Empty || updatedAt < createdAt || deletedAt < createdAt)
         {
@@ -174,7 +183,8 @@ public sealed class InventoryLot
             Version = version,
             ConcurrencyToken = concurrencyToken,
             UpdatedAt = updatedAt,
-            DeletedAt = deletedAt
+            DeletedAt = deletedAt,
+            AutoRemoveOn = autoRemoveOn
         };
         return lot;
     }
@@ -185,13 +195,15 @@ public sealed class InventoryLot
         PackageState? packageState,
         PrintedExpiration? printedExpiration,
         PrivateNotes? notes,
-        DateTimeOffset now)
+        DateTimeOffset now,
+        DateOnly? autoRemoveOn = null)
     {
         EnsureActive();
         Storage = storage;
         PackageState = packageState;
         PrintedExpiration = printedExpiration;
         Notes = notes;
+        AutoRemoveOn = autoRemoveOn;
         Touch(now);
     }
 
@@ -327,7 +339,7 @@ public sealed class InventoryLot
 
         var (storage, lifecycle, packageState) = PlanTransition(kind, targetStorage, now);
         var remaining = new LotQuantity.Measured(previous.Value - quantity, previous.Unit, previous.IsEstimate);
-        var derived = Create(OwnerUserId, ProductId, new LotQuantity.Measured(quantity, previous.Unit, previous.IsEstimate), storage, packageState, PrintedExpiration, Notes, now, lifecycle with { ParentLotId = Id });
+        var derived = Create(OwnerUserId, ProductId, new LotQuantity.Measured(quantity, previous.Unit, previous.IsEstimate), storage, packageState, PrintedExpiration, Notes, now, lifecycle with { ParentLotId = Id }, AutoRemoveOn);
         Quantity = remaining;
         Touch(now);
         var sourceTransaction = InventoryTransaction.Create(Id, OwnerUserId, InventoryTransactionType.TransitionSplit, previous, remaining, null, null, idempotencyKey, now, new LotTransitionDetail(kind, Lifecycle.State, Lifecycle.State, Storage.Location, Storage.Location, derived.Id));

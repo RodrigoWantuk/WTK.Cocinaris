@@ -85,6 +85,7 @@ function mapLot(dto: LotDto, etag: string | null): InventoryLotView {
     customLocation: dto.customLocation ?? null,
     packageState: dto.packageState ?? null,
     printedExpirationDate: dto.printedExpirationDate ?? null,
+    autoRemoveOn: dto.autoRemoveOn ?? null,
     notes: dto.notes ?? null,
     version: dto.version,
     etag: etag ?? dto.version,
@@ -278,6 +279,7 @@ export function createLiveInventoryRepository(options?: {
         customLocation: input.customLocation ?? null,
         packageState: input.packageState ?? null,
         printedExpirationDate: input.printedExpirationDate ?? null,
+        autoRemoveOn: input.autoRemoveOn ?? null,
         notes: input.notes ?? null,
       };
       const { data, error, response } = await client.POST(
@@ -315,6 +317,7 @@ export function createLiveInventoryRepository(options?: {
         customLocation: input.customLocation ?? null,
         packageState: input.packageState ?? null,
         printedExpirationDate: input.printedExpirationDate ?? null,
+        autoRemoveOn: input.autoRemoveOn ?? null,
         notes: input.notes ?? null,
       };
       const { data, error, response } = await client.PATCH(
@@ -446,6 +449,32 @@ export function createLiveInventoryRepository(options?: {
       if (!response.ok && response.status !== 204) {
         await throwForFailure(response, "Unable to delete lot.", error);
       }
+    },
+
+    async suggestNames(text, { language, signal }) {
+      const { data, error, response } = await client.GET(
+        "/api/v1/inventory/name-suggestions",
+        {
+          params: { query: { q: text } },
+          headers: language ? { "Accept-Language": language } : undefined,
+          signal,
+          credentials: "include",
+        },
+      );
+      if (!response.ok || !data) {
+        await throwForFailure(
+          response,
+          "Unable to load name suggestions.",
+          error,
+        );
+      }
+      assertData(data, response);
+      return data
+        .filter((item) => typeof item.name === "string" && item.name.length > 0)
+        .map((item) => ({
+          name: item.name,
+          source: item.source === "pantry" ? "pantry" : "catalog",
+        }));
     },
 
     async getHistory(lotId, signal) {

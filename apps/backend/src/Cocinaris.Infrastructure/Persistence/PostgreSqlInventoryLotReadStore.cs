@@ -92,7 +92,7 @@ public sealed class PostgreSqlInventoryLotReadStore(ApplicationDbContext databas
         return transactions.Concat(projectedCorrections).OrderByDescending(item => item.OccurredAt).ThenByDescending(item => item.EntryId).ToList();
     }
 
-    private static InventoryLotReadModel ToReadModel(LotRecord lot, string productName, DateOnly? preparedShelfLifeDate) => new(lot.Id, lot.ProductId, productName, lot.MeasuredValue, lot.MeasuredUnit, lot.AvailabilityState, lot.StorageLocation, lot.CustomLocation, lot.PackageState, lot.PrintedExpirationDate, lot.Notes, lot.ConcurrencyToken, lot.CreatedAt, lot.UpdatedAt, lot.DeletedAt, new InventoryLifecycleView(lot.LifecycleState, lot.OpenedAt, lot.FrozenAt, lot.ThawStartedAt, lot.ThawedAt, lot.ParentLotId, preparedShelfLifeDate), lot.QuantityIsEstimate);
+    private static InventoryLotReadModel ToReadModel(LotRecord lot, string productName, DateOnly? preparedShelfLifeDate) => new(lot.Id, lot.ProductId, productName, lot.MeasuredValue, lot.MeasuredUnit, lot.AvailabilityState, lot.StorageLocation, lot.CustomLocation, lot.PackageState, lot.PrintedExpirationDate, lot.Notes, lot.ConcurrencyToken, lot.CreatedAt, lot.UpdatedAt, lot.DeletedAt, new InventoryLifecycleView(lot.LifecycleState, lot.OpenedAt, lot.FrozenAt, lot.ThawStartedAt, lot.ThawedAt, lot.ParentLotId, preparedShelfLifeDate), lot.QuantityIsEstimate, lot.AutoRemoveOn);
 
     private static IReadOnlyList<string> ReadChangedFields(string metadataJson)
     {
@@ -108,4 +108,30 @@ public sealed class PostgreSqlInventoryLotReadStore(ApplicationDbContext databas
             return [];
         }
     }
+}
+
+/// <summary>Product names an owner has used, for pantry name suggestions (PLAN-0056 Phase 4).</summary>
+public sealed class PostgreSqlInventoryProductNameSource(ApplicationDbContext database) : IInventoryProductNameSource
+{
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<string>> RecentAsync(Guid ownerUserId, int limit, CancellationToken cancellationToken) =>
+        await database.Products.AsNoTracking()
+            .Where(item => item.OwnerUserId == ownerUserId && !item.IsDeleted)
+            .OrderByDescending(item => item.UpdatedAt)
+            .Select(item => item.DisplayName)
+            .Take(limit)
+            .ToListAsync(cancellationToken);
+}
+
+/// <summary>Active lots due for automatic removal (PLAN-0056), through the filtered index on <c>AutoRemoveOn</c>.</summary>
+public sealed class PostgreSqlInventoryAutoRemovalSource(ApplicationDbContext database) : IInventoryAutoRemovalSource
+{
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<InventoryAutoRemovalCandidate>> FindDueAsync(DateOnly before, int limit, CancellationToken cancellationToken) =>
+        await database.Lots.AsNoTracking()
+            .Where(item => item.AutoRemoveOn != null && item.AutoRemoveOn < before && item.DeletedAt == null)
+            .OrderBy(item => item.AutoRemoveOn)
+            .Take(limit)
+            .Select(item => new InventoryAutoRemovalCandidate(item.OwnerUserId, item.Id, item.AutoRemoveOn!.Value))
+            .ToListAsync(cancellationToken);
 }

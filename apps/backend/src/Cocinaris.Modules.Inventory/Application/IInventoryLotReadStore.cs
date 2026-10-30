@@ -26,7 +26,7 @@ public sealed record InventoryLotReadCursor(DateTimeOffset UpdatedAt, Guid LotId
 public sealed record InventoryLotReadPage(IReadOnlyList<InventoryLotReadModel> Items, InventoryLotReadCursor? NextCursor);
 
 /// <summary>Persistence-independent representation of one inventory lot for application reads.</summary>
-public sealed record InventoryLotReadModel(Guid LotId, Guid ProductId, string ProductName, decimal? MeasuredValue, string? MeasuredUnit, string? AvailabilityState, string StorageLocation, string? CustomLocation, string? PackageState, DateOnly? PrintedExpirationDate, string? Notes, Guid ConcurrencyToken, DateTimeOffset CreatedAt, DateTimeOffset UpdatedAt, DateTimeOffset? DeletedAt, InventoryLifecycleView? Lifecycle = null, bool QuantityIsEstimate = false);
+public sealed record InventoryLotReadModel(Guid LotId, Guid ProductId, string ProductName, decimal? MeasuredValue, string? MeasuredUnit, string? AvailabilityState, string StorageLocation, string? CustomLocation, string? PackageState, DateOnly? PrintedExpirationDate, string? Notes, Guid ConcurrencyToken, DateTimeOffset CreatedAt, DateTimeOffset UpdatedAt, DateTimeOffset? DeletedAt, InventoryLifecycleView? Lifecycle = null, bool QuantityIsEstimate = false, DateOnly? AutoRemoveOn = null);
 
 /// <summary>
 /// Persistence-independent history item. A transaction item has an immutable lifecycle type and

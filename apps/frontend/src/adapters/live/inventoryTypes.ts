@@ -95,6 +95,8 @@ export interface InventoryLotView {
   packageState: PackageState | string | null;
   /** Calendar date YYYY-MM-DD; never a timezone-shifted instant. */
   printedExpirationDate: string | null;
+  /** Day (YYYY-MM-DD) after which the lot leaves the pantry automatically (PLAN-0056); null for none. */
+  autoRemoveOn?: string | null;
   notes: string | null;
   version: string;
   etag: string;
@@ -133,6 +135,8 @@ export interface CreateLotInput {
   customLocation?: string | null;
   packageState?: PackageState | null;
   printedExpirationDate?: string | null;
+  /** Day (YYYY-MM-DD) after which the lot is removed automatically; null for none. */
+  autoRemoveOn?: string | null;
   notes?: string | null;
 }
 
@@ -142,6 +146,8 @@ export interface UpdateLotInput {
   customLocation?: string | null;
   packageState?: PackageState | null;
   printedExpirationDate?: string | null;
+  /** Day (YYYY-MM-DD) after which the lot is removed automatically; null for none. */
+  autoRemoveOn?: string | null;
   notes?: string | null;
 }
 
@@ -255,4 +261,18 @@ export interface InventoryRepository {
     lotId: string,
     signal?: AbortSignal,
   ): Promise<InventoryHistoryEntry[]>;
+  /**
+   * Product names to suggest while typing (PLAN-0056 Phase 4): the person's own names first, then
+   * catalog names in `language`. Optional: without it the field works as a plain text input.
+   */
+  suggestNames?(
+    text: string,
+    options: { language?: string; signal?: AbortSignal },
+  ): Promise<InventoryNameSuggestion[]>;
+}
+
+/** A suggested product name and where it comes from. */
+export interface InventoryNameSuggestion {
+  name: string;
+  source: "pantry" | "catalog";
 }

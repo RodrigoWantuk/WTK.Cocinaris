@@ -145,6 +145,8 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
                 table.HasCheckConstraint("ck_lots_lifecycle_state", "\"LifecycleState\" IN ('AsAcquired', 'Prepared', 'Frozen', 'Thawing', 'Thawed')");
                 table.HasCheckConstraint("ck_lots_parent_not_self", "\"ParentLotId\" IS NULL OR \"ParentLotId\" <> \"Id\"");
                 table.HasCheckConstraint("ck_lots_expiration_provenance", "(\"PrintedExpirationDate\" IS NULL AND \"ExpirationProvenance\" IS NULL) OR (\"PrintedExpirationDate\" IS NOT NULL AND \"ExpirationProvenance\" IS NOT NULL AND \"ExpirationProvenance\" = 'UserEntered')");
+                // Due lots for the auto-removal job (PLAN-0056); only active lots with a date are indexed.
+                entity.HasIndex(x => x.AutoRemoveOn).HasFilter("\"AutoRemoveOn\" IS NOT NULL AND \"DeletedAt\" IS NULL");
             });
             entity.HasKey(x => x.Id);
             entity.HasAlternateKey(x => new { x.Id, x.OwnerUserId });
@@ -672,6 +674,8 @@ public sealed class LotRecord
     public string? PackageState { get; set; }
     /// <summary>Gets or sets the optional user-entered printed expiration calendar date.</summary>
     public DateOnly? PrintedExpirationDate { get; set; }
+    /// <summary>Gets or sets the day after which the lot is removed automatically (PLAN-0056), if any.</summary>
+    public DateOnly? AutoRemoveOn { get; set; }
     /// <summary>Gets or sets the provenance of the printed expiration date.</summary>
     public string? ExpirationProvenance { get; set; }
     /// <summary>Gets or sets optional private notes, which must never be emitted in telemetry.</summary>

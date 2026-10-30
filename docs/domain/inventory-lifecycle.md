@@ -283,3 +283,20 @@ The system must help prevent forgetting without claiming certainty or blocking u
 The curated catalog marks 36 dry, shelf-stable ingredients with `keepsWhenOpened` (rice, pasta, flours, starches, oats, sugar, honey, salt, spices, cocoa, leavening, vanilla, oils, vinegar, coffee, dry beans and lentils, raisins). A pantry lot qualifies only when its name is a curated name of such an ingredient, optionally followed by dry descriptors: for example "Arroz Branco Cru" or "Farinha de trigo integral".
 
 Names with any other word never qualify, for example "Feijão preto cozido", "Arroz doce", or a brand name. Learned or embedding-based aliases never qualify either. The rule is advisory and curated, and it applies only in the pantry.
+
+### Name suggestions (PLAN-0056)
+
+While a pantry name is typed, the form suggests:
+- names the owner used before, owner-scoped, never another person's;
+- then curated catalog names in the interface language.
+
+Suggestions only fill the text field: the name is still the owner's free text, and nothing else about the lot changes.
+
+### Automatic removal date (PLAN-0056)
+
+A lot may carry `autoRemoveOn`, the day after which the owner wants it gone ("100 g de requeijão… depois do dia tal, apague"). It is optional, never in the past when set, and replaced or cleared on edit. A lot split from a lot keeps the same date.
+
+A background job removes a lot once that day has ended in the owner's time zone (profile time zone, UTC when none). The removal is the ordinary deletion with reason `auto_remove_date` and audit event `inventory.lot.auto_removed`, so it appears in the lot's history. It respects optimistic concurrency: a lot changed meanwhile is removed on a later run.
+
+This is the owner's own instruction, not a food-safety judgment: it does not change attention states or shelf-life advice.
+

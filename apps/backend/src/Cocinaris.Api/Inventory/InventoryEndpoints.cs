@@ -1,3 +1,4 @@
+using Cocinaris.Modules.Inventory.Application;
 using Microsoft.AspNetCore.Antiforgery;
 using Cocinaris.Api.Services;
 using Cocinaris.Api.Observability;
@@ -16,6 +17,10 @@ public static class InventoryEndpoints
             await context.HttpContext.RequestServices.GetRequiredService<InventoryCalendar>().ResolveAsync(context.HttpContext.RequestAborted);
             return await next(context);
         });
+        // Pantry name suggestions while typing (PLAN-0056 Phase 4).
+        group.MapGet("/name-suggestions", async (InventoryNameSuggestionService service, string? q, HttpRequest request, CancellationToken cancellationToken) =>
+                Results.Json((await service.SuggestAsync(q, CatalogLanguage(request), cancellationToken)).Select(item => new NameSuggestionResponse(item.Name, item.Source)).ToList()))
+            .Produces<IReadOnlyList<NameSuggestionResponse>>();
         group.MapGet("/attention", (InventoryApplicationService service, HttpContext context, CancellationToken cancellationToken) => service.AttentionAsync(context, cancellationToken)).Produces<AttentionListResponse>();
         group.MapGet("/lots", (InventoryApplicationService service, int? pageSize, string? status, string? storageLocation, string? search, string? cursor, HttpContext context, CancellationToken cancellationToken) => service.ListAsync(pageSize, status, storageLocation, search, cursor, context, cancellationToken)).Produces<ListLotsResponse>().ProducesProblem(400);
         group.MapPost("/lots", (InventoryApplicationService service, CreateLotRequest request, HttpRequest requestContext, CancellationToken cancellationToken) => service.CreateAsync(request, requestContext, cancellationToken)).RequireRateLimiting("mutation").Produces<LotResponse>(StatusCodes.Status201Created).ProducesProblem(400).ProducesProblem(409).ProducesProblem(422);
@@ -48,4 +53,16 @@ public static class InventoryEndpoints
 
         return await next(context);
     }
+
+    /// <summary>Catalog language of the request's first supported <c>Accept-Language</c> tag, or null.</summary>
+    private static string? CatalogLanguage(HttpRequest request) =>
+        request.GetTypedHeaders().AcceptLanguage
+            .OrderByDescending(item => item.Quality ?? 1)
+            .Select(item => item.Value.Value?.ToLowerInvariant() switch { "pt-br" or "pt" => "pt", "en" or "en-us" or "en-gb" => "en", "es" or "es-es" => "es", _ => null })
+            .FirstOrDefault(code => code is not null);
 }
+
+/// <summary>A suggested pantry product name (PLAN-0056 Phase 4).</summary>
+/// <param name="Name">Name to fill in.</param>
+/// <param name="Source"><c>pantry</c> (used before) or <c>catalog</c> (curated ingredient).</param>
+public sealed record NameSuggestionResponse(string Name, string Source);
