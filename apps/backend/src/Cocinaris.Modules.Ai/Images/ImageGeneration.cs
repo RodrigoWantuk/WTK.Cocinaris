@@ -117,6 +117,12 @@ public sealed class RecipeThumbnailOptions
     /// <summary>Gets or sets the provider call timeout in seconds.</summary>
     public int TimeoutSeconds { get; set; } = 90;
 
+    /// <summary>
+    /// Gets or sets the lowest similarity (0–1) at which a similar dish's image is reused instead
+    /// of generating one (PLAN-0055 Phase 3). A value above 1 turns reuse off.
+    /// </summary>
+    public double ReuseThreshold { get; set; } = 0.8;
+
     /// <summary>Gets or sets how often the job looks for pending thumbnails, in seconds.</summary>
     public int PollSeconds { get; set; } = 3;
 
@@ -130,5 +136,5 @@ public sealed class RecipeThumbnailOptions
     public bool IsValid() =>
         !string.IsNullOrWhiteSpace(Model) && !string.IsNullOrWhiteSpace(Resolution) && !string.IsNullOrWhiteSpace(AspectRatio)
         && ExpectedWidth is > 0 and <= 4096 && ExpectedHeight is > 0 and <= 4096 && PriceUsd >= 0
-        && UserDailyImages > 0 && GlobalDailyImages >= UserDailyImages && MaxBytes > 0 && TimeoutSeconds > 0 && PollSeconds > 0;
+        && UserDailyImages > 0 && GlobalDailyImages >= UserDailyImages && MaxBytes > 0 && TimeoutSeconds > 0 && PollSeconds > 0 && ReuseThreshold > 0;
 }

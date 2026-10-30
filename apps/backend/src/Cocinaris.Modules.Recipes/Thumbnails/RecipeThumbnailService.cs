@@ -1,6 +1,7 @@
 using Cocinaris.Modules.Ai.Abstractions;
 using Cocinaris.Modules.Ai.Images;
 using Cocinaris.Modules.Ai.Usage;
+using Cocinaris.Modules.Ingredients;
 
 namespace Cocinaris.Modules.Recipes.Thumbnails;
 
@@ -33,6 +34,8 @@ public enum RecipeThumbnailState
 /// <param name="Width">Width in pixels.</param>
 /// <param name="Height">Height in pixels.</param>
 /// <param name="FailureCode">Bounded failure category.</param>
+/// <param name="SourceRenderKey">When the image is reused from a similar dish (PLAN-0055 Phase 3), the render key whose file it shows; null for a generated image.</param>
+/// <param name="ReuseScore">Similarity score of that reuse, from 0 to 1.</param>
 public sealed record RecipeThumbnailAsset(
     string RenderKey,
     string VisualIdentityKey,
@@ -45,7 +48,9 @@ public sealed record RecipeThumbnailAsset(
     string? MediaType,
     int? Width,
     int? Height,
-    string? FailureCode);
+    string? FailureCode,
+    string? SourceRenderKey = null,
+    double? ReuseScore = null);
 
 /// <summary>What a recipe view shows: <c>ready</c> (with a URL), <c>pending</c>, or <c>none</c> (placeholder).</summary>
 /// <param name="State"><c>ready</c>, <c>pending</c>, or <c>none</c>.</param>
@@ -74,6 +79,12 @@ public interface IRecipeThumbnailStore
 
     /// <summary>Saves the asset's new state after a job step.</summary>
     Task SaveAsync(RecipeThumbnailAsset asset, DateTimeOffset now, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Ready, generated (not reused) images of one dish format, newest first, as candidates for
+    /// reuse by a similar dish (PLAN-0055 Phase 3).
+    /// </summary>
+    Task<IReadOnlyList<RecipeThumbnailAsset>> FindReusableAsync(string dishFormat, int limit, CancellationToken cancellationToken);
 
     /// <summary>Counts images generated (ledger reservations of the thumbnail operation) since <paramref name="since"/>, for one owner or, with null, everyone.</summary>
     Task<int> CountGeneratedSinceAsync(Guid? ownerUserId, DateTimeOffset since, CancellationToken cancellationToken);
@@ -211,10 +222,12 @@ public sealed class RecipeThumbnailService(
             return null;
         }
 
-        var variant = VariantName(asset.RenderKey, size);
+        // A reused image serves the WebP files of the image it reuses.
+        var fileKey = asset.SourceRenderKey ?? asset.RenderKey;
+        var variant = VariantName(fileKey, size);
         if (!files.Exists(variant))
         {
-            await WriteVariantsAsync(asset.RenderKey, asset.FileName, null, cancellationToken);
+            await WriteVariantsAsync(fileKey, asset.FileName, null, cancellationToken);
         }
 
         if (files.OpenRead(variant) is { } encoded)
@@ -271,6 +284,12 @@ public sealed class RecipeThumbnailService(
         if (asset is null)
         {
             return false;
+        }
+
+        // A similar dish's image, scored deterministically, costs nothing and needs no quota.
+        if (await TryReuseAsync(asset, now, cancellationToken))
+        {
+            return true;
         }
 
         var dayStart = new DateTimeOffset(now.UtcDateTime.Date, TimeSpan.Zero);
@@ -331,6 +350,47 @@ public sealed class RecipeThumbnailService(
         var sizeFlag = inspected.Width == options.ExpectedWidth && inspected.Height == options.ExpectedHeight ? null : $"size_{inspected.Width}x{inspected.Height}";
         await store.SaveAsync(asset with { State = RecipeThumbnailState.Ready, Attempts = attempts, FileName = fileName, MediaType = inspected.MediaType, Width = inspected.Width, Height = inspected.Height, FailureCode = sizeFlag }, now, cancellationToken);
         await governor.SettleAtCostAsync(reservationId, 1, usage with { QualityFlags = sizeFlag }, cost, cancellationToken);
+        return true;
+    }
+
+    /// <summary>
+    /// Reuses the most similar ready image of the same dish format when its score reaches
+    /// <see cref="RecipeThumbnailOptions.ReuseThreshold"/> (PLAN-0055 Phase 3). Only images rendered
+    /// under the current policy (same style, model, and size) qualify, and only generated ones, so
+    /// a reuse never chains to another reuse.
+    /// </summary>
+    private async Task<bool> TryReuseAsync(RecipeThumbnailAsset asset, DateTimeOffset now, CancellationToken cancellationToken)
+    {
+        if (options.ReuseThreshold > 1 || ThumbnailSimilarity.DishFormat(asset.DescriptorJson) is null)
+        {
+            return false;
+        }
+
+        using var document = System.Text.Json.JsonDocument.Parse(asset.DescriptorJson);
+        var format = document.RootElement.GetProperty("dishFormat").GetString()!;
+        var best = (await store.FindReusableAsync(format, 200, cancellationToken))
+            .Where(candidate => candidate.RenderKey != asset.RenderKey && candidate.FileName is not null && Describe(candidate.DescriptorJson)?.RenderKey == candidate.RenderKey)
+            .Select(candidate => (Candidate: candidate, Score: ThumbnailSimilarity.Score(asset.DescriptorJson, candidate.DescriptorJson, IngredientCatalog.Default)))
+            .Where(entry => entry.Score >= options.ReuseThreshold)
+            .OrderByDescending(entry => entry.Score)
+            .ThenBy(entry => entry.Candidate.RenderKey, StringComparer.Ordinal)
+            .FirstOrDefault();
+        if (best.Candidate is not { } source)
+        {
+            return false;
+        }
+
+        await store.SaveAsync(asset with
+        {
+            State = RecipeThumbnailState.Ready,
+            FileName = source.FileName,
+            MediaType = source.MediaType,
+            Width = source.Width,
+            Height = source.Height,
+            FailureCode = null,
+            SourceRenderKey = source.RenderKey,
+            ReuseScore = Math.Round(best.Score, 3)
+        }, now, cancellationToken);
         return true;
     }
 

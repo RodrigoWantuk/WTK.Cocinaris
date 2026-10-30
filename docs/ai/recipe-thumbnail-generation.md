@@ -273,7 +273,7 @@ This represents one concrete rendering policy.
 - Cache lookup occurs before provider budget reservation.
 - A cache hit incurs no image-generation credit and no provider request.
 - The same recipe revision reuses an asset when visual and render keys are unchanged.
-- Different recipe UUIDs may reuse an asset only when their normalized visual and render keys match and the descriptor is generic and non-private.
+- Different recipe UUIDs may reuse an asset when their normalized visual and render keys match and the descriptor is generic and non-private, or by similarity (next section).
 - Concurrent misses for one render key collapse into one idempotent persistent job.
 - Invalid, empty, filtered, malformed, unpersisted, or failed output never creates a successful cache entry.
 - A short-lived negative cache may suppress retry storms, but must retain failure category, expiry, and an authorized retry route.
@@ -281,7 +281,18 @@ This represents one concrete rendering policy.
 - Existing accepted assets may continue after a provider-policy change until an explicit regeneration policy invalidates them.
 - Manual regeneration requires authorization, reason, budget reservation, and immutable provenance; it must not silently overwrite an existing asset.
 - Never use localized title or free-form recipe summary directly as the durable cache identity.
-- Never substitute an unrelated cached image merely to avoid a placeholder.
+- Never substitute an unrelated cached image merely to avoid a placeholder: reuse by similarity needs the threshold below.
+
+### Reuse by similarity (PLAN-0055 Phase 3, owner decision 2026-10-30)
+
+Before the job reserves budget for a pending image, it scores the ready, generated images of the same dish format and reuses the best one when the score reaches `Ai:Images:ReuseThreshold` (default 0.8; a value above 1 disables reuse). Only below the threshold does it generate.
+
+- **Score** (`ThumbnailSimilarity`, deterministic): a different dish format scores 0. Otherwise the score is 0.70 × Jaccard of visible components, 0.15 × Jaccard of dominant colors, and 0.15 × Jaccard of sauce, texture, and garnish words.
+- **Components** are mapped to catalog ingredients (PLAN-0055 Phase 1), longest catalog name first, so "cooked chicken breast with tomato" and "chicken breast in tomato sauce" both give chicken breast and tomato. A component the catalog cannot name keeps its text.
+- **Candidates** are only generated images (never a reuse of a reuse) rendered under the current policy: style version, model, size, and aspect ratio must give the same render key.
+- **Record.** The reusing asset is `Ready`, points to the source with `SourceRenderKey`, stores `ReuseScore`, and serves the source's WebP files. It costs no image credit, no quota, and no ledger row.
+- **Tests.** Reworded descriptions of the same dish reach 0.8 or more. The same plate with fish instead of chicken, or a bowl instead of a plated dish, does not.
+- **Measuring reuse:** `SELECT count(*) FILTER (WHERE "SourceRenderKey" IS NOT NULL) AS reused, count(*) FILTER (WHERE "SourceRenderKey" IS NULL) AS generated FROM recipes.recipe_thumbnails WHERE "State" = 'Ready';`
 
 ## Image validation
 

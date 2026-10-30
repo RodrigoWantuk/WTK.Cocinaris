@@ -1409,6 +1409,13 @@ namespace Cocinaris.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("RequestedByUserId")
                         .HasColumnType("uuid");
 
+                    b.Property<double?>("ReuseScore")
+                        .HasColumnType("double precision");
+
+                    b.Property<string>("SourceRenderKey")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
                     b.Property<string>("State")
                         .IsRequired()
                         .HasMaxLength(16)

@@ -63,7 +63,21 @@ public sealed class PostgreSqlRecipeThumbnailStore(ApplicationDbContext database
             .SetProperty(item => item.Width, asset.Width)
             .SetProperty(item => item.Height, asset.Height)
             .SetProperty(item => item.FailureCode, asset.FailureCode)
+            .SetProperty(item => item.SourceRenderKey, asset.SourceRenderKey)
+            .SetProperty(item => item.ReuseScore, asset.ReuseScore)
             .SetProperty(item => item.UpdatedAt, now), cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<RecipeThumbnailAsset>> FindReusableAsync(string dishFormat, int limit, CancellationToken cancellationToken)
+    {
+        var records = await database.RecipeThumbnails.FromSqlInterpolated($"""
+            SELECT * FROM recipes.recipe_thumbnails
+            WHERE "State" = 'Ready' AND "SourceRenderKey" IS NULL AND "DescriptorJson" ->> 'dishFormat' = {dishFormat}
+            ORDER BY "UpdatedAt" DESC
+            LIMIT {limit}
+            """).AsNoTracking().ToListAsync(cancellationToken);
+        return records.Select(ToDomain).ToList();
     }
 
     /// <inheritdoc />
@@ -84,7 +98,9 @@ public sealed class PostgreSqlRecipeThumbnailStore(ApplicationDbContext database
         record.MediaType,
         record.Width,
         record.Height,
-        record.FailureCode);
+        record.FailureCode,
+        record.SourceRenderKey,
+        record.ReuseScore);
 }
 
 /// <summary>
