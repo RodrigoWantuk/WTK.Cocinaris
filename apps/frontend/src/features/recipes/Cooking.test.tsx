@@ -77,6 +77,7 @@ function execution(overrides: Partial<RecipeExecution> = {}): RecipeExecution {
     inventoryBatchId: null,
     rating: null,
     notes: null,
+    adjustments: [],
     normalizedRecipeJson: RECIPE_JSON,
     proposal: {
       lines: [
@@ -252,6 +253,72 @@ describe("cooking a recipe", () => {
     expect(await screen.findByTestId("cooking-finished")).toBeInTheDocument();
     expect(screen.getByText("1 pantry item(s) deducted.")).toBeInTheDocument();
     expect(localStorage.getItem("cocinaris.cooking.exec-1")).toBeNull();
+  });
+
+  it("records a substitution while cooking and shows it in the proposal", async () => {
+    const user = userEvent.setup();
+    const substituted = execution({
+      adjustments: [
+        {
+          ingredientId: "ing-rice",
+          kind: "substitute",
+          substituteName: "Quinoa",
+          quantity: 150,
+        },
+      ],
+    });
+    substituted.proposal!.lines[0] = {
+      ...substituted.proposal!.lines[0]!,
+      displayName: "Quinoa",
+      originalName: "Arroz",
+      adjustment: "substitute",
+      status: "not_tracked",
+      lotId: null,
+      proposedQuantity: null,
+      requiredQuantity: 150,
+    };
+    const setExecutionAdjustments = vi.fn(async () => substituted);
+    renderCooking(
+      repoWith({
+        getExecution: async () => execution(),
+        setExecutionAdjustments,
+      }),
+    );
+
+    const panel = await screen.findByTestId("cooking-adjustments");
+    await user.click(within(panel).getByText("Did anything change?"));
+    await user.click(
+      within(panel).getByRole("button", { name: "Change: Arroz" }),
+    );
+    // Saving a substitution without a name is refused before any request.
+    await user.click(
+      within(panel).getByRole("radio", { name: "I used something else" }),
+    );
+    await user.click(within(panel).getByTestId("cooking-adjust-save"));
+    expect(within(panel).getByRole("alert")).toBeInTheDocument();
+    expect(setExecutionAdjustments).not.toHaveBeenCalled();
+
+    await user.type(within(panel).getByTestId("cooking-adjust-name"), "Quinoa");
+    await user.type(within(panel).getByTestId("cooking-adjust-amount"), "150");
+    await user.click(within(panel).getByTestId("cooking-adjust-save"));
+
+    await waitFor(() =>
+      expect(setExecutionAdjustments).toHaveBeenCalledWith(
+        "exec-1",
+        [
+          {
+            ingredientId: "ing-rice",
+            kind: "substitute",
+            substituteName: "Quinoa",
+            quantity: 150,
+          },
+        ],
+        expect.objectContaining({ csrfToken: "csrf-test" }),
+      ),
+    );
+    expect(
+      await within(panel).findByText(/swapped for Quinoa/),
+    ).toBeInTheDocument();
   });
 
   it("guides preparation, one step per screen with a timer, and finishes in one tap", async () => {

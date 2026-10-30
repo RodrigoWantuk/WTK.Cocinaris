@@ -134,13 +134,13 @@ internal static class InventoryOpenApiTransformer
                     EnsureProblemResponse(document, operation, "429", "The mutation rate limit was exceeded.");
                 }
 
-                if ((path.Contains("/lots", StringComparison.Ordinal) && (method == HttpMethod.Patch || method == HttpMethod.Delete)) || path.EndsWith("/adjustments", StringComparison.Ordinal) || path.EndsWith("/transitions", StringComparison.Ordinal))
+                if ((path.Contains("/lots", StringComparison.Ordinal) && (method == HttpMethod.Patch || method == HttpMethod.Delete)) || (path.Contains("/inventory/", StringComparison.Ordinal) && (path.EndsWith("/adjustments", StringComparison.Ordinal) || path.EndsWith("/transitions", StringComparison.Ordinal))))
                 {
                     operation.Parameters ??= [];
                     operation.Parameters.Add(Header("If-Match", "Required opaque concurrency ETag from the current lot representation."));
                 }
 
-                if ((path.EndsWith("/lots", StringComparison.Ordinal) && method == HttpMethod.Post) || path.EndsWith("/adjustments", StringComparison.Ordinal) || path.EndsWith("/transitions", StringComparison.Ordinal))
+                if ((path.EndsWith("/lots", StringComparison.Ordinal) && method == HttpMethod.Post) || (path.Contains("/inventory/", StringComparison.Ordinal) && (path.EndsWith("/adjustments", StringComparison.Ordinal) || path.EndsWith("/transitions", StringComparison.Ordinal))))
                 {
                     operation.Parameters ??= [];
                     operation.Parameters.Add(Header("Idempotency-Key", "Required UUID key for semantic create or adjustment replay."));

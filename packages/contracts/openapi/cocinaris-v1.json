@@ -3134,6 +3134,105 @@
         ],
         "type": "object"
       },
+      "RecipeExecutionAdjustmentRequestItem": {
+        "description": "One requested ingredient adjustment.",
+        "properties": {
+          "ingredientId": {
+            "description": "Recipe ingredient.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "kind": {
+            "description": "`substitute`, `quantity`, or `skip`.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "quantity": {
+            "description": "Amount used this time (required for `quantity`, optional for `substitute`).",
+            "format": "double",
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ]
+          },
+          "substituteName": {
+            "description": "What was used instead (1–120 characters), for `substitute`.",
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "required": [
+          "ingredientId",
+          "kind",
+          "substituteName",
+          "quantity"
+        ],
+        "type": "object"
+      },
+      "RecipeExecutionAdjustmentResponse": {
+        "description": "One ingredient change made while cooking (PLAN-0042 Phase 2).",
+        "properties": {
+          "ingredientId": {
+            "description": "Recipe ingredient.",
+            "type": "string"
+          },
+          "kind": {
+            "description": "`substitute`, `quantity`, or `skip`.",
+            "type": "string"
+          },
+          "quantity": {
+            "description": "Amount used this time, in the proposal line's unit.",
+            "format": "double",
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ]
+          },
+          "substituteName": {
+            "description": "What was used instead, for `substitute`.",
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "required": [
+          "ingredientId",
+          "kind",
+          "substituteName",
+          "quantity"
+        ],
+        "type": "object"
+      },
+      "RecipeExecutionAdjustmentsRequest": {
+        "description": "Request body replacing a session's ingredient adjustments; an empty list clears them.",
+        "properties": {
+          "adjustments": {
+            "description": "At most 40, one per ingredient.",
+            "items": {
+              "$ref": "#/components/schemas/RecipeExecutionAdjustmentRequestItem"
+            },
+            "type": [
+              "null",
+              "array"
+            ]
+          }
+        },
+        "required": [
+          "adjustments"
+        ],
+        "type": "object"
+      },
       "RecipeExecutionConsumptionRequest": {
         "description": "One confirmed lot consumption in the lot's canonical unit (`Gram`, `Milliliter`, `Unit`).",
         "properties": {
@@ -3266,8 +3365,14 @@
         "type": "object"
       },
       "RecipeExecutionProposalLineResponse": {
-        "description": "One proposal line; `status` is `ready`, `insufficient`, `lot_unavailable`, or `not_tracked`.",
+        "description": "One proposal line; `status` is `ready`, `insufficient`, `lot_unavailable`, `not_tracked`, or `skipped` (left out this time). `Adjustment` is the session's change to it (`substitute`, `quantity`, `skip`), and `OriginalName` the recipe's name when substituted.",
         "properties": {
+          "adjustment": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
           "displayName": {
             "type": "string"
           },
@@ -3283,6 +3388,12 @@
           },
           "optional": {
             "type": "boolean"
+          },
+          "originalName": {
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "proposedQuantity": {
             "format": "double",
@@ -3332,7 +3443,9 @@
           "lotId",
           "proposedQuantity",
           "protectedQuantity",
-          "reservedElsewhere"
+          "reservedElsewhere",
+          "adjustment",
+          "originalName"
         ],
         "type": "object"
       },
@@ -3393,8 +3506,14 @@
         "type": "object"
       },
       "RecipeExecutionResponse": {
-        "description": "One recipe execution. `status` is `InProgress`, `Completed`, or `Abandoned`; `proposal` is present while in progress.",
+        "description": "One recipe execution. `status` is `InProgress`, `Completed`, or `Abandoned`; `proposal` is present while in progress; `adjustments` are the session's ingredient changes (PLAN-0042 Phase 2).",
         "properties": {
+          "adjustments": {
+            "items": {
+              "$ref": "#/components/schemas/RecipeExecutionAdjustmentResponse"
+            },
+            "type": "array"
+          },
           "executionId": {
             "format": "uuid",
             "type": "string"
@@ -3494,7 +3613,8 @@
           "rating",
           "notes",
           "normalizedRecipeJson",
-          "proposal"
+          "proposal",
+          "adjustments"
         ],
         "type": "object"
       },
@@ -10460,6 +10580,181 @@
           }
         ],
         "summary": "POST /api/v1/recipes/executions/{executionId}/abandonment",
+        "tags": [
+          "Cocinaris.Api"
+        ]
+      }
+    },
+    "/api/v1/recipes/executions/{executionId}/adjustments": {
+      "put": {
+        "operationId": "putApiV1RecipesExecutionsExecutionIdAdjustments",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "executionId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Required CSRF token issued by GET /api/v1/session.",
+            "in": "header",
+            "name": "X-CSRF-TOKEN",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecipeExecutionAdjustmentsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecipeExecutionResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "authenticationFailure": {
+                    "summary": "The backend-managed session is absent or invalid.",
+                    "value": {
+                      "detail": "Authentication is required.",
+                      "errorCode": "authentication_required",
+                      "status": 401,
+                      "title": "Unauthorized",
+                      "traceId": "00-00000000000000000000000000000000-0000000000000000-00",
+                      "type": "about:blank"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authentication is required."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "412": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Precondition Failed"
+          },
+          "415": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "unsupportedMediaType": {
+                    "summary": "The request content type is unsupported.",
+                    "value": {
+                      "detail": "The request content type is not supported.",
+                      "errorCode": "unsupported_media_type",
+                      "status": 415,
+                      "title": "Unsupported Media Type",
+                      "traceId": "00-00000000000000000000000000000000-0000000000000000-00",
+                      "type": "about:blank"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request content type is not supported."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "unexpectedFailure": {
+                    "summary": "An unexpected error was safely redacted.",
+                    "value": {
+                      "detail": "An unexpected error occurred.",
+                      "errorCode": "unexpected_error",
+                      "status": 500,
+                      "title": "Internal Server Error",
+                      "traceId": "00-00000000000000000000000000000000-0000000000000000-00",
+                      "type": "about:blank"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An unexpected server error occurred."
+          }
+        },
+        "security": [
+          {
+            "cocinarisSession": []
+          }
+        ],
+        "summary": "PUT /api/v1/recipes/executions/{executionId}/adjustments",
         "tags": [
           "Cocinaris.Api"
         ]

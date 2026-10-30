@@ -72,8 +72,8 @@ public sealed partial class RecipeExecutionApiTests
         using var second = HostClient("idea-reader");
         var secondCsrf = await CsrfAsync(second);
         var readerChicken = await CreateLotAsync(second, secondCsrf, "Chicken breast", 700m);
-        await CreateLotAsync(second, secondCsrf, "Rice", 900m);
-        await CreateLotAsync(second, secondCsrf, "Onion", 400m);
+        var readerRice = await CreateLotAsync(second, secondCsrf, "Rice", 900m);
+        var readerOnion = await CreateLotAsync(second, secondCsrf, "Onion", 400m);
         var served = await RequestSuggestionsAsync(second, secondCsrf);
         Assert.Equal(3, served.Candidates.Count);
         Assert.All(served.Candidates, id => Assert.StartsWith(RecipeIdeaLibrary.CandidatePrefix, id));
@@ -86,8 +86,10 @@ public sealed partial class RecipeExecutionApiTests
             Assert.Equal(0, AiCalls(database, "idea-reader"));
             var reader = await database.Users.Where(user => user.Subject == "idea-reader").Select(user => user.Id).SingleAsync();
             var revision = await database.RecipeRevisions.AsNoTracking().SingleAsync(item => item.OwnerUserId == reader);
-            // The recipe uses B's own lot, so cooking it proposes and consumes B's chicken.
-            Assert.Contains(readerChicken.ToString("n"), revision.NormalizedRecipeJson);
+            // The recipe uses B's own lots, so cooking it proposes and consumes B's food. The three
+            // ideas can tie on score, so which one comes first (and which of B's lots it uses) varies.
+            Assert.Contains(new[] { readerChicken, readerRice, readerOnion }, lot => revision.NormalizedRecipeJson.Contains(lot.ToString("n"), StringComparison.Ordinal));
+            Assert.DoesNotContain(writerChicken.ToString("n"), revision.NormalizedRecipeJson);
             Assert.StartsWith(RecipeIdeaLibrary.CandidatePrefix, revision.SourceCandidateId);
             Assert.Equal(1, await database.RecipeIdeas.SumAsync(idea => idea.TimesSelected));
         }

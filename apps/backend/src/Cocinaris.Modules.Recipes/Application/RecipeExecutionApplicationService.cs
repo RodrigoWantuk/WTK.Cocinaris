@@ -72,7 +72,7 @@ public sealed record CompleteRecipeExecutionCommand(Guid ExecutionId, IReadOnlyL
 /// quantity), <c>lot_unavailable</c>, or <c>not_tracked</c>. <see cref="ProtectedQuantity"/> is never proposed;
 /// <see cref="ReservedElsewhere"/> lists other menu meals counting on the same lot (PLAN-0029 Phase 3).
 /// </remarks>
-public sealed record ExecutionProposalLineView(string IngredientId, string DisplayName, bool Optional, decimal RequiredQuantity, string Unit, string Status, Guid? LotId, decimal? ProposedQuantity, decimal ProtectedQuantity = 0, IReadOnlyList<LotReservationView>? ReservedElsewhere = null);
+public sealed record ExecutionProposalLineView(string IngredientId, string DisplayName, bool Optional, decimal RequiredQuantity, string Unit, string Status, Guid? LotId, decimal? ProposedQuantity, decimal ProtectedQuantity = 0, IReadOnlyList<LotReservationView>? ReservedElsewhere = null, string? Adjustment = null, string? OriginalName = null);
 
 /// <summary>An active measured pantry lot the user can pick for any ingredient.</summary>
 /// <remarks>
@@ -85,7 +85,7 @@ public sealed record ExecutionPantryLotView(Guid LotId, string ProductName, deci
 public sealed record ExecutionProposalView(IReadOnlyList<ExecutionProposalLineView> Lines, IReadOnlyList<ExecutionPantryLotView> PantryLots);
 
 /// <summary>Owner-visible execution state; <see cref="Proposal"/> is present while in progress.</summary>
-public sealed record RecipeExecutionView(Guid ExecutionId, Guid RecipeId, int RevisionNumber, string RecipeName, int Servings, int RecipeServings, string Status, DateTimeOffset StartedAt, DateTimeOffset? FinishedAt, Guid? InventoryBatchId, int? Rating, string? Notes, string NormalizedRecipeJson, ExecutionProposalView? Proposal);
+public sealed record RecipeExecutionView(Guid ExecutionId, Guid RecipeId, int RevisionNumber, string RecipeName, int Servings, int RecipeServings, string Status, DateTimeOffset StartedAt, DateTimeOffset? FinishedAt, Guid? InventoryBatchId, int? Rating, string? Notes, string NormalizedRecipeJson, ExecutionProposalView? Proposal, IReadOnlyList<RecipeExecutionAdjustment>? Adjustments = null);
 
 /// <summary>Compact in-progress execution for the home and recipe pages.</summary>
 public sealed record RecipeExecutionSummaryView(Guid ExecutionId, Guid RecipeId, string RecipeName, int Servings, DateTimeOffset StartedAt);
@@ -165,6 +165,47 @@ public sealed class RecipeExecutionApplicationService(
         }
 
         return RecipeApplicationResult<IReadOnlyList<RecipeExecutionSummaryView>>.Succeeded(result);
+    }
+
+    /// <summary>
+    /// Replaces the session's ingredient adjustments (PLAN-0042 Phase 2): substitutions, amounts
+    /// used, and ingredients left out. They change the completion proposal and are offered to the
+    /// recipe editor afterwards; the recipe itself is unchanged.
+    /// </summary>
+    public async Task<RecipeApplicationResult<RecipeExecutionView>> SetAdjustmentsAsync(Guid executionId, IReadOnlyList<RecipeExecutionAdjustment> adjustments, CancellationToken cancellationToken)
+    {
+        var user = await currentUser.GetCurrentAsync(cancellationToken);
+        var execution = await store.FindAsync(user.Id, executionId, cancellationToken);
+        if (execution is null)
+        {
+            return Failure<RecipeExecutionView>("resource_not_found", "The recipe execution was not found.");
+        }
+
+        if (execution.Status != RecipeExecutionStatus.InProgress)
+        {
+            return Failure<RecipeExecutionView>("domain_rule_violated", "Only a session still cooking can be adjusted.");
+        }
+
+        var revision = await store.FindRevisionAsync(user.Id, execution.RecipeId, execution.RevisionNumber, cancellationToken);
+        var ingredientIds = revision is null ? [] : RecipeIngredientReader.Read(revision.NormalizedRecipeJson).Select(item => item.Id).ToHashSet(StringComparer.Ordinal);
+        if (adjustments.Any(item => !ingredientIds.Contains(item.IngredientId)))
+        {
+            return Failure<RecipeExecutionView>("validation_failed", "An adjustment names an ingredient the recipe does not have.", "adjustments");
+        }
+
+        var expected = execution.Version;
+        try
+        {
+            execution.SetAdjustments(adjustments, timeProvider.GetUtcNow());
+        }
+        catch (ArgumentException exception)
+        {
+            return Failure<RecipeExecutionView>("validation_failed", exception.Message, "adjustments");
+        }
+
+        return await store.UpdateAsync(execution, expected, cancellationToken)
+            ? RecipeApplicationResult<RecipeExecutionView>.Succeeded(await ViewAsync(execution, user.Id, cancellationToken))
+            : Failure<RecipeExecutionView>("precondition_failed", "The recipe execution changed. Reload it.");
     }
 
     /// <summary>Abandons an in-progress execution without touching inventory.</summary>
@@ -288,11 +329,14 @@ public sealed class RecipeExecutionApplicationService(
         {
             var lots = await inventory.ListActiveAsync(ownerUserId, MaxPantryLots, cancellationToken);
             var committed = await commitments.GetAsync(ownerUserId, cancellationToken);
-            var keys = await matching.KeysAsync(ownerUserId, lots.Select(lot => lot.ProductName).Concat(RecipeIngredientReader.Read(revision.NormalizedRecipeJson).Select(ingredient => ingredient.Name)), cancellationToken);
-            proposal = BuildProposal(revision.NormalizedRecipeJson, revision.Servings, execution.Servings, lots, committed, execution.MenuEntryId, keys);
+            var names = lots.Select(lot => lot.ProductName)
+                .Concat(RecipeIngredientReader.Read(revision.NormalizedRecipeJson).Select(ingredient => ingredient.Name))
+                .Concat(execution.Adjustments.Select(item => item.SubstituteName).OfType<string>());
+            var keys = await matching.KeysAsync(ownerUserId, names, cancellationToken);
+            proposal = BuildProposal(revision.NormalizedRecipeJson, revision.Servings, execution.Servings, lots, committed, execution.MenuEntryId, keys, execution.Adjustments);
         }
 
-        return new RecipeExecutionView(execution.Id, execution.RecipeId, execution.RevisionNumber, revision.Name, execution.Servings, revision.Servings, execution.Status.ToString(), execution.StartedAt, execution.FinishedAt, execution.InventoryBatchId, execution.Rating, execution.Notes, revision.NormalizedRecipeJson, proposal);
+        return new RecipeExecutionView(execution.Id, execution.RecipeId, execution.RevisionNumber, revision.Name, execution.Servings, revision.Servings, execution.Status.ToString(), execution.StartedAt, execution.FinishedAt, execution.InventoryBatchId, execution.Rating, execution.Notes, revision.NormalizedRecipeJson, proposal, execution.Adjustments);
     }
 
     /// <summary>
@@ -310,9 +354,11 @@ public sealed class RecipeExecutionApplicationService(
     /// <param name="commitments">Planning commitments by lot; none when null.</param>
     /// <param name="ownMenuEntryId">Menu meal this session cooks; its own reservations are not warnings.</param>
     /// <param name="matchKeys">Ingredient matching keys (PLAN-0055); names only when null.</param>
+    /// <param name="adjustments">The session's ingredient adjustments (PLAN-0042 Phase 2); none when null.</param>
     /// <returns>The proposal lines and the pickable measured lots.</returns>
-    public static ExecutionProposalView BuildProposal(string normalizedRecipeJson, int recipeServings, int servings, IReadOnlyList<InventoryLotReadModel> lots, IReadOnlyDictionary<Guid, LotCommitment>? commitments = null, Guid? ownMenuEntryId = null, IngredientMatchKeys? matchKeys = null)
+    public static ExecutionProposalView BuildProposal(string normalizedRecipeJson, int recipeServings, int servings, IReadOnlyList<InventoryLotReadModel> lots, IReadOnlyDictionary<Guid, LotCommitment>? commitments = null, Guid? ownMenuEntryId = null, IngredientMatchKeys? matchKeys = null, IReadOnlyList<RecipeExecutionAdjustment>? adjustments = null)
     {
+        var adjusted = (adjustments ?? []).ToDictionary(item => item.IngredientId, StringComparer.Ordinal);
         commitments ??= new Dictionary<Guid, LotCommitment>();
         matchKeys ??= IngredientMatchKeys.NamesOnly;
         decimal Protected(Guid lotId) => commitments.TryGetValue(lotId, out var commitment) ? commitment.ProtectedQuantity : 0;
@@ -326,31 +372,45 @@ public sealed class RecipeExecutionApplicationService(
         foreach (var ingredient in RecipeIngredientReader.Read(normalizedRecipeJson))
         {
             var unit = RecipeIngredientReader.ToLotUnit(ingredient.Unit);
-            var required = RecipeIngredientReader.Scale(ingredient.Quantity, unit, scale);
+            var adjustment = adjusted.GetValueOrDefault(ingredient.Id);
+            // PLAN-0042 Phase 2: an ingredient left out consumes nothing; a substitute is looked up
+            // in the pantry under its own name; an amount the cook gave is this session's, unscaled.
+            if (adjustment?.Kind == "skip")
+            {
+                lines.Add(new(ingredient.Id, ingredient.Name, ingredient.Optional, 0, unit, "skipped", null, null, Adjustment: "skip"));
+                continue;
+            }
+
+            var substitute = adjustment?.Kind == "substitute";
+            var name = substitute ? adjustment!.SubstituteName! : ingredient.Name;
+            var originalName = substitute ? ingredient.Name : null;
+            var required = adjustment?.Quantity is { } given ? RecipeIngredientReader.Scale(given, unit, 1) : RecipeIngredientReader.Scale(ingredient.Quantity, unit, scale);
             // The lot the recipe was written for comes first; otherwise a pantry lot with the same
             // name or the same catalog ingredient, and the same unit (case and accents ignored), so a
             // recipe written by hand, in another language, or for a lot used up and bought again
             // still proposes the pantry item.
-            var linked = ingredient.SourceType == "inventory" && ingredient.LotId is { } lotId && byId.TryGetValue(lotId, out var exact) && exact.MeasuredUnit == unit ? exact : null;
-            var ingredientKey = matchKeys.Key(ingredient.Name);
+            var linked = !substitute && ingredient.SourceType == "inventory" && ingredient.LotId is { } lotId && byId.TryGetValue(lotId, out var exact) && exact.MeasuredUnit == unit ? exact : null;
+            var ingredientKey = matchKeys.Key(name);
             var named = linked ?? measured
                 .Where(candidate => candidate.MeasuredUnit == unit && matchKeys.Key(candidate.ProductName) == ingredientKey)
                 .OrderByDescending(candidate => candidate.MeasuredValue)
                 .FirstOrDefault();
             if (named is not { } lot)
             {
-                lines.Add(new(ingredient.Id, ingredient.Name, ingredient.Optional, required, unit, ingredient.SourceType == "inventory" ? "lot_unavailable" : "not_tracked", null, null));
+                lines.Add(new(ingredient.Id, name, ingredient.Optional, required, unit, ingredient.SourceType == "inventory" && !substitute ? "lot_unavailable" : "not_tracked", null, null, Adjustment: adjustment?.Kind, OriginalName: originalName));
                 continue;
             }
 
             var protectedQuantity = Math.Min(Protected(lot.LotId), lot.MeasuredValue!.Value);
             var available = lot.MeasuredValue!.Value - protectedQuantity;
             var elsewhere = Elsewhere(lot.LotId);
-            lines.Add(available <= 0
-                ? new(ingredient.Id, ingredient.Name, ingredient.Optional, required, unit, "protected", lot.LotId, null, protectedQuantity, elsewhere)
+            lines.Add((available <= 0
+                ? new ExecutionProposalLineView(ingredient.Id, name, ingredient.Optional, required, unit, "protected", lot.LotId, null, protectedQuantity, elsewhere)
                 : required <= available
-                    ? new(ingredient.Id, ingredient.Name, ingredient.Optional, required, unit, "ready", lot.LotId, required, protectedQuantity, elsewhere)
-                    : new(ingredient.Id, ingredient.Name, ingredient.Optional, required, unit, "insufficient", lot.LotId, available, protectedQuantity, elsewhere));
+                    ? new ExecutionProposalLineView(ingredient.Id, name, ingredient.Optional, required, unit, "ready", lot.LotId, required, protectedQuantity, elsewhere)
+                    : new ExecutionProposalLineView(ingredient.Id, name, ingredient.Optional, required, unit, "insufficient", lot.LotId, available, protectedQuantity, elsewhere))
+                with
+            { Adjustment = adjustment?.Kind, OriginalName = originalName });
         }
 
         var pantry = measured.OrderBy(lot => lot.ProductName, StringComparer.CurrentCultureIgnoreCase)

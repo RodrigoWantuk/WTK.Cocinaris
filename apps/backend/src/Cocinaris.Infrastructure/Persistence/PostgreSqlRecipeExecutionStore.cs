@@ -97,7 +97,10 @@ public sealed class PostgreSqlRecipeExecutionStore(ApplicationDbContext database
 
     private static RecipeExecution ToDomain(RecipeExecutionRecord record) => RecipeExecution.Restore(
         record.Id, record.OwnerUserId, record.RecipeId, record.RevisionNumber, record.Servings, Enum.Parse<RecipeExecutionStatus>(record.Status),
-        record.StartedAt, record.UpdatedAt, record.FinishedAt, record.InventoryBatchId, record.CompletionKey, record.Rating, record.Notes, record.Version, record.MenuEntryId);
+        record.StartedAt, record.UpdatedAt, record.FinishedAt, record.InventoryBatchId, record.CompletionKey, record.Rating, record.Notes, record.Version, record.MenuEntryId,
+        System.Text.Json.JsonSerializer.Deserialize<List<RecipeExecutionAdjustment>>(record.AdjustmentsJson, AdjustmentJson) ?? []);
+
+    private static readonly System.Text.Json.JsonSerializerOptions AdjustmentJson = new(System.Text.Json.JsonSerializerDefaults.Web);
 
     private static RecipeExecutionRecord ToRecord(RecipeExecution execution) => new()
     {
@@ -115,7 +118,8 @@ public sealed class PostgreSqlRecipeExecutionStore(ApplicationDbContext database
         Rating = execution.Rating,
         Notes = execution.Notes,
         Version = execution.Version,
-        MenuEntryId = execution.MenuEntryId
+        MenuEntryId = execution.MenuEntryId,
+        AdjustmentsJson = System.Text.Json.JsonSerializer.Serialize(execution.Adjustments, AdjustmentJson)
     };
 }
 
