@@ -1,49 +1,84 @@
 # Cocinaris design system
 
-Status: accepted by the owner on 2026-10-29 ("Vamos fechar assim por hora, ficou bem melhor já"), direction 2 of [PLAN-0054](../plans/PLAN-0054-everyday-cook-realignment.md). The design canvas from that review is the visual reference. This document is the durable rule set.
+Status: accepted by the owner on 2026-10-30. The owner chose the new guidelines with an emerald accent ([PLAN-0057](../plans/PLAN-0057-registry-and-ux-redesign.md), "Owner decision"). This replaces the 2026-10-29 direction of [PLAN-0054](../plans/PLAN-0054-everyday-cook-realignment.md): white ground, black primary pill, no effects. The [UX review of 2026-10-30](ux-review-2026-10-30.md) lists the findings that drive the screen changes. This document is the durable rule set.
 
 ## Principles
 
-- **An app, not a system.** The screens look like a cooking app on a phone, with no admin panels. Plain white ground, large titles, and rows instead of boxes. A surface is boxed only when it is one tappable unit or a status that must stand out.
-- **One action per moment.** Each screen has one black primary pill. Secondary actions are grey pills or text.
-- **Color informs.** Neutral by default. Soft tints appear only where they carry meaning: green for "you have it", amber for "use soon", peach for the gentle accent. Color never carries the meaning alone; text says it too.
-- **No effects.** No shadows, blur, gradients, or decorative motion. One typeface.
+- **Purpose before decoration.** Every element serves the cook's current task. The screens look like a cooking app on a phone, not an admin panel. Lists are rows; a surface is boxed only when it is one unit (a card, a sheet, a status that must stand out).
+- **Layered surfaces, not flat blocks.** Depth comes from elevation: the ground, then surfaces (cards), then elevated layers (menus, popovers, sheets). Neutrals come from one Zinc scale, never pure black or flat grey.
+- **One accent, used sparingly.** Emerald marks the primary action, active and selected states, and focus rings. It never fills large areas. Status colors are separate and always come with words.
+- **Tactile feedback.** Every interactive element responds at once: a background or border shift on hover and a short press scale. Motion stays at 150–200 ms and disappears when the person prefers reduced motion.
+- **Accessibility first.** WCAG 2.2 AA contrast, with ratios noted next to the tokens. Focus is always visible, targets are at least 44 px, and state is in words, never color alone.
 
 ## Tokens
 
-The tokens live in `apps/frontend/src/index.css` (`:root` and `.dark`) and are exposed through `apps/frontend/tailwind.config.js`.
+The tokens live in `apps/frontend/src/index.css` (`:root` and `.dark`) and are exposed through `apps/frontend/tailwind.config.js`. Components use the semantic names, never raw colors.
 
-| Token | Light | Use |
-| --- | --- | --- |
-| `background` / `foreground` | white / #111 | Ground and text |
-| `primary` | #111, white text | The primary pill, the add button, the selected chip |
-| `secondary` / `muted` | #F4F4F2 | Secondary pills, filled inputs, hover rows |
-| `muted-foreground` | #5F5F5F | Supporting text (meets 4.5:1 on white) |
-| `border` | #EDEDED | Row dividers |
-| `success` / `success-soft` | #1D6B36 / #E6F4EA | "Tem", done, compatible |
-| `warning` / `warning-soft` | #7A4E00 / #FFF1D6 | "Usar logo", attention |
-| `accent` | #FFE4DA | Gentle highlight |
-| `radius` | 1rem | Cards and sheets; pills are fully rounded |
+| Token | Light | Dark | Use |
+| --- | --- | --- | --- |
+| `background` | zinc-50 | zinc-950 | Page ground (lowest layer) |
+| `card` | white | zinc-900 | Surfaces: cards, rows groups, inputs |
+| `popover` | white | zinc-850 (`240 5% 13%`) | Elevated layers: menus, sheets |
+| `foreground` | zinc-950 | zinc-50 | Text |
+| `muted-foreground` | zinc-600 (7.4:1) | zinc-400 (6.9:1 on cards) | Supporting text |
+| `primary` | emerald-700, white text (5.5:1) | emerald-500, zinc-950 text (7.8:1) | Primary action, selected state |
+| `ring` | emerald-600 (3.6:1) | emerald-400 | Focus rings and focused input borders |
+| `accent` | emerald-50, emerald-900 text | emerald-950, emerald-200 text | Gentle highlight (cooking in progress) |
+| `secondary` / `muted` | zinc-100 | zinc-800 | Quiet fills, hover rows, chips |
+| `border` | zinc-200 | zinc-800 | Decorative dividers and card edges |
+| `input` | `#8E8E96` (3.1:1) | zinc-500 (3.7:1) | Control boundaries (need 3:1) |
+| `success` / `success-soft` | green | green | "Tem", done, available |
+| `warning` / `warning-soft` | amber | amber | "Usar logo", partial, attention |
+| `destructive` | red | red | Errors and destructive actions |
+| `radius` | 0.875rem | | Cards use `rounded-2xl`, controls `rounded-xl` |
 
-Utilities `status-pill`, `status-success`, and `status-warning` give a short status label.
+The success green and the emerald accent are different hues and roles. Success always appears with its word ("Na despensa", "Tem"). The accent marks an action or a selection.
+
+### Utilities
+
+- `surface`: a card on the layered ground, with a rounded border at 70% border color. In dark mode it adds a faint inner ring (white at 4%) for a crisp edge without shadows.
+- `status-pill`, `status-success`, `status-warning`: a short status label.
+- `tabular`: tabular figures for quantities and dates in lists.
 
 ## Type
 
-Inter, self-hosted through `@fontsource-variable/inter`. External font, script, and style hosts are forbidden by `guard:third-party-html`. Titles are 700 weight with -0.02em letter-spacing (`font-display`). Body text is 15–17px, never below 14px for content.
+- **Family:** Inter, self-hosted through `@fontsource-variable/inter`. External font, script, and style hosts are forbidden by `guard:third-party-html`.
+- **Titles:** 700 weight with -0.02em tracking (`font-display`).
+- **Body:** 15–17px, never below 14px for content. Inputs are at least 16px on phones, so iOS does not zoom.
+- **Metadata and badges:** 12–13px, semibold.
+- **Hierarchy:** comes from weight, size, and the muted color. Muted text must still meet 4.5:1.
+
+## Spacing and layout
+
+- **Spacing:** a 4/8px scale: 4, 8, 12, 16, 24, 32, 48, 64. Related items sit 4–8px apart, and sections 24px or more.
+- **Padding:** cards use at least 16px on phones and 24px or more on wide screens.
+- **Layout:** mobile first, with no horizontal scroll at 320px and content that reflows at 200% zoom.
 
 ## Components
 
-- **Button** (`components/ui/button.tsx`): fully rounded. The default is 44px high and the large size is 56px for the main action of a screen. No shadows. A visible focus ring is required.
-- **Inputs and selects**: 44px high, rounded-xl, and at least 15px text, so iOS does not zoom.
-- **Rows**: lists use `divide-y` rows with the name in 17px semibold and the detail in muted 14px. Pantry, shopping, and recipe lists follow this pattern.
+- **Button** (`components/ui/button.tsx`): `rounded-xl` with an emerald focus ring offset from the page, and `motion-safe:active:scale-[0.98]` on press.
+  - Sizes: default 44px, large 56px for the main action of a screen, small 36px for secondary actions inside rows.
+  - `default`: the emerald primary, once per view.
+  - `secondary`: a quiet surface button with a border.
+  - `ghost`: tertiary actions.
+  - `destructive`: only inside confirmations. A delete entry point is a ghost button with destructive text at the bottom of the page.
+- **Inputs and selects:** 44px high, `rounded-xl`, on the `card` surface with an `input` border. On focus, the border turns `ring` and a soft ring halo appears.
+- **Rows:** lists use `divide-y` rows, with the name in 17px semibold and the detail in muted 14px.
+- **Empty fields:** hidden. A page never lists "Nenhum" for data that was not entered.
+
+## Themes
+
+- The theme follows the operating system by default (`prefers-color-scheme`).
+- The account menu offers "Tema: Sistema, Claro, Escuro". The choice is stored per device (`cocinaris.theme`) and applied before the first render (`app/theme/theme.ts`).
+- Both themes must meet the contrast rules above.
 
 ## Shell and navigation
 
-- **Phones**: a bottom bar within thumb reach holds Hoje, Despensa, the black round "+" (add to the pantry), Receitas, and Compras.
-- **From `md` up**: the same element sits inline in the header, and "+" becomes a black "Adicionar" pill.
-- **The menu lives inside Hoje.** Menu pages light up Hoje, and a menu's shopping list lights up Compras. `/app/compras` opens the list of the current menu.
-- **The account menu** (the avatar at the top right) holds Perfil, the interface language, and Sair. The household joins it in Phase 5.
-- **Rules**: `app/shell/AppNavigation.tsx`, `app/shell/AccountMenu.tsx`, and `app/ProductionApp.tsx`. The header must not create a containing block (no backdrop filter or transform), or the fixed bottom bar would attach to it.
+- **Phones:** a bottom bar within thumb reach holds Início, Despensa, the round "+" (add to the pantry), Receitas, and Compras.
+- **From `md` up:** the same element sits inline in the header, and "+" becomes an "Adicionar" button.
+- **The menu lives inside Hoje.** Menu pages light up Hoje, and a menu's shopping list lights up Compras.
+- **The account menu** (the avatar at the top right) holds Perfil, the interface language, the theme, and Sair. Without a display name, the avatar shows a person icon, never "?".
+- **Rules:** `app/shell/AppNavigation.tsx`, `app/shell/AccountMenu.tsx`, and `app/ProductionApp.tsx`. The header must not create a containing block (no backdrop filter or transform), or the fixed bottom bar would attach to it.
 
 ## Accessibility
 
@@ -51,3 +86,4 @@ Inter, self-hosted through `@fontsource-variable/inter`. External font, script, 
 - The bottom bar marks the current tab with `aria-current="page"`.
 - The account menu closes on Escape and on an outside click.
 - Status is always written in words, never shown by color alone.
+- Focus is visible on every control (`ring` token, offset from the page).

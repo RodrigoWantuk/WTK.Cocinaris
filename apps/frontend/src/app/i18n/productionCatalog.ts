@@ -44,6 +44,10 @@ const sharedShell: Record<ProductionLocale, Catalog> = {
     "app.unavailable.detail":
       "Receitas, planejamento, compras e cozinha guiada ainda estão em construção e chegam nas próximas versões.",
     "lang.label": "Idioma",
+    "theme.label": "Tema",
+    "theme.system": "Sistema",
+    "theme.light": "Claro",
+    "theme.dark": "Escuro",
     "nav.home": "Início",
     "nav.primary": "Navegação principal",
     "nav.skipToContent": "Pular para o conteúdo",
@@ -86,6 +90,10 @@ const sharedShell: Record<ProductionLocale, Catalog> = {
     "app.unavailable.detail":
       "Recipes, planning, shopping, and guided cooking are still being built and arrive in upcoming releases.",
     "lang.label": "Language",
+    "theme.label": "Theme",
+    "theme.system": "System",
+    "theme.light": "Light",
+    "theme.dark": "Dark",
     "nav.home": "Home",
     "nav.primary": "Primary navigation",
     "nav.skipToContent": "Skip to content",
@@ -129,6 +137,10 @@ const sharedShell: Record<ProductionLocale, Catalog> = {
     "app.unavailable.detail":
       "Recetas, planificación, compras y cocina guiada aún están en construcción y llegan en próximas versiones.",
     "lang.label": "Idioma",
+    "theme.label": "Tema",
+    "theme.system": "Sistema",
+    "theme.light": "Claro",
+    "theme.dark": "Oscuro",
     "nav.home": "Inicio",
     "nav.primary": "Navegación principal",
     "nav.skipToContent": "Saltar al contenido",

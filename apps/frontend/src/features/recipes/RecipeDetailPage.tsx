@@ -9,6 +9,7 @@ import {
   RecipeApiError,
   type RecipeDetail,
   type RecipeHistory,
+  type RecipeAvailabilityLine,
 } from "@/contracts/recipes";
 import { useProductionI18n } from "@/app/i18n/ProductionI18nProvider";
 import { Button } from "@/components/ui/button";
@@ -31,6 +32,9 @@ export function RecipeDetailPage() {
   const repo = useRecipeRepository();
   const { t, locale } = useProductionI18n();
   const [detail, setDetail] = useState<RecipeDetail | null>(null);
+  const [availability, setAvailability] = useState<
+    RecipeAvailabilityLine[] | null
+  >(null);
   const [history, setHistory] = useState<RecipeHistory | null>(null);
   const [historyFailed, setHistoryFailed] = useState(false);
   const [status, setStatus] = useState<"loading" | "ready" | "error">(
@@ -124,6 +128,16 @@ export function RecipeDetailPage() {
         if (requestId !== requestIdRef.current) return;
         setDetail(recipe);
         setStatus("ready");
+        // Pantry status is a separate, optional read; a failure only hides it.
+        setAvailability(null);
+        if (revisionNumber === null && repo.getRecipeAvailability) {
+          repo
+            .getRecipeAvailability(recipeId, controller.signal)
+            .then((lines) => {
+              if (requestId === requestIdRef.current) setAvailability(lines);
+            })
+            .catch(() => undefined);
+        }
       } catch (err) {
         if (controller.signal.aborted) return;
         if (err instanceof RecipeApiError && err.code === "cancelled") return;
@@ -368,7 +382,9 @@ export function RecipeDetailPage() {
         </p>
       ) : null}
 
-      {parsed ? <RecipeContent recipe={parsed} /> : null}
+      {parsed ? (
+        <RecipeContent recipe={parsed} availability={availability} />
+      ) : null}
 
       <section
         aria-labelledby="recipe-history"

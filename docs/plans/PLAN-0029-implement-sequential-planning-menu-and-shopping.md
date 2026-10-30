@@ -1,6 +1,6 @@
 # PLAN-0029: Implement Sequential Planning, Menu, and Shopping Projection
 
-- **Status:** In Progress
+- **Status:** Completed
 - **Type:** Implementation
 - **Priority:** High
 - **Owner:** Claude Code (claimed 2026-10-29)
@@ -185,7 +185,7 @@ Owner direction 2026-10-30: "Siga com plano 42 e 29, não temos pressa em compar
   - **OpenAPI:** exported (additions only); client regenerated and drift check passed.
   - **Frontend:** planning, cooking, and app suites (13 files, 76 tests, including the new package/impact and "Prepare-se" tests) pass; typecheck, ESLint, and Prettier are clean.
 - **Not run:** the full suites, the browser journey, and the full local gates (lean validation).
-- **Exact next action:** After the owner merges, deploy `main`. Remaining PLAN-0029 work is listed under "Not delivered" of each phase; none is scheduled.
+- **Exact next action:** None; the plan is completed. Merged via #71 and deployed at `99481b8` on 2026-10-30. Unscheduled follow-ups are listed under each phase's "Not delivered".
 - **Blockers:** None.
 
 ## Progress log
@@ -242,3 +242,7 @@ Owner direction 2026-10-30: "Siga com plano 42 e 29, não temos pressa em compar
 ### 2026-10-30T16:00:00Z — Claude Code
 
 - Merged `main` (PLAN-0042 PR #70) into the Phase 4 branch to resolve the registry conflict. The model snapshot holds both migrations and the regenerated OpenAPI contract equals the merged one. Re-run after the merge: unit 8/8, integration (Phase 4, cooking adjustments, migrations) 22/22, frontend planning/recipes/app 102/102, typecheck and `dotnet format` clean.
+
+### 2026-10-30T18:00:00Z — Claude Code (registry reconciliation, PLAN-0057 Phase 0)
+
+- Phases 1–4 are merged (#52, #53, #56, #71) and deployed at `99481b8`; the plan is completed. Follow-ups listed under each phase's "Not delivered" stay unscheduled; package sizes from receipts belong to PLAN-0046.

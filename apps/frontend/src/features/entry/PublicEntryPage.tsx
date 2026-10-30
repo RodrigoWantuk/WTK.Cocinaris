@@ -220,10 +220,10 @@ export function PublicEntryPage({
                 <li
                   key={key}
                   data-testid={`entry-demo-step-${index}`}
-                  className="rounded-2xl border border-border bg-card p-5"
+                  className="surface p-5"
                 >
                   <span className="text-xs font-medium text-muted-foreground">
-                    {String(index + 1).padStart(2, "0")}
+                    {index + 1}
                   </span>
                   <p className="mt-2 text-sm md:text-base">{t(key)}</p>
                 </li>

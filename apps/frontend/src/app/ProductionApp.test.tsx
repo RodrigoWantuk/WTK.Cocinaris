@@ -75,7 +75,7 @@ describe("ProductionApp landing controls", () => {
     expect(localStorage.getItem(PRODUCTION_LOCALE_STORAGE_KEY)).toBe("en");
     expect(document.documentElement.lang).toBe("en");
     expect(screen.getByTestId("production-landing-tagline")).toHaveTextContent(
-      /Cocinaris helps you decide|Turn available food|Cocinaris helps transform/,
+      /Tell Cocinaris what you have at home/,
     );
 
     await user.selectOptions(select, "es");

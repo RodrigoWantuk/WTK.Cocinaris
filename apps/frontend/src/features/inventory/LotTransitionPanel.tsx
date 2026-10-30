@@ -61,7 +61,7 @@ export function LotTransitionPanel({
 
   if (kinds.length === 0 || !kind) {
     return (
-      <section className="space-y-2 rounded-xl border p-4">
+      <section className="surface space-y-2 p-4">
         <h2 className="font-display text-xl">
           {t("inventory.transition.title")}
         </h2>
@@ -100,7 +100,7 @@ export function LotTransitionPanel({
 
   return (
     <section
-      className="space-y-3 rounded-xl border p-4"
+      className="surface space-y-3 p-4"
       data-testid="inventory-transition"
     >
       <h2 className="font-display text-xl">
@@ -110,7 +110,7 @@ export function LotTransitionPanel({
         <span className="text-sm">{t("inventory.transition.kind")}</span>
         <select
           data-testid="inventory-transition-kind"
-          className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+          className="flex h-11 w-full rounded-xl border border-input bg-card px-3 text-[15px] focus-visible:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
           value={kind}
           onChange={(event) => setKind(event.target.value as TransitionKind)}
         >
@@ -126,7 +126,7 @@ export function LotTransitionPanel({
           <span className="text-sm">{t("inventory.transition.target")}</span>
           <select
             data-testid="inventory-transition-target"
-            className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+            className="flex h-11 w-full rounded-xl border border-input bg-card px-3 text-[15px] focus-visible:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
             value={target}
             onChange={(event) =>
               setTarget(event.target.value as StorageLocation | "")

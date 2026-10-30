@@ -5,7 +5,7 @@
 - **Priority:** High
 - **Owner:** Claude Code (claimed 2026-10-28)
 - **Created:** 2026-10-28
-- **Last updated:** 2026-10-28
+- **Last updated:** 2026-10-30
 - **Branch:** Phase 1 `agent/plan-0037-inventory-lifecycle` (merged, PR #47); Phase 2 `agent/plan-0037-phase-2-attention` (draft PR #49 against `main`; PR #48 merged at `bc7ec04`)
 - **Pull request:** Phase 1 PR #47 (merged); Phase 2 draft PR #49
 - **Related documents:** `docs/domain/inventory-lifecycle.md`, `docs/product/initial-release.md` (Inventory), coverage review gaps G-01, G-02, G-03
@@ -75,7 +75,7 @@ Refreezing a thawed lot is allowed. Food-safety guidance about it belongs to the
   - Architecture tests: 14 passed.
   - Integration tests: 16 passed in `RecipeExecutionApiTests`.
   - Frontend: 83 planning, i18n, and adapter tests passed, including grouping, order, labels, and the fridge default. Typecheck, lint, and format are clean. The OpenAPI and API client drift check is clean.
-- **Exact next action:** Phase 3, second part: refine the attention rules by category with curated shelf-life rules (for example, opened dairy and raw meat in the refrigerator). This needs a curated, sourced rule table, reviewed as a food-safety change.
+- **Exact next action:** Phase 3 second part: draft a sourced category shelf-life table (for example opened dairy, raw meat in the refrigerator) and submit it for the owner's food-safety review before it changes attention.
 - **Blockers:** None. GitHub Actions does not start jobs because the owner account is locked for billing (PR #46); validation runs on the owner host until the owner resolves it.
 - **Working tree state:** Phase 1 committed on `agent/plan-0037-inventory-lifecycle`.
 
@@ -127,3 +127,6 @@ Refreezing a thawed lot is allowed. Food-safety guidance about it belongs to the
 
 - Product category now comes from ingredient identity (PLAN-0055) instead of a separate field: the curated catalog already holds a category for every ingredient. The first visible use is the shopping list grouped by store section, which the owner had asked for alongside the household shopping list (PLAN-0054 Phase 5).
 
+### 2026-10-30T18:00:00Z — Claude Code (registry reconciliation, PLAN-0057 Phase 0)
+
+- Phase 3 first part merged via #69 and deployed.

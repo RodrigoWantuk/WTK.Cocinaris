@@ -16,6 +16,9 @@ public static class RecipeExecutionEndpoints
             .Produces<RecipeExecutionResponse>(StatusCodes.Status200OK)
             .ProducesProblem(400)
             .ProducesProblem(404);
+        group.MapGet("/{recipeId:guid}/availability", (RecipeExecutionApiService service, Guid recipeId, HttpContext context, CancellationToken cancellationToken) => service.GetAvailabilityAsync(recipeId, context, cancellationToken))
+            .Produces<IReadOnlyList<RecipeAvailabilityLineResponse>>()
+            .ProducesProblem(404);
         group.MapGet("/executions/in-progress", (RecipeExecutionApiService service, HttpContext context, CancellationToken cancellationToken) => service.ListInProgressAsync(context, cancellationToken))
             .Produces<IReadOnlyList<RecipeExecutionSummaryResponse>>();
         group.MapGet("/executions/{executionId:guid}", (RecipeExecutionApiService service, Guid executionId, HttpContext context, CancellationToken cancellationToken) => service.GetAsync(executionId, context, cancellationToken))
@@ -56,6 +59,10 @@ public sealed class RecipeExecutionApiService(RecipeExecutionApplicationService 
     /// <summary>Gets one execution with its completion proposal.</summary>
     public async Task<IResult> GetAsync(Guid executionId, HttpContext context, CancellationToken cancellationToken) =>
         ToResult(await application.GetAsync(executionId, cancellationToken), context.TraceIdentifier, ToResponse);
+
+    /// <summary>What the pantry covers of a recipe at its own servings.</summary>
+    public async Task<IResult> GetAvailabilityAsync(Guid recipeId, HttpContext context, CancellationToken cancellationToken) =>
+        ToResult(await application.GetAvailabilityAsync(recipeId, cancellationToken), context.TraceIdentifier, lines => lines!.Select(line => new RecipeAvailabilityLineResponse(line.IngredientId, line.Status, line.Unit, line.MissingQuantity)).ToList());
 
     /// <summary>Lists in-progress executions.</summary>
     public async Task<IResult> ListInProgressAsync(HttpContext context, CancellationToken cancellationToken) =>
@@ -160,6 +167,13 @@ public sealed record RecipeExecutionProposalResponse(IReadOnlyList<RecipeExecuti
 
 /// <summary>One recipe execution. <c>status</c> is <c>InProgress</c>, <c>Completed</c>, or <c>Abandoned</c>; <c>proposal</c> is present while in progress; <c>adjustments</c> are the session's ingredient changes (PLAN-0042 Phase 2).</summary>
 public sealed record RecipeExecutionResponse(Guid ExecutionId, Guid RecipeId, int RevisionNumber, string RecipeName, int Servings, int RecipeServings, string Status, DateTimeOffset StartedAt, DateTimeOffset? FinishedAt, Guid? InventoryBatchId, int? Rating, string? Notes, string NormalizedRecipeJson, RecipeExecutionProposalResponse? Proposal, IReadOnlyList<RecipeExecutionAdjustmentResponse> Adjustments);
+
+/// <summary>Whether the pantry covers one recipe ingredient at the recipe's servings (advisory).</summary>
+/// <param name="IngredientId">Ingredient identifier in the revision.</param>
+/// <param name="Status"><c>available</c>, <c>partial</c>, or <c>missing</c>.</param>
+/// <param name="Unit"><c>Gram</c>, <c>Milliliter</c>, or <c>Unit</c>.</param>
+/// <param name="MissingQuantity">Quantity the pantry lacks, in <paramref name="Unit"/>; zero when available.</param>
+public sealed record RecipeAvailabilityLineResponse(string IngredientId, string Status, string Unit, decimal MissingQuantity);
 
 /// <summary>Compact in-progress execution.</summary>
 public sealed record RecipeExecutionSummaryResponse(Guid ExecutionId, Guid RecipeId, string RecipeName, int Servings, DateTimeOffset StartedAt);

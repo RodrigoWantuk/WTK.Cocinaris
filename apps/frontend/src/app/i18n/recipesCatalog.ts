@@ -121,7 +121,7 @@ const en: Record<(typeof REQUIRED_RECIPES_I18N_KEYS)[number], string> = {
   "library.saved.remove": "Remove",
   "library.saved.error": "Could not prepare this recipe. Try again.",
   "library.saved.removeError": "Could not remove it. Try again.",
-  "recipes.guidance.title": "Steer the suggestions (optional)",
+  "recipes.guidance.title": "More options",
   "recipes.guidance.count": "{{count}} chosen",
   "recipes.guidance.hint":
     "Tell Cocinaris what you feel like. Leave anything blank to let it decide.",
@@ -178,8 +178,8 @@ const en: Record<(typeof REQUIRED_RECIPES_I18N_KEYS)[number], string> = {
   "recipes.actions.retry": "Try again",
   "recipes.actions.back": "Back",
   "recipes.actions.cancel": "Cancel",
-  "recipes.actions.confirmGenerate": "Request three candidates",
-  "recipes.actions.selectCandidate": "Select and save",
+  "recipes.actions.confirmGenerate": "Suggest recipes",
+  "recipes.actions.selectCandidate": "Cook this one",
   "recipes.actions.openInventory": "Open pantry",
   "recipes.list.error": "Unable to load recipes. Try again.",
   "recipes.detail.title": "Recipe",
@@ -199,15 +199,15 @@ const en: Record<(typeof REQUIRED_RECIPES_I18N_KEYS)[number], string> = {
   "recipes.detail.yield": "Yield: {{value}}",
   "recipes.generate.title": "What can I cook now?",
   "recipes.generate.subtitle":
-    "Use current inventory and profile constraints to suggest three recipes.",
+    "Three recipes made from what you have, respecting your preferences and restrictions.",
   "recipes.generate.confirmDetail":
-    "Cocinaris will read your on-hand pantry and preferences, then ask the AI gateway for exactly three validated candidates. Nothing is saved until you select one.",
+    "Items close to their date come first. Nothing is saved until you choose.",
   "recipes.generate.requesting": "Requesting candidates…",
   "recipes.generate.selecting": "Expanding and saving the selected recipe…",
   "recipes.generate.waitingSession": "Waiting for generation to finish…",
-  "recipes.generate.candidatesTitle": "Choose one candidate",
+  "recipes.generate.candidatesTitle": "Pick a recipe",
   "recipes.generate.candidatesHint":
-    "Three validated options. Selecting one expands and saves an owned recipe revision.",
+    "Choose one to save it to your recipes, or keep any for later.",
   "recipes.generate.minutes": "{{count}} min",
   "recipes.generate.servings": "{{count}} servings",
   "recipes.generate.difficulty": "Difficulty: {{value}}",
@@ -239,7 +239,7 @@ const ptBR: Record<(typeof REQUIRED_RECIPES_I18N_KEYS)[number], string> = {
   "library.saved.error":
     "Não foi possível preparar esta receita. Tente de novo.",
   "library.saved.removeError": "Não foi possível remover. Tente de novo.",
-  "recipes.guidance.title": "Direcionar as sugestões (opcional)",
+  "recipes.guidance.title": "Mais opções",
   "recipes.guidance.count": "{{count}} escolhas",
   "recipes.guidance.hint":
     "Conte o que você está com vontade. Deixe em branco o que o Cocinaris pode decidir.",
@@ -296,8 +296,8 @@ const ptBR: Record<(typeof REQUIRED_RECIPES_I18N_KEYS)[number], string> = {
   "recipes.actions.retry": "Tentar de novo",
   "recipes.actions.back": "Voltar",
   "recipes.actions.cancel": "Cancelar",
-  "recipes.actions.confirmGenerate": "Pedir três candidatos",
-  "recipes.actions.selectCandidate": "Selecionar e salvar",
+  "recipes.actions.confirmGenerate": "Sugerir receitas",
+  "recipes.actions.selectCandidate": "Quero esta",
   "recipes.actions.openInventory": "Abrir despensa",
   "recipes.list.error": "Não foi possível carregar as receitas. Tente de novo.",
   "recipes.detail.title": "Receita",
@@ -317,15 +317,15 @@ const ptBR: Record<(typeof REQUIRED_RECIPES_I18N_KEYS)[number], string> = {
   "recipes.detail.yield": "Rendimento: {{value}}",
   "recipes.generate.title": "O que cozinho agora?",
   "recipes.generate.subtitle":
-    "Use a despensa e as preferências atuais para sugerir três receitas.",
+    "Três receitas com o que você tem, respeitando suas preferências e restrições.",
   "recipes.generate.confirmDetail":
-    "O Cocinaris lerá a despensa e as preferências e pedirá ao gateway de IA exatamente três candidatos validados. Nada é salvo até você selecionar um.",
+    "Itens perto da data têm prioridade. Nada é salvo até você escolher.",
   "recipes.generate.requesting": "Solicitando candidatos…",
   "recipes.generate.selecting": "Expandindo e salvando a receita selecionada…",
   "recipes.generate.waitingSession": "Aguardando a geração terminar…",
-  "recipes.generate.candidatesTitle": "Escolha um candidato",
+  "recipes.generate.candidatesTitle": "Escolha uma receita",
   "recipes.generate.candidatesHint":
-    "Três opções validadas. Selecionar uma expande e salva uma revisão de receita sua.",
+    "Escolha uma para salvar nas suas receitas, ou guarde qualquer uma para depois.",
   "recipes.generate.minutes": "{{count}} min",
   "recipes.generate.servings": "{{count}} porções",
   "recipes.generate.difficulty": "Dificuldade: {{value}}",
@@ -357,7 +357,7 @@ const es: Record<(typeof REQUIRED_RECIPES_I18N_KEYS)[number], string> = {
   "library.saved.remove": "Quitar",
   "library.saved.error": "No se pudo preparar esta receta. Inténtalo de nuevo.",
   "library.saved.removeError": "No se pudo quitar. Inténtalo de nuevo.",
-  "recipes.guidance.title": "Orientar las sugerencias (opcional)",
+  "recipes.guidance.title": "Más opciones",
   "recipes.guidance.count": "{{count}} elegidas",
   "recipes.guidance.hint":
     "Cuéntale a Cocinaris qué te apetece. Deja en blanco lo que pueda decidir.",
@@ -415,8 +415,8 @@ const es: Record<(typeof REQUIRED_RECIPES_I18N_KEYS)[number], string> = {
   "recipes.actions.retry": "Reintentar",
   "recipes.actions.back": "Volver",
   "recipes.actions.cancel": "Cancelar",
-  "recipes.actions.confirmGenerate": "Pedir tres candidatos",
-  "recipes.actions.selectCandidate": "Seleccionar y guardar",
+  "recipes.actions.confirmGenerate": "Sugerir recetas",
+  "recipes.actions.selectCandidate": "Quiero esta",
   "recipes.actions.openInventory": "Abrir despensa",
   "recipes.list.error":
     "No se pudieron cargar las recetas. Inténtalo de nuevo.",
@@ -437,16 +437,16 @@ const es: Record<(typeof REQUIRED_RECIPES_I18N_KEYS)[number], string> = {
   "recipes.detail.yield": "Rendimiento: {{value}}",
   "recipes.generate.title": "¿Qué cocino ahora?",
   "recipes.generate.subtitle":
-    "Usa la despensa y las preferencias actuales para sugerir tres recetas.",
+    "Tres recetas con lo que tienes, respetando tus preferencias y restricciones.",
   "recipes.generate.confirmDetail":
-    "Cocinaris leerá tu despensa y preferencias y pedirá al gateway de IA exactamente tres candidatos validados. Nada se guarda hasta que selecciones uno.",
+    "Los alimentos cerca de su fecha van primero. Nada se guarda hasta que elijas.",
   "recipes.generate.requesting": "Solicitando candidatos…",
   "recipes.generate.selecting":
     "Expandiendo y guardando la receta seleccionada…",
   "recipes.generate.waitingSession": "Esperando a que termine la generación…",
-  "recipes.generate.candidatesTitle": "Elige un candidato",
+  "recipes.generate.candidatesTitle": "Elige una receta",
   "recipes.generate.candidatesHint":
-    "Tres opciones validadas. Seleccionar una expande y guarda una revisión de receta tuya.",
+    "Elige una para guardarla en tus recetas, o guarda cualquiera para después.",
   "recipes.generate.minutes": "{{count}} min",
   "recipes.generate.servings": "{{count}} porciones",
   "recipes.generate.difficulty": "Dificultad: {{value}}",

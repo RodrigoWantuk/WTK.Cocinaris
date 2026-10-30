@@ -81,7 +81,7 @@ function PreparationSection({ items }: { items: PreparationReminder[] }) {
     <section
       aria-labelledby="today-preparation"
       data-testid="today-preparation"
-      className="rounded-lg border border-border p-4"
+      className="surface p-4"
     >
       <h2 id="today-preparation" className="font-display text-xl">
         {t("today.prep.title")}
@@ -95,9 +95,11 @@ function PreparationSection({ items }: { items: PreparationReminder[] }) {
             className="flex flex-wrap items-center justify-between gap-2 py-2"
           >
             <span>
-              <span className="mr-2 rounded-full bg-secondary px-2 py-0.5 text-xs text-secondary-foreground">
-                {day(item.dueDate)}
-              </span>
+              {day(item.dueDate) !== day(item.plannedDate) ? (
+                <span className="mr-2 rounded-full bg-secondary px-2 py-0.5 text-xs text-secondary-foreground">
+                  {day(item.dueDate)}
+                </span>
+              ) : null}
               <span className="font-medium">{action(item)}</span>
               <span className="block text-sm text-muted-foreground">
                 {t("today.prep.for", {
@@ -225,11 +227,39 @@ export function TodayPage() {
         <h1 className="font-display text-3xl">{t("home.primaryQuestion")}</h1>
       </header>
 
+      {/* Resuming what is on the stove comes before anything new. */}
+      {cooking.status === "ready" && cooking.items.length > 0 ? (
+        <section
+          aria-labelledby="today-cooking"
+          data-testid="today-cooking"
+          className="rounded-2xl border border-primary/30 bg-accent p-4 text-accent-foreground"
+        >
+          <h2 id="today-cooking" className="font-display text-xl">
+            {t("today.cooking.title")}
+          </h2>
+          <ul className="mt-2 space-y-2">
+            {cooking.items.map((item) => (
+              <li
+                key={item.executionId}
+                className="flex flex-wrap items-center justify-between gap-2"
+              >
+                <span className="font-medium">{item.recipeName}</span>
+                <Button asChild size="sm">
+                  <Link to={`/app/receitas/cozinhar/${item.executionId}`}>
+                    {t("today.cooking.resume")}
+                  </Link>
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
       {menu.status === "ready" && menu.items.length > 0 ? (
         <section
           aria-labelledby="today-menu"
           data-testid="today-menu"
-          className="rounded-lg border border-border p-4"
+          className="surface p-4"
         >
           <h2 id="today-menu" className="font-display text-xl">
             {t("today.menu.title")}
@@ -287,37 +317,7 @@ export function TodayPage() {
         <PreparationSection items={preparation.items} />
       ) : null}
 
-      {cooking.status === "ready" && cooking.items.length > 0 ? (
-        <section
-          aria-labelledby="today-cooking"
-          data-testid="today-cooking"
-          className="rounded-lg border border-primary/40 bg-primary/5 p-4"
-        >
-          <h2 id="today-cooking" className="font-display text-xl">
-            {t("today.cooking.title")}
-          </h2>
-          <ul className="mt-2 space-y-2">
-            {cooking.items.map((item) => (
-              <li
-                key={item.executionId}
-                className="flex flex-wrap items-center justify-between gap-2"
-              >
-                <span className="font-medium">{item.recipeName}</span>
-                <Button asChild size="sm">
-                  <Link to={`/app/receitas/cozinhar/${item.executionId}`}>
-                    {t("today.cooking.resume")}
-                  </Link>
-                </Button>
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
-
-      <section
-        aria-labelledby="today-cta"
-        className="rounded-lg border bg-card p-5"
-      >
+      <section aria-labelledby="today-cta" className="surface p-5">
         <h2 id="today-cta" className="font-display text-2xl">
           {t("today.cta.title")}
         </h2>
@@ -363,7 +363,7 @@ export function TodayPage() {
             {t("today.attention.empty")}
           </p>
         ) : (
-          <ul className="mt-2 divide-y rounded-md border">
+          <ul className="surface mt-2 divide-y divide-border">
             {attention.items.slice(0, 5).map((lot) => (
               <li
                 key={lot.lotId}

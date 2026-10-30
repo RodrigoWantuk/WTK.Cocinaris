@@ -118,7 +118,7 @@ Text troubleshooting is PLAN-0045.
 - **Phase 2 remainder (2026-10-30, branch `agent/plan-0042-cooking-adjustments`):** changes during cooking. The session stores a list of per-ingredient adjustments (`substitute` with a name and optional amount, `quantity`, `skip`) in `recipes.recipe_executions."AdjustmentsJson"` (jsonb, default `[]`, migration `AddExecutionAdjustments`). `PUT /api/v1/recipes/executions/{executionId}/adjustments` replaces the list while the session is in progress (unknown ingredient ids, duplicates, more than 40, or bad values are `validation_failed`; a finished session is `domain_rule_violated`). The proposal follows the adjustments (substitute looked up by its own name, quantity used as given, `skipped` lines) and the editor opened from the finished screen applies them to the draft (rename, amounts converted back to the recipe's servings, skipped → optional) and lists them. The inventory OpenAPI transformer no longer adds the lot `If-Match`/`Idempotency-Key` headers to non-inventory paths ending in `/adjustments`.
   - Validation: unit `RecipeExecutionTests` (5 passing, 2 new); integration `CookingAdjustmentApiTests` (new) with `RecipeExecutionApiTests` execution tests, `ProfileContractAndSecurityTests`, and migration tests (48 run, 47 passing; the one failure was `IdeasWrittenForOnePersonAreServedToAnotherWithoutAnyAiCall`, a test-order flake fixed in this run: the three ideas can tie on score, so the test now accepts any of the second person's lots and rejects the first person's; then 5/5 passing in isolation); architecture tests (14 passing); `dotnet format` verified; OpenAPI regenerated (additions only), client regenerated and drift check passed; frontend `src/features/recipes` (5 files, 31 tests, including a new cooking-adjustment test and `applyCookingAdjustments.test.ts`) and `src/app` (61 tests) passing; typecheck, ESLint, and Prettier clean.
   - Not run: full suites; browser journey.
-- **Exact next action:** After the owner merges, deploy `main`. Phase 3 remainder (preparation-route due windows) and Phase 4 are open; the owner's next priority is PLAN-0029 Phase 4.
+- **Exact next action:** Phase 3 remainder (preparation-route due windows) or Phase 4 remainder (stage detail level by profile); both are unscheduled while PLAN-0057 runs. One step per screen, timers, and "how it should look" were delivered by PLAN-0054 Phase 4.
 - **Blockers:** None.
 
 ## Progress log
@@ -143,3 +143,7 @@ Text troubleshooting is PLAN-0045.
 
 - Delivered the Phase 2 remainder: changes made while cooking (substitute, different amount, left out) are stored on the session, drive the completion proposal, and are applied to the editor draft opened after cooking. The saved recipe changes only when the owner saves.
 - Fixed the order-dependent assertion in the idea library integration test found while validating.
+
+### 2026-10-30T18:00:00Z — Claude Code (registry reconciliation, PLAN-0057 Phase 0)
+
+- PR #70 merged and deployed at `99481b8`. Phase 4 overlap with PLAN-0054 Phase 4 recorded.

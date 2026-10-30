@@ -4,57 +4,68 @@
 
 @layer base {
   /*
-   * PLAN-0054 direction 2 ("limpo e direto", owner-approved 2026-10-29): white ground, near-black
-   * text and actions, soft tints only where they inform (success = "tem", warning = "usar logo",
-   * accent = highlight). Text on a tint is always the dark foreground or the matching strong tone.
+   * PLAN-0057 direction (owner, 2026-10-30): layered Zinc neutrals and one emerald accent.
+   * Elevation: background (lowest) < card (surface) < popover (elevated). The accent marks the
+   * primary action, active and selected states, and focus; status colors stay separate and
+   * always come with words. Contrast (WCAG AA) is noted next to each text and boundary token.
    */
   :root {
-    --background: 0 0% 100%;
-    --foreground: 0 0% 7%;
+    color-scheme: light;
+    --background: 0 0% 98%; /* zinc-50 */
+    --foreground: 240 10% 3.9%; /* zinc-950 */
     --card: 0 0% 100%;
-    --card-foreground: 0 0% 7%;
+    --card-foreground: 240 10% 3.9%;
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 7%;
-    --primary: 0 0% 7%;
+    --popover-foreground: 240 10% 3.9%;
+    /* emerald-700: white text 5.5:1. */
+    --primary: 163 94% 24%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 60 9% 95%;
-    --secondary-foreground: 0 0% 7%;
-    --muted: 60 9% 95%;
-    /* #5F5F5F: 6.4:1 on white, 5.9:1 on the secondary tint. */
-    --muted-foreground: 0 0% 37%;
-    --accent: 16 100% 93%;
-    --accent-foreground: 0 0% 7%;
+    --secondary: 240 4.8% 95.9%; /* zinc-100 */
+    --secondary-foreground: 240 10% 3.9%;
+    --muted: 240 4.8% 95.9%;
+    /* zinc-600: 7.4:1 on the background, 7.0:1 on muted. */
+    --muted-foreground: 240 5.2% 33.9%;
+    /* emerald-50 tint with emerald-900 text (9.2:1). */
+    --accent: 152 81% 95.9%;
+    --accent-foreground: 164 86% 16.5%;
     --destructive: 4 76% 40%;
     --destructive-foreground: 0 0% 100%;
-    --border: 0 0% 92%;
-    --input: 0 0% 88%;
-    --ring: 0 0% 7%;
+    --border: 240 5.9% 90%; /* decorative dividers */
+    /* Control boundaries need 3:1: #8E8E96 is 3.1:1 on the background. */
+    --input: 240 3.5% 57%;
+    /* emerald-600 focus ring: 3.6:1 on the background. */
+    --ring: 161 94% 30%;
     --success: 140 57% 27%;
     --success-soft: 138 45% 93%;
     --warning: 38 100% 24%;
     --warning-soft: 41 100% 92%;
-    --radius: 1rem;
+    --radius: 0.875rem;
   }
   .dark {
-    --background: 0 0% 7%;
-    --foreground: 0 0% 96%;
-    --card: 0 0% 10%;
-    --card-foreground: 0 0% 96%;
-    --popover: 0 0% 10%;
-    --popover-foreground: 0 0% 96%;
-    --primary: 0 0% 96%;
-    --primary-foreground: 0 0% 7%;
-    --secondary: 0 0% 15%;
-    --secondary-foreground: 0 0% 96%;
-    --muted: 0 0% 15%;
-    --muted-foreground: 0 0% 68%;
-    --accent: 16 35% 22%;
-    --accent-foreground: 0 0% 96%;
+    color-scheme: dark;
+    --background: 240 10% 3.9%; /* zinc-950, never pure black */
+    --foreground: 0 0% 98%;
+    --card: 240 5.9% 10%; /* zinc-900 */
+    --card-foreground: 0 0% 98%;
+    --popover: 240 5% 13%;
+    --popover-foreground: 0 0% 98%;
+    /* emerald-500 with zinc-950 text: 7.8:1. */
+    --primary: 160 84% 39%;
+    --primary-foreground: 240 10% 3.9%;
+    --secondary: 240 3.7% 15.9%; /* zinc-800 */
+    --secondary-foreground: 0 0% 98%;
+    --muted: 240 3.7% 15.9%;
+    /* zinc-400: 6.9:1 on cards, 5.8:1 on muted. */
+    --muted-foreground: 240 5% 64.9%;
+    --accent: 166 91% 9%;
+    --accent-foreground: 149 80% 80%;
     --destructive: 4 70% 62%;
-    --destructive-foreground: 0 0% 7%;
-    --border: 0 0% 18%;
-    --input: 0 0% 24%;
-    --ring: 0 0% 96%;
+    --destructive-foreground: 240 10% 3.9%;
+    --border: 240 3.7% 15.9%;
+    /* zinc-500: 3.7:1 on cards. */
+    --input: 240 3.8% 46%;
+    /* emerald-400 focus ring: 9.2:1 on cards. */
+    --ring: 158 64% 52%;
     --success: 140 45% 62%;
     --success-soft: 140 30% 16%;
     --warning: 38 90% 66%;
@@ -76,6 +87,10 @@
     font-family:
       "Inter Variable", "Inter", ui-sans-serif, system-ui, sans-serif;
     font-feature-settings: "cv11", "ss01";
+  }
+  /* Quantities and dates line up in lists. */
+  .tabular {
+    font-variant-numeric: tabular-nums;
   }
   h1,
   h2,
@@ -143,6 +158,16 @@
   .status-success {
     background-color: hsl(var(--success-soft));
     color: hsl(var(--success));
+  }
+  /*
+   * A surface (card) on the layered ground: a faint border in light, a faint inner ring in dark
+   * for a crisp edge without shadows.
+   */
+  .surface {
+    @apply rounded-2xl border border-border/70 bg-card text-card-foreground;
+  }
+  .dark .surface {
+    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.04);
   }
   .status-warning {
     background-color: hsl(var(--warning-soft));

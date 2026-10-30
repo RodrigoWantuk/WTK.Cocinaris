@@ -461,6 +461,14 @@ export interface RecipeRepository {
   listExecutionsInProgress(
     signal?: AbortSignal,
   ): Promise<RecipeExecutionSummary[]>;
+  /**
+   * What the pantry covers of a recipe at its own servings (PLAN-0057). Optional: without it the
+   * recipe page shows no pantry status.
+   */
+  getRecipeAvailability?(
+    recipeId: string,
+    signal?: AbortSignal,
+  ): Promise<RecipeAvailabilityLine[]>;
   /** Consumes the confirmed lots and stores leftovers atomically; a retry with the same key replays. */
   completeExecution(
     executionId: string,
@@ -481,4 +489,16 @@ export interface RecipeRepository {
     adjustments: RecipeExecutionAdjustment[],
     options: { csrfToken: string; signal?: AbortSignal },
   ): Promise<RecipeExecution>;
+}
+
+/**
+ * Whether the pantry covers one ingredient of a recipe (advisory, read-only): `available`,
+ * `partial` (see `missingQuantity`, in `unit`), or `missing`.
+ */
+export interface RecipeAvailabilityLine {
+  ingredientId: string;
+  status: "available" | "partial" | "missing";
+  /** `Gram`, `Milliliter`, or `Unit`. */
+  unit: string;
+  missingQuantity: number;
 }

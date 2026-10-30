@@ -951,6 +951,34 @@ export function createLiveRecipeRepository(options?: {
       }
     },
 
+    async getRecipeAvailability(recipeId, signal) {
+      try {
+        const { data, error, response } = await client.GET(
+          "/api/v1/recipes/{recipeId}/availability",
+          { params: { path: { recipeId } }, signal, credentials: "include" },
+        );
+        if (!response.ok || !data) {
+          await throwForFailure(
+            response,
+            "Unable to read the pantry for this recipe.",
+            error,
+          );
+        }
+        assertData(data, response);
+        return (Array.isArray(data) ? data : []).map((line) => ({
+          ingredientId: String(line.ingredientId),
+          status:
+            line.status === "available" || line.status === "partial"
+              ? line.status
+              : "missing",
+          unit: String(line.unit),
+          missingQuantity: Number(line.missingQuantity),
+        }));
+      } catch (err) {
+        wrapAbort(err);
+      }
+    },
+
     async completeExecution(
       executionId,
       input,
