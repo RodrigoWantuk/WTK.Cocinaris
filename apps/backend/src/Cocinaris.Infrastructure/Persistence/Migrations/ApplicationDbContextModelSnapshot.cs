@@ -1141,6 +1141,79 @@ namespace Cocinaris.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Cocinaris.Infrastructure.Persistence.RecipeIdeaRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ContentJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("CookingSkill")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.PrimitiveCollection<string[]>("EquipmentCodes")
+                        .IsRequired()
+                        .HasColumnType("text[]");
+
+                    b.PrimitiveCollection<string[]>("IngredientSlugs")
+                        .IsRequired()
+                        .HasColumnType("text[]");
+
+                    b.Property<string>("InstructionDetail")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("Language")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<string>("MealType")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.PrimitiveCollection<string[]>("Restrictions")
+                        .IsRequired()
+                        .HasColumnType("text[]");
+
+                    b.Property<string>("Signature")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("Strategy")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<int>("TimesOffered")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("TimesSelected")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IngredientSlugs");
+
+                    NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("IngredientSlugs"), "gin");
+
+                    b.HasIndex("Signature")
+                        .IsUnique();
+
+                    b.HasIndex("Language", "MealType");
+
+                    b.ToTable("recipe_ideas", "recipes");
+                });
+
             modelBuilder.Entity("Cocinaris.Infrastructure.Persistence.RecipeRecord", b =>
                 {
                     b.Property<Guid>("Id")

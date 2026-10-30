@@ -130,7 +130,7 @@ The following remain user- and time-specific:
 
 Private context is never reused across users.
 
-Ingredient identity ([`ingredient-identity.md`](ingredient-identity.md), PLAN-0055) is the first shared, non-private layer. Ingredient names resolve to a curated catalog once for all users. Embeddings are reused only for the exact same text. Recipe-idea reuse and dish-image reuse by similarity build on these canonical ingredients.
+Ingredient identity ([`ingredient-identity.md`](ingredient-identity.md), PLAN-0055) is the first shared, non-private layer. Ingredient names resolve to a curated catalog once for all users. Embeddings are reused only for the exact same text. The [recipe-idea library](recipe-idea-library.md) (PLAN-0055 Phase 2) builds on them: generic ideas answer suggestions and selections without AI calls. Dish-image reuse by similarity is the next step.
 
 ## Operation classes
 

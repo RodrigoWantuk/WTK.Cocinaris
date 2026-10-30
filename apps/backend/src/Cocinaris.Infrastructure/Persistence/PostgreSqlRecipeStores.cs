@@ -290,6 +290,47 @@ public sealed class PostgreSqlRecipeCookNowUnitOfWork(ApplicationDbContext datab
     {
         await using var transaction = await database.Database.BeginTransactionAsync(cancellationToken);
         session.CompleteSelection(recipe.Id, now);
+        AddRecipe(recipe, revision);
+        await ApplySessionAndSettleAsync(session, reservationId, settledUnits, usage, costMicroUsd, now, cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task FinalizeLibrarySelectionAsync(
+        Recipe recipe,
+        RecipeRevision revision,
+        RecipeGenerationSession session,
+        DateTimeOffset now,
+        CancellationToken cancellationToken)
+    {
+        await using var transaction = await database.Database.BeginTransactionAsync(cancellationToken);
+        session.CompleteSelection(recipe.Id, now);
+        AddRecipe(recipe, revision);
+        var record = await database.RecipeGenerationSessions
+            .SingleAsync(item => item.OwnerUserId == session.OwnerUserId && item.Id == session.Id, cancellationToken);
+        PostgreSqlRecipeGenerationStore.ApplySession(record, session);
+        await database.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task FailExpansionAsync(
+        RecipeGenerationSession session,
+        Guid reservationId,
+        string failureReason,
+        AiCallUsage? usage,
+        long costMicroUsd,
+        DateTimeOffset now,
+        CancellationToken cancellationToken)
+    {
+        await using var transaction = await database.Database.BeginTransactionAsync(cancellationToken);
+        session.MarkFailed(failureReason, now);
+        await ApplySessionAndReleaseAsync(session, reservationId, usage, costMicroUsd, now, cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+    }
+
+    private void AddRecipe(Recipe recipe, RecipeRevision revision)
+    {
         database.Recipes.Add(new RecipeRecord
         {
             Id = recipe.Id,
@@ -313,24 +354,6 @@ public sealed class PostgreSqlRecipeCookNowUnitOfWork(ApplicationDbContext datab
             SourceGenerationSessionId = revision.SourceGenerationSessionId,
             CreatedAt = revision.CreatedAt
         });
-        await ApplySessionAndSettleAsync(session, reservationId, settledUnits, usage, costMicroUsd, now, cancellationToken);
-        await transaction.CommitAsync(cancellationToken);
-    }
-
-    /// <inheritdoc />
-    public async Task FailExpansionAsync(
-        RecipeGenerationSession session,
-        Guid reservationId,
-        string failureReason,
-        AiCallUsage? usage,
-        long costMicroUsd,
-        DateTimeOffset now,
-        CancellationToken cancellationToken)
-    {
-        await using var transaction = await database.Database.BeginTransactionAsync(cancellationToken);
-        session.MarkFailed(failureReason, now);
-        await ApplySessionAndReleaseAsync(session, reservationId, usage, costMicroUsd, now, cancellationToken);
-        await transaction.CommitAsync(cancellationToken);
     }
 
     private async Task ApplySessionAndSettleAsync(

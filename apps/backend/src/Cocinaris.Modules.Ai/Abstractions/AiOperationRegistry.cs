@@ -64,7 +64,8 @@ public sealed class AiOperationRegistry
     /// <summary>Creates the default registry containing the recipe generation operations used by PLAN-0028.</summary>
     public static AiOperationRegistry CreateDefault() => new(
     [
-        new AiOperationDefinition(SuggestCandidates, "recipe-suggest-candidates.v1", "0.3", PreferNonThinking: true, TimeoutSeconds: 30, MaxRepairAttempts: 1, EstimatedUsageUnits: 3, ContextBudgetCharacters: 12_000, MaxOutputTokens: 4096, EstimatedCostMicroUsd: 3_000, EstimatedTokens: 14_000),
+        // Two repairs: the evaluated model sometimes broke a rule twice in a row (owner report 2026-10-30).
+        new AiOperationDefinition(SuggestCandidates, "recipe-suggest-candidates.v1", "0.3", PreferNonThinking: true, TimeoutSeconds: 30, MaxRepairAttempts: 2, EstimatedUsageUnits: 3, ContextBudgetCharacters: 12_000, MaxOutputTokens: 4096, EstimatedCostMicroUsd: 3_000, EstimatedTokens: 14_000),
         new AiOperationDefinition(ExpandSelected, "recipe-expand-selected.v1", "0.3", PreferNonThinking: true, TimeoutSeconds: 45, MaxRepairAttempts: 1, EstimatedUsageUnits: 5, ContextBudgetCharacters: 12_000, MaxOutputTokens: 6144, EstimatedCostMicroUsd: 5_000, EstimatedTokens: 18_000),
         // One image per call, priced per image; the job reserves the configured image price instead
         // of this estimate. Images use no text tokens, so they never count against the token windows.

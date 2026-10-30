@@ -21,6 +21,13 @@ public static partial class RecipeExpandSemantics
 
     private static readonly Regex LuxuryComponentPattern = LuxuryComponent();
 
+    /// <summary>
+    /// Whether text mentions private or identity context (inventory references, the user, allergies,
+    /// the pantry, restrictions, the household, the owner, or a URL). The shared idea library
+    /// (PLAN-0055 Phase 2) refuses to keep any recipe whose text matches.
+    /// </summary>
+    public static bool ContainsPrivateContext(string text) => PrivateThumbnailPatterns.Any(pattern => pattern.IsMatch(text));
+
     /// <summary>Validates thumbnail privacy/claim bounds and request-fidelity rules.</summary>
     public static List<string> Validate(ExpandSelectedResponse response, JsonElement? request)
     {

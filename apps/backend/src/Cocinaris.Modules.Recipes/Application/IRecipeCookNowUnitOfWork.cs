@@ -66,4 +66,15 @@ public interface IRecipeCookNowUnitOfWork
         long costMicroUsd,
         DateTimeOffset now,
         CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Creates the recipe and first revision built from a library idea and marks the session
+    /// Selected in one transaction. No AI call was made, so no usage reservation exists.
+    /// </summary>
+    Task FinalizeLibrarySelectionAsync(
+        Recipe recipe,
+        RecipeRevision revision,
+        RecipeGenerationSession session,
+        DateTimeOffset now,
+        CancellationToken cancellationToken);
 }
