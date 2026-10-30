@@ -41,6 +41,7 @@ export const REQUIRED_PROFILE_I18N_KEYS = [
   "profile.overview.adultDeclaration.notDeclared",
   "profile.overview.adultDeclaration.declined",
   "profile.overview.nextSteps",
+  "profile.overview.notFilled",
   "profile.data.title",
   "profile.data.subtitle",
   "profile.data.section.household",
@@ -283,6 +284,7 @@ const en: Record<ProfileI18nKey, string> = {
   "profile.overview.adultDeclaration.notDeclared": "Not declared yet",
   "profile.overview.adultDeclaration.declined": "Declined",
   "profile.overview.nextSteps": "Suggested next steps",
+  "profile.overview.notFilled": "Not filled in",
   "profile.data.title": "Household & cooking data",
   "profile.data.subtitle":
     "Change what you want in each section, then press Save in that section. Nothing is saved before that.",
@@ -530,6 +532,7 @@ const ptBR: Record<ProfileI18nKey, string> = {
   "profile.overview.adultDeclaration.notDeclared": "Ainda não declarada",
   "profile.overview.adultDeclaration.declined": "Recusada",
   "profile.overview.nextSteps": "Próximos passos sugeridos",
+  "profile.overview.notFilled": "Não preenchido",
   "profile.data.title": "Dados de família e culinária",
   "profile.data.subtitle":
     "Altere o que quiser em cada seção e clique em Salvar na própria seção. Nada é salvo antes disso.",
@@ -785,6 +788,7 @@ const es: Record<ProfileI18nKey, string> = {
   "profile.overview.adultDeclaration.notDeclared": "Aún no declarada",
   "profile.overview.adultDeclaration.declined": "Rechazada",
   "profile.overview.nextSteps": "Próximos pasos sugeridos",
+  "profile.overview.notFilled": "Sin completar",
   "profile.data.title": "Datos del hogar y cocina",
   "profile.data.subtitle":
     "Cambia lo que quieras en cada sección y pulsa Guardar en esa sección. No se guarda nada antes.",

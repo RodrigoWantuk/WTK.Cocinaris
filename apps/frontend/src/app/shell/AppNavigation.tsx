@@ -57,6 +57,9 @@ export function AppNavigation() {
   const { t } = useProductionI18n();
   const { pathname } = useLocation();
   const active = activeTabFor(pathname);
+  // Guided cooking is a focused task: on phones the tab bar would compete with the step controls
+  // and a stray tap could leave the session (PLAN-0057 review M6). The header stays.
+  const focused = pathname.startsWith("/app/receitas/cozinhar/");
   const labels: Record<ItemKey, string> = {
     home: t("nav.home"),
     inventory: t("inventory.title"),
@@ -69,7 +72,9 @@ export function AppNavigation() {
     <nav
       aria-label={t("nav.primary")}
       data-testid="production-primary-nav"
-      className="safe-b fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background px-2 pt-2 md:static md:border-0 md:bg-transparent md:p-0"
+      className={`safe-b fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 px-2 pt-2 md:static md:block md:border-0 md:bg-transparent md:p-0 ${
+        focused ? "hidden" : ""
+      }`}
     >
       <ul className="mx-auto flex max-w-md items-center justify-between md:max-w-none md:justify-start md:gap-1">
         {ITEMS.map((item) => {
@@ -83,7 +88,7 @@ export function AppNavigation() {
                   data-testid={item.testId}
                   aria-label={labels.add}
                   aria-current={current ? "page" : undefined}
-                  className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:ml-2 md:h-10 md:w-auto md:gap-1.5 md:px-4 md:text-sm md:font-semibold"
+                  className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground transition-[background-color,transform] duration-150 hover:bg-primary/90 focus-visible:outline-none motion-safe:active:scale-95 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:ml-2 md:h-10 md:w-auto md:gap-1.5 md:px-4 md:text-sm md:font-semibold"
                 >
                   <Icon aria-hidden="true" className="h-6 w-6 md:h-4 md:w-4" />
                   <span className="hidden md:inline">{labels.add}</span>
@@ -99,8 +104,8 @@ export function AppNavigation() {
                 aria-current={current ? "page" : undefined}
                 className={`flex w-16 flex-col items-center gap-1 rounded-xl py-1 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:w-auto md:flex-row md:gap-2 md:rounded-full md:px-3 md:py-2 md:text-sm ${
                   current
-                    ? "font-semibold text-foreground md:bg-secondary"
-                    : "font-medium text-muted-foreground hover:text-foreground"
+                    ? "font-semibold text-primary md:bg-accent md:text-accent-foreground"
+                    : "font-medium text-muted-foreground transition-colors duration-150 hover:text-foreground md:hover:bg-secondary"
                 }`}
               >
                 <Icon aria-hidden="true" className="h-6 w-6 md:h-4 md:w-4" />

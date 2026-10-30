@@ -102,7 +102,7 @@ function ProductionAccess() {
       <h1 className="font-display text-3xl">{t("access.loginTitle")}</h1>
       <p className="text-muted-foreground">{t("access.loginDetail")}</p>
       {session.status === "expired" && (
-        <p role="status" className="text-sm text-warning-foreground">
+        <p role="status" className="text-sm text-warning">
           {t("access.expired")}
         </p>
       )}

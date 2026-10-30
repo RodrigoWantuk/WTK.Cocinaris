@@ -137,10 +137,7 @@ describe("ProductionInventoryDetail", () => {
     });
     renderDetail(repo);
     await screen.findByText("Rice");
-    await user.selectOptions(
-      screen.getByTestId("inventory-adjust-type"),
-      "Discard",
-    );
+    await user.click(screen.getByTestId("inventory-adjust-type-Discard"));
     await user.type(screen.getByTestId("inventory-adjust-value"), "10");
     await user.click(screen.getByTestId("inventory-adjust-submit"));
     await waitFor(() =>
@@ -162,10 +159,7 @@ describe("ProductionInventoryDetail", () => {
     });
     renderDetail(repo);
     await screen.findByText("Rice");
-    await user.selectOptions(
-      screen.getByTestId("inventory-adjust-type"),
-      "Correct",
-    );
+    await user.click(screen.getByTestId("inventory-adjust-type-Correct"));
     await user.type(screen.getByTestId("inventory-adjust-value"), "250");
     await user.click(screen.getByTestId("inventory-adjust-estimated"));
     await user.click(screen.getByTestId("inventory-adjust-submit"));
@@ -206,10 +200,7 @@ describe("ProductionInventoryDetail", () => {
     });
     renderDetail(repo);
     await screen.findByText("Rice");
-    await user.selectOptions(
-      screen.getByTestId("inventory-availability"),
-      "Available",
-    );
+    await user.click(screen.getByTestId("inventory-availability-Available"));
     await user.click(screen.getByTestId("inventory-availability-submit"));
     await waitFor(() =>
       expect(adjustLot).toHaveBeenCalledWith(
@@ -368,10 +359,7 @@ describe("ProductionInventoryDetail", () => {
     });
     renderDetail(repo);
     await screen.findByText("Rice");
-    await user.selectOptions(
-      screen.getByTestId("inventory-availability"),
-      "Available",
-    );
+    await user.click(screen.getByTestId("inventory-availability-Available"));
     await user.click(screen.getByTestId("inventory-availability-submit"));
     expect(
       await screen.findByTestId("inventory-history-refresh-error"),

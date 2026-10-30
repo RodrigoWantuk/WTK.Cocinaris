@@ -36,6 +36,39 @@ describe("ProductionInventoryList", () => {
     );
   });
 
+  it("applies the search once after typing stops, and shows large amounts in kg", async () => {
+    const user = userEvent.setup();
+    const listLots = vi.fn(async () => ({
+      items: [
+        {
+          ...sampleLot,
+          quantity: {
+            kind: "measured" as const,
+            value: 2500,
+            unit: "Gram" as const,
+          },
+        },
+      ],
+      nextCursor: null,
+    }));
+    render(
+      renderInventoryTree({
+        repository: createMockInventoryRepo({ listLots }),
+        children: <ProductionInventoryList />,
+      }),
+    );
+    expect(await screen.findByText("2.5 kg")).toBeInTheDocument();
+
+    await user.type(screen.getByTestId("inventory-search"), "rice");
+    // One request for the whole word, without pressing a button (PLAN-0057 review M3).
+    await waitFor(() => expect(listLots).toHaveBeenCalledTimes(2));
+    expect(listLots).toHaveBeenLastCalledWith(
+      expect.objectContaining({ search: "rice" }),
+    );
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    expect(listLots).toHaveBeenCalledTimes(2);
+  });
+
   it("shows when a lot leaves the pantry automatically (PLAN-0056)", async () => {
     const repo = createMockInventoryRepo({
       listLots: async () => ({
@@ -116,10 +149,7 @@ describe("ProductionInventoryList", () => {
       screen.getByTestId("inventory-filter-status"),
       "active",
     );
-    await user.selectOptions(
-      screen.getByTestId("inventory-filter-location"),
-      "Pantry",
-    );
+    await user.click(screen.getByTestId("inventory-filter-location-Pantry"));
     await user.click(screen.getByTestId("inventory-search-submit"));
     await waitFor(() =>
       expect(listLots).toHaveBeenLastCalledWith(

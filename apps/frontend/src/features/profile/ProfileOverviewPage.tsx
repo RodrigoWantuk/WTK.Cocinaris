@@ -177,62 +177,43 @@ export function ProfileOverviewPage() {
         </div>
       )}
 
-      {!profile.profileExists && (
-        <div
-          data-testid="profile-overview-not-started"
-          className="rounded-xl border border-border p-4"
-        >
-          <p className="font-medium">{t("profile.overview.notStarted")}</p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {t("profile.overview.notStartedDetail")}
+      {/* One status block instead of three repeating ones (review M5): whether the profile was
+          started, how complete it is, and a bar; each section row below says what is missing. */}
+      <div className="surface space-y-3 p-4">
+        {!profile.profileExists ? (
+          <p data-testid="profile-overview-not-started">
+            <span className="font-medium">
+              {t("profile.overview.notStarted")}
+            </span>{" "}
+            <span className="text-sm text-muted-foreground">
+              {t("profile.overview.notStartedDetail")}
+            </span>
           </p>
-        </div>
-      )}
-
-      <div
-        data-testid="profile-overview-completeness"
-        className="rounded-xl border border-border p-4"
-      >
-        <p className="text-2xl font-display">
-          {t("profile.overview.completeness").replace(
-            "{percent}",
-            String(completeness.percentComplete),
-          )}
-        </p>
-        <p className="text-sm text-muted-foreground">
-          {t("profile.overview.completenessSummary")
-            .replace("{completed}", String(completeness.completedSections))
-            .replace("{total}", String(completeness.totalSections))}
-        </p>
-      </div>
-
-      <div
-        data-testid="profile-overview-next-steps"
-        className="rounded-xl border border-border p-4"
-      >
-        <h2 className="font-medium">{t("profile.overview.nextSteps")}</h2>
-        {nextSteps.length === 0 ? (
-          <p
-            className="mt-1 text-sm text-muted-foreground"
-            data-testid="profile-overview-next-steps-done"
+        ) : null}
+        <div data-testid="profile-overview-completeness">
+          <p className="flex items-baseline justify-between gap-2 text-sm">
+            <span className="font-semibold">
+              {t("profile.overview.completeness").replace(
+                "{percent}",
+                String(completeness.percentComplete),
+              )}
+            </span>
+            <span className="text-muted-foreground">
+              {t("profile.overview.completenessSummary")
+                .replace("{completed}", String(completeness.completedSections))
+                .replace("{total}", String(completeness.totalSections))}
+            </span>
+          </p>
+          <div
+            className="mt-2 h-2 overflow-hidden rounded-full bg-secondary"
+            aria-hidden="true"
           >
-            {t("profile.overview.nextSteps.done")}
-          </p>
-        ) : (
-          <ul className="mt-2 space-y-1">
-            {nextSteps.map((step) => (
-              <li key={step.sectionKey}>
-                <Link
-                  to={step.linkTo}
-                  data-testid={step.testId}
-                  className="text-sm text-primary underline-offset-4 hover:underline"
-                >
-                  {t(step.labelKey)}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        )}
+            <div
+              className="h-full rounded-full bg-primary transition-[width] duration-200"
+              style={{ width: `${completeness.percentComplete}%` }}
+            />
+          </div>
+        </div>
       </div>
 
       {/* Owner decision 2026-10-28: the adult confirmation is asked once and then disappears;
@@ -297,44 +278,58 @@ export function ProfileOverviewPage() {
 
       <nav
         aria-label={t("profile.overview.title")}
-        className="grid gap-3 sm:grid-cols-3"
+        className="surface divide-y divide-border overflow-hidden"
       >
-        <Link
-          to="/app/perfil/dados"
-          data-testid="profile-overview-link-data"
-          className="block rounded-xl border border-border p-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          <h3 className="font-medium">
-            {t("profile.overview.section.household")}
-          </h3>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {t("profile.overview.linkData")}
-          </p>
-        </Link>
-        <Link
-          to="/app/perfil/preferencias"
-          data-testid="profile-overview-link-preferences"
-          className="block rounded-xl border border-border p-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          <h3 className="font-medium">
-            {t("profile.overview.section.preferences")}
-          </h3>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {t("profile.overview.linkPreferences")}
-          </p>
-        </Link>
-        <Link
-          to="/app/perfil/equipamentos"
-          data-testid="profile-overview-link-equipment"
-          className="block rounded-xl border border-border p-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          <h3 className="font-medium">
-            {t("profile.overview.section.equipment")}
-          </h3>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {t("profile.overview.linkEquipment")}
-          </p>
-        </Link>
+        {(
+          [
+            [
+              "household",
+              "/app/perfil/dados",
+              "profile-overview-link-data",
+              "profile.overview.section.household",
+              "profile.overview.linkData",
+            ],
+            [
+              "preferences",
+              "/app/perfil/preferencias",
+              "profile-overview-link-preferences",
+              "profile.overview.section.preferences",
+              "profile.overview.linkPreferences",
+            ],
+            [
+              "equipment",
+              "/app/perfil/equipamentos",
+              "profile-overview-link-equipment",
+              "profile.overview.section.equipment",
+              "profile.overview.linkEquipment",
+            ],
+          ] as const
+        ).map(([section, to, testId, title, detail]) => {
+          const step = nextSteps.find((item) => item.sectionKey === section);
+          return (
+            <Link
+              key={section}
+              to={to}
+              data-testid={testId}
+              className="flex items-center justify-between gap-3 p-4 transition-colors duration-150 hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+            >
+              <span>
+                <span className="block font-medium">{t(title)}</span>
+                <span className="block text-sm text-muted-foreground">
+                  {t(detail)}
+                </span>
+              </span>
+              {step ? (
+                <span
+                  data-testid={step.testId}
+                  className="shrink-0 rounded-full bg-secondary px-2.5 py-0.5 text-xs font-semibold text-secondary-foreground"
+                >
+                  {t("profile.overview.notFilled")}
+                </span>
+              ) : null}
+            </Link>
+          );
+        })}
       </nav>
     </div>
   );

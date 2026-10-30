@@ -93,9 +93,8 @@ describe("lot detail transitions", () => {
     renderWith(repo);
 
     const panel = await screen.findByTestId("inventory-transition");
-    await userEvent.selectOptions(
-      within(panel).getByTestId("inventory-transition-kind"),
-      "Freeze",
+    await userEvent.click(
+      within(panel).getByTestId("inventory-transition-kind-Freeze"),
     );
     await userEvent.type(
       within(panel).getByTestId("inventory-transition-partial"),
@@ -131,9 +130,8 @@ describe("lot detail transitions", () => {
     );
 
     const panel = await screen.findByTestId("inventory-transition");
-    await userEvent.selectOptions(
-      within(panel).getByTestId("inventory-transition-target"),
-      "Refrigerator",
+    await userEvent.click(
+      within(panel).getByTestId("inventory-transition-target-Refrigerator"),
     );
     await userEvent.click(
       within(panel).getByTestId("inventory-transition-submit"),

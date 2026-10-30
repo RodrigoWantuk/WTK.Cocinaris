@@ -93,6 +93,8 @@ export const REQUIRED_INVENTORY_I18N_KEYS = [
   "inventory.attention.empty",
   "inventory.attention.disclaimer",
   "inventory.attention.useBy",
+  "inventory.attention.useByToday",
+  "inventory.attention.useByTomorrow",
   "inventory.attention.state.LikelyDiscard",
   "inventory.attention.state.CheckCondition",
   "inventory.attention.state.UsePriority",
@@ -274,6 +276,8 @@ const en: Record<InventoryI18nKey, string> = {
   "inventory.attention.disclaimer":
     "Guidance only, based on the dates and handling you recorded. Check the food before using it.",
   "inventory.attention.useBy": "Use by {date}",
+  "inventory.attention.useByToday": "Use today",
+  "inventory.attention.useByTomorrow": "Use by tomorrow",
   "inventory.attention.state.LikelyDiscard": "Probably no longer good",
   "inventory.attention.state.CheckCondition": "Check before using",
   "inventory.attention.state.UsePriority": "Use today or tomorrow",
@@ -484,6 +488,8 @@ const ptBR: Record<InventoryI18nKey, string> = {
   "inventory.attention.disclaimer":
     "Apenas orientação, com base nas datas e no manuseio que você registrou. Confira o alimento antes de usar.",
   "inventory.attention.useBy": "Usar até {date}",
+  "inventory.attention.useByToday": "Usar hoje",
+  "inventory.attention.useByTomorrow": "Usar até amanhã",
   "inventory.attention.state.LikelyDiscard": "Provavelmente não está mais bom",
   "inventory.attention.state.CheckCondition": "Confira antes de usar",
   "inventory.attention.state.UsePriority": "Use hoje ou amanhã",
@@ -698,6 +704,8 @@ const es: Record<InventoryI18nKey, string> = {
   "inventory.attention.disclaimer":
     "Solo orientación, según las fechas y la manipulación que registraste. Revisa el alimento antes de usarlo.",
   "inventory.attention.useBy": "Usar antes del {date}",
+  "inventory.attention.useByToday": "Usar hoy",
+  "inventory.attention.useByTomorrow": "Usar antes de mañana",
   "inventory.attention.state.LikelyDiscard": "Probablemente ya no está bueno",
   "inventory.attention.state.CheckCondition": "Revisa antes de usar",
   "inventory.attention.state.UsePriority": "Úsalo hoy o mañana",

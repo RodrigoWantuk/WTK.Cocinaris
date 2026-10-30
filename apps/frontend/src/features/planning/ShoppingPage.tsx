@@ -492,7 +492,11 @@ function ShoppingRow({
           </Button>
         ) : null}
       </div>
-      {toBuy && planning.setPackageSize ? (
+      {/* The package size is offered where it matters: when buying, or to change a known size
+          (review M7). */}
+      {toBuy &&
+      planning.setPackageSize &&
+      (item.packageSize || buying || editingPackage) ? (
         editingPackage ? (
           <form
             className="grid gap-2 sm:grid-cols-3 sm:items-end"
