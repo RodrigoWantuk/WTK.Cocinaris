@@ -99,6 +99,28 @@ Represent:
 - [ ] Production adapters contain no fallback to prototype fixtures.
 - [ ] Accessibility, localization, resilience, and observability are complete.
 
+## "Para você agora" delivered (2026-10-31): confirmed-profile tier and quick chooser
+
+- **Backend:** `GET /api/v1/recipes/recommendations?today=&mealType=&maxMinutes=&limit=` (`RecipeRecommendationService`). It ranks the owner's active saved recipes deterministically, with no AI call:
+  - pantry coverage, from the cooking proposal's matching (up to 50 points);
+  - using a pantry item due within two days (20);
+  - fitting the time: the chooser's answer is a hard limit, the profile's confirmed ordinary prep time is only a preference (10);
+  - fitting the chosen meal (10);
+  - favorite (5);
+  - not cooked in the last seven days (5), with 10 points off when cooked in the last two days.
+
+  Each result carries reason codes (`have_all`, `have_most`, `uses_soon` with the item, `fits_time`, `fits_meal`, `favorite`, `not_recent`). Invalid answers are `validation_failed`. Read-only, owner-scoped.
+- **Restrictions:** not checked, because no deterministic ingredient-to-restriction table exists. The tier only re-ranks recipes the owner already saved, and it never creates new ones.
+- **Frontend:**
+  - "Para você agora" sits on "Hoje" after today's menu.
+  - Quick chooser: which meal (preset from the local hour) and how much time (up to 20 min, up to 45 min, no rush). The answers are request-scoped and are never stored or written to the profile.
+  - Picks appear as image cards with their first reason ("Usa Creme de leite, que vence logo").
+  - When nothing fits, a link offers new suggestions.
+  - The old "Suas receitas" list shows only when recommendations are unavailable.
+- **Not delivered:**
+  - AI-ranked suggestions through the gateway (the "Sugerir" flow already covers AI ideas);
+  - source freshness and telemetry codes.
+
 ## Execution state
 
 - **Current checkpoint:** The production "Hoje" page (`TodayPage`) uses live sources and no fixtures. Each section loads and fails independently:
@@ -114,8 +136,8 @@ Represent:
   - source freshness and telemetry codes.
 - **Validation:** `Cooking.test.tsx` covers the home page: resume, attention, and recipe sources, with one failing source isolated. The app shell and home route tests pass, and the home section of the browser journey passes.
 - **Menu tier (PLAN-0029 Phase 1, on `agent/plan-0029-menu-and-shopping`):** "No cardápio de hoje" is now the first section. It reads `GET /api/v1/planning/today?date=` with the browser's local day, cooks a meal linked to its menu entry, and degrades independently; `Cooking.test.tsx` covers its order and the linked start.
-- **Exact next action:** The confirmed-profile tier and the quick chooser.
-- **Blockers:** The menu tier depends on PLAN-0029.
+- **Exact next action:** The owner merges "Para você agora" and tries the chooser on the phone. What remains is AI-ranked suggestions and freshness/telemetry codes; neither is scheduled.
+- **Blockers:** None (PLAN-0029 is completed).
 
 ## Progress log
 
@@ -134,3 +156,13 @@ Represent:
 ### 2026-10-30T18:00:00Z — Claude Code (registry reconciliation, PLAN-0057 Phase 0)
 
 - The "Prepare-se" section on Hoje (PLAN-0029 Phase 4, #71) adds pre-meal reminders after the menu tier.
+
+### 2026-10-31T03:30:00Z — Claude Code
+
+- Delivered the confirmed-profile tier and the quick chooser as "Para você agora": a deterministic backend ranking with reason codes and a request-scoped meal and time chooser on "Hoje".
+- Validation:
+  - backend integration test `ForYouNowRanksSavedRecipesByPantryDatesTimeAndMeal`;
+  - architecture tests 14/14; `dotnet format` clean;
+  - OpenAPI changes are additions only, and the client drift check passed;
+  - frontend 330/330, including new chooser tests; typecheck and lint clean;
+  - replica capture reviewed, and axe reported no violations.
