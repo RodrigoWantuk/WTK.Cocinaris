@@ -58,6 +58,7 @@ The owner's portfolio only declares a web manifest, which lets Chrome on Android
 - [x] The main button opens the half-moon menu with the two actions; keyboard and screen-reader behavior follow the disclosure pattern.
 - [x] "Cozinhar" lists saved recipes ordered by pantry coverage, starts cooking in one tap, and offers new-recipe options.
 - [ ] The owner checks the installation on a phone after deployment.
+- [x] Owner feedback on the half moon ("ficou horrível, desformatada… precisa ser mais delicada") addressed: a compact, translucent 220 × 110 px arc floating just above the button, with two small icons and one-word labels resting on its curve (full names stay as accessible names), a lighter backdrop, and the button turning into × while open; the desktop panel is unchanged.
 
 ## Execution state
 
@@ -74,7 +75,7 @@ The owner's portfolio only declares a web manifest, which lets Chrome on Android
   - **Installability:** CDP `Page.getInstallabilityErrors` returned an empty list on the proxy replica; the manifest is served with 200.
   - **Visual:** phone captures of the open menu and of the cook page on the replica.
 - **Not run:** a real phone install (needs the owner's device), full suites.
-- **Exact next action:** The owner merges; deploy `main`; the owner installs the app from Chrome on Android (or Safari on iPhone) and tries the main button.
+- **Exact next action:** The owner merges the half-moon fix and checks it on the phone, together with installing the app.
 - **Blockers:** None.
 
 ## Progress log
@@ -82,3 +83,8 @@ The owner's portfolio only declares a web manifest, which lets Chrome on Android
 ### 2026-10-31T01:30:00Z — Claude Code
 
 - Plan created from four owner messages and delivered in one run: installable app (manifest, icons, banner), half-moon quick actions on the main button, and the "Cozinhar" page with recipes ordered by pantry coverage.
+
+### 2026-10-31T02:30:00Z — Claude Code
+
+- Merged via #76 and deployed at `1d0e79f`. On the live site Chromium reports no installability errors. The manifest is served as `text/plain` by the host's Caddy; this does not block installation, and the deploy script does not manage the Caddy config.
+- Reworked the half moon after the owner's feedback, into a compact translucent arc with small icons, short labels, and an × on the button while it is open. Checked in a phone capture on the replica.
