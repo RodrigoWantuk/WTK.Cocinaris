@@ -469,6 +469,11 @@ export interface RecipeRepository {
     recipeId: string,
     signal?: AbortSignal,
   ): Promise<RecipeAvailabilityLine[]>;
+  /**
+   * How much of each active recipe the pantry covers, best covered first (PLAN-0059 "Cozinhar").
+   * Optional: without it the cook page lists recipes in library order without pantry counts.
+   */
+  listRecipeReadiness?(signal?: AbortSignal): Promise<RecipeReadiness[]>;
   /** Consumes the confirmed lots and stores leftovers atomically; a retry with the same key replays. */
   completeExecution(
     executionId: string,
@@ -501,4 +506,12 @@ export interface RecipeAvailabilityLine {
   /** `Gram`, `Milliliter`, or `Unit`. */
   unit: string;
   missingQuantity: number;
+}
+
+/** How much of one active recipe the pantry covers; basics and optional ingredients are not counted. */
+export interface RecipeReadiness {
+  recipeId: string;
+  available: number;
+  partial: number;
+  missing: number;
 }

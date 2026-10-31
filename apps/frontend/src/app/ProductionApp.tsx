@@ -29,6 +29,7 @@ import { AppNavigation } from "@/app/shell/AppNavigation";
 import { MenuPage } from "@/features/planning/MenuPage";
 import { ShoppingPage } from "@/features/planning/ShoppingPage";
 import { RecipesListPage } from "@/features/recipes/RecipesListPage";
+import { CookPickerPage } from "@/features/recipes/CookPickerPage";
 import { RecipeGeneratePage } from "@/features/recipes/RecipeGeneratePage";
 import { TodayPage } from "@/features/home/TodayPage";
 import { CookingPage } from "@/features/recipes/CookingPage";
@@ -46,9 +47,12 @@ import {
 } from "@/features/profile/UnsavedChangesCoordinator";
 import { ProfileWorkspaceStatusBanner } from "@/features/profile/ProfileWorkspaceStatusBanner";
 import { applyTheme, readThemePreference } from "@/app/theme/theme";
+import { startInstallPromptCapture } from "@/app/install/installPrompt";
 
 // Apply the stored or system theme before the first render, so the page does not flash light.
 if (typeof document !== "undefined") applyTheme(readThemePreference());
+// The browser may offer installation before React renders; keep the offer for the banner.
+startInstallPromptCapture();
 
 /**
  * Public entry route. A visitor who already has a session goes straight to the home. Everyone
@@ -141,6 +145,7 @@ export function pageTitleKeyFor(pathname: string): string {
     return "page.title.recipeVariation";
   if (/^\/app\/receitas\/[^/]+\/versoes\//.test(pathname))
     return "page.title.recipeRevision";
+  if (pathname === "/app/cozinhar") return "page.title.cook";
   if (pathname === "/app/compras") return "page.title.shopping";
   if (pathname === "/app/cardapio") return "page.title.planning";
   if (/^\/app\/cardapio\/[^/]+\/compras$/.test(pathname))
@@ -405,6 +410,7 @@ function createProductionRouter() {
         },
         { path: "despensa/:lotId", element: <ProductionInventoryDetail /> },
         { path: "receitas", element: <RecipesListPage /> },
+        { path: "cozinhar", element: <CookPickerPage /> },
         { path: "receitas/gerar", element: <RecipeGeneratePage /> },
         { path: "compras", element: <ShoppingHubPage /> },
         { path: "cardapio", element: <MenusPage /> },

@@ -35,6 +35,7 @@ import { mealTypeLabel } from "@/features/recipes/recipeLabels";
 import { RecipeCard } from "@/features/recipes/RecipeCard";
 import { RecipeThumbnail } from "@/features/recipes/RecipeThumbnail";
 import { buildHomeGreeting, readBrowserTimeZone } from "./dayPart";
+import { InstallAppBanner } from "@/app/install/InstallAppBanner";
 
 const UNIT_KEYS: Record<string, string> = {
   Gram: "recipes.unit.g",
@@ -442,6 +443,8 @@ export function TodayPage() {
         </p>
         <h1 className="font-display text-3xl">{t("home.primaryQuestion")}</h1>
       </header>
+
+      <InstallAppBanner />
 
       {firstRun ? <WelcomeCard /> : null}
 

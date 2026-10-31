@@ -951,6 +951,31 @@ export function createLiveRecipeRepository(options?: {
       }
     },
 
+    async listRecipeReadiness(signal) {
+      try {
+        const { data, error, response } = await client.GET(
+          "/api/v1/recipes/readiness",
+          { signal, credentials: "include" },
+        );
+        if (!response.ok || !data) {
+          await throwForFailure(
+            response,
+            "Unable to read the pantry for your recipes.",
+            error,
+          );
+        }
+        assertData(data, response);
+        return (Array.isArray(data) ? data : []).map((item) => ({
+          recipeId: String(item.recipeId),
+          available: Number(item.available),
+          partial: Number(item.partial),
+          missing: Number(item.missing),
+        }));
+      } catch (err) {
+        wrapAbort(err);
+      }
+    },
+
     async getRecipeAvailability(recipeId, signal) {
       try {
         const { data, error, response } = await client.GET(

@@ -159,6 +159,23 @@ export const REQUIRED_PLANNING_I18N_KEYS = [
   "planning.ai.choose",
   "planning.ai.saving",
   "nav.add",
+  "quick.addPantry",
+  "quick.cook",
+  "cook.title",
+  "cook.subtitle",
+  "cook.new",
+  "cook.suggest",
+  "cook.suggestDetail",
+  "cook.write",
+  "cook.writeDetail",
+  "cook.saved",
+  "cook.haveAll",
+  "cook.haveSome",
+  "cook.start",
+  "cook.empty",
+  "cook.emptyDetail",
+  "cook.error",
+  "cook.unavailable",
   "nav.shopping",
   "account.menu",
   "shopping.hub.empty",
@@ -166,7 +183,26 @@ export const REQUIRED_PLANNING_I18N_KEYS = [
 ] as const;
 
 const ptBR: Record<string, string> = {
-  "nav.add": "Adicionar",
+  "nav.add": "Começar",
+  "quick.addPantry": "Adicionar à despensa",
+  "quick.cook": "Cozinhar",
+  "cook.title": "O que vamos cozinhar?",
+  "cook.subtitle":
+    "Suas receitas, das que você tem mais ingredientes às que faltam mais.",
+  "cook.new": "Nova receita",
+  "cook.suggest": "Sugerir com o que tenho",
+  "cook.suggestDetail": "Três ideias com a sua despensa",
+  "cook.write": "Escrever receita",
+  "cook.writeDetail": "Do seu jeito, passo a passo",
+  "cook.saved": "Das suas receitas",
+  "cook.haveAll": "Você tem tudo",
+  "cook.haveSome": "Você tem {{have}} de {{total}}",
+  "cook.start": "Cozinhar",
+  "cook.empty": "Nenhuma receita salva ainda",
+  "cook.emptyDetail":
+    "Peça sugestões com o que você tem ou escreva a sua primeira receita.",
+  "cook.error": "Não foi possível começar a cozinhar. Tente de novo.",
+  "cook.unavailable": "Suas receitas não puderam ser carregadas agora.",
   "nav.shopping": "Compras",
   "account.menu": "Conta, perfil e idioma",
   "shopping.hub.empty":
@@ -349,7 +385,26 @@ const ptBR: Record<string, string> = {
 };
 
 const en: Record<string, string> = {
-  "nav.add": "Add",
+  "nav.add": "Start",
+  "quick.addPantry": "Add to pantry",
+  "quick.cook": "Cook",
+  "cook.title": "What shall we cook?",
+  "cook.subtitle":
+    "Your recipes, from the ones you have most ingredients for to the ones missing most.",
+  "cook.new": "New recipe",
+  "cook.suggest": "Suggest from what I have",
+  "cook.suggestDetail": "Three ideas from your pantry",
+  "cook.write": "Write a recipe",
+  "cook.writeDetail": "Your way, step by step",
+  "cook.saved": "From your recipes",
+  "cook.haveAll": "You have everything",
+  "cook.haveSome": "You have {{have}} of {{total}}",
+  "cook.start": "Cook",
+  "cook.empty": "No saved recipes yet",
+  "cook.emptyDetail":
+    "Ask for suggestions from what you have or write your first recipe.",
+  "cook.error": "Could not start cooking. Try again.",
+  "cook.unavailable": "Your recipes could not be loaded right now.",
   "nav.shopping": "Shopping",
   "account.menu": "Account, profile, and language",
   "shopping.hub.empty":
@@ -527,7 +582,26 @@ const en: Record<string, string> = {
 };
 
 const es: Record<string, string> = {
-  "nav.add": "Añadir",
+  "nav.add": "Empezar",
+  "quick.addPantry": "Añadir a la despensa",
+  "quick.cook": "Cocinar",
+  "cook.title": "¿Qué cocinamos?",
+  "cook.subtitle":
+    "Tus recetas, de las que tienes más ingredientes a las que les faltan más.",
+  "cook.new": "Nueva receta",
+  "cook.suggest": "Sugerir con lo que tengo",
+  "cook.suggestDetail": "Tres ideas con tu despensa",
+  "cook.write": "Escribir receta",
+  "cook.writeDetail": "A tu manera, paso a paso",
+  "cook.saved": "De tus recetas",
+  "cook.haveAll": "Tienes todo",
+  "cook.haveSome": "Tienes {{have}} de {{total}}",
+  "cook.start": "Cocinar",
+  "cook.empty": "Aún no hay recetas guardadas",
+  "cook.emptyDetail":
+    "Pide sugerencias con lo que tienes o escribe tu primera receta.",
+  "cook.error": "No se pudo empezar a cocinar. Inténtalo de nuevo.",
+  "cook.unavailable": "Tus recetas no se pudieron cargar ahora.",
   "nav.shopping": "Compras",
   "account.menu": "Cuenta, perfil e idioma",
   "shopping.hub.empty":

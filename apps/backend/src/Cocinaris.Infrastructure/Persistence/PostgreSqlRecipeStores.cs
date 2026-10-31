@@ -446,4 +446,30 @@ public sealed class PostgreSqlRecipeStore(ApplicationDbContext database) : IReci
         var mealTypes = JsonSerializer.Deserialize<string[]>(revision.MealTypesJson, SerializerOptions) ?? [];
         return new RecipeDetail(recipe.Id, revision.RevisionNumber, revision.Name, mealTypes, revision.Servings, revision.NormalizedRecipeJson, revision.ThumbnailVisualJson, revision.CreatedAt);
     }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<RecipeDetail>> ListActiveAsync(Guid ownerUserId, int limit, CancellationToken cancellationToken)
+    {
+        var rows = await database.Recipes.AsNoTracking()
+            .Where(recipe => recipe.OwnerUserId == ownerUserId && recipe.ArchivedAt == null)
+            .Join(
+                database.RecipeRevisions.AsNoTracking().Where(revision => revision.OwnerUserId == ownerUserId),
+                recipe => new { RecipeId = recipe.Id, Number = recipe.CurrentRevisionNumber },
+                revision => new { revision.RecipeId, Number = revision.RevisionNumber },
+                (recipe, revision) => new { recipe.Id, recipe.UpdatedAt, revision })
+            .OrderByDescending(row => row.UpdatedAt)
+            .ThenByDescending(row => row.Id)
+            .Take(limit)
+            .ToListAsync(cancellationToken);
+        return rows.Select(row => new RecipeDetail(
+                row.Id,
+                row.revision.RevisionNumber,
+                row.revision.Name,
+                JsonSerializer.Deserialize<string[]>(row.revision.MealTypesJson, SerializerOptions) ?? [],
+                row.revision.Servings,
+                row.revision.NormalizedRecipeJson,
+                row.revision.ThumbnailVisualJson,
+                row.revision.CreatedAt))
+            .ToList();
+    }
 }
