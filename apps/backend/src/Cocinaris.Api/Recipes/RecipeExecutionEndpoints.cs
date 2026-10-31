@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using Cocinaris.Api.Services;
 using Cocinaris.Modules.Recipes.Application;
 using Cocinaris.Modules.Recipes.Domain;
 
@@ -16,6 +17,9 @@ public static class RecipeExecutionEndpoints
             .Produces<RecipeExecutionResponse>(StatusCodes.Status200OK)
             .ProducesProblem(400)
             .ProducesProblem(404);
+        group.MapGet("/recommendations", (RecipeExecutionApiService service, RecipeRecommendationService recommendations, string? mealType, int? maxMinutes, DateOnly? today, int? limit, HttpContext context, CancellationToken cancellationToken) => service.RecommendAsync(recommendations, mealType, maxMinutes, today, limit, context, cancellationToken))
+            .Produces<IReadOnlyList<RecipeRecommendationResponse>>()
+            .ProducesProblem(400);
         group.MapGet("/readiness", (RecipeExecutionApiService service, HttpContext context, CancellationToken cancellationToken) => service.GetLibraryReadinessAsync(context, cancellationToken))
             .Produces<IReadOnlyList<RecipeReadinessResponse>>();
         group.MapGet("/{recipeId:guid}/availability", (RecipeExecutionApiService service, Guid recipeId, HttpContext context, CancellationToken cancellationToken) => service.GetAvailabilityAsync(recipeId, context, cancellationToken))
@@ -61,6 +65,20 @@ public sealed class RecipeExecutionApiService(RecipeExecutionApplicationService 
     /// <summary>Gets one execution with its completion proposal.</summary>
     public async Task<IResult> GetAsync(Guid executionId, HttpContext context, CancellationToken cancellationToken) =>
         ToResult(await application.GetAsync(executionId, cancellationToken), context.TraceIdentifier, ToResponse);
+
+    /// <summary>"Para você agora": saved recipes ranked for the chooser's answers (PLAN-0021).</summary>
+    public async Task<IResult> RecommendAsync(RecipeRecommendationService recommendations, string? mealType, int? maxMinutes, DateOnly? today, int? limit, HttpContext context, CancellationToken cancellationToken)
+    {
+        if (today is null)
+        {
+            return ApiProblem.Create(context, StatusCodes.Status400BadRequest, "validation_failed", "The today query parameter (the person's local date) is required.");
+        }
+
+        return ToResult(
+            await recommendations.RecommendAsync(new RecipeRecommendationQuery(string.IsNullOrWhiteSpace(mealType) ? null : mealType, maxMinutes, today.Value, limit ?? 4), cancellationToken),
+            context.TraceIdentifier,
+            items => items!.Select(item => new RecipeRecommendationResponse(item.RecipeId, item.Score, item.TotalMinutes, item.Available, item.Total, item.Reasons.Select(reason => new RecipeRecommendationReasonResponse(reason.Code, reason.Item)).ToList())).ToList());
+    }
 
     /// <summary>What the pantry covers of each active recipe, best covered first.</summary>
     public async Task<IResult> GetLibraryReadinessAsync(HttpContext context, CancellationToken cancellationToken) =>
@@ -187,6 +205,20 @@ public sealed record RecipeAvailabilityLineResponse(string IngredientId, string 
 /// <param name="Partial">Ingredients partly covered.</param>
 /// <param name="Missing">Ingredients not in the pantry.</param>
 public sealed record RecipeReadinessResponse(Guid RecipeId, int Available, int Partial, int Missing);
+
+/// <summary>A saved recipe recommended for now, best first (PLAN-0021).</summary>
+/// <param name="RecipeId">Recipe.</param>
+/// <param name="Score">Deterministic score from 0 to 100.</param>
+/// <param name="TotalMinutes">Total minutes; null when unknown.</param>
+/// <param name="Available">Ingredients the pantry fully covers.</param>
+/// <param name="Total">Ingredients counted (basics and optional left out).</param>
+/// <param name="Reasons">Why it was recommended, most important first.</param>
+public sealed record RecipeRecommendationResponse(Guid RecipeId, int Score, int? TotalMinutes, int Available, int Total, IReadOnlyList<RecipeRecommendationReasonResponse> Reasons);
+
+/// <summary>One recommendation reason: <c>have_all</c>, <c>have_most</c>, <c>uses_soon</c> (with <paramref name="Item"/>), <c>fits_time</c>, <c>fits_meal</c>, <c>favorite</c>, or <c>not_recent</c>.</summary>
+/// <param name="Code">Reason code.</param>
+/// <param name="Item">Pantry item name for <c>uses_soon</c>.</param>
+public sealed record RecipeRecommendationReasonResponse(string Code, string? Item);
 
 /// <summary>Compact in-progress execution.</summary>
 public sealed record RecipeExecutionSummaryResponse(Guid ExecutionId, Guid RecipeId, string RecipeName, int Servings, DateTimeOffset StartedAt);

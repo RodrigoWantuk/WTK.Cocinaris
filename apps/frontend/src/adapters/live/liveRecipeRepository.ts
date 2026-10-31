@@ -951,6 +951,48 @@ export function createLiveRecipeRepository(options?: {
       }
     },
 
+    async listRecommendations(query, signal) {
+      try {
+        const { data, error, response } = await client.GET(
+          "/api/v1/recipes/recommendations",
+          {
+            params: {
+              query: {
+                today: query.today,
+                mealType: query.mealType ?? undefined,
+                maxMinutes: query.maxMinutes ?? undefined,
+                limit: query.limit,
+              },
+            },
+            signal,
+            credentials: "include",
+          },
+        );
+        if (!response.ok || !data) {
+          await throwForFailure(
+            response,
+            "Unable to load recommendations.",
+            error,
+          );
+        }
+        assertData(data, response);
+        return (Array.isArray(data) ? data : []).map((item) => ({
+          recipeId: String(item.recipeId),
+          score: Number(item.score),
+          totalMinutes:
+            item.totalMinutes == null ? null : Number(item.totalMinutes),
+          available: Number(item.available),
+          total: Number(item.total),
+          reasons: (item.reasons ?? []).map((reason) => ({
+            code: String(reason.code),
+            item: reason.item == null ? null : String(reason.item),
+          })),
+        }));
+      } catch (err) {
+        wrapAbort(err);
+      }
+    },
+
     async listRecipeReadiness(signal) {
       try {
         const { data, error, response } = await client.GET(

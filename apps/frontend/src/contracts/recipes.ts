@@ -474,6 +474,20 @@ export interface RecipeRepository {
    * Optional: without it the cook page lists recipes in library order without pantry counts.
    */
   listRecipeReadiness?(signal?: AbortSignal): Promise<RecipeReadiness[]>;
+  /**
+   * "Para você agora" (PLAN-0021): saved recipes ranked by the backend for the quick chooser's
+   * answers. The answers are request-scoped and never stored. Optional: without it the home
+   * shows no recommendations.
+   */
+  listRecommendations?(
+    query: {
+      today: string;
+      mealType: string | null;
+      maxMinutes: number | null;
+      limit?: number;
+    },
+    signal?: AbortSignal,
+  ): Promise<RecipeRecommendation[]>;
   /** Consumes the confirmed lots and stores leftovers atomically; a retry with the same key replays. */
   completeExecution(
     executionId: string,
@@ -514,4 +528,23 @@ export interface RecipeReadiness {
   available: number;
   partial: number;
   missing: number;
+}
+
+/**
+ * Why a recipe was recommended: `have_all`, `have_most`, `uses_soon` (with `item`), `fits_time`,
+ * `fits_meal`, `favorite`, or `not_recent`.
+ */
+export interface RecipeRecommendationReason {
+  code: string;
+  item: string | null;
+}
+
+/** A saved recipe recommended for now, best first (deterministic score 0–100). */
+export interface RecipeRecommendation {
+  recipeId: string;
+  score: number;
+  totalMinutes: number | null;
+  available: number;
+  total: number;
+  reasons: RecipeRecommendationReason[];
 }

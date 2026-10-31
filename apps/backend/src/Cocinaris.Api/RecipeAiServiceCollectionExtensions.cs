@@ -66,6 +66,7 @@ public static class RecipeAiServiceCollectionExtensions
         services.AddScoped<IRecipeExecutionUnitOfWork, PostgreSqlRecipeExecutionUnitOfWork>();
         services.AddScoped<RecipeExecutionApplicationService>();
         services.AddScoped<RecipeExecutionApiService>();
+        services.AddScoped<RecipeRecommendationService>();
         services.AddScoped(provider => new RecipeLibraryApplicationService(
             provider.GetRequiredService<Cocinaris.Modules.Identity.ICurrentUserAccessor>(),
             provider.GetRequiredService<IRecipeLibraryStore>(),

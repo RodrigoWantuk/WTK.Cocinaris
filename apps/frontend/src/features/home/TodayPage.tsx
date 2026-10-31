@@ -36,6 +36,7 @@ import { RecipeCard } from "@/features/recipes/RecipeCard";
 import { RecipeThumbnail } from "@/features/recipes/RecipeThumbnail";
 import { buildHomeGreeting, readBrowserTimeZone } from "./dayPart";
 import { InstallAppBanner } from "@/app/install/InstallAppBanner";
+import { ForYouNow } from "./ForYouNow";
 
 const UNIT_KEYS: Record<string, string> = {
   Gram: "recipes.unit.g",
@@ -578,6 +579,10 @@ export function TodayPage() {
         </HomeSection>
       ) : null}
 
+      {saved.status === "ready" && saved.items.length > 0 ? (
+        <ForYouNow recipes={saved.items} />
+      ) : null}
+
       <QuickActions />
 
       {preparation.status === "ready" ? (
@@ -622,7 +627,9 @@ export function TodayPage() {
         )}
       </HomeSection>
 
-      {firstRun ? null : (
+      {/* "Para você agora" already shows the saved recipes that fit; the plain list stays only
+          when recommendations are unavailable. */}
+      {firstRun || recipes.listRecommendations ? null : (
         <HomeSection
           id="today-recipes"
           testId="today-recipes"

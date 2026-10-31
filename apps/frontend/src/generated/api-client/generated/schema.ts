@@ -696,6 +696,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/recipes/recommendations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** GET /api/v1/recipes/recommendations */
+        get: operations["getApiV1RecipesRecommendations"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/recipes/saved-candidates": {
         parameters: {
             query?: never;
@@ -2102,6 +2119,42 @@ export interface components {
              * @description Recipe.
              */
             recipeId: string;
+        };
+        /** @description One recommendation reason: `have_all`, `have_most`, `uses_soon` (with Item), `fits_time`, `fits_meal`, `favorite`, or `not_recent`. */
+        RecipeRecommendationReasonResponse: {
+            /** @description Reason code. */
+            code: string;
+            item: null | string;
+        };
+        /** @description A saved recipe recommended for now, best first (PLAN-0021). */
+        RecipeRecommendationResponse: {
+            /**
+             * Format: int32
+             * @description Ingredients the pantry fully covers.
+             */
+            available: number | string;
+            /** @description Why it was recommended, most important first. */
+            reasons: components["schemas"]["RecipeRecommendationReasonResponse"][];
+            /**
+             * Format: uuid
+             * @description Recipe.
+             */
+            recipeId: string;
+            /**
+             * Format: int32
+             * @description Deterministic score from 0 to 100.
+             */
+            score: number | string;
+            /**
+             * Format: int32
+             * @description Ingredients counted (basics and optional left out).
+             */
+            total: number | string;
+            /**
+             * Format: int32
+             * @description Total minutes; null when unknown.
+             */
+            totalMinutes: null | number | string;
         };
         /** @description One revision: Origin is `generated`, `manual`, `edited`, or `derived`. */
         RecipeRevisionEntryResponse: {
@@ -6083,6 +6136,58 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RecipeReadinessResponse"][];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    getApiV1RecipesRecommendations: {
+        parameters: {
+            query?: {
+                mealType?: string;
+                maxMinutes?: number | string;
+                today?: string;
+                limit?: number | string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecipeRecommendationResponse"][];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
             /** @description Authentication is required. */

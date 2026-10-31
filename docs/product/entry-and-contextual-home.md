@@ -210,6 +210,22 @@ The chooser must never become a long onboarding flow. One question is preferred 
 
 Answers are request context, not silent permanent profile changes. Any proposal to save them as preferences requires explicit confirmation.
 
+### Implemented: "Para você agora" (PLAN-0021, 2026-10-31)
+
+Tiers 3 and 4 are delivered together as "Para você agora" on "Hoje":
+
+- **Quick chooser:** two questions answered with chips, which meal (preset from the local hour) and how much time (up to 20 min, up to 45 min, no rush). The answers apply to this view only and are never saved.
+- **Ranking:** the backend ranks the person's saved recipes deterministically, with no AI call:
+  - what the pantry covers;
+  - pantry items due within two days;
+  - time: the chooser's answer is a hard limit, the confirmed ordinary prep time is only a preference;
+  - meal;
+  - favorites;
+  - variety.
+- **Explanation:** each card shows its main reason, for example "Usa Creme de leite, que vence logo" or "Você tem tudo".
+- **Fallback:** when nothing fits, the section offers new suggestions through the AI flow.
+- **Restrictions:** not evaluated by this tier. It only re-ranks recipes the person saved, and it never produces new ones.
+
 ## Presentation and explanation
 
 The home may present tiers as sections, a ranked feed with visible source labels, or another accessible composition, but the source priority must remain testable.

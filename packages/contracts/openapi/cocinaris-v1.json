@@ -3998,6 +3998,89 @@
         ],
         "type": "object"
       },
+      "RecipeRecommendationReasonResponse": {
+        "description": "One recommendation reason: `have_all`, `have_most`, `uses_soon` (with Item), `fits_time`, `fits_meal`, `favorite`, or `not_recent`.",
+        "properties": {
+          "code": {
+            "description": "Reason code.",
+            "type": "string"
+          },
+          "item": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "required": [
+          "code",
+          "item"
+        ],
+        "type": "object"
+      },
+      "RecipeRecommendationResponse": {
+        "description": "A saved recipe recommended for now, best first (PLAN-0021).",
+        "properties": {
+          "available": {
+            "description": "Ingredients the pantry fully covers.",
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ]
+          },
+          "reasons": {
+            "description": "Why it was recommended, most important first.",
+            "items": {
+              "$ref": "#/components/schemas/RecipeRecommendationReasonResponse"
+            },
+            "type": "array"
+          },
+          "recipeId": {
+            "description": "Recipe.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "score": {
+            "description": "Deterministic score from 0 to 100.",
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ]
+          },
+          "total": {
+            "description": "Ingredients counted (basics and optional left out).",
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ]
+          },
+          "totalMinutes": {
+            "description": "Total minutes; null when unknown.",
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ]
+          }
+        },
+        "required": [
+          "recipeId",
+          "score",
+          "totalMinutes",
+          "available",
+          "total",
+          "reasons"
+        ],
+        "type": "object"
+      },
       "RecipeRevisionEntryResponse": {
         "description": "One revision: Origin is `generated`, `manual`, `edited`, or `derived`.",
         "properties": {
@@ -12182,6 +12265,132 @@
           }
         ],
         "summary": "GET /api/v1/recipes/readiness",
+        "tags": [
+          "Cocinaris.Api"
+        ]
+      }
+    },
+    "/api/v1/recipes/recommendations": {
+      "get": {
+        "operationId": "getApiV1RecipesRecommendations",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "mealType",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "maxMinutes",
+            "schema": {
+              "format": "int32",
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "today",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "format": "int32",
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/RecipeRecommendationResponse"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "authenticationFailure": {
+                    "summary": "The backend-managed session is absent or invalid.",
+                    "value": {
+                      "detail": "Authentication is required.",
+                      "errorCode": "authentication_required",
+                      "status": 401,
+                      "title": "Unauthorized",
+                      "traceId": "00-00000000000000000000000000000000-0000000000000000-00",
+                      "type": "about:blank"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authentication is required."
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "unexpectedFailure": {
+                    "summary": "An unexpected error was safely redacted.",
+                    "value": {
+                      "detail": "An unexpected error occurred.",
+                      "errorCode": "unexpected_error",
+                      "status": 500,
+                      "title": "Internal Server Error",
+                      "traceId": "00-00000000000000000000000000000000-0000000000000000-00",
+                      "type": "about:blank"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An unexpected server error occurred."
+          }
+        },
+        "security": [
+          {
+            "cocinarisSession": []
+          }
+        ],
+        "summary": "GET /api/v1/recipes/recommendations",
         "tags": [
           "Cocinaris.Api"
         ]
