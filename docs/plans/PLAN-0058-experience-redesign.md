@@ -21,7 +21,7 @@ PLAN-0057 changed the visual language and fixed specific findings, but the page 
 | Phase | Outcome | Status |
 | --- | --- | --- |
 | 1 | Home, recipe library, recipe page, and pantry list rebuilt around tasks, with image cards, carousels, tiles, icons, and grouped lists | Merged via #74; deployed `7003eff` |
-| 2 | The remaining screens rebuilt the same way: pantry entry, menu, shopping, cooking steps, generation and candidates, profile; empty states with illustrations; a first-run welcome | Delivered on `agent/plan-0058-phase-2` (cooking steps and profile were already restructured in PLAN-0054 and PLAN-0057, so they are unchanged here) |
+| 2 | The remaining screens rebuilt the same way: pantry entry, menu, shopping, cooking steps, generation and candidates, profile; empty states with illustrations; a first-run welcome | Merged via #75; deployed `5cdadb3` (cooking steps and profile were already restructured in PLAN-0054 and PLAN-0057, so they are unchanged here) |
 | 3 | Owner walkthrough on the host, then fixes | After Phase 2 |
 
 ## Phase 1 scope delivered
@@ -79,7 +79,7 @@ PLAN-0057 changed the visual language and fixed specific findings, but the page 
   - **Backend:** no change.
 - **Validation (Phase 1):** recorded in PR #74.
 - **Not run:** full suites, screen reader.
-- **Exact next action:** The owner reviews and merges the Phase 2 draft PR; then deploy `main`, and the owner walks through the app (Phase 3).
+- **Exact next action:** Phase 3: the owner walks through the app on the host and reports what still bothers them; fixes follow. The owner's mid-run requests (install, quick actions, cook page) are PLAN-0059.
 - **Blockers:** None.
 
 ## Progress log
@@ -97,3 +97,7 @@ PLAN-0057 changed the visual language and fixed specific findings, but the page 
   - pantry entry steps;
   - `EmptyState`;
   - a first-run welcome.
+
+### 2026-10-31T01:30:00Z — Claude Code
+
+- Phase 2 merged via #75 and deployed at `5cdadb3`. The owner's new requests during this run went to PLAN-0059.

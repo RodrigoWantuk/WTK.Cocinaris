@@ -25,4 +25,10 @@ public interface IRecipeStore
 
     /// <summary>Finds one owned recipe's current-revision detail without cross-user disclosure.</summary>
     Task<RecipeDetail?> FindDetailAsync(Guid ownerUserId, Guid recipeId, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Lists the owner's recipes that are not archived, with their current-revision content, most
+    /// recently updated first, at most <paramref name="limit"/>.
+    /// </summary>
+    Task<IReadOnlyList<RecipeDetail>> ListActiveAsync(Guid ownerUserId, int limit, CancellationToken cancellationToken);
 }

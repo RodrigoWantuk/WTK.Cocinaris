@@ -105,6 +105,11 @@ The success green and the emerald accent are different hues and roles. Success a
 - **The account menu** (the avatar at the top right) holds Perfil, the interface language, the theme, and Sair. Without a display name, the avatar shows a person icon, never "?".
 - **Rules:** `app/shell/AppNavigation.tsx`, `app/shell/AccountMenu.tsx`, and `app/ProductionApp.tsx`. The header must not create a containing block (no backdrop filter or transform), or the fixed bottom bar would attach to it.
 
+## Main button and installable app (PLAN-0059)
+
+- The central bar button carries the sparkles icon and opens a half-moon panel above it with "Adicionar à despensa" and "Cozinhar" (`app/shell/QuickActionMenu.tsx`). From `md` up it is a small panel under the header button.
+- The app is installable: `public/manifest.webmanifest` with the emerald theme, icons rendered from `public/icons/icon.svg`, and an "Instale o Cocinaris" banner on "Hoje" for phones. On iOS the banner shows the Safari steps instead.
+
 ## Accessibility
 
 - Touch targets are at least 44px.

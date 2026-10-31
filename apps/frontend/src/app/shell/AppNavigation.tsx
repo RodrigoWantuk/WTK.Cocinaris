@@ -1,4 +1,5 @@
 import { BookOpen, Home, Plus, Refrigerator, ShoppingBag } from "lucide-react";
+import { QuickActionMenu } from "./QuickActionMenu";
 import { Link, useLocation } from "react-router-dom";
 import { useProductionI18n } from "@/app/i18n/ProductionI18nProvider";
 
@@ -37,7 +38,8 @@ type ItemKey = (typeof ITEMS)[number]["key"];
  * pages light up "Hoje", except a menu's shopping list, which belongs to "Compras".
  */
 export function activeTabFor(pathname: string): ItemKey | null {
-  if (pathname === "/app/despensa/novo") return "add";
+  if (pathname === "/app/despensa/novo" || pathname.startsWith("/app/cozinhar"))
+    return "add";
   if (pathname.startsWith("/app/compras") || /\/compras$/.test(pathname))
     return "shopping";
   if (pathname.startsWith("/app/hoje") || pathname.startsWith("/app/cardapio"))
@@ -81,18 +83,10 @@ export function AppNavigation() {
           const Icon = item.icon;
           const current = active === item.key;
           if (item.key === "add") {
+            // The main button opens the half-moon menu: add to the pantry, or cook (PLAN-0059).
             return (
               <li key={item.key}>
-                <Link
-                  to={item.to}
-                  data-testid={item.testId}
-                  aria-label={labels.add}
-                  aria-current={current ? "page" : undefined}
-                  className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground transition-[background-color,transform] duration-150 hover:bg-primary/90 focus-visible:outline-none motion-safe:active:scale-95 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:ml-2 md:h-10 md:w-auto md:gap-1.5 md:px-4 md:text-sm md:font-semibold"
-                >
-                  <Icon aria-hidden="true" className="h-6 w-6 md:h-4 md:w-4" />
-                  <span className="hidden md:inline">{labels.add}</span>
-                </Link>
+                <QuickActionMenu active={current} />
               </li>
             );
           }

@@ -16,6 +16,8 @@ public static class RecipeExecutionEndpoints
             .Produces<RecipeExecutionResponse>(StatusCodes.Status200OK)
             .ProducesProblem(400)
             .ProducesProblem(404);
+        group.MapGet("/readiness", (RecipeExecutionApiService service, HttpContext context, CancellationToken cancellationToken) => service.GetLibraryReadinessAsync(context, cancellationToken))
+            .Produces<IReadOnlyList<RecipeReadinessResponse>>();
         group.MapGet("/{recipeId:guid}/availability", (RecipeExecutionApiService service, Guid recipeId, HttpContext context, CancellationToken cancellationToken) => service.GetAvailabilityAsync(recipeId, context, cancellationToken))
             .Produces<IReadOnlyList<RecipeAvailabilityLineResponse>>()
             .ProducesProblem(404);
@@ -59,6 +61,10 @@ public sealed class RecipeExecutionApiService(RecipeExecutionApplicationService 
     /// <summary>Gets one execution with its completion proposal.</summary>
     public async Task<IResult> GetAsync(Guid executionId, HttpContext context, CancellationToken cancellationToken) =>
         ToResult(await application.GetAsync(executionId, cancellationToken), context.TraceIdentifier, ToResponse);
+
+    /// <summary>What the pantry covers of each active recipe, best covered first.</summary>
+    public async Task<IResult> GetLibraryReadinessAsync(HttpContext context, CancellationToken cancellationToken) =>
+        ToResult(await application.GetLibraryReadinessAsync(cancellationToken), context.TraceIdentifier, items => items!.Select(item => new RecipeReadinessResponse(item.RecipeId, item.Available, item.Partial, item.Missing)).ToList());
 
     /// <summary>What the pantry covers of a recipe at its own servings.</summary>
     public async Task<IResult> GetAvailabilityAsync(Guid recipeId, HttpContext context, CancellationToken cancellationToken) =>
@@ -174,6 +180,13 @@ public sealed record RecipeExecutionResponse(Guid ExecutionId, Guid RecipeId, in
 /// <param name="Unit"><c>Gram</c>, <c>Milliliter</c>, or <c>Unit</c>.</param>
 /// <param name="MissingQuantity">Quantity the pantry lacks, in <paramref name="Unit"/>; zero when available.</param>
 public sealed record RecipeAvailabilityLineResponse(string IngredientId, string Status, string Unit, decimal MissingQuantity);
+
+/// <summary>How much of one active recipe the pantry covers; basics and optional ingredients are not counted.</summary>
+/// <param name="RecipeId">Recipe.</param>
+/// <param name="Available">Ingredients fully covered.</param>
+/// <param name="Partial">Ingredients partly covered.</param>
+/// <param name="Missing">Ingredients not in the pantry.</param>
+public sealed record RecipeReadinessResponse(Guid RecipeId, int Available, int Partial, int Missing);
 
 /// <summary>Compact in-progress execution.</summary>
 public sealed record RecipeExecutionSummaryResponse(Guid ExecutionId, Guid RecipeId, string RecipeName, int Servings, DateTimeOffset StartedAt);

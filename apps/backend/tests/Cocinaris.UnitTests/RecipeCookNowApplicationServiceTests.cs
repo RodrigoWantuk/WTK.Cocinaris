@@ -574,6 +574,13 @@ public sealed class RecipeCookNowApplicationServiceTests
 
             return Task.FromResult<RecipeDetail?>(new RecipeDetail(item.Recipe.Id, item.Revision.RevisionNumber, item.Revision.Name, item.Revision.MealTypes, item.Revision.Servings, item.Revision.NormalizedRecipeJson, item.Revision.ThumbnailVisualJson, item.Revision.CreatedAt));
         }
+
+        public Task<IReadOnlyList<RecipeDetail>> ListActiveAsync(Guid ownerUserId, int limit, CancellationToken cancellationToken) =>
+            Task.FromResult<IReadOnlyList<RecipeDetail>>(_items.Values
+                .Where(item => item.Recipe.OwnerUserId == ownerUserId)
+                .Take(limit)
+                .Select(item => new RecipeDetail(item.Recipe.Id, item.Revision.RevisionNumber, item.Revision.Name, item.Revision.MealTypes, item.Revision.Servings, item.Revision.NormalizedRecipeJson, item.Revision.ThumbnailVisualJson, item.Revision.CreatedAt))
+                .ToList());
     }
 
     private sealed class InMemoryRecipeCookNowUnitOfWork(

@@ -679,6 +679,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/recipes/readiness": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** GET /api/v1/recipes/readiness */
+        get: operations["getApiV1RecipesReadiness"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/recipes/saved-candidates": {
         parameters: {
             query?: never;
@@ -2062,6 +2079,29 @@ export interface components {
             quantity: number | string;
             /** @description `g`, `ml`, or `unit`. */
             unit: null | string;
+        };
+        /** @description How much of one active recipe the pantry covers; basics and optional ingredients are not counted. */
+        RecipeReadinessResponse: {
+            /**
+             * Format: int32
+             * @description Ingredients fully covered.
+             */
+            available: number | string;
+            /**
+             * Format: int32
+             * @description Ingredients not in the pantry.
+             */
+            missing: number | string;
+            /**
+             * Format: int32
+             * @description Ingredients partly covered.
+             */
+            partial: number | string;
+            /**
+             * Format: uuid
+             * @description Recipe.
+             */
+            recipeId: string;
         };
         /** @description One revision: Origin is `generated`, `manual`, `edited`, or `derived`. */
         RecipeRevisionEntryResponse: {
@@ -6018,6 +6058,44 @@ export interface operations {
             };
             /** @description Service Unavailable */
             503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    getApiV1RecipesReadiness: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecipeReadinessResponse"][];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An unexpected server error occurred. */
+            500: {
                 headers: {
                     [name: string]: unknown;
                 };

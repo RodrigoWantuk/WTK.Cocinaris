@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Cocinaris app icon (PLAN-0059): a pot with steam on the emerald accent. The artwork sits
+       inside the central 80% so the maskable variant survives any launcher mask. -->
+  <rect width="512" height="512" rx="112" fill="#047857"/>
+  <g fill="none" stroke="#ffffff" stroke-width="26" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M196 150c-14-18 14-30 0-48"/>
+    <path d="M256 150c-14-18 14-30 0-48"/>
+    <path d="M316 150c-14-18 14-30 0-48"/>
+    <path d="M132 206h248"/>
+    <path d="M150 206v118a52 52 0 0 0 52 52h108a52 52 0 0 0 52-52V206"/>
+    <path d="M112 236h38M362 236h38"/>
+  </g>
+</svg>

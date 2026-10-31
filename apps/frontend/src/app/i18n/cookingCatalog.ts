@@ -3,6 +3,7 @@ import type { ProductionLocale } from "./productionCatalog";
 /** Every key required for recipe content, cooking (PLAN-0042), and the live Today page (PLAN-0021) across locales. */
 export const REQUIRED_COOKING_I18N_KEYS = [
   "page.title.cooking",
+  "page.title.cook",
   "recipes.detail.cook",
   "recipes.detail.resume",
   "recipes.detail.starting",
@@ -168,6 +169,7 @@ const ptBR: Record<Key, string> = {
   "cooking.adjust.error.save":
     "Não foi possível salvar o ajuste. Tente de novo.",
   "page.title.cooking": "Cozinhando",
+  "page.title.cook": "Cozinhar",
   "cooking.leave": "← Sair (o preparo fica salvo)",
   "recipes.detail.cook": "Cozinhar agora",
   "recipes.detail.resume": "Continuar cozinhando",
@@ -325,6 +327,7 @@ const en: Record<Key, string> = {
   "cooking.adjust.error.amount": "Enter a valid amount.",
   "cooking.adjust.error.save": "Could not save the change. Try again.",
   "page.title.cooking": "Cooking",
+  "page.title.cook": "Cook",
   "cooking.leave": "← Leave (your progress is kept)",
   "recipes.detail.cook": "Cook now",
   "recipes.detail.resume": "Continue cooking",
@@ -479,6 +482,7 @@ const es: Record<Key, string> = {
   "cooking.adjust.error.save":
     "No se pudo guardar el cambio. Inténtalo de nuevo.",
   "page.title.cooking": "Cocinando",
+  "page.title.cook": "Cocinar",
   "cooking.leave": "← Salir (el progreso se guarda)",
   "recipes.detail.cook": "Cocinar ahora",
   "recipes.detail.resume": "Seguir cocinando",

@@ -93,6 +93,21 @@ public sealed record ExecutionPantryLotView(Guid LotId, string ProductName, deci
 /// <param name="MissingQuantity">Quantity the pantry lacks, in <paramref name="Unit"/>; zero when available.</param>
 public sealed record RecipeAvailabilityLineView(string IngredientId, string Status, string Unit, decimal MissingQuantity);
 
+/// <summary>
+/// How much of one saved recipe the pantry covers (PLAN-0059 "Cozinhar"): counts over the
+/// ingredients the pantry can answer for, leaving out basics the recipe assumes. Advisory and
+/// read-only.
+/// </summary>
+/// <param name="RecipeId">Recipe.</param>
+/// <param name="Available">Ingredients fully covered.</param>
+/// <param name="Partial">Ingredients partly covered.</param>
+/// <param name="Missing">Ingredients not in the pantry.</param>
+public sealed record RecipeReadinessView(Guid RecipeId, int Available, int Partial, int Missing)
+{
+    /// <summary>Ingredients counted.</summary>
+    public int Total => Available + Partial + Missing;
+}
+
 /// <summary>Deterministic completion proposal: what to deduct, editable by the user before confirming.</summary>
 public sealed record ExecutionProposalView(IReadOnlyList<ExecutionProposalLineView> Lines, IReadOnlyList<ExecutionPantryLotView> PantryLots);
 
@@ -121,6 +136,7 @@ public sealed class RecipeExecutionApplicationService(
     TimeProvider timeProvider)
 {
     private const int MaxPantryLots = 200;
+    private const int MaxReadinessRecipes = 200;
     private const int MaxConsumptions = 32;
     private static readonly HashSet<string> StorageLocations = ["Pantry", "Refrigerator", "Freezer"];
 
@@ -189,6 +205,49 @@ public sealed class RecipeExecutionApplicationService(
                 return new RecipeAvailabilityLineView(line.IngredientId, status, line.Unit, status == "available" ? 0 : Math.Max(0, line.RequiredQuantity - have));
             })
             .ToList());
+    }
+
+    /// <summary>
+    /// What the pantry covers of each of the owner's active recipes (at most
+    /// <see cref="MaxReadinessRecipes"/>), ordered by the most ingredients available, then the
+    /// fewest missing. One pantry read and one matching pass serve every recipe. Read-only.
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation.</param>
+    public async Task<RecipeApplicationResult<IReadOnlyList<RecipeReadinessView>>> GetLibraryReadinessAsync(CancellationToken cancellationToken)
+    {
+        var user = await currentUser.GetCurrentAsync(cancellationToken);
+        var recipes = await recipeStore.ListActiveAsync(user.Id, MaxReadinessRecipes, cancellationToken);
+        if (recipes.Count == 0)
+        {
+            return RecipeApplicationResult<IReadOnlyList<RecipeReadinessView>>.Succeeded([]);
+        }
+
+        var lots = await inventory.ListActiveAsync(user.Id, MaxPantryLots, cancellationToken);
+        var committed = await commitments.GetAsync(user.Id, cancellationToken);
+        var names = lots.Select(lot => lot.ProductName)
+            .Concat(recipes.SelectMany(recipe => RecipeIngredientReader.Read(recipe.NormalizedRecipeJson).Select(ingredient => ingredient.Name)));
+        var keys = await matching.KeysAsync(user.Id, names, cancellationToken);
+        var views = recipes.Select(recipe =>
+            {
+                // Basics the recipe assumes (salt, oil) are never counted as missing.
+                var assumed = RecipeIngredientReader.Read(recipe.NormalizedRecipeJson)
+                    .Where(ingredient => ingredient.SourceType == "assumption")
+                    .Select(ingredient => ingredient.Id)
+                    .ToHashSet(StringComparer.Ordinal);
+                var lines = BuildProposal(recipe.NormalizedRecipeJson, recipe.Servings, recipe.Servings, lots, committed, matchKeys: keys).Lines
+                    .Where(line => !assumed.Contains(line.IngredientId) && !line.Optional)
+                    .ToList();
+                return new RecipeReadinessView(
+                    recipe.RecipeId,
+                    lines.Count(line => line.Status == "ready"),
+                    lines.Count(line => line.Status != "ready" && (line.ProposedQuantity ?? 0) > 0),
+                    lines.Count(line => line.Status != "ready" && (line.ProposedQuantity ?? 0) <= 0));
+            })
+            .OrderByDescending(view => view.Available)
+            .ThenBy(view => view.Missing)
+            .ThenBy(view => view.Total == 0 ? 1 : 0)
+            .ToList();
+        return RecipeApplicationResult<IReadOnlyList<RecipeReadinessView>>.Succeeded(views);
     }
 
     /// <summary>Lists the owner's in-progress executions.</summary>
