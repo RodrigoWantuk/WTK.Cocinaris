@@ -160,6 +160,7 @@ export const REQUIRED_PLANNING_I18N_KEYS = [
   "planning.ai.saving",
   "nav.add",
   "quick.addPantry",
+  "quick.addPantryShort",
   "quick.cook",
   "cook.title",
   "cook.subtitle",
@@ -185,6 +186,7 @@ export const REQUIRED_PLANNING_I18N_KEYS = [
 const ptBR: Record<string, string> = {
   "nav.add": "Começar",
   "quick.addPantry": "Adicionar à despensa",
+  "quick.addPantryShort": "Despensa",
   "quick.cook": "Cozinhar",
   "cook.title": "O que vamos cozinhar?",
   "cook.subtitle":
@@ -387,6 +389,7 @@ const ptBR: Record<string, string> = {
 const en: Record<string, string> = {
   "nav.add": "Start",
   "quick.addPantry": "Add to pantry",
+  "quick.addPantryShort": "Pantry",
   "quick.cook": "Cook",
   "cook.title": "What shall we cook?",
   "cook.subtitle":
@@ -584,6 +587,7 @@ const en: Record<string, string> = {
 const es: Record<string, string> = {
   "nav.add": "Empezar",
   "quick.addPantry": "Añadir a la despensa",
+  "quick.addPantryShort": "Despensa",
   "quick.cook": "Cocinar",
   "cook.title": "¿Qué cocinamos?",
   "cook.subtitle":

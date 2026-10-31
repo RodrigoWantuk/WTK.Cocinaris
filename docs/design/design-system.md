@@ -107,7 +107,7 @@ The success green and the emerald accent are different hues and roles. Success a
 
 ## Main button and installable app (PLAN-0059)
 
-- The central bar button carries the sparkles icon and opens a half-moon panel above it with "Adicionar à despensa" and "Cozinhar" (`app/shell/QuickActionMenu.tsx`). From `md` up it is a small panel under the header button.
+- The central bar button carries the sparkles icon (× while open). It opens a small translucent half moon (220 × 110 px) just above it, with two icons and one-word labels on its curve: "Despensa" (add to the pantry) and "Cozinhar". The full names are the accessible names (`app/shell/QuickActionMenu.tsx`). From `md` up it is a small panel under the header button.
 - The app is installable: `public/manifest.webmanifest` with the emerald theme, icons rendered from `public/icons/icon.svg`, and an "Instale o Cocinaris" banner on "Hoje" for phones. On iOS the banner shows the Safari steps instead.
 
 ## Accessibility

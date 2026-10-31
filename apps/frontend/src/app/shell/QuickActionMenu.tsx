@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState } from "react";
-import { ChefHat, Refrigerator, Sparkles } from "lucide-react";
+import { ChefHat, Refrigerator, Sparkles, X } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { useProductionI18n } from "@/app/i18n/ProductionI18nProvider";
 
@@ -8,12 +8,14 @@ const ACTIONS = [
   {
     to: "/app/despensa/novo",
     labelKey: "quick.addPantry",
+    shortKey: "quick.addPantryShort",
     icon: Refrigerator,
     testId: "quick-action-pantry",
   },
   {
     to: "/app/cozinhar",
     labelKey: "quick.cook",
+    shortKey: "quick.cook",
     icon: ChefHat,
     testId: "quick-action-cook",
   },
@@ -63,7 +65,7 @@ export function QuickActionMenu({ active }: { active: boolean }) {
           tabIndex={-1}
           aria-hidden="true"
           data-testid="quick-action-backdrop"
-          className="fixed inset-0 z-40 cursor-default bg-foreground/30 motion-safe:animate-in motion-safe:fade-in md:bg-transparent"
+          className="fixed inset-0 z-40 cursor-default bg-foreground/15 motion-safe:animate-in motion-safe:fade-in md:bg-transparent"
           onClick={() => setOpen(false)}
         />
       ) : null}
@@ -76,46 +78,72 @@ export function QuickActionMenu({ active }: { active: boolean }) {
         aria-controls={menuId}
         aria-current={active ? "page" : undefined}
         onClick={() => setOpen((value) => !value)}
-        className={`relative z-50 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-md transition-[background-color,transform] duration-150 hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-safe:active:scale-95 md:ml-2 md:h-10 md:w-auto md:gap-1.5 md:px-4 md:text-sm md:font-semibold md:shadow-none ${
-          open ? "motion-safe:rotate-12 md:rotate-0" : ""
-        }`}
+        className="relative z-50 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-md transition-[background-color,transform] duration-150 hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-safe:active:scale-95 md:ml-2 md:h-10 md:w-auto md:gap-1.5 md:px-4 md:text-sm md:font-semibold md:shadow-none"
       >
-        <Sparkles aria-hidden="true" className="h-6 w-6 md:h-4 md:w-4" />
+        {open ? (
+          <X
+            aria-hidden="true"
+            className="h-6 w-6 motion-safe:animate-in motion-safe:spin-in-90 md:hidden"
+          />
+        ) : null}
+        <Sparkles
+          aria-hidden="true"
+          className={`h-6 w-6 md:inline md:h-4 md:w-4 ${open ? "hidden" : ""}`}
+        />
         <span className="hidden md:inline">{t("nav.add")}</span>
       </button>
       {open ? (
-        <div
-          id={menuId}
-          className="absolute bottom-full left-1/2 z-50 mb-2 -translate-x-1/2 md:bottom-auto md:left-auto md:right-0 md:top-full md:mb-0 md:mt-2 md:translate-x-0"
-        >
-          {/* Phones: a half moon rising from the button, with the two actions on its arc. From
-              `md` up the same list is a small panel under the header button. */}
+        <div id={menuId}>
+          {/* Phones: a small, light half moon floating just above the button, with the two
+              actions resting on its curve. */}
           <ul
             aria-label={t("nav.add")}
-            className="relative flex h-36 w-72 items-start justify-between rounded-t-full border border-b-0 border-border bg-popover px-6 pt-7 shadow-[0_-8px_30px_-12px_rgb(0_0_0/0.25)] motion-safe:animate-in motion-safe:fade-in motion-safe:zoom-in-95 motion-safe:slide-in-from-bottom-6 md:h-auto md:w-60 md:flex-col md:items-stretch md:gap-1 md:rounded-2xl md:border-b md:p-2 md:shadow-lg"
+            className="absolute bottom-full left-1/2 z-50 mb-4 h-[110px] w-[220px] -translate-x-1/2 rounded-t-full border border-border/60 bg-popover/95 shadow-[0_-6px_24px_-10px_rgb(0_0_0/0.2)] backdrop-blur-sm motion-safe:animate-in motion-safe:fade-in motion-safe:zoom-in-90 motion-safe:slide-in-from-bottom-3 md:hidden"
           >
-            {ACTIONS.map(({ to, labelKey, icon: Icon, testId }, index) => (
-              <li
-                key={to}
-                // On the arc: each action sits lower toward the rim, framing the button below.
-                className={index === 0 ? "mt-6 md:mt-0" : "mt-6 md:mt-0"}
-              >
-                <Link
-                  ref={index === 0 ? firstRef : undefined}
-                  to={to}
-                  data-testid={testId}
-                  onClick={() => setOpen(false)}
-                  className="group flex w-24 flex-col items-center gap-1.5 rounded-2xl p-1 text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:w-auto md:flex-row md:gap-3 md:px-3 md:py-2.5 md:text-left md:hover:bg-secondary"
+            {ACTIONS.map(
+              ({ to, labelKey, shortKey, icon: Icon, testId }, index) => (
+                <li
+                  key={to}
+                  className={`absolute top-[30px] ${index === 0 ? "left-[24px]" : "right-[24px]"}`}
                 >
-                  <span className="flex h-14 w-14 items-center justify-center rounded-full bg-accent text-accent-foreground transition-transform duration-150 group-hover:scale-105 motion-safe:group-active:scale-95 md:h-9 md:w-9">
-                    <Icon
+                  <Link
+                    ref={index === 0 ? firstRef : undefined}
+                    to={to}
+                    data-testid={testId}
+                    aria-label={t(labelKey)}
+                    onClick={() => setOpen(false)}
+                    className="group flex w-[72px] flex-col items-center gap-1 rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <span className="flex h-11 w-11 items-center justify-center rounded-full bg-accent text-accent-foreground ring-1 ring-primary/15 transition-transform duration-150 group-hover:scale-105 motion-safe:group-active:scale-95">
+                      <Icon aria-hidden="true" className="h-5 w-5" />
+                    </span>
+                    <span
                       aria-hidden="true"
-                      className="h-6 w-6 md:h-5 md:w-5"
-                    />
+                      className="text-[11px] font-semibold leading-none text-foreground"
+                    >
+                      {t(shortKey)}
+                    </span>
+                  </Link>
+                </li>
+              ),
+            )}
+          </ul>
+          {/* From `md` up: a small panel under the header button. */}
+          <ul
+            aria-label={t("nav.add")}
+            className="absolute right-0 top-full z-50 mt-2 hidden w-60 flex-col gap-1 rounded-2xl border border-border bg-popover p-2 shadow-lg md:flex"
+          >
+            {ACTIONS.map(({ to, labelKey, icon: Icon }) => (
+              <li key={to}>
+                <Link
+                  to={to}
+                  onClick={() => setOpen(false)}
+                  className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors duration-150 hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <span className="flex h-9 w-9 items-center justify-center rounded-full bg-accent text-accent-foreground">
+                    <Icon aria-hidden="true" className="h-5 w-5" />
                   </span>
-                  <span className="text-xs font-semibold leading-tight text-foreground md:text-sm">
-                    {t(labelKey)}
-                  </span>
+                  {t(labelKey)}
                 </Link>
               </li>
             ))}
