@@ -18,6 +18,7 @@ public static class RecipeAiRequestEnvelopes
 
     private static readonly JsonSerializerOptions SerializerOptions = new(JsonSerializerDefaults.Web) { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull };
     private static readonly Lazy<JsonNode> SuggestResponseSchema = new(() => LoadEmbeddedSchema("recipe-suggest-candidates.response.v0.3.json"));
+    private static readonly Lazy<JsonNode> PlanDeckResponseSchema = new(() => LoadEmbeddedSchema("recipe-plan-deck.response.v0.3.json"));
     private static readonly Lazy<JsonNode> ExpandResponseSchema = new(() => LoadEmbeddedSchema("recipe-expand-selected.response.v0.3.json"));
     private static readonly Lazy<JsonNode> ReviseResponseSchema = new(() => LoadEmbeddedSchema("recipe-revise.response.v0.3.json"));
 
@@ -63,7 +64,74 @@ public static class RecipeAiRequestEnvelopes
         string previousInvalidOutput) =>
         BuildExpandEnvelope(context, new RepairPayload(validationErrors, previousInvalidOutput));
 
-    private static string BuildSuggestEnvelope(RecipeSuggestRequestContext context, RepairPayload? repair)
+    /// <summary>Serializes the request for one batch of shopping plan cards (PLAN-0062), including the full response schema.</summary>
+    /// <param name="context">Bounded suggestion context; its availability is free stock only.</param>
+    /// <param name="brief">What the plan asks of this batch.</param>
+    public static string BuildPlanDeckRequest(RecipeSuggestRequestContext context, PlanDeckBrief brief) =>
+        BuildPlanDeckEnvelope(context, brief, repair: null);
+
+    /// <summary>Serializes a plan card repair request with bounded validation errors and the truncated previous output.</summary>
+    public static string BuildPlanDeckRepairRequest(RecipeSuggestRequestContext context, PlanDeckBrief brief, IReadOnlyList<string> validationErrors, string previousInvalidOutput) =>
+        BuildPlanDeckEnvelope(context, brief, new RepairPayload(validationErrors, previousInvalidOutput));
+
+    private static string BuildSuggestEnvelope(RecipeSuggestRequestContext context, RepairPayload? repair) =>
+        BuildSuggestNode(context, repair).ToJsonString(SerializerOptions);
+
+    // A plan deck shares the policy, presets, restrictions, availability, and equipment blocks of a
+    // suggestion, so restrictions and the untrusted-data boundary cannot drift between the two.
+    private static string BuildPlanDeckEnvelope(RecipeSuggestRequestContext context, PlanDeckBrief brief, RepairPayload? repair)
+    {
+        var envelope = BuildSuggestNode(context, repair);
+        envelope["operation"] = "recipe.suggest_plan_deck.v1";
+        envelope["candidatePolicy"]!["count"] = PlanDeckResponse.CandidateCount;
+        envelope["candidatePolicy"]!["requireDistinctCandidateStrategies"] = false;
+        envelope["candidatePolicy"]!["allowedCandidateStrategies"] = new JsonArray(PlanDeckResponse.Strategies.Select(item => (JsonNode)item).ToArray());
+        envelope["candidatePolicy"]!["recommendedStrategySet"] = new JsonArray(PlanDeckResponse.Strategies.Select(item => (JsonNode)item).ToArray());
+        envelope["responseSchema"] = PlanDeckResponseSchema.Value.DeepClone();
+        envelope["responseContract"] = new JsonObject
+        {
+            ["responseFormat"] = "json_only",
+            ["rootRequired"] = new JsonArray("operation", "schemaVersion", "candidates"),
+            ["candidateCount"] = new JsonObject { ["min"] = PlanDeckResponse.CandidateCount, ["max"] = PlanDeckResponse.CandidateCount },
+            ["additionalProperties"] = false
+        };
+        var plan = new JsonObject
+        {
+            ["days"] = brief.Days,
+            ["cookingStyle"] = brief.CookingStyle,
+            ["priority"] = brief.Priority,
+            ["mealNeeds"] = new JsonObject(brief.MealNeeds.Select(item => KeyValuePair.Create<string, JsonNode?>(item.Key, item.Value))),
+            ["mealTypes"] = ToStringArray(brief.MealTypes),
+            ["chosenDishes"] = ToStringArray(brief.ChosenDishes.Take(20)),
+            ["shoppingListIngredients"] = ToStringArray(brief.ShoppingListIngredients.Take(40)),
+            ["rejectedDishes"] = ToStringArray(brief.RejectedDishes.Take(30)),
+            ["avoidIngredients"] = ToStringArray(brief.AvoidIngredients.Take(10)),
+            ["rule"] = "Return six dishes a home cook would recognize. Reuse perishable ingredients from shoppingListIngredients and from each other, so little is left over, and make dishes differ in format, technique, and flavor. Rice, chicken, and tomato may repeat if the dishes do not feel the same. Never use avoidIngredients. List everything to buy, with quantities for userPresets.servings, in additionalIngredients. userPresets.restrictions always win."
+        };
+        if (brief.MaxActiveMinutes is { } minutes)
+        {
+            plan["maxActiveMinutes"] = minutes;
+        }
+
+        if (!string.IsNullOrWhiteSpace(brief.AnchorIngredient))
+        {
+            plan["anchorIngredient"] = new JsonObject
+            {
+                ["text"] = brief.AnchorIngredient,
+                ["treatment"] = "A soft wish: build some dishes around this ingredient where it fits. This " + UntrustedPersonTextRule
+            };
+        }
+
+        envelope["planDeck"] = plan;
+        if (repair is not null)
+        {
+            envelope["repair"]!["instruction"] = "Return one complete corrected JSON object that satisfies responseSchema and every semantic rule. Fix every listed validationErrors entry. Emit exactly six candidates. Do not include markdown, commentary, or extra fields.";
+        }
+
+        return envelope.ToJsonString(SerializerOptions);
+    }
+
+    private static JsonObject BuildSuggestNode(RecipeSuggestRequestContext context, RepairPayload? repair)
     {
         var envelope = new JsonObject
         {
@@ -148,7 +216,7 @@ public static class RecipeAiRequestEnvelopes
             envelope["repair"] = BuildRepairObject(repair);
         }
 
-        return envelope.ToJsonString(SerializerOptions);
+        return envelope;
     }
 
     /// <summary>

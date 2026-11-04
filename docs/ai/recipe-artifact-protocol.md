@@ -30,6 +30,18 @@ Candidates contain comparison and validation fields, not detailed cooking steps.
 
 Strict response schema: `packages/contracts/ai/recipe/schemas/recipe-suggest-candidates.response.v0.3.json` with `schemaVersion: "0.3"`.
 
+### `recipe.suggest_plan_deck.v1`
+
+Returns exactly six compact candidates for a shopping plan (PLAN-0062). The candidate shape is the same as `recipe.suggest_candidates.v1`, so expansion and the idea library work on them unchanged. Six keeps the wait near 20 s; later batches arrive in the background.
+
+Strict response schema: `packages/contracts/ai/recipe/schemas/recipe-plan-deck.response.v0.3.json`.
+
+- **Request.** The suggestion envelope (policy, presets, restrictions, equipment, and free stock only) plus `planDeck`: `days`, `cookingStyle`, `priority`, `mealNeeds`, `mealTypes`, `maxActiveMinutes`, `chosenDishes` (20), `shoppingListIngredients` (40), `rejectedDishes` (30), `avoidIngredients` (10), and a closed `rule` asking the model to reuse perishables and vary format, technique, and flavor.
+- **The anchor.** `planDeck.anchorIngredient.text` is the person's typed ingredient, cleaned to 60 characters, with the same untrusted treatment as `personHint`. A session with an anchor is private: its recipes never reach the shared idea library.
+- **Options.** "More options" use `suggestionGuidance` closed codes only.
+- **Validation.** Exactly six; strategies limited to `on_hand_first`, `planned_purchase_reuse`, and `exploratory`, repeats allowed; unique fingerprints; every `targetMealType` requested; and the per-candidate rules shared with suggestions. Summary language is a soft check.
+- **After validation.** The application drops near-duplicates and runs `RestrictionGuard`. Model output never changes a menu directly.
+
 ### `recipe.expand_selected.v1`
 
 Produces one persisted recipe revision containing ingredients, equipment, preparation tasks, stages, dependencies, relative lead times, sensory cues, storage/freezing guidance, produced components, reconciliation hints and `thumbnailVisual`.

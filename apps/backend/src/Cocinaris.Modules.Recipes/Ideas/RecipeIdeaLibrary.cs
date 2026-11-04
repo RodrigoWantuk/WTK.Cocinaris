@@ -238,6 +238,65 @@ public sealed class RecipeIdeaLibrary(
     }
 
     /// <summary>
+    /// Library ideas for a shopping plan (PLAN-0062), rebuilt for this person without the AI. Unlike
+    /// <see cref="TrySuggestAsync"/>, an idea need not use the pantry, because the person is about to
+    /// shop, and the answer may hold fewer than three. The same safety, language, and level filters apply,
+    /// and each result passes the same per-candidate validation as AI output.
+    /// </summary>
+    /// <param name="ownerUserId">Requesting owner.</param>
+    /// <param name="context">Suggestion context of the plan.</param>
+    /// <param name="mealTypes">Meal types the plan needs.</param>
+    /// <param name="limit">Most ideas returned.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    public async Task<IReadOnlyList<SuggestCandidate>> FindPlanDeckAsync(Guid ownerUserId, RecipeSuggestRequestContext context, IReadOnlyCollection<string> mealTypes, int limit, CancellationToken cancellationToken)
+    {
+        var presets = context.Presets;
+        if (!options.Enabled || string.IsNullOrWhiteSpace(presets.OutputLanguage))
+        {
+            return [];
+        }
+
+        var keys = await matching.KeysAsync(ownerUserId, context.InventoryItems.Select(item => item.UserName), cancellationToken);
+        var pantry = Pantry(context.InventoryItems, keys);
+        var equipment = await EquipmentAsync(ownerUserId, context.Equipment, cancellationToken);
+        var owned = await store.OwnerRecipeNamesAsync(ownerUserId, cancellationToken);
+        var query = new RecipeIdeaQuery(
+            LanguageOf(presets.OutputLanguage), presets.InstructionDetail, presets.CookingSkill, presets.Restrictions.Distinct(StringComparer.Ordinal).ToList(),
+            null, [], equipment.Keys.ToList(), options.CandidatePoolSize, AnyIngredients: true);
+        using var request = JsonDocument.Parse(RecipeAiRequestEnvelopes.BuildSuggestRequest(context));
+        var chosen = new List<(RecipeIdea Idea, SuggestCandidate Candidate)>();
+        foreach (var idea in await store.FindCandidatesAsync(query, cancellationToken))
+        {
+            if (chosen.Count == limit)
+            {
+                break;
+            }
+
+            if (!mealTypes.Contains(idea.MealType) || idea.Strategy == "on_hand_flexible"
+                || owned.Contains(IngredientText.Normalize(idea.Content.Recipe.Name)) || owned.Contains(IngredientText.Normalize(idea.Content.Candidate.Name))
+                || RebuildForPlan(idea, pantry, equipment) is not { } candidate)
+            {
+                continue;
+            }
+
+            var errors = new List<string>();
+            candidate.Validate(errors, "$");
+            RecipeSuggestSemantics.ValidateCandidate(errors, "$", candidate, request.RootElement);
+            if (errors.Count == 0)
+            {
+                chosen.Add((idea, candidate));
+            }
+        }
+
+        if (chosen.Count > 0)
+        {
+            await store.MarkOfferedAsync(chosen.Select(item => item.Idea.Id).ToList(), cancellationToken);
+        }
+
+        return chosen.Select(item => item.Candidate).ToList();
+    }
+
+    /// <summary>
     /// Builds the expanded recipe of a chosen library idea for this person without the AI, or
     /// returns null when the idea no longer fits (gone, written for another language or level, or
     /// their restrictions changed); the caller then expands the candidate with the AI.
@@ -325,6 +384,44 @@ public sealed class RecipeIdeaLibrary(
         }
 
         if (uses.Count is 0 or > 10 || additional.Count > 5 || idea.EquipmentCodes.Any(code => !equipment.ContainsKey(code)))
+        {
+            return null;
+        }
+
+        var generic = idea.Content.Candidate;
+        return CopyCandidate(generic, $"{CandidatePrefix}{idea.Id:n}", generic.PrimaryIngredientRefs, generic.Servings, generic.RequiredEquipmentIds.Select(code => equipment[code].EquipmentId).Distinct(StringComparer.Ordinal).ToList(), uses, additional);
+    }
+
+    // Rebuild requires a pantry use and at most five purchases, which a plan from an empty pantry
+    // cannot meet; only the schema's own limits apply here.
+    private SuggestCandidate? RebuildForPlan(RecipeIdea idea, IReadOnlyDictionary<(string Slug, string Unit), List<RecipeInventoryContextItem>> pantry, IReadOnlyDictionary<string, OwnedEquipment> equipment)
+    {
+        var uses = new List<SuggestInventoryUse>();
+        var additional = new List<SuggestAdditionalIngredient>();
+        foreach (var ingredient in idea.Content.Recipe.Ingredients.Where(item => item.SourceType != "assumption"))
+        {
+            var slug = idea.Content.IngredientSlugs[ingredient.IngredientId];
+            if (pantry.TryGetValue((slug, ingredient.Unit), out var lots))
+            {
+                var lot = lots[0];
+                uses.Add(new SuggestInventoryUse
+                {
+                    IngredientRef = lot.IngredientRef ?? ingredient.IngredientId,
+                    InventoryItemId = lot.ItemId,
+                    UserName = lot.UserName,
+                    RequiredQuantity = ingredient.RequiredQuantity,
+                    Unit = lot.Unit,
+                    AvailabilitySource = lot.AvailabilitySource,
+                    RequiredState = idea.Content.RequiredStates.TryGetValue(slug, out var state) ? state : "raw"
+                });
+            }
+            else
+            {
+                additional.Add(new SuggestAdditionalIngredient { Name = ingredient.DisplayName, RequiredQuantity = ingredient.RequiredQuantity, Unit = ingredient.Unit, Optional = ingredient.Optional });
+            }
+        }
+
+        if (uses.Count > 10 || additional.Count > SuggestCandidate.MaxAdditionalIngredients || idea.EquipmentCodes.Any(code => !equipment.ContainsKey(code)))
         {
             return null;
         }

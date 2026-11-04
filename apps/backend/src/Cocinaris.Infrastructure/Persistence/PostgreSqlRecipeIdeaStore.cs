@@ -76,7 +76,7 @@ public sealed class PostgreSqlRecipeIdeaStore(ApplicationDbContext database) : I
               AND "CookingSkill" IS NOT DISTINCT FROM {query.CookingSkill}::text
               AND "Restrictions" @> {restrictions}::text[]
               AND ({query.MealType}::text IS NULL OR "MealType" = {query.MealType}::text)
-              AND "IngredientSlugs" && {slugs}::text[]
+              AND ({query.AnyIngredients} OR "IngredientSlugs" && {slugs}::text[])
               AND "EquipmentCodes" <@ {codes}::text[]
             ORDER BY "TimesSelected" DESC, "CreatedAt" DESC
             LIMIT {query.Limit}

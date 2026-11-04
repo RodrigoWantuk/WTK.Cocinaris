@@ -1,0 +1,81 @@
+{
+  "version": 1,
+  "description": "Deterministic restriction rules (PLAN-0062). Reviewed by the owner in docs/domain/restriction-rules-review.md. A rule marked unverifiable cannot be checked, so every dish shows a note.",
+  "groups": {
+    "meat": {
+      "categories": ["meat", "poultry"],
+      "unverifiedSlugs": ["broth", "stock-cube"],
+      "keywords": ["carne", "frango", "galinha", "peru", "porco", "bacon", "toucinho", "presunto", "linguica", "salsicha", "salame", "mortadela", "costela", "peito de frango", "gelatina", "banha", "meat", "chicken", "turkey", "beef", "pork", "ham", "sausage", "lard", "gelatin", "steak", "pollo", "pavo", "res", "cerdo", "jamon", "tocino", "salchicha", "chorizo"],
+      "exceptions": ["carne de soja", "carne vegetal", "carne de jaca", "salsicha vegana", "plant based meat", "carne de soya"]
+    },
+    "fish": {
+      "categories": ["fish"],
+      "slugs": ["worcestershire-sauce"],
+      "keywords": ["peixe", "atum", "salmao", "sardinha", "bacalhau", "tilapia", "anchova", "merluza", "pescada", "fish", "tuna", "salmon", "sardine", "cod", "anchovy", "pescado", "atun", "sardina", "bacalao", "anchoa"]
+    },
+    "shellfish": {
+      "categories": ["seafood"],
+      "keywords": ["camarao", "camaroes", "lagosta", "caranguejo", "siri", "lula", "polvo", "marisco", "mexilhao", "ostra", "shrimp", "prawn", "crab", "lobster", "mussel", "oyster", "clam", "squid", "octopus", "gamba", "camaron", "camarones", "cangrejo", "langosta", "mejillon", "almeja", "calamar", "pulpo"]
+    },
+    "dairy": {
+      "categories": ["dairy"],
+      "keywords": ["leite", "queijo", "manteiga", "creme de leite", "iogurte", "requeijao", "nata", "coalhada", "ricota", "mucarela", "mussarela", "muzzarela", "parmesao", "provolone", "gorgonzola", "soro de leite", "milk", "cheese", "butter", "cream", "yogurt", "ghee", "whey", "mozzarella", "parmesan", "ricotta", "leche", "queso", "mantequilla", "crema", "yogur", "nata"],
+      "exceptions": ["leite de coco", "creme de coco", "leite de soja", "leite de amendoas", "leite de aveia", "leite de castanha", "manteiga de cacau", "manteiga de amendoim", "manteiga de karite", "queijo vegano", "coconut milk", "coconut cream", "soy milk", "oat milk", "almond milk", "cocoa butter", "peanut butter", "leche de coco", "crema de coco", "leche de soja", "leche de avena", "leche de almendras", "manteca de cacao", "mantequilla de cacahuete", "mantequilla de mani"]
+    },
+    "egg": {
+      "categories": ["egg"],
+      "slugs": ["egg-noodles", "mayonnaise"],
+      "keywords": ["ovo", "gema", "clara de ovo", "maionese", "egg", "yolk", "mayonnaise", "huevo", "yema", "mayonesa"]
+    },
+    "gluten": {
+      "slugs": ["wheat-flour", "bread", "breadcrumbs", "tortilla", "pasta", "egg-noodles", "soy-sauce", "beer"],
+      "unverifiedSlugs": ["oats", "worcestershire-sauce", "stock-cube", "broth"],
+      "keywords": ["trigo", "farinha de trigo", "pao", "paes", "macarrao", "massa", "cevada", "centeio", "cerveja", "cuscuz marroquino", "semolina", "seitan", "biscoito", "shoyu", "molho de soja", "wheat", "flour", "bread", "pasta", "noodle", "spaghetti", "barley", "rye", "beer", "couscous", "soy sauce", "harina", "pan", "fideo", "espagueti", "cebada", "centeno", "cerveza", "cuscus", "salsa de soja"],
+      "exceptions": ["massa de tomate", "massa de mandioca", "massa de tapioca", "pao de queijo", "farinha de mandioca", "farinha de arroz", "farinha de milho", "macarrao de arroz", "rice flour", "corn flour", "rice noodle", "tomato paste", "harina de maiz", "harina de arroz", "fideo de arroz", "pasta de tomate"]
+    }
+  },
+  "rules": [
+    { "code": "vegetarian", "groups": ["meat", "fish", "shellfish"] },
+    { "code": "vegan", "groups": ["meat", "fish", "shellfish", "dairy", "egg"], "slugs": ["honey"], "keywords": ["mel", "honey", "miel"] },
+    { "code": "vegan_ethical", "groups": ["meat", "fish", "shellfish", "dairy", "egg"], "slugs": ["honey"], "keywords": ["mel", "honey", "miel"] },
+    { "code": "pescatarian", "groups": ["meat"] },
+    { "code": "dairy_free_diet", "groups": ["dairy"] },
+    { "code": "gluten_free_diet", "groups": ["gluten"] },
+    { "code": "lactose_intolerance", "groups": ["dairy"] },
+    { "code": "milk_allergy", "groups": ["dairy"] },
+    { "code": "gluten_intolerance", "groups": ["gluten"] },
+    { "code": "wheat_allergy", "groups": ["gluten"] },
+    { "code": "celiac_safe_diet", "groups": ["gluten"] },
+    { "code": "peanut_allergy", "slugs": ["peanuts", "peanut-butter"], "keywords": ["amendoim", "pacoca", "peanut", "cacahuete", "cacahuate", "mani"] },
+    { "code": "tree_nut_allergy", "slugs": ["walnuts", "almonds", "cashews", "brazil-nuts"], "keywords": ["noz", "nozes", "amendoa", "castanha", "caju", "pistache", "avela", "peca", "macadamia", "walnut", "almond", "cashew", "pistachio", "hazelnut", "pecan", "nuez", "almendra", "anacardo", "avellana", "castana"] },
+    { "code": "shellfish_allergy", "groups": ["shellfish"] },
+    { "code": "fish_allergy", "groups": ["fish"] },
+    { "code": "egg_allergy", "groups": ["egg"] },
+    { "code": "soy_allergy", "slugs": ["tofu", "soy-sauce"], "keywords": ["soja", "shoyu", "tofu", "misso", "soy", "miso", "edamame", "tempeh", "soya"] },
+    { "code": "sesame_allergy", "keywords": ["gergelim", "tahine", "tahini", "sesame", "ajonjoli", "sesamo"] },
+    { "code": "caffeine_sensitivity", "slugs": ["coffee"], "keywords": ["cafe", "coffee", "cha preto", "cha mate", "black tea", "te negro"] },
+    { "code": "sulfite_sensitivity", "slugs": ["white-wine", "red-wine"], "keywords": ["vinho", "wine", "vino"] },
+
+    { "code": "keto", "unverifiable": true },
+    { "code": "paleo", "unverifiable": true },
+    { "code": "low_carb", "unverifiable": true },
+    { "code": "mediterranean_diet", "unverifiable": true },
+    { "code": "fructose_intolerance", "unverifiable": true },
+    { "code": "histamine_intolerance", "unverifiable": true },
+    { "code": "low_sodium_diet", "unverifiable": true },
+    { "code": "low_sugar_diet", "unverifiable": true },
+    { "code": "renal_diet", "unverifiable": true },
+    { "code": "low_fodmap_diet", "unverifiable": true },
+    { "code": "heart_healthy_diet", "unverifiable": true },
+    { "code": "diabetic_friendly_diet", "unverifiable": true },
+
+    { "code": "cilantro", "slugs": ["cilantro"], "keywords": ["coentro", "cilantro", "coriander"] },
+    { "code": "mushrooms", "slugs": ["mushroom"], "keywords": ["cogumelo", "champignon", "shimeji", "shitake", "mushroom", "champinon", "hongo", "seta"] },
+    { "code": "olives", "slugs": ["olives"], "keywords": ["azeitona", "olive", "aceituna"], "exceptions": ["olive oil", "aceite de oliva"] },
+    { "code": "blue_cheese", "keywords": ["gorgonzola", "queijo azul", "roquefort", "blue cheese", "queso azul"] },
+    { "code": "liver", "keywords": ["figado", "liver", "higado"] },
+    { "code": "raw_onion", "keywords": ["cebola crua", "raw onion", "cebolla cruda"] },
+    { "code": "licorice", "keywords": ["alcacuz", "licorice", "regaliz"] },
+    { "code": "anchovies", "keywords": ["anchova", "aliche", "anchovy", "anchoa"] }
+  ]
+}

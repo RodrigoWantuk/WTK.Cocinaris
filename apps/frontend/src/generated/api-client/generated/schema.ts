@@ -487,6 +487,227 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/planning/shopping-plans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** POST /api/v1/planning/shopping-plans */
+        post: operations["postApiV1PlanningShopping-plans"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/planning/shopping-plans/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** GET /api/v1/planning/shopping-plans/start */
+        get: operations["getApiV1PlanningShopping-plansStart"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/planning/shopping-plans/{sessionId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** GET /api/v1/planning/shopping-plans/{sessionId} */
+        get: operations["getApiV1PlanningShopping-plansSessionId"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/planning/shopping-plans/{sessionId}/abandon": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** POST /api/v1/planning/shopping-plans/{sessionId}/abandon */
+        post: operations["postApiV1PlanningShopping-plansSessionIdAbandon"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/planning/shopping-plans/{sessionId}/acceptance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** POST /api/v1/planning/shopping-plans/{sessionId}/acceptance */
+        post: operations["postApiV1PlanningShopping-plansSessionIdAcceptance"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/planning/shopping-plans/{sessionId}/batches": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** POST /api/v1/planning/shopping-plans/{sessionId}/batches */
+        post: operations["postApiV1PlanningShopping-plansSessionIdBatches"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/planning/shopping-plans/{sessionId}/cards/{cardId}/decision": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** POST /api/v1/planning/shopping-plans/{sessionId}/cards/{cardId}/decision */
+        post: operations["postApiV1PlanningShopping-plansSessionIdCardsCardIdDecision"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/planning/shopping-plans/{sessionId}/cards/{cardId}/expansion": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** POST /api/v1/planning/shopping-plans/{sessionId}/cards/{cardId}/expansion */
+        post: operations["postApiV1PlanningShopping-plansSessionIdCardsCardIdExpansion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/planning/shopping-plans/{sessionId}/cards/{cardId}/reason": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** PUT /api/v1/planning/shopping-plans/{sessionId}/cards/{cardId}/reason */
+        put: operations["putApiV1PlanningShopping-plansSessionIdCardsCardIdReason"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/planning/shopping-plans/{sessionId}/cards/{cardId}/removal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** POST /api/v1/planning/shopping-plans/{sessionId}/cards/{cardId}/removal */
+        post: operations["postApiV1PlanningShopping-plansSessionIdCardsCardIdRemoval"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/planning/shopping-plans/{sessionId}/replacements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** POST /api/v1/planning/shopping-plans/{sessionId}/replacements */
+        post: operations["postApiV1PlanningShopping-plansSessionIdReplacements"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/planning/shopping-plans/{sessionId}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** POST /api/v1/planning/shopping-plans/{sessionId}/review */
+        post: operations["postApiV1PlanningShopping-plansSessionIdReview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/planning/shopping-plans/{sessionId}/undo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** POST /api/v1/planning/shopping-plans/{sessionId}/undo */
+        post: operations["postApiV1PlanningShopping-plansSessionIdUndo"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/planning/today": {
         parameters: {
             query?: never;
@@ -1304,6 +1525,47 @@ export interface components {
         CreateRecipeRequest: {
             content: null | components["schemas"]["RecipeContentRequest"];
         };
+        /** @description Body for creating a plan. */
+        CreateShoppingPlanRequest: {
+            /** @description Optional typed ingredient, at most 60 characters. */
+            anchorIngredient: null | string;
+            /** @description `once`, `mix`, or `daily`. */
+            cookingStyle: null | string;
+            /**
+             * Format: int32
+             * @description Days covered, 1 to 14.
+             */
+            days: number | string;
+            /** @description Meals to plan. */
+            mealTypes: null | string[];
+            /**
+             * Format: int32
+             * @description Meals eaten out.
+             */
+            mealsOut: number | string;
+            /**
+             * Format: int32
+             * @description People for this plan, 1 to 12; the profile's default when null. It never updates the profile.
+             */
+            people: null | number | string;
+            /**
+             * Format: date
+             * @description Session day, up to seven days ahead; ignored for `daily`.
+             */
+            prepDate: null | string;
+            /**
+             * Format: int32
+             * @description Session length: 60, 120, or 240; ignored for `daily`.
+             */
+            prepMinutes: null | number | string;
+            /** @description `waste`, `short`, `save`, or `time`. */
+            priority: null | string;
+            /**
+             * Format: date
+             * @description The owner's local day.
+             */
+            today: null | string;
+        };
         /** @description Body for deriving a new recipe. */
         DeriveRecipeRequest: {
             content: null | components["schemas"]["RecipeContentRequest"];
@@ -1590,6 +1852,8 @@ export interface components {
             /** Format: uuid */
             executionId: null | string;
             mealType: null | string;
+            /** Format: int32 */
+            mealsCovered: number | string;
             /** Format: date */
             plannedDate: null | string;
             readiness: null | components["schemas"]["MealReadinessResponse"];
@@ -1603,6 +1867,8 @@ export interface components {
             /** Format: int32 */
             servings: number | string;
             status: string;
+            /** Format: int32 */
+            suggestedOrder: null | number | string;
         };
         /** @description A menu with its meals, ordered by day (flexible last) and meal. */
         MenuPlanResponse: {
@@ -2664,6 +2930,292 @@ export interface components {
              * @description Menu.
              */
             menuId: string;
+        };
+        /** @description An accepted card. */
+        ShoppingPlanAcceptedView: {
+            /**
+             * Format: uuid
+             * @description Card.
+             */
+            cardId: string;
+            /** @description `none`, `pending`, `ready`, or `failed`. */
+            expansionState: string;
+            /** @description Why an expansion failed, if it did. */
+            failureCode: null | string;
+            /** @description Restriction that could not be verified, if any. */
+            guardCode: null | string;
+            /** @description Ingredient that could not be verified, if any. */
+            guardIngredient: null | string;
+            /** @description Meal. */
+            mealType: string;
+            /** @description `yield`, `again`, or null. */
+            mode: null | string;
+            /** @description Dish name. */
+            name: string;
+            /**
+             * Format: uuid
+             * @description Recipe, once it exists.
+             */
+            recipeId: null | string;
+            /**
+             * Format: int32
+             * @description Meals it fills.
+             */
+            repeats: number | string;
+        };
+        /** @description Body for asking for more cards. */
+        ShoppingPlanBatchRequest: {
+            /** @description A cuisine code. */
+            cuisine: null | string;
+            /** @description Up to three family codes. */
+            dishFamilies: null | string[];
+            /** @description `quick` or `medium`. */
+            time: null | string;
+        };
+        /** @description One ingredient on a card. */
+        ShoppingPlanCardIngredientView: {
+            /** @description Name. */
+            name: string;
+            /** @description Whether the dish works without it. */
+            optional: boolean;
+            /**
+             * Format: double
+             * @description Quantity for the card's servings.
+             */
+            quantity: number | string;
+            /** @description `Gram`, `Milliliter`, or `Unit`. */
+            unit: string;
+        };
+        /** @description A card to decide on. NewItemCount is an estimate until the recipe is expanded. */
+        ShoppingPlanCardView: {
+            /**
+             * Format: int32
+             * @description Hands-on minutes.
+             */
+            activeMinutes: number | string;
+            /**
+             * Format: uuid
+             * @description Card.
+             */
+            cardId: string;
+            /** @description Restriction that could not be verified, if any. */
+            guardCode: null | string;
+            /** @description Ingredient that could not be verified, if any. */
+            guardIngredient: null | string;
+            /** @description Ingredients. */
+            ingredients: components["schemas"]["ShoppingPlanCardIngredientView"][];
+            /** @description Main ingredient, offered by "tired of". */
+            leadIngredient: null | string;
+            /** @description Target meal. */
+            mealType: string;
+            /** @description Dish name. */
+            name: string;
+            /**
+             * Format: int32
+             * @description Lines it would add.
+             */
+            newItemCount: number | string;
+            /** @description Whether it passes the session's time. */
+            overBudget: boolean;
+            /** @description `uses_attention_item`, `reuses_list_items`, or null. */
+            reasonCode: null | string;
+            /** @description Food behind `uses_attention_item`. */
+            reasonIngredient: null | string;
+            /** @description At most three ingredients already on the list or at home. */
+            reusedNames: string[];
+            /**
+             * Format: int32
+             * @description Portions the ingredients are for.
+             */
+            servings: number | string;
+            /** @description `saved`, `idea`, or `ai`. */
+            source: string;
+            /** @description Description. */
+            summary: string;
+            /**
+             * Format: int32
+             * @description Total minutes.
+             */
+            totalMinutes: number | string;
+        };
+        /** @description A plan in progress, so entry points can offer to continue it. */
+        ShoppingPlanCurrentView: {
+            /**
+             * Format: uuid
+             * @description Its draft menu.
+             */
+            menuId: string;
+            /**
+             * Format: uuid
+             * @description Plan.
+             */
+            sessionId: string;
+            /** @description `building` or `reviewing`. */
+            status: string;
+        };
+        /** @description Body for deciding a card. */
+        ShoppingPlanDecisionRequest: {
+            /** @description `accept` or `reject`. */
+            decision: null | string;
+            /** @description `yield` (one cooking covers the meals) or `again` (cook again another day); required when repeats exceed one. */
+            mode: null | string;
+            /**
+             * Format: int32
+             * @description Meals to fill, 1 to 4.
+             */
+            repeats: null | number | string;
+        };
+        /** @description How far the plan has come. */
+        ShoppingPlanProgressView: {
+            /**
+             * Format: int32
+             * @description Estimated lines to buy.
+             */
+            listItemCount: number | string;
+            /**
+             * Format: int32
+             * @description Meals filled.
+             */
+            mealsFilled: number | string;
+            /**
+             * Format: int32
+             * @description Meals to fill.
+             */
+            mealsTotal: number | string;
+            /**
+             * Format: int32
+             * @description Time for the session, if any.
+             */
+            sessionMinutesBudget: null | number | string;
+            /**
+             * Format: int32
+             * @description Active minutes planned for the session.
+             */
+            sessionMinutesUsed: number | string;
+        };
+        /** @description Body for the reason a card was refused. */
+        ShoppingPlanReasonRequest: {
+            /** @description `dislike`, `too_much_work`, or `tired_of`. */
+            reason: null | string;
+        };
+        /** @description Body for replacing a meal. */
+        ShoppingPlanReplacementRequest: {
+            /**
+             * Format: uuid
+             * @description Menu entry to remove.
+             */
+            entryId: null | string;
+        };
+        /** @description A restriction the setup screen shows. */
+        ShoppingPlanRestrictionView: {
+            /** @description Profile category. */
+            category: string;
+            /** @description Stable code. */
+            code: string;
+        };
+        /** @description The answers of a shopping plan's setup screen (PLAN-0062). They belong to this plan and never
+         *     update the profile; the next plan reuses them only as defaults. */
+        ShoppingPlanSetup: {
+            /** @description Typed starting ingredient, already cleaned; untrusted and private. */
+            anchorIngredient: null | string;
+            /** @description `once`, `mix`, or `daily`. */
+            cookingStyle: string;
+            /**
+             * Format: int32
+             * @description Days covered, 1 to 14.
+             */
+            days: number | string;
+            /**
+             * Format: date
+             * @description Last day of the menu, inclusive.
+             */
+            endDate?: string;
+            /** @description Meals to plan: `breakfast`, `lunch`, `dinner`, `snack`. */
+            mealTypes: string[];
+            /**
+             * Format: int32
+             * @description Meals eaten away from home, taken off the total.
+             */
+            mealsOut: number | string;
+            /**
+             * Format: int32
+             * @description People to feed in this plan, 1 to 12.
+             */
+            people: number | string;
+            /**
+             * Format: date
+             * @description Day of the preparation session; null for `daily`.
+             */
+            prepDate: null | string;
+            /**
+             * Format: int32
+             * @description Time for the session (60, 120, or 240); null for `daily`.
+             */
+            prepMinutes: null | number | string;
+            /** @description `waste`, `short`, `save`, or `time`. */
+            priority: string;
+            /**
+             * Format: date
+             * @description First day of the menu: the session day when there is one, else today.
+             */
+            startDate?: string;
+            /**
+             * Format: date
+             * @description The owner's local day when the plan started; the server does not know the owner's time zone.
+             */
+            today: string;
+            /**
+             * Format: int32
+             * @description Meals the plan must fill.
+             */
+            totalMeals?: number | string;
+        };
+        /** @description Defaults for the setup screen. */
+        ShoppingPlanStartView: {
+            current: null | components["schemas"]["ShoppingPlanCurrentView"];
+            /** @description Whether the profile lists a freezer. */
+            hasFreezer: boolean;
+            lastSetup: null | components["schemas"]["ShoppingPlanSetup"];
+            /**
+             * Format: int32
+             * @description The profile's default people.
+             */
+            people: number | string;
+            /** @description Confirmed restrictions, excluding plain preferences. */
+            restrictions: components["schemas"]["ShoppingPlanRestrictionView"][];
+            /** @description Codes the guard cannot check, which the screen must say. */
+            unverifiableRestrictions: string[];
+        };
+        /** @description The state every plan route returns. */
+        ShoppingPlanView: {
+            /** @description Accepted cards. */
+            accepted: components["schemas"]["ShoppingPlanAcceptedView"][];
+            /** @description Whether undo has a decision to restore. */
+            canUndo: boolean;
+            /** @description Whether no card is left and no batch can be asked for. */
+            exhausted: boolean;
+            /**
+             * Format: uuid
+             * @description Its menu.
+             */
+            menuId: string;
+            /** @description Whether the browser should ask for more AI cards. */
+            needsBatch: boolean;
+            /** @description Whether to highlight "more options", after three straight rejections. */
+            offerMoreOptions: boolean;
+            /** @description Progress. */
+            progress: components["schemas"]["ShoppingPlanProgressView"];
+            /** @description The next cards, best first, at most five. */
+            queue: components["schemas"]["ShoppingPlanCardView"][];
+            /**
+             * Format: uuid
+             * @description Plan.
+             */
+            sessionId: string;
+            /** @description Setup answers. */
+            setup: components["schemas"]["ShoppingPlanSetup"];
+            /** @description `building`, `reviewing`, `finished`, or `abandoned`. */
+            status: string;
         };
         /** @description One meal that needs a shopping line. */
         ShoppingUseResponse: {
@@ -5184,6 +5736,970 @@ export interface operations {
             };
             /** @description Authentication is required. */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    "postApiV1PlanningShopping-plans": {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Required CSRF token issued by GET /api/v1/session. */
+                "X-CSRF-TOKEN": string;
+                /** @description Required UUID key; a retry with the same key returns the plan without creating another or spending another batch. */
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateShoppingPlanRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShoppingPlanView"];
+                };
+            };
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShoppingPlanView"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description The request content type is not supported. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    "getApiV1PlanningShopping-plansStart": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShoppingPlanStartView"];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    "getApiV1PlanningShopping-plansSessionId": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                sessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShoppingPlanView"];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    "postApiV1PlanningShopping-plansSessionIdAbandon": {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Required CSRF token issued by GET /api/v1/session. */
+                "X-CSRF-TOKEN": string;
+            };
+            path: {
+                sessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShoppingPlanView"];
+                };
+            };
+            /** @description The request or CSRF token is invalid. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    "postApiV1PlanningShopping-plansSessionIdAcceptance": {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Required CSRF token issued by GET /api/v1/session. */
+                "X-CSRF-TOKEN": string;
+            };
+            path: {
+                sessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShoppingPlanView"];
+                };
+            };
+            /** @description The request or CSRF token is invalid. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    "postApiV1PlanningShopping-plansSessionIdBatches": {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Required CSRF token issued by GET /api/v1/session. */
+                "X-CSRF-TOKEN": string;
+                /** @description Required UUID key; a retry with the same key returns the plan without creating another or spending another batch. */
+                "Idempotency-Key": string;
+            };
+            path: {
+                sessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": null | components["schemas"]["ShoppingPlanBatchRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShoppingPlanView"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description The request content type is not supported. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    "postApiV1PlanningShopping-plansSessionIdCardsCardIdDecision": {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Required CSRF token issued by GET /api/v1/session. */
+                "X-CSRF-TOKEN": string;
+            };
+            path: {
+                sessionId: string;
+                cardId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ShoppingPlanDecisionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShoppingPlanView"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description The request content type is not supported. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    "postApiV1PlanningShopping-plansSessionIdCardsCardIdExpansion": {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Required CSRF token issued by GET /api/v1/session. */
+                "X-CSRF-TOKEN": string;
+            };
+            path: {
+                sessionId: string;
+                cardId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShoppingPlanView"];
+                };
+            };
+            /** @description The request or CSRF token is invalid. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    "putApiV1PlanningShopping-plansSessionIdCardsCardIdReason": {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Required CSRF token issued by GET /api/v1/session. */
+                "X-CSRF-TOKEN": string;
+            };
+            path: {
+                sessionId: string;
+                cardId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ShoppingPlanReasonRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShoppingPlanView"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description The request content type is not supported. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    "postApiV1PlanningShopping-plansSessionIdCardsCardIdRemoval": {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Required CSRF token issued by GET /api/v1/session. */
+                "X-CSRF-TOKEN": string;
+            };
+            path: {
+                sessionId: string;
+                cardId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShoppingPlanView"];
+                };
+            };
+            /** @description The request or CSRF token is invalid. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    "postApiV1PlanningShopping-plansSessionIdReplacements": {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Required CSRF token issued by GET /api/v1/session. */
+                "X-CSRF-TOKEN": string;
+            };
+            path: {
+                sessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ShoppingPlanReplacementRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShoppingPlanView"];
+                };
+            };
+            /** @description The request or CSRF token is invalid. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description The request content type is not supported. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    "postApiV1PlanningShopping-plansSessionIdReview": {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Required CSRF token issued by GET /api/v1/session. */
+                "X-CSRF-TOKEN": string;
+            };
+            path: {
+                sessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShoppingPlanView"];
+                };
+            };
+            /** @description The request or CSRF token is invalid. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    "postApiV1PlanningShopping-plansSessionIdUndo": {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Required CSRF token issued by GET /api/v1/session. */
+                "X-CSRF-TOKEN": string;
+            };
+            path: {
+                sessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShoppingPlanView"];
+                };
+            };
+            /** @description The request or CSRF token is invalid. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -71,6 +71,7 @@ public sealed class FakeAiProvider : IAiProvider
         request.Operation switch
         {
             AiOperationRegistry.SuggestCandidates => BuildSuggestResponse(request.Payload),
+            AiOperationRegistry.SuggestPlanDeck => BuildPlanDeckResponse(request.Payload),
             AiOperationRegistry.ExpandSelected => BuildExpandResponse(request.Payload),
             AiOperationRegistry.ReviseRecipe => BuildReviseResponse(request.Payload),
             AiOperationRegistry.PantryListParse => """{"operation":"inventory.list_parse.v1","schemaVersion":"0.3","items":[{"name":"Batata","quantity":null,"unit":null,"storageLocation":"pantry","uncertain":true,"sourceText":"umas batatas"},{"name":"Arroz","quantity":1000,"unit":"g","storageLocation":"pantry","uncertain":false,"sourceText":"pacote de arroz 1kg"}]}""",
@@ -112,6 +113,36 @@ public sealed class FakeAiProvider : IAiProvider
             ["clarifications"] = new JsonArray()
         };
         return response.ToJsonString();
+    }
+
+    // Six different dishes that share some ingredients, so ranking and "+N" have something to work on.
+    // Each batch uses the request id, so later batches do not repeat earlier dishes.
+    private static string BuildPlanDeckResponse(string payload)
+    {
+        using var document = JsonDocument.Parse(payload);
+        var root = document.RootElement;
+        var servings = root.GetProperty("userPresets").GetProperty("servings").GetInt32();
+        var meal = root.GetProperty("planDeck").GetProperty("mealTypes").EnumerateArray().First().GetString()!;
+        var batch = root.GetProperty("requestId").GetString()![..6];
+        (string Name, string Format, string Technique, string[] Items)[] dishes =
+        [
+            ("Frango assado", "plated_main", "roast", ["Frango", "Batata", "Cebola"]),
+            ("Sopa de legumes", "soup", "simmer", ["Batata", "Cenoura", "Cebola"]),
+            ("Wrap de frango", "wrap", "assemble", ["Frango", "Alface", "Tomate"]),
+            ("Massa ao sugo", "pasta", "boil", ["Massa", "Tomate", "Cebola"]),
+            ("Salada completa", "salad", "toss", ["Alface", "Tomate", "Cenoura"]),
+            ("Omelete", "skillet", "saute", ["Ovo", "Tomate", "Cebola"])
+        ];
+        var candidates = new JsonArray();
+        for (var index = 0; index < dishes.Length; index++)
+        {
+            var dish = dishes[index];
+            var candidate = BuildCandidate($"deck-{batch}-{index}", index % 2 == 0 ? "on_hand_first" : "exploratory", $"{dish.Name} {batch}", meal, $"{dish.Format}-{batch}", dish.Technique, [$"ingredient-{index}"], "A simple dish for the plan.", servings, [], new JsonArray(), "easy");
+            candidate["additionalIngredients"] = new JsonArray(dish.Items.Select(item => (JsonNode)new JsonObject { ["name"] = item, ["requiredQuantity"] = 200, ["unit"] = "g", ["optional"] = false }).ToArray());
+            candidates.Add(candidate);
+        }
+
+        return new JsonObject { ["operation"] = AiOperationRegistry.SuggestPlanDeck, ["schemaVersion"] = "0.3", ["candidates"] = candidates }.ToJsonString();
     }
 
     private static JsonArray BuildInventoryUses(IReadOnlyList<JsonElement> inventory)

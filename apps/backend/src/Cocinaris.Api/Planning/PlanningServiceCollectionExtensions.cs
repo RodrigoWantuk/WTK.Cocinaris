@@ -15,6 +15,9 @@ public static class PlanningServiceCollectionExtensions
         // The cooking proposal reads planning commitments through a port the Recipes module owns.
         services.AddScoped<IPantryCommitmentLookup, PantryCommitmentLookup>();
         services.AddScoped<PlanningApiService>();
+        services.AddScoped<IShoppingPlanStore, PostgreSqlShoppingPlanStore>();
+        services.AddScoped<ShoppingPlanApplicationService>();
+        services.AddScoped<ShoppingPlanApiService>();
         return services;
     }
 }

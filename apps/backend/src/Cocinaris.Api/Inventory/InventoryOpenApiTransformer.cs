@@ -162,6 +162,14 @@ internal static class InventoryOpenApiTransformer
                     operation.Parameters.Add(Header("Idempotency-Key", "Required UUID key; a retry with the same key returns what the first request created."));
                 }
 
+                if (method == HttpMethod.Post
+                    && (path.TrimEnd('/').Equals("/api/v1/planning/shopping-plans", StringComparison.Ordinal)
+                        || path.Equals("/api/v1/planning/shopping-plans/{sessionId}/batches", StringComparison.Ordinal)))
+                {
+                    operation.Parameters ??= [];
+                    operation.Parameters.Add(Header("Idempotency-Key", "Required UUID key; a retry with the same key returns the plan without creating another or spending another batch."));
+                }
+
                 if ((path.Equals("/api/v1/recipes/generation-sessions", StringComparison.Ordinal) && method == HttpMethod.Post)
                     || (path.Equals("/api/v1/recipes/generation-sessions/{sessionId}/selection", StringComparison.Ordinal) && method == HttpMethod.Post))
                 {

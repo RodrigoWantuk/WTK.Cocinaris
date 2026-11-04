@@ -50,6 +50,7 @@ Read:
 - [`product/entry-and-contextual-home.md`](product/entry-and-contextual-home.md)
 - [`product/closed-loop-kitchen-orchestration.md`](product/closed-loop-kitchen-orchestration.md)
 - [`product/user-journeys.md`](product/user-journeys.md)
+- [`product/guided-shopping-planning.md`](product/guided-shopping-planning.md)
 - [`product/initial-release.md`](product/initial-release.md)
 - [`domain/README.md`](domain/README.md)
 - all domain documents touched by the workflow
@@ -64,6 +65,7 @@ Read:
 - [`product/closed-loop-kitchen-orchestration.md`](product/closed-loop-kitchen-orchestration.md) when work affects planning, preparation, cooking, inventory reconciliation, recovery, or troubleshooting;
 - [`domain/inventory-lifecycle.md`](domain/inventory-lifecycle.md)
 - [`domain/planning-and-shopping.md`](domain/planning-and-shopping.md)
+- [`domain/restriction-rules-review.md`](domain/restriction-rules-review.md)
 - [`domain/recipes-and-cooking.md`](domain/recipes-and-cooking.md)
 - [`architecture/overview.md`](architecture/overview.md)
 - [`development/environment.md`](development/environment.md)

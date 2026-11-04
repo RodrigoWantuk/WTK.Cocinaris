@@ -1,0 +1,426 @@
+{
+  "operation": "recipe.suggest_plan_deck.v1",
+  "schemaVersion": "0.3",
+  "candidates": [
+    {
+      "candidateId": "deck-1",
+      "candidateStrategy": "on_hand_first",
+      "name": "Escondidinho de frango",
+      "targetMealType": "dinner",
+      "dishFormat": "casserole",
+      "primaryTechnique": "baking",
+      "primaryIngredientRefs": [
+        "ingredient-chicken-breast",
+        "ingredient-white-rice"
+      ],
+      "summary": "Peito de frango selado com arroz e cenoura refogada.",
+      "servings": 2,
+      "time": {
+        "activeMinutes": 25,
+        "passiveMinutes": 15,
+        "totalMinutes": 40
+      },
+      "difficulty": "easy",
+      "requiredEquipmentIds": [
+        "eq-stove",
+        "eq-skillet",
+        "eq-pan"
+      ],
+      "requiredCapabilities": [
+        "burner",
+        "sear",
+        "boil"
+      ],
+      "inventoryUses": [
+        {
+          "ingredientRef": "ingredient-chicken-breast",
+          "inventoryItemId": "inv-001",
+          "userName": "Peito de frango",
+          "requiredQuantity": 350,
+          "unit": "g",
+          "availabilitySource": "on_hand",
+          "requiredState": "raw"
+        },
+        {
+          "ingredientRef": "ingredient-white-rice",
+          "inventoryItemId": "inv-002",
+          "userName": "Arroz branco",
+          "requiredQuantity": 180,
+          "unit": "g",
+          "availabilitySource": "on_hand",
+          "requiredState": "raw"
+        },
+        {
+          "ingredientRef": "ingredient-carrot",
+          "inventoryItemId": "inv-003",
+          "userName": "Cenoura",
+          "requiredQuantity": 1,
+          "unit": "unit",
+          "availabilitySource": "on_hand",
+          "requiredState": "raw"
+        }
+      ],
+      "additionalIngredients": [],
+      "preparationProfile": {
+        "requiresAdvancePreparation": false,
+        "minimumLeadMinutes": 0,
+        "blockingPreparationCodes": [],
+        "mayProduceReusableComponents": false
+      },
+      "assumptionsUsed": [
+        "sal",
+        "óleo vegetal"
+      ]
+    },
+    {
+      "candidateId": "deck-2",
+      "candidateStrategy": "planned_purchase_reuse",
+      "name": "Wrap de frango",
+      "targetMealType": "dinner",
+      "dishFormat": "wrap",
+      "primaryTechnique": "assembling",
+      "primaryIngredientRefs": [
+        "ingredient-chicken-breast",
+        "ingredient-white-rice"
+      ],
+      "summary": "Peito de frango selado com arroz e cenoura refogada.",
+      "servings": 2,
+      "time": {
+        "activeMinutes": 25,
+        "passiveMinutes": 15,
+        "totalMinutes": 40
+      },
+      "difficulty": "easy",
+      "requiredEquipmentIds": [
+        "eq-stove",
+        "eq-skillet",
+        "eq-pan"
+      ],
+      "requiredCapabilities": [
+        "burner",
+        "sear",
+        "boil"
+      ],
+      "inventoryUses": [
+        {
+          "ingredientRef": "ingredient-chicken-breast",
+          "inventoryItemId": "inv-001",
+          "userName": "Peito de frango",
+          "requiredQuantity": 350,
+          "unit": "g",
+          "availabilitySource": "on_hand",
+          "requiredState": "raw"
+        },
+        {
+          "ingredientRef": "ingredient-white-rice",
+          "inventoryItemId": "inv-002",
+          "userName": "Arroz branco",
+          "requiredQuantity": 180,
+          "unit": "g",
+          "availabilitySource": "on_hand",
+          "requiredState": "raw"
+        },
+        {
+          "ingredientRef": "ingredient-carrot",
+          "inventoryItemId": "inv-003",
+          "userName": "Cenoura",
+          "requiredQuantity": 1,
+          "unit": "unit",
+          "availabilitySource": "on_hand",
+          "requiredState": "raw"
+        }
+      ],
+      "additionalIngredients": [],
+      "preparationProfile": {
+        "requiresAdvancePreparation": false,
+        "minimumLeadMinutes": 0,
+        "blockingPreparationCodes": [],
+        "mayProduceReusableComponents": false
+      },
+      "assumptionsUsed": [
+        "sal",
+        "óleo vegetal"
+      ]
+    },
+    {
+      "candidateId": "deck-3",
+      "candidateStrategy": "exploratory",
+      "name": "Sopa de legumes",
+      "targetMealType": "dinner",
+      "dishFormat": "soup",
+      "primaryTechnique": "simmering",
+      "primaryIngredientRefs": [
+        "ingredient-chicken-breast",
+        "ingredient-white-rice"
+      ],
+      "summary": "Peito de frango selado com arroz e cenoura refogada.",
+      "servings": 2,
+      "time": {
+        "activeMinutes": 25,
+        "passiveMinutes": 15,
+        "totalMinutes": 40
+      },
+      "difficulty": "easy",
+      "requiredEquipmentIds": [
+        "eq-stove",
+        "eq-skillet",
+        "eq-pan"
+      ],
+      "requiredCapabilities": [
+        "burner",
+        "sear",
+        "boil"
+      ],
+      "inventoryUses": [
+        {
+          "ingredientRef": "ingredient-chicken-breast",
+          "inventoryItemId": "inv-001",
+          "userName": "Peito de frango",
+          "requiredQuantity": 350,
+          "unit": "g",
+          "availabilitySource": "on_hand",
+          "requiredState": "raw"
+        },
+        {
+          "ingredientRef": "ingredient-white-rice",
+          "inventoryItemId": "inv-002",
+          "userName": "Arroz branco",
+          "requiredQuantity": 180,
+          "unit": "g",
+          "availabilitySource": "on_hand",
+          "requiredState": "raw"
+        },
+        {
+          "ingredientRef": "ingredient-carrot",
+          "inventoryItemId": "inv-003",
+          "userName": "Cenoura",
+          "requiredQuantity": 1,
+          "unit": "unit",
+          "availabilitySource": "on_hand",
+          "requiredState": "raw"
+        }
+      ],
+      "additionalIngredients": [],
+      "preparationProfile": {
+        "requiresAdvancePreparation": false,
+        "minimumLeadMinutes": 0,
+        "blockingPreparationCodes": [],
+        "mayProduceReusableComponents": false
+      },
+      "assumptionsUsed": [
+        "sal",
+        "óleo vegetal"
+      ]
+    },
+    {
+      "candidateId": "deck-4",
+      "candidateStrategy": "on_hand_first",
+      "name": "Risoto de tomate",
+      "targetMealType": "dinner",
+      "dishFormat": "risotto",
+      "primaryTechnique": "stirring",
+      "primaryIngredientRefs": [
+        "ingredient-chicken-breast",
+        "ingredient-white-rice"
+      ],
+      "summary": "Peito de frango selado com arroz e cenoura refogada.",
+      "servings": 2,
+      "time": {
+        "activeMinutes": 25,
+        "passiveMinutes": 15,
+        "totalMinutes": 40
+      },
+      "difficulty": "easy",
+      "requiredEquipmentIds": [
+        "eq-stove",
+        "eq-skillet",
+        "eq-pan"
+      ],
+      "requiredCapabilities": [
+        "burner",
+        "sear",
+        "boil"
+      ],
+      "inventoryUses": [
+        {
+          "ingredientRef": "ingredient-chicken-breast",
+          "inventoryItemId": "inv-001",
+          "userName": "Peito de frango",
+          "requiredQuantity": 350,
+          "unit": "g",
+          "availabilitySource": "on_hand",
+          "requiredState": "raw"
+        },
+        {
+          "ingredientRef": "ingredient-white-rice",
+          "inventoryItemId": "inv-002",
+          "userName": "Arroz branco",
+          "requiredQuantity": 180,
+          "unit": "g",
+          "availabilitySource": "on_hand",
+          "requiredState": "raw"
+        },
+        {
+          "ingredientRef": "ingredient-carrot",
+          "inventoryItemId": "inv-003",
+          "userName": "Cenoura",
+          "requiredQuantity": 1,
+          "unit": "unit",
+          "availabilitySource": "on_hand",
+          "requiredState": "raw"
+        }
+      ],
+      "additionalIngredients": [],
+      "preparationProfile": {
+        "requiresAdvancePreparation": false,
+        "minimumLeadMinutes": 0,
+        "blockingPreparationCodes": [],
+        "mayProduceReusableComponents": false
+      },
+      "assumptionsUsed": [
+        "sal",
+        "óleo vegetal"
+      ]
+    },
+    {
+      "candidateId": "deck-5",
+      "candidateStrategy": "planned_purchase_reuse",
+      "name": "Salada morna",
+      "targetMealType": "dinner",
+      "dishFormat": "salad",
+      "primaryTechnique": "tossing",
+      "primaryIngredientRefs": [
+        "ingredient-chicken-breast",
+        "ingredient-white-rice"
+      ],
+      "summary": "Peito de frango selado com arroz e cenoura refogada.",
+      "servings": 2,
+      "time": {
+        "activeMinutes": 25,
+        "passiveMinutes": 15,
+        "totalMinutes": 40
+      },
+      "difficulty": "easy",
+      "requiredEquipmentIds": [
+        "eq-stove",
+        "eq-skillet",
+        "eq-pan"
+      ],
+      "requiredCapabilities": [
+        "burner",
+        "sear",
+        "boil"
+      ],
+      "inventoryUses": [
+        {
+          "ingredientRef": "ingredient-chicken-breast",
+          "inventoryItemId": "inv-001",
+          "userName": "Peito de frango",
+          "requiredQuantity": 350,
+          "unit": "g",
+          "availabilitySource": "on_hand",
+          "requiredState": "raw"
+        },
+        {
+          "ingredientRef": "ingredient-white-rice",
+          "inventoryItemId": "inv-002",
+          "userName": "Arroz branco",
+          "requiredQuantity": 180,
+          "unit": "g",
+          "availabilitySource": "on_hand",
+          "requiredState": "raw"
+        },
+        {
+          "ingredientRef": "ingredient-carrot",
+          "inventoryItemId": "inv-003",
+          "userName": "Cenoura",
+          "requiredQuantity": 1,
+          "unit": "unit",
+          "availabilitySource": "on_hand",
+          "requiredState": "raw"
+        }
+      ],
+      "additionalIngredients": [],
+      "preparationProfile": {
+        "requiresAdvancePreparation": false,
+        "minimumLeadMinutes": 0,
+        "blockingPreparationCodes": [],
+        "mayProduceReusableComponents": false
+      },
+      "assumptionsUsed": [
+        "sal",
+        "óleo vegetal"
+      ]
+    },
+    {
+      "candidateId": "deck-6",
+      "candidateStrategy": "exploratory",
+      "name": "Omelete de forno",
+      "targetMealType": "dinner",
+      "dishFormat": "frittata",
+      "primaryTechnique": "baking",
+      "primaryIngredientRefs": [
+        "ingredient-chicken-breast",
+        "ingredient-white-rice"
+      ],
+      "summary": "Peito de frango selado com arroz e cenoura refogada.",
+      "servings": 2,
+      "time": {
+        "activeMinutes": 25,
+        "passiveMinutes": 15,
+        "totalMinutes": 40
+      },
+      "difficulty": "easy",
+      "requiredEquipmentIds": [
+        "eq-stove",
+        "eq-skillet",
+        "eq-pan"
+      ],
+      "requiredCapabilities": [
+        "burner",
+        "sear",
+        "boil"
+      ],
+      "inventoryUses": [
+        {
+          "ingredientRef": "ingredient-chicken-breast",
+          "inventoryItemId": "inv-001",
+          "userName": "Peito de frango",
+          "requiredQuantity": 350,
+          "unit": "g",
+          "availabilitySource": "on_hand",
+          "requiredState": "raw"
+        },
+        {
+          "ingredientRef": "ingredient-white-rice",
+          "inventoryItemId": "inv-002",
+          "userName": "Arroz branco",
+          "requiredQuantity": 180,
+          "unit": "g",
+          "availabilitySource": "on_hand",
+          "requiredState": "raw"
+        },
+        {
+          "ingredientRef": "ingredient-carrot",
+          "inventoryItemId": "inv-003",
+          "userName": "Cenoura",
+          "requiredQuantity": 1,
+          "unit": "unit",
+          "availabilitySource": "on_hand",
+          "requiredState": "raw"
+        }
+      ],
+      "additionalIngredients": [],
+      "preparationProfile": {
+        "requiresAdvancePreparation": false,
+        "minimumLeadMinutes": 0,
+        "blockingPreparationCodes": [],
+        "mayProduceReusableComponents": false
+      },
+      "assumptionsUsed": [
+        "sal",
+        "óleo vegetal"
+      ]
+    }
+  ]
+}

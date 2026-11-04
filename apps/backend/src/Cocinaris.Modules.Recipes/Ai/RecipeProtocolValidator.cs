@@ -62,6 +62,44 @@ public static class RecipeProtocolValidator
             : RecipeProtocolValidationResult<SuggestCandidatesResponse>.Success(response);
     }
 
+    /// <summary>Validates one raw <c>recipe.suggest_plan_deck.v1</c> provider response (PLAN-0062).</summary>
+    public static RecipeProtocolValidationResult<PlanDeckResponse> ValidatePlanDeck(string rawJson, JsonElement? request = null)
+    {
+        PlanDeckResponse? response;
+        try
+        {
+            response = JsonSerializer.Deserialize<PlanDeckResponse>(rawJson, SerializerOptions);
+        }
+        catch (JsonException exception)
+        {
+            return RecipeProtocolValidationResult<PlanDeckResponse>.Failure([$"invalid JSON or missing required field: {exception.Message}"]);
+        }
+
+        if (response is null)
+        {
+            return RecipeProtocolValidationResult<PlanDeckResponse>.Failure(["response is not a JSON object"]);
+        }
+
+        foreach (var candidate in response.Candidates ?? [])
+        {
+            if (candidate?.Summary is not null)
+            {
+                candidate.Summary = RecipeSuggestSemantics.FitSummary(candidate.Summary);
+            }
+        }
+
+        var errors = response.Validate();
+        if (errors.Count > 0)
+        {
+            return RecipeProtocolValidationResult<PlanDeckResponse>.Failure(errors);
+        }
+
+        var semanticErrors = RecipeSuggestSemantics.ValidatePlanDeck(response, request);
+        return semanticErrors.Count > 0
+            ? RecipeProtocolValidationResult<PlanDeckResponse>.Failure(semanticErrors)
+            : RecipeProtocolValidationResult<PlanDeckResponse>.Success(response);
+    }
+
     /// <summary>Validates one raw <c>recipe.expand_selected.v1</c> provider response.</summary>
     public static RecipeProtocolValidationResult<ExpandSelectedResponse> ValidateExpand(string rawJson, JsonElement? request = null) =>
         ValidateRecipe(rawJson, request, "recipe.expand_selected.v1");

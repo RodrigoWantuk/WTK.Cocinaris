@@ -58,7 +58,15 @@ export function ShoppingHubPage() {
     <div data-testid="shopping-hub-empty" className="space-y-4 pt-6">
       <h1 className="font-display text-3xl">{t("shopping.title")}</h1>
       <p className="text-muted-foreground">{t("shopping.hub.empty")}</p>
-      <Button asChild>
+      <Button asChild size="lg">
+        <Link
+          to="/app/compras/planejar"
+          data-testid="shopping-hub-plan-purchases"
+        >
+          {t("shoppingPlan.entry")}
+        </Link>
+      </Button>
+      <Button asChild variant="ghost">
         <Link to="/app/cardapio">{t("shopping.hub.plan")}</Link>
       </Button>
     </div>

@@ -456,6 +456,16 @@ function EntryRow({
               {[
                 entry.mealType ? mealTypeLabel(t, entry.mealType) : null,
                 t("recipes.detail.servings", { count: entry.servings }),
+                entry.mealsCovered > 1
+                  ? t("shoppingPlan.review.covers", {
+                      count: entry.mealsCovered,
+                    })
+                  : null,
+                entry.suggestedOrder !== null && !entry.plannedDate
+                  ? t("shoppingPlan.review.position", {
+                      position: entry.suggestedOrder,
+                    })
+                  : null,
                 t(`planning.entryStatus.${entry.status}`),
               ]
                 .filter(Boolean)

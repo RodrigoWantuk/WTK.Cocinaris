@@ -325,6 +325,8 @@ export type RecipeApiErrorCode =
   | "ai_provider_unavailable"
   | "ai_output_invalid"
   | "ai_operation_conflict"
+  | "plan_in_progress"
+  | "expansions_pending"
   | "unavailable"
   | "cancelled"
   | "unexpected";

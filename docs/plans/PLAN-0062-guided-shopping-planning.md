@@ -1,9 +1,9 @@
 # PLAN-0062: Guided Shopping Planning ("Planejar compras")
 
-- **Status:** Ready (owner approved this plan on 2026-11-04; Slice 1 not started)
+- **Status:** In Progress (owner approved this plan on 2026-11-04; Slice 1 underway)
 - **Type:** Implementation
 - **Priority:** High (owner request)
-- **Owner:** Unassigned; the next execution agent claims it
+- **Owner:** Claude Code (claimed 2026-11-04)
 - **Created:** 2026-11-04
 - **Last updated:** 2026-11-04
 - **Branch:** Plan publication `agent/plan-0062-guided-shopping-planning`; each slice uses the branch named in its section
@@ -737,16 +737,16 @@ Migrations are additive, and rollback means deploying the earlier code with unus
 
 ## Execution state
 
-- **Current run delivery target:** Plan publication.
-- **Current checkpoint:** Plan approved by the owner and published in a draft PR.
-- **Last completed step:** Functional discovery and technical design.
-- **Exact next action:** The owner merges the plan PR. Then claim the plan and start Slice 1 from fresh `origin/main` on `agent/plan-0062-s1-plan-to-list`, beginning with the migration and `RestrictionGuard`.
-- **Blockers:** None for Slice 1 implementation. G1-A needs the owner's review before merge. Slice 4 limits need G2-A.
+- **Current run delivery target:** Slice 1, from zero to list.
+- **Current checkpoint:** Slice 1 implemented on `agent/plan-0062-s1-plan-to-list`: backend, OpenAPI and client, frontend, documents, browser journey, and evaluation harness. Waiting on owner gates.
+- **Last completed step:** Browser journey on the proxy replica with AI off.
+- **Exact next action:** The owner reviews `docs/domain/restriction-rules-review.md` (G1-A) and runs the live evaluation with the provider key (G1-B, command in `scripts/ai/README.md`). An agent reruns `scripts/ci/run-local-gates.sh --ref <head>` (G1-G) and records the evaluation in `docs/evidence/plan-0062/`, and the owner merges. Slice 2 starts from fresh `main`.
+- **Blockers:** G1-A needs the owner's review. G1-B needs the provider key, which is not in this agent's environment and which agents must not read. Slice 4 limits need G2-A.
 - **Partially modified areas:** None.
-- **Documentation delivered:** This plan.
-- **Validation performed:** Code reading of the affected modules; no code changed.
-- **Known failures or limitations:** Per-stage equipment conflicts are not detected (Slice 6). Latency figures come from one recorded evaluation and must be confirmed in G1-C.
-- **Working tree state:** Clean after the publication commit.
+- **Documentation delivered:** `docs/product/guided-shopping-planning.md`, `docs/domain/restriction-rules-review.md`, and updates to the planning, AI, privacy, journey, testing, and contract documents.
+- **Validation performed:** See the Slice 1 entry in the progress log and the pull request.
+- **Known failures or limitations:** G1-G incomplete: the host stopped the gate run for low memory; rerun it when the host has room. G1-B not run, so AI card quality, first-batch latency, and shared-ingredient rates are unmeasured against the real model. The offline, arrival, and cook-by behaviors belong to later slices. Per-stage equipment conflicts are not detected (Slice 6).
+- **Working tree state:** Clean after this commit.
 
 ## Progress log
 
@@ -760,6 +760,37 @@ Migrations are additive, and rollback means deploying the earlier code with unus
 - **Result:** Plan ready for Slice 1.
 - **Next action:** See "Exact next action".
 - **Blockers or handoff notes:** Owner gates G1-A and G2-A.
+
+### 2026-11-04 — Claude Code (Slice 1, backend)
+
+- **Run delivery target:** Slice 1.
+- **Checkpoint:** Backend committed.
+- **Changes included in the commit:** Migration `AddShoppingPlans`; `RestrictionGuard` and rules; `IngredientPerishability`; `recipe.suggest_plan_deck.v1` with schema, fixtures, and validators; `RecipePlanDeckService`; `RecipeIdeaLibrary.FindPlanDeckAsync`; `ShoppingPlanApplicationService`, ranking, and sequencer; endpoints; "Hoje" and allocation order.
+- **Deviations from this plan, keeping the outcome:**
+  - The card's lead ingredient is its largest ingredient by weight or volume, not `primaryIngredientRefs[0]`, because model references are not stable across batches and the "tired of" reason needs a real name.
+  - `DietaryPattern`, `Intolerance`, and `MedicalRestriction` codes that no word list can express (for example `keto`, `renal_diet`) are marked `unverifiable`, so every card shows the note.
+  - Added `POST /{id}/cards/{cardId}/removal`, so "Remover" works on a failed card that has no menu entry.
+  - Added `last_batch_key` to the session, so a retried batch does not spend another.
+  - A failed batch is given back, so a provider outage does not use up the plan's allowance.
+  - Acceptance is two steps, not one transaction, because the menu and the plan use separate stores. Each step is idempotent, so a retry completes it.
+- **Validation performed:** See `Execution state`.
+- **Next action:** See `Exact next action`.
+
+### 2026-11-04 — Claude Code (Slice 1, frontend and documents)
+
+- **Run delivery target:** Slice 1.
+- **Checkpoint:** Slice 1 implemented, awaiting owner gates.
+- **Changes included in the commit:** OpenAPI and generated client; `features/shopping-plan` (setup, cards, review, expansion queue); "Já tenho" and sharing on the list; entry points in Compras, Cardápio, and the main button; catalogs in three languages; browser journey; `PLAN0062_LIVE_EVAL` in the gateway smoke; documents. Also added the missing UTF-8 BOM to migration `20261104171014`, which `main` carries and which fails the format gate.
+- **Deviations from this plan, keeping the outcome:**
+  - The stepper for "Sim, 2 vezes" sits inline under the card rather than in a separate sheet, which needs no focus trap and keeps the card in view.
+  - The main button's half moon grew to three actions.
+- **Validation performed:**
+  - Frontend tests: shopping plan, planning, cooking, quick menu, and i18n, 52/52, including one bug they caught in restriction labels.
+  - Browser journey on the proxy replica, AI off, at 390 px: all checks passed. First card 880 ms (G1-C, instant cards). Decision round trip 61 and 71 ms with a small deck (G1-D; not measured with 60 cards).
+  - Screens read at 360 px; keyboard and 200% zoom not checked by hand.
+- **Gate G1-G not complete:** `run-local-gates.sh` was stopped by the host when memory ran low, during the backend build. Restore, vulnerabilities, and format had passed. The full backend suite, migrations applied twice, OpenAPI drift, frontend gates, and the smoke matrix did not run on this head.
+- **Result:** Ready for owner review, not for merge until G1-A, G1-B, and G1-G.
+- **Next action:** See `Exact next action`.
 
 ## Completion and handoff checklist
 

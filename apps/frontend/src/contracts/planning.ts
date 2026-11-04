@@ -47,6 +47,10 @@ export interface MenuEntry {
    * a simulation on a draft.
    */
   readiness: MealReadiness | null;
+  /** Meals this one cooking covers (PLAN-0062): "yields 2 meals" is one entry covering two. */
+  mealsCovered: number;
+  /** Suggested cooking order in a shopping plan's menu; null for a menu built by hand. */
+  suggestedOrder: number | null;
 }
 
 /** `ready` when every required pantry ingredient is reserved; `missing` lists what is not. */

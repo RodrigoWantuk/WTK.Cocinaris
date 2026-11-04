@@ -55,6 +55,7 @@ public sealed record RecipeIdea(
 /// <param name="PantrySlugs">Catalog slugs in the user's pantry; the idea must use at least one.</param>
 /// <param name="EquipmentCodes">The user's equipment codes; the idea may need only these.</param>
 /// <param name="Limit">Most ideas returned.</param>
+/// <param name="AnyIngredients">Skips the pantry rule, for a shopping plan, where the person is about to buy the food (PLAN-0062).</param>
 public sealed record RecipeIdeaQuery(
     string Language,
     string? InstructionDetail,
@@ -63,7 +64,8 @@ public sealed record RecipeIdeaQuery(
     string? MealType,
     IReadOnlyList<string> PantrySlugs,
     IReadOnlyList<string> EquipmentCodes,
-    int Limit);
+    int Limit,
+    bool AnyIngredients = false);
 
 /// <summary>Persistence port of the shared recipe-idea library. The rows are global and hold no owner.</summary>
 public interface IRecipeIdeaStore

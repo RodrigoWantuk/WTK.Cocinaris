@@ -11,12 +11,13 @@ import {
   fixturesDir,
   listJsonFiles,
   validateExpandSemantics,
+  validatePlanDeckSemantics,
   validateRequestFixture,
   validateSuggestSemantics,
 } from "./lib/validate-core.mjs";
 
 const ajv = createAjv();
-const { validateSuggest, validateExpand } = compileSchemas(ajv);
+const { validateSuggest, validateExpand, validatePlanDeck } = compileSchemas(ajv);
 
 let failures = 0;
 
@@ -54,6 +55,14 @@ for (const file of listJsonFiles(join(fixturesDir, "responses/positive"))) {
       fail(`${name} schema: ${ajv.errorsText(validateSuggest.errors)}`);
     } else {
       const semantic = validateSuggestSemantics(data);
+      if (!semantic.ok) fail(`${name} semantics: ${semantic.errors.join("; ")}`);
+      else pass(`positive ${name}`);
+    }
+  } else if (name.startsWith("plan-deck-")) {
+    if (!validatePlanDeck(data)) {
+      fail(`${name} schema: ${ajv.errorsText(validatePlanDeck.errors)}`);
+    } else {
+      const semantic = validatePlanDeckSemantics(data);
       if (!semantic.ok) fail(`${name} semantics: ${semantic.errors.join("; ")}`);
       else pass(`positive ${name}`);
     }
@@ -97,6 +106,22 @@ const negativeExpectations = {
     schemaFail: false,
     semanticFail: true,
   },
+  "plan-deck-five-candidates.json": { schemaFail: true },
+  "plan-deck-seven-candidates.json": { schemaFail: true },
+  "plan-deck-extra-property.json": { schemaFail: true },
+  "plan-deck-duplicate-fingerprint.json": {
+    schemaFail: false,
+    semanticFail: true,
+  },
+  "plan-deck-wrong-meal.json": {
+    schemaFail: false,
+    semanticFail: true,
+    request: "inline:planDeckLunchOnly",
+  },
+};
+
+const inlineRequests = {
+  planDeckLunchOnly: { planDeck: { mealTypes: ["lunch"] } },
 };
 
 for (const file of listJsonFiles(join(fixturesDir, "responses/negative"))) {
@@ -108,7 +133,8 @@ for (const file of listJsonFiles(join(fixturesDir, "responses/negative"))) {
   }
   const data = JSON.parse(readFileSync(file, "utf8"));
   const isSuggest = name.startsWith("suggest-");
-  const validate = isSuggest ? validateSuggest : validateExpand;
+  const isPlanDeck = name.startsWith("plan-deck-");
+  const validate = isPlanDeck ? validatePlanDeck : isSuggest ? validateSuggest : validateExpand;
   const schemaOk = validate(data);
   if (expectation.schemaFail) {
     if (schemaOk) fail(`${name} expected schema failure`);
@@ -119,12 +145,16 @@ for (const file of listJsonFiles(join(fixturesDir, "responses/negative"))) {
     fail(`${name} unexpectedly failed schema: ${ajv.errorsText(validate.errors)}`);
     continue;
   }
-  const request = expectation.request
-    ? JSON.parse(readFileSync(expectation.request, "utf8"))
-    : null;
-  const semantic = isSuggest
-    ? validateSuggestSemantics(data, request)
-    : validateExpandSemantics(data, request);
+  const request = expectation.request?.startsWith("inline:")
+    ? inlineRequests[expectation.request.slice("inline:".length)]
+    : expectation.request
+      ? JSON.parse(readFileSync(expectation.request, "utf8"))
+      : null;
+  const semantic = isPlanDeck
+    ? validatePlanDeckSemantics(data, request)
+    : isSuggest
+      ? validateSuggestSemantics(data, request)
+      : validateExpandSemantics(data, request);
   if (expectation.semanticFail) {
     if (semantic.ok) fail(`${name} expected semantic failure`);
     else pass(`negative semantic ${name}`);

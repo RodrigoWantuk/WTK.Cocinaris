@@ -54,6 +54,15 @@ Test:
 - package remainder calculations identify source and uncertainty;
 - cancelled meals release or preserve reservations according to explicit policy.
 
+Shopping plans (PLAN-0062) also require:
+
+- a restricted dish never becomes a card, and a blocked expanded recipe creates no meal;
+- no goal, chip, or anchor can relax a restriction;
+- the same input always gives the same card order;
+- no reservation or home-page meal before the plan is accepted;
+- retrying a decision, batch, or expansion creates no duplicates;
+- the flow finishes with saved recipes when AI is off.
+
 ## Recipe and cooking invariants
 
 Test:
