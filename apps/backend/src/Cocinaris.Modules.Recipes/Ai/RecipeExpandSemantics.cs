@@ -32,7 +32,7 @@ public static partial class RecipeExpandSemantics
     /// Whether text has a link or markup. A recipe has no use for either, so their presence means
     /// the model followed something it should have treated as data (PLAN-0060).
     /// </summary>
-    public static bool ContainsLinkOrMarkup(string text) => LinkOrMarkup().IsMatch(text);
+    public static bool ContainsLinkOrMarkup(string text) => Cocinaris.Modules.Ai.Safety.UntrustedText.ContainsLinkOrMarkup(text);
 
     /// <summary>Validates thumbnail privacy/claim bounds and request-fidelity rules.</summary>
     public static List<string> Validate(ExpandSelectedResponse response, JsonElement? request)
@@ -100,8 +100,6 @@ public static partial class RecipeExpandSemantics
         return errors;
     }
 
-    [GeneratedRegex(@"https?://|\bwww\.|<\s*/?\s*[a-z!]", RegexOptions.IgnoreCase)]
-    private static partial Regex LinkOrMarkup();
     [GeneratedRegex(@"\binv[-_]?\d+", RegexOptions.IgnoreCase)]
     private static partial Regex InventoryReferencePattern();
     [GeneratedRegex(@"\buser\b", RegexOptions.IgnoreCase)]

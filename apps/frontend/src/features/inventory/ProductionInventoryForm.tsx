@@ -1,3 +1,4 @@
+import { ListPlus } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useInventoryRepository } from "./InventoryProvider";
@@ -588,6 +589,25 @@ export function ProductionInventoryForm({ mode }: { mode: "create" | "edit" }) {
           ? t("inventory.form.createTitle")
           : t("inventory.form.editTitle")}
       </h1>
+      {mode === "create" ? (
+        <Link
+          to="/app/despensa/lista"
+          data-testid="inventory-open-list"
+          className="surface flex items-center gap-3 p-3 text-sm transition-colors duration-150 hover:bg-secondary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent text-accent-foreground">
+            <ListPlus aria-hidden="true" className="h-5 w-5" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block font-semibold">
+              {t("inventory.list.entry")}
+            </span>
+            <span className="block text-muted-foreground">
+              {t("inventory.list.entryDetail")}
+            </span>
+          </span>
+        </Link>
+      ) : null}
 
       {conflict && (
         <div role="alert" data-testid="inventory-form-conflict">

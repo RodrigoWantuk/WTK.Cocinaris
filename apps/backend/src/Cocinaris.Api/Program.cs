@@ -59,6 +59,7 @@ builder.Services.AddScoped<ICurrentUserAccessor, CurrentUserResolver>();
 builder.Services.AddScoped<IInventoryLotReadStore, PostgreSqlInventoryLotReadStore>();
 builder.Services.AddScoped<IInventoryProductNameSource, PostgreSqlInventoryProductNameSource>();
 builder.Services.AddScoped<InventoryNameSuggestionService>();
+builder.Services.AddSingleton<IReceiptImagePreparer, SkiaReceiptImagePreparer>();
 builder.Services.AddScoped<IInventoryAutoRemovalSource, PostgreSqlInventoryAutoRemovalSource>();
 builder.Services.AddScoped<InventoryAutoRemovalService>();
 if (!builder.Environment.IsEnvironment("Testing"))

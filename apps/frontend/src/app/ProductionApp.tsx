@@ -20,6 +20,7 @@ import { InventoryProvider } from "@/features/inventory/InventoryProvider";
 import { ProductionInventoryList } from "@/features/inventory/ProductionInventoryList";
 import { ProductionInventoryDetail } from "@/features/inventory/ProductionInventoryDetail";
 import { ProductionInventoryForm } from "@/features/inventory/ProductionInventoryForm";
+import { PantryListPage } from "@/features/inventory/PantryListPage";
 import { RecipeProvider } from "@/features/recipes/RecipeProvider";
 import { PlanningProvider } from "@/features/planning/PlanningProvider";
 import { MenusPage } from "@/features/planning/MenusPage";
@@ -135,6 +136,7 @@ export function pageTitleKeyFor(pathname: string): string {
   if (/^\/app\/despensa\/[^/]+\/editar$/.test(pathname)) {
     return "page.title.inventoryEdit";
   }
+  if (pathname === "/app/despensa/lista") return "page.title.pantryList";
   if (/^\/app\/despensa\/[^/]+$/.test(pathname)) {
     return "page.title.inventoryDetail";
   }
@@ -406,6 +408,7 @@ function createProductionRouter() {
         { index: true, element: <Navigate to="/app/hoje" replace /> },
         { path: "hoje", element: <HomeRoute /> },
         { path: "despensa", element: <ProductionInventoryList /> },
+        { path: "despensa/lista", element: <PantryListPage /> },
         {
           path: "despensa/novo",
           element: <ProductionInventoryForm mode="create" />,

@@ -21,6 +21,10 @@ Rules:
 - summaries report `scenariosEvaluated` and `providerCallsAttempted` separately (repairs count as provider calls);
 - non-streaming runs set `ttftMs` to null (`unavailable_without_streaming`) and distinguish response-header timing from total body-inclusive latency.
 
+## PLAN-0060 and PLAN-0046 free-text evaluation
+
+The gateway smoke below also evaluates the hint, `recipe.revise.v1`, and `inventory.list_parse.v1` with an injection attempt when `PLAN0060_LIVE_EVAL=1` is set. It prints whether each answer is valid and whether its marker leaked. A `markerLeaked=true` means the model obeyed text it must treat as data.
+
 ## PLAN-0028 production gateway smoke
 
 ```bash

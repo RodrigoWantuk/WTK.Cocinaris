@@ -3,6 +3,7 @@ using Cocinaris.Modules.Ai.Abstractions;
 using Cocinaris.Modules.Ai.Images;
 using Cocinaris.Modules.Ai.Providers;
 using Cocinaris.Modules.Ai.Usage;
+using Cocinaris.Modules.Inventory.Application;
 using Cocinaris.Modules.Recipes.Application;
 using Cocinaris.Modules.Recipes.Ideas;
 using Cocinaris.Modules.Recipes.Thumbnails;
@@ -104,8 +105,37 @@ public static class RecipeAiServiceCollectionExtensions
             services.AddSingleton<IAiProvider, UnavailableAiProvider>();
         }
 
+        AddReceiptReading(services, configuration, environment);
         AddRecipeThumbnails(services, configuration, environment);
         return services;
+    }
+
+    /// <summary>
+    /// Registers pantry AI readings (PLAN-0046). Receipt photos reach the OpenRouter vision model only
+    /// when <c>Ai:Receipts:Enabled</c> is true and the key exists; otherwise the option is hidden.
+    /// </summary>
+    private static void AddReceiptReading(IServiceCollection services, IConfiguration configuration, IHostEnvironment environment)
+    {
+        services.AddOptions<ReceiptVisionOptions>().Bind(configuration.GetSection("Ai:Receipts"));
+        services.AddScoped<PantryImportService>();
+        var receipts = configuration.GetSection("Ai:Receipts").Get<ReceiptVisionOptions>() ?? new ReceiptVisionOptions();
+        var openRouterKey = configuration.GetSection("Ai:Providers:OpenRouter").GetValue<string>("ApiKey");
+        if (environment.IsEnvironment("Testing"))
+        {
+            services.AddSingleton<IVisionProvider, FakeVisionProvider>(_ => new FakeVisionProvider());
+        }
+        else if (receipts.Enabled && !string.IsNullOrWhiteSpace(openRouterKey))
+        {
+            services.AddHttpClient("cocinaris-openrouter-vision", client => client.Timeout = TimeSpan.FromSeconds(90));
+            services.AddScoped<IVisionProvider>(provider => new OpenRouterVisionProvider(
+                provider.GetRequiredService<IHttpClientFactory>().CreateClient("cocinaris-openrouter-vision"),
+                provider.GetRequiredService<IOptions<OpenRouterOptions>>().Value,
+                provider.GetRequiredService<IOptions<ReceiptVisionOptions>>().Value));
+        }
+        else
+        {
+            services.AddSingleton<IVisionProvider, UnavailableVisionProvider>();
+        }
     }
 
     /// <summary>

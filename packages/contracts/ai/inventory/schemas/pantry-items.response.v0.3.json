@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cocinaris.local/contracts/ai/inventory/pantry-items.response.v0.3.json",
+  "title": "inventory pantry reading response",
+  "description": "Strict closed response for inventory.list_parse.v1 and inventory.receipt_parse.v1 (the backend sets the operation const). Every item is only a proposal the person reviews.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["operation", "schemaVersion", "items"],
+  "properties": {
+    "operation": { "const": "inventory.list_parse.v1" },
+    "schemaVersion": { "const": "0.3" },
+    "items": {
+      "type": "array",
+      "maxItems": 60,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "quantity", "unit", "storageLocation", "uncertain", "sourceText"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1, "maxLength": 80 },
+          "quantity": { "type": ["number", "null"], "exclusiveMinimum": 0, "maximum": 100000 },
+          "unit": { "enum": ["g", "ml", "unit", null] },
+          "storageLocation": { "enum": ["pantry", "refrigerator", "freezer"] },
+          "uncertain": { "type": "boolean" },
+          "sourceText": { "type": ["string", "null"], "maxLength": 120 }
+        }
+      }
+    }
+  }
+}

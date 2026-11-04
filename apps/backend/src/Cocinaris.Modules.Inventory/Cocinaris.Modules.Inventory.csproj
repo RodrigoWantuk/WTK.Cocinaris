@@ -12,4 +12,7 @@
     <ProjectReference Include="../Cocinaris.SharedKernel/Cocinaris.SharedKernel.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="..\..\..\..\packages\contracts\ai\inventory\schemas\pantry-items.response.v0.3.json" Link="Contracts\pantry-items.response.v0.3.json" LogicalName="Cocinaris.Modules.Inventory.Contracts.pantry-items.response.v0.3.json" />
+  </ItemGroup>
 </Project>

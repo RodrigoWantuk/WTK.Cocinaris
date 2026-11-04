@@ -1,3 +1,4 @@
+using Cocinaris.Modules.Ai.Safety;
 using System.Text.Json;
 using Cocinaris.Modules.Ai.Abstractions;
 using Cocinaris.Modules.Ai.Usage;
@@ -61,7 +62,7 @@ public sealed class RecipeCookNowApplicationService(
         var user = await currentUser.GetCurrentAsync(cancellationToken);
         var now = timeProvider.GetUtcNow();
         // The hint is cleaned once, here, so the stored session and the model see the same text.
-        var guidanceHint = RecipeUntrustedText.Normalize(command.Guidance?.Hint, RecipeSuggestionGuidance.MaxHintLength);
+        var guidanceHint = UntrustedText.Normalize(command.Guidance?.Hint, RecipeSuggestionGuidance.MaxHintLength);
         var requested = command.Guidance is null ? null : command.Guidance with { Hint = guidanceHint };
         var session = RecipeGenerationSession.Create(user.Id, command.IdempotencyKey.Value, now, command.MenuTarget is null ? "cook_now" : "menu_planning", guidanceHint, requested?.Adaptation);
         var claim = await generationStore.TryClaimNewSessionAsync(session, cancellationToken);

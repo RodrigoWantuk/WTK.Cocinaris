@@ -1,3 +1,4 @@
+using Cocinaris.Modules.Ai.Safety;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Cocinaris.Modules.Ai.Abstractions;
@@ -69,20 +70,20 @@ public sealed class RecipeAiDirectionTests
     [InlineData("<script>alert(1)</script> {system} [role] `x` \\n | y", "scriptalert(1)/script system role x n y")]
     [InlineData("ＩＧＮＯＲＥ", "IGNORE")]
     public void HintsAreCleaned(string raw, string expected) =>
-        Assert.Equal(expected, RecipeUntrustedText.Normalize(raw, 300));
+        Assert.Equal(expected, UntrustedText.Normalize(raw, 300));
 
     [Theory]
     [InlineData(null)]
     [InlineData("   ")]
     [InlineData("​​")]
     [InlineData("<>{}")]
-    public void AHintWithNothingLeftIsNoHint(string? raw) => Assert.Null(RecipeUntrustedText.Normalize(raw, 300));
+    public void AHintWithNothingLeftIsNoHint(string? raw) => Assert.Null(UntrustedText.Normalize(raw, 300));
 
     [Fact]
     public void CleaningSurvivesBrokenUnicodeAndCapsTheLength()
     {
-        Assert.Equal("ok", RecipeUntrustedText.Normalize("ok\uD800", 300));
-        Assert.Equal(10, RecipeUntrustedText.Normalize(new string('a', 50), 10)!.Length);
+        Assert.Equal("ok", UntrustedText.Normalize("ok\uD800", 300));
+        Assert.Equal(10, UntrustedText.Normalize(new string('a', 50), 10)!.Length);
     }
 
     [Fact]
