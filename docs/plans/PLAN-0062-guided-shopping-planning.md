@@ -740,12 +740,12 @@ Migrations are additive, and rollback means deploying the earlier code with unus
 - **Current run delivery target:** Slice 1, from zero to list.
 - **Current checkpoint:** Slice 1 implemented on `agent/plan-0062-s1-plan-to-list`: backend, OpenAPI and client, frontend, documents, browser journey, and evaluation harness. Waiting on owner gates.
 - **Last completed step:** Browser journey on the proxy replica with AI off.
-- **Exact next action:** The owner reviews `docs/domain/restriction-rules-review.md` (G1-A) and runs the live evaluation with the provider key (G1-B, command in `scripts/ai/README.md`). An agent then records the result in `docs/evidence/plan-0062/`, and the owner merges. Slice 2 starts from fresh `main`.
+- **Exact next action:** The owner reviews `docs/domain/restriction-rules-review.md` (G1-A) and runs the live evaluation with the provider key (G1-B, command in `scripts/ai/README.md`). An agent reruns `scripts/ci/run-local-gates.sh --ref <head>` (G1-G) and records the evaluation in `docs/evidence/plan-0062/`, and the owner merges. Slice 2 starts from fresh `main`.
 - **Blockers:** G1-A needs the owner's review. G1-B needs the provider key, which is not in this agent's environment and which agents must not read. Slice 4 limits need G2-A.
 - **Partially modified areas:** None.
 - **Documentation delivered:** `docs/product/guided-shopping-planning.md`, `docs/domain/restriction-rules-review.md`, and updates to the planning, AI, privacy, journey, testing, and contract documents.
 - **Validation performed:** See the Slice 1 entry in the progress log and the pull request.
-- **Known failures or limitations:** G1-B not run, so AI card quality, first-batch latency, and shared-ingredient rates are unmeasured against the real model. The offline, arrival, and cook-by behaviors belong to later slices. Per-stage equipment conflicts are not detected (Slice 6).
+- **Known failures or limitations:** G1-G incomplete: the host stopped the gate run for low memory; rerun it when the host has room. G1-B not run, so AI card quality, first-batch latency, and shared-ingredient rates are unmeasured against the real model. The offline, arrival, and cook-by behaviors belong to later slices. Per-stage equipment conflicts are not detected (Slice 6).
 - **Working tree state:** Clean after this commit.
 
 ## Progress log
@@ -788,7 +788,8 @@ Migrations are additive, and rollback means deploying the earlier code with unus
   - Frontend tests: shopping plan, planning, cooking, quick menu, and i18n, 52/52, including one bug they caught in restriction labels.
   - Browser journey on the proxy replica, AI off, at 390 px: all checks passed. First card 880 ms (G1-C, instant cards). Decision round trip 61 and 71 ms with a small deck (G1-D; not measured with 60 cards).
   - Screens read at 360 px; keyboard and 200% zoom not checked by hand.
-- **Result:** Ready for owner review, not for merge until G1-A and G1-B.
+- **Gate G1-G not complete:** `run-local-gates.sh` was stopped by the host when memory ran low, during the backend build. Restore, vulnerabilities, and format had passed. The full backend suite, migrations applied twice, OpenAPI drift, frontend gates, and the smoke matrix did not run on this head.
+- **Result:** Ready for owner review, not for merge until G1-A, G1-B, and G1-G.
 - **Next action:** See `Exact next action`.
 
 ## Completion and handoff checklist
