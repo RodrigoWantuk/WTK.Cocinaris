@@ -95,6 +95,9 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
     /// <summary>Gets candidates owners saved for later (PLAN-0056 Phase 3).</summary>
     public DbSet<SavedCandidateEntryRecord> SavedCandidates => Set<SavedCandidateEntryRecord>();
 
+    /// <summary>Gets proposed AI revisions of recipes (PLAN-0060).</summary>
+    public DbSet<RecipeRevisionProposalRecord> RecipeRevisionProposals => Set<RecipeRevisionProposalRecord>();
+
     /// <summary>Gets the database copy of the curated ingredient catalog (PLAN-0055).</summary>
     public DbSet<IngredientCatalogItemRecord> IngredientCatalogItems => Set<IngredientCatalogItemRecord>();
 
@@ -415,9 +418,9 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
                 table.HasCheckConstraint("ck_recipe_revisions_servings", "\"Servings\" BETWEEN 1 AND 24");
                 table.HasCheckConstraint("ck_recipe_revisions_name", "length(btrim(\"Name\")) > 0");
                 table.HasCheckConstraint("ck_recipe_revisions_source_candidate_id", "\"SourceCandidateId\" IS NULL OR length(btrim(\"SourceCandidateId\")) > 0");
-                table.HasCheckConstraint("ck_recipe_revisions_origin", "\"Origin\" IN ('Generated', 'Manual', 'Edited', 'Derived')");
+                table.HasCheckConstraint("ck_recipe_revisions_origin", "\"Origin\" IN ('Generated', 'Manual', 'Edited', 'Derived', 'AiRevised')");
                 table.HasCheckConstraint("ck_recipe_revisions_generated_source", "(\"Origin\" = 'Generated') = (\"SourceCandidateId\" IS NOT NULL AND \"SourceGenerationSessionId\" IS NOT NULL)");
-                table.HasCheckConstraint("ck_recipe_revisions_edited_number", "(\"Origin\" = 'Edited') = (\"RevisionNumber\" > 1)");
+                table.HasCheckConstraint("ck_recipe_revisions_edited_number", "(\"Origin\" IN ('Edited', 'AiRevised')) = (\"RevisionNumber\" > 1)");
             });
             entity.HasKey(x => x.Id);
             entity.Property(x => x.Name).HasMaxLength(80).IsRequired();
@@ -586,6 +589,26 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             entity.HasIndex(x => new { x.OwnerUserId, x.CreatedAt });
         });
 
+        modelBuilder.Entity<RecipeRevisionProposalRecord>(entity =>
+        {
+            entity.ToTable("revision_proposals", "recipes", table =>
+            {
+                table.HasCheckConstraint("ck_revision_proposals_status", "\"Status\" IN ('Generating', 'Ready', 'Accepted', 'Discarded', 'Failed')");
+            });
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Instruction).HasMaxLength(300).IsRequired();
+            entity.Property(x => x.Status).HasMaxLength(20).IsRequired();
+            entity.Property(x => x.Name).HasMaxLength(80);
+            entity.Property(x => x.MealTypesJson).HasColumnType("jsonb").IsRequired();
+            entity.Property(x => x.NormalizedRecipeJson).HasColumnType("jsonb");
+            entity.Property(x => x.ThumbnailVisualJson).HasColumnType("jsonb");
+            entity.Property(x => x.FailureReason).HasMaxLength(100);
+            entity.HasOne<InternalUser>().WithMany().HasForeignKey(x => x.OwnerUserId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne<RecipeRecord>().WithMany().HasForeignKey(x => new { x.RecipeId, x.OwnerUserId }).HasPrincipalKey(x => new { x.Id, x.OwnerUserId }).OnDelete(DeleteBehavior.Restrict);
+            entity.HasIndex(x => new { x.OwnerUserId, x.IdempotencyKey }).IsUnique();
+            entity.HasIndex(x => new { x.OwnerUserId, x.RecipeId, x.CreatedAt });
+        });
+
         modelBuilder.Entity<RecipeIdeaRecord>(entity =>
         {
             entity.ToTable("recipe_ideas", "recipes");
@@ -635,6 +658,9 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             entity.Property(x => x.CandidatesSnapshotJson).HasColumnType("jsonb");
             entity.Property(x => x.SelectedCandidateId).HasMaxLength(64);
             entity.Property(x => x.FailureReason).HasMaxLength(100);
+            entity.Property(x => x.UserHint).HasMaxLength(300);
+            entity.Property(x => x.Adaptation).HasMaxLength(32);
+            entity.HasIndex(x => new { x.OwnerUserId, x.SourceSessionId }).HasFilter("\"SourceSessionId\" IS NOT NULL");
             entity.HasOne<InternalUser>().WithMany().HasForeignKey(x => x.OwnerUserId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne<RecipeRecord>().WithMany().HasForeignKey(x => new { x.SelectedRecipeId, x.OwnerUserId }).HasPrincipalKey(x => new { x.Id, x.OwnerUserId }).IsRequired(false).OnDelete(DeleteBehavior.Restrict);
             entity.HasIndex(x => new { x.OwnerUserId, x.IdempotencyKey }).IsUnique();

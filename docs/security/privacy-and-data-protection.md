@@ -157,6 +157,17 @@ PLAN-0056 Phase 3 adds `recipes.saved_candidates`:
 - **After cooking.** A cooked entry keeps the id of the recipe it became, so a retried request returns the same recipe. It no longer appears in the list.
 - **Retention and deletion.** Rows live as long as the account. Export and deletion must include them, together with the owner's recipes and generation sessions.
 
+## Suggestion hints, history, and revision requests
+
+PLAN-0060 stores short free text the owner writes for the AI, which may be personal:
+- **Suggestion hint** (`recipes.generation_sessions.UserHint`) and **revision request** (`recipes.revision_proposals.Instruction`, up to its first 200 characters also as the accepted revision's change reason).
+- **Owner.** Rows belong to one owner and are only read through owner-scoped queries.
+- **Purpose.** Sent to the AI provider once as untrusted data, and shown back to the owner. Never written to logs or the usage ledger.
+- **Never shared.** Recipes shaped by this text never enter the shared idea library.
+- **Suggestion history.** Past requests stay listed with their candidates. "Remover" hides the request and clears its hint at once; its candidates stay, because saved entries and recipes may come from them.
+- **Proposals.** A proposal's content is cleared when it is accepted or discarded. An undecided proposal stays until the account is deleted, and it changes nothing.
+- **Retention and deletion.** Rows live as long as the account. Export and deletion must include them, together with the owner's recipes and generation sessions.
+
 ## Shared recipe ideas
 
 PLAN-0055 Phase 2 ([ADR-0011](../architecture/decisions/0011-shared-recipe-idea-library.md)) adds `recipes.recipe_ideas`: generic recipe ideas shared by everyone, with no owner column. An idea is stored only after an AI expansion, and only when it can be made generic:

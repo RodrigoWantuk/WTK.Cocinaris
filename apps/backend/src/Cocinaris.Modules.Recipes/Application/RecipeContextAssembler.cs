@@ -81,6 +81,14 @@ public sealed class RecipeContextAssembler(IInventoryLotReadStore inventoryReadS
         return new RecipeExpandRequestContext(requestId, bounded.InventoryItems, bounded.Equipment, presets, selected);
     }
 
+    /// <inheritdoc />
+    public async Task<RecipeReviseRequestContext> AssembleReviseContextAsync(Guid ownerUserId, string requestId, string recipeId, int nextRevision, string currentRecipeJson, string instruction, int contextBudgetCharacters, CancellationToken cancellationToken)
+    {
+        var (inventoryItems, equipment, presets) = await AssembleSharedAsync(ownerUserId, cancellationToken);
+        var bounded = BoundBySuggestBudget(inventoryItems, equipment, contextBudgetCharacters);
+        return new RecipeReviseRequestContext(requestId, bounded.InventoryItems, bounded.Equipment, presets, recipeId, nextRevision, currentRecipeJson, instruction);
+    }
+
     private async Task<(IReadOnlyList<RecipeInventoryContextItem> InventoryItems, IReadOnlyList<RecipeEquipmentContextItem> Equipment, RecipeUserPresets Presets)> AssembleSharedAsync(Guid ownerUserId, CancellationToken cancellationToken)
     {
         var lotsPage = await inventoryReadStore.ListAsync(new InventoryLotReadQuery(ownerUserId, MaxInventoryItemsConsidered, "active", null, null, null), cancellationToken);
@@ -150,7 +158,8 @@ public sealed class RecipeContextAssembler(IInventoryLotReadStore inventoryReadS
         candidate.Servings,
         candidate.RequiredEquipmentIds,
         candidate.InventoryUses.Select(use => new RecipeInventoryContextItem(use.InventoryItemId, use.UserName, use.RequiredQuantity, use.Unit, use.AvailabilitySource, use.IngredientRef)).ToList(),
-        candidate.AdditionalIngredients.Select(item => (item.Name, item.RequiredQuantity, item.Unit, item.Optional)).ToList());
+        candidate.AdditionalIngredients.Select(item => (item.Name, item.RequiredQuantity, item.Unit, item.Optional)).ToList(),
+        candidate.Summary);
 
     private static string ToCanonicalUnit(string measuredUnit) => measuredUnit switch
     {

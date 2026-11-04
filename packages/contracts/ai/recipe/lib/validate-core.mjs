@@ -16,9 +16,12 @@ export const docsExamplesDir = join(
   "../../../../docs/ai/examples",
 );
 
+const LINK_OR_MARKUP = /https?:\/\/|\bwww\.|<\s*\/?\s*[a-z!]/i;
+
 export const SCHEMA_FILES = {
   suggest: "recipe-suggest-candidates.response.v0.3.json",
   expand: "recipe-expand-selected.response.v0.3.json",
+  revise: "recipe-revise.response.v0.3.json",
 };
 
 /**
@@ -124,10 +127,6 @@ export function validateSuggestSemantics(response, request = null) {
     }
     strategies.add(candidate.candidateStrategy);
 
-    const summaryWords = wordCount(String(candidate.summary ?? ""));
-    if (summaryWords > 18) {
-      errors.push(`${prefix}.summary has ${summaryWords} words (max 18)`);
-    }
 
     const fingerprint = [
       candidate.dishFormat,
@@ -143,6 +142,10 @@ export function validateSuggestSemantics(response, request = null) {
       if (claim.test(String(candidate.name ?? "")) || claim.test(String(candidate.summary ?? ""))) {
         errors.push(`${prefix} contains unsupported quality claim`);
       }
+    }
+
+    if (LINK_OR_MARKUP.test(String(candidate.name ?? "")) || LINK_OR_MARKUP.test(String(candidate.summary ?? ""))) {
+      errors.push(`${prefix} contains a link or markup`);
     }
 
     const assumptions = new Set(

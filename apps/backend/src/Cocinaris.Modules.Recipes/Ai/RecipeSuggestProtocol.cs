@@ -45,6 +45,9 @@ public sealed class SuggestCandidate
     private static readonly HashSet<string> MealTypes = new(StringComparer.Ordinal) { "breakfast", "lunch", "dinner", "snack" };
     private static readonly HashSet<string> Difficulties = new(StringComparer.Ordinal) { "easy", "medium", "hard" };
 
+    /// <summary>Most ingredients to buy; raised from 5 so a recipe faithful to the original can list what is missing (PLAN-0060).</summary>
+    public const int MaxAdditionalIngredients = 12;
+
     /// <summary>Gets the stable candidate identifier.</summary>
     public required string CandidateId { get; init; }
     /// <summary>Gets the candidate generation strategy.</summary>
@@ -59,8 +62,11 @@ public sealed class SuggestCandidate
     public required string PrimaryTechnique { get; init; }
     /// <summary>Gets the bounded list of primary ingredient references.</summary>
     public required List<string> PrimaryIngredientRefs { get; init; }
-    /// <summary>Gets the bounded human-readable summary.</summary>
-    public required string Summary { get; init; }
+    /// <summary>
+    /// Gets the short, inviting description. The validator fits an over-long one to
+    /// <see cref="RecipeSuggestSemantics.MaxSummaryCharacters"/> instead of rejecting the answer.
+    /// </summary>
+    public required string Summary { get; set; }
     /// <summary>Gets the servings count.</summary>
     public required int Servings { get; init; }
     /// <summary>Gets the active/passive/total time profile.</summary>
@@ -95,7 +101,7 @@ public sealed class SuggestCandidate
         ProtocolCheck.StringLength(errors, $"{path}.primaryTechnique", PrimaryTechnique, 1, 64);
         ProtocolCheck.ArrayLength(errors, $"{path}.primaryIngredientRefs", PrimaryIngredientRefs, 1, 6);
         ProtocolCheck.ArrayOfStableIds(errors, $"{path}.primaryIngredientRefs", PrimaryIngredientRefs);
-        ProtocolCheck.StringLength(errors, $"{path}.summary", Summary, 1, 160);
+        ProtocolCheck.StringLength(errors, $"{path}.summary", Summary, 1, RecipeSuggestSemantics.MaxSummaryCharacters);
         ProtocolCheck.IntegerRange(errors, $"{path}.servings", Servings, 1, 24);
         Time.Validate(errors, $"{path}.time");
         ProtocolCheck.EnumValue(errors, $"{path}.difficulty", Difficulty, Difficulties);
@@ -105,7 +111,7 @@ public sealed class SuggestCandidate
         ProtocolCheck.ArrayOfStrings(errors, $"{path}.requiredCapabilities", RequiredCapabilities, 48);
         ProtocolCheck.ArrayLength(errors, $"{path}.inventoryUses", InventoryUses, 0, 10);
         for (var index = 0; index < InventoryUses.Count; index++) { InventoryUses[index].Validate(errors, $"{path}.inventoryUses[{index}]"); }
-        ProtocolCheck.ArrayLength(errors, $"{path}.additionalIngredients", AdditionalIngredients, 0, 5);
+        ProtocolCheck.ArrayLength(errors, $"{path}.additionalIngredients", AdditionalIngredients, 0, MaxAdditionalIngredients);
         for (var index = 0; index < AdditionalIngredients.Count; index++) { AdditionalIngredients[index].Validate(errors, $"{path}.additionalIngredients[{index}]"); }
         PreparationProfile.Validate(errors, $"{path}.preparationProfile");
         ProtocolCheck.ArrayLength(errors, $"{path}.assumptionsUsed", AssumptionsUsed, 0, 8);

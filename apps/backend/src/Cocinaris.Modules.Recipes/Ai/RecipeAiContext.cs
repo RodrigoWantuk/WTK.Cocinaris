@@ -47,12 +47,38 @@ public sealed record RecipeSelectedCandidateContext(
     int Servings,
     IReadOnlyList<string> RequiredEquipmentIds,
     IReadOnlyList<RecipeInventoryContextItem> InventoryUses,
-    IReadOnlyList<(string Name, decimal Quantity, string Unit, bool Optional)> AdditionalIngredients);
+    IReadOnlyList<(string Name, decimal Quantity, string Unit, bool Optional)> AdditionalIngredients,
+    string? Summary = null);
 
 /// <summary>Complete bounded context assembled for one <c>recipe.expand_selected.v1</c> request.</summary>
+/// <remarks>
+/// <paramref name="Adaptation"/> is the closed ingredient-approach code of the session. The person's
+/// raw hint is deliberately absent: the selected candidate already reflects it, so the free text
+/// reaches the model only once.
+/// </remarks>
 public sealed record RecipeExpandRequestContext(
     string RequestId,
     IReadOnlyList<RecipeInventoryContextItem> InventoryItems,
     IReadOnlyList<RecipeEquipmentContextItem> Equipment,
     RecipeUserPresets Presets,
-    RecipeSelectedCandidateContext SelectedCandidate);
+    RecipeSelectedCandidateContext SelectedCandidate,
+    string? Adaptation = null);
+
+/// <summary>Complete bounded context assembled for one <c>recipe.revise.v1</c> request (PLAN-0060).</summary>
+/// <param name="RequestId">Request identifier.</param>
+/// <param name="InventoryItems">Current measured pantry items.</param>
+/// <param name="Equipment">Declared equipment.</param>
+/// <param name="Presets">Owner presets, restrictions included.</param>
+/// <param name="RecipeId">Recipe identifier the response must carry.</param>
+/// <param name="NextRevision">Revision number the response must carry.</param>
+/// <param name="CurrentRecipeJson">The current revision's content; its strings are untrusted data.</param>
+/// <param name="Instruction">The owner's normalized request; untrusted data.</param>
+public sealed record RecipeReviseRequestContext(
+    string RequestId,
+    IReadOnlyList<RecipeInventoryContextItem> InventoryItems,
+    IReadOnlyList<RecipeEquipmentContextItem> Equipment,
+    RecipeUserPresets Presets,
+    string RecipeId,
+    int NextRevision,
+    string CurrentRecipeJson,
+    string Instruction);

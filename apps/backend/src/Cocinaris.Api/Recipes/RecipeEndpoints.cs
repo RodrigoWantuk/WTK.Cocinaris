@@ -57,6 +57,48 @@ public static class RecipeEndpoints
             .ProducesProblem(412)
             .ProducesProblem(422)
             .ProducesProblem(503);
+        // Suggestion history (PLAN-0060): every past request, and its candidates on demand.
+        group.MapGet("/suggestion-history", (RecipeApiService service, HttpContext context, CancellationToken cancellationToken) => service.ListHistoryAsync(context, cancellationToken))
+            .Produces<IReadOnlyList<SuggestionHistoryEntryResponse>>();
+        group.MapPost("/suggestion-history/{sessionId:guid}/recipe", (RecipeApiService service, Guid sessionId, SelectCandidateRequest body, HttpRequest request, CancellationToken cancellationToken) => service.ReopenCandidateAsync(sessionId, body, request, cancellationToken))
+            .RequireRateLimiting("mutation")
+            .Produces<RecipeDetailResponse>(StatusCodes.Status201Created)
+            .Produces<RecipeDetailResponse>(StatusCodes.Status200OK)
+            .ProducesProblem(400)
+            .ProducesProblem(404)
+            .ProducesProblem(409)
+            .ProducesProblem(412)
+            .ProducesProblem(422)
+            .ProducesProblem(503);
+        group.MapDelete("/suggestion-history/{sessionId:guid}", (RecipeApiService service, Guid sessionId, HttpContext context, CancellationToken cancellationToken) => service.RemoveFromHistoryAsync(sessionId, context, cancellationToken))
+            .RequireRateLimiting("mutation")
+            .Produces(StatusCodes.Status204NoContent)
+            .ProducesProblem(404);
+        // AI revision (PLAN-0060): the AI proposes a new version; only acceptance changes the recipe.
+        group.MapPost("/{recipeId:guid}/revision-proposals", (RecipeApiService service, Guid recipeId, ProposeRevisionRequest body, HttpRequest request, CancellationToken cancellationToken) => service.ProposeRevisionAsync(recipeId, body, request, cancellationToken))
+            .RequireRateLimiting("mutation")
+            .Produces<RecipeRevisionProposalResponse>(StatusCodes.Status201Created)
+            .Produces<RecipeRevisionProposalResponse>(StatusCodes.Status200OK)
+            .ProducesProblem(400)
+            .ProducesProblem(404)
+            .ProducesProblem(409)
+            .ProducesProblem(412)
+            .ProducesProblem(422)
+            .ProducesProblem(503);
+        group.MapGet("/{recipeId:guid}/revision-proposals/{proposalId:guid}", (RecipeApiService service, Guid recipeId, Guid proposalId, HttpContext context, CancellationToken cancellationToken) => service.GetRevisionProposalAsync(recipeId, proposalId, context, cancellationToken))
+            .Produces<RecipeRevisionProposalResponse>()
+            .ProducesProblem(404);
+        group.MapPost("/{recipeId:guid}/revision-proposals/{proposalId:guid}/accept", (RecipeApiService service, Guid recipeId, Guid proposalId, HttpContext context, CancellationToken cancellationToken) => service.AcceptRevisionProposalAsync(recipeId, proposalId, context, cancellationToken))
+            .RequireRateLimiting("mutation")
+            .Produces<RecipeDetailResponse>(StatusCodes.Status201Created)
+            .Produces<RecipeDetailResponse>(StatusCodes.Status200OK)
+            .ProducesProblem(404)
+            .ProducesProblem(412);
+        group.MapDelete("/{recipeId:guid}/revision-proposals/{proposalId:guid}", (RecipeApiService service, Guid recipeId, Guid proposalId, HttpContext context, CancellationToken cancellationToken) => service.DiscardRevisionProposalAsync(recipeId, proposalId, context, cancellationToken))
+            .RequireRateLimiting("mutation")
+            .Produces(StatusCodes.Status204NoContent)
+            .ProducesProblem(404)
+            .ProducesProblem(412);
         group.MapRecipeLibraryEndpoints();
         group.MapRecipeExecutionEndpoints();
         return group;
@@ -82,7 +124,7 @@ public static class RecipeEndpoints
 }
 
 /// <summary>HTTP transport adapter for cook-now recipe application commands and queries.</summary>
-public sealed class RecipeApiService(RecipeCookNowApplicationService application, MenuPlanningApplicationService planning, RecipeSavedCandidateService saved)
+public sealed class RecipeApiService(RecipeCookNowApplicationService application, MenuPlanningApplicationService planning, RecipeSavedCandidateService saved, RecipeRevisionProposalService revisions)
 {
     /// <summary>Saves one candidate of an owned session for later; saving it again returns the same entry.</summary>
     public async Task<IResult> SaveCandidateAsync(Guid sessionId, SelectCandidateRequest body, HttpContext context, CancellationToken cancellationToken) =>
@@ -104,6 +146,44 @@ public sealed class RecipeApiService(RecipeCookNowApplicationService application
     /// <summary>Cooks a saved candidate: creates the recipe (AI expansion or library idea); requires an Idempotency-Key.</summary>
     public async Task<IResult> CookSavedCandidateAsync(Guid savedId, HttpRequest request, CancellationToken cancellationToken) =>
         ToResult(await saved.CookAsync(savedId, ParseIdempotencyKey(request), request.HttpContext.TraceIdentifier, RequestLanguage(request), cancellationToken), request.HttpContext.TraceIdentifier, ToResponse);
+
+    /// <summary>Lists the owner's past suggestion requests, newest first.</summary>
+    public async Task<IResult> ListHistoryAsync(HttpContext context, CancellationToken cancellationToken) =>
+        ToResult(await saved.ListHistoryAsync(cancellationToken), context.TraceIdentifier, items => items.Select(ToResponse).ToList());
+
+    /// <summary>Turns a candidate of a past request into a recipe; requires an Idempotency-Key.</summary>
+    public async Task<IResult> ReopenCandidateAsync(Guid sessionId, SelectCandidateRequest body, HttpRequest request, CancellationToken cancellationToken) =>
+        ToResult(await saved.ReopenAsync(sessionId, body.CandidateId, ParseIdempotencyKey(request), request.HttpContext.TraceIdentifier, RequestLanguage(request), cancellationToken), request.HttpContext.TraceIdentifier, ToResponse);
+
+    /// <summary>Removes a past request from the history and forgets its hint.</summary>
+    public async Task<IResult> RemoveFromHistoryAsync(Guid sessionId, HttpContext context, CancellationToken cancellationToken)
+    {
+        var result = await saved.RemoveFromHistoryAsync(sessionId, cancellationToken);
+        return result.Problem is { } problem
+            ? Problem(problem.ErrorCode, problem.Detail, StatusFor(problem.ErrorCode), context.TraceIdentifier, problem.Errors)
+            : Results.NoContent();
+    }
+
+    /// <summary>Asks the AI for a new version of a recipe; requires an Idempotency-Key. The recipe does not change.</summary>
+    public async Task<IResult> ProposeRevisionAsync(Guid recipeId, ProposeRevisionRequest body, HttpRequest request, CancellationToken cancellationToken) =>
+        ToResult(await revisions.ProposeAsync(new ProposeRevisionCommand(recipeId, body.ExpectedRevisionNumber, body.Instruction, ParseIdempotencyKey(request), request.HttpContext.TraceIdentifier, RequestLanguage(request)), cancellationToken), request.HttpContext.TraceIdentifier, ToResponse);
+
+    /// <summary>Gets one of the owner's revision proposals.</summary>
+    public async Task<IResult> GetRevisionProposalAsync(Guid recipeId, Guid proposalId, HttpContext context, CancellationToken cancellationToken) =>
+        ToResult(await revisions.GetAsync(recipeId, proposalId, cancellationToken), context.TraceIdentifier, ToResponse);
+
+    /// <summary>Accepts a proposal as the recipe's next revision.</summary>
+    public async Task<IResult> AcceptRevisionProposalAsync(Guid recipeId, Guid proposalId, HttpContext context, CancellationToken cancellationToken) =>
+        ToResult(await revisions.AcceptAsync(recipeId, proposalId, cancellationToken), context.TraceIdentifier, RecipeLibraryApiService.ToResponse);
+
+    /// <summary>Discards a proposal.</summary>
+    public async Task<IResult> DiscardRevisionProposalAsync(Guid recipeId, Guid proposalId, HttpContext context, CancellationToken cancellationToken)
+    {
+        var result = await revisions.DiscardAsync(recipeId, proposalId, cancellationToken);
+        return result.Problem is { } problem
+            ? Problem(problem.ErrorCode, problem.Detail, StatusFor(problem.ErrorCode), context.TraceIdentifier, problem.Errors)
+            : Results.NoContent();
+    }
 
     private const int MaxPlannedNames = 20;
 
@@ -144,7 +224,7 @@ public sealed class RecipeApiService(RecipeCookNowApplicationService application
         }
 
         var guidance = body?.Guidance is { } given
-            ? new RecipeSuggestionGuidance(given.MealKind, given.DishFamilies ?? [], given.Cuisine, given.Time, given.RequiredLotIds ?? [], given.ExcludedLotIds ?? [])
+            ? new RecipeSuggestionGuidance(given.MealKind, given.DishFamilies ?? [], given.Cuisine, given.Time, given.RequiredLotIds ?? [], given.ExcludedLotIds ?? [], given.Hint, given.Adaptation)
             : null;
         var command = new RequestCandidatesCommand(ParseIdempotencyKey(request), request.HttpContext.TraceIdentifier, RequestLanguage(request), target, guidance);
         var result = await application.RequestCandidatesAsync(command, cancellationToken);
@@ -196,6 +276,26 @@ public sealed class RecipeApiService(RecipeCookNowApplicationService application
         var status = result.Success == RecipeApplicationSuccess.Created ? StatusCodes.Status201Created : StatusCodes.Status200OK;
         return Results.Json(map(result.Value!), statusCode: status);
     }
+
+    private static RecipeRevisionProposalResponse ToResponse(RecipeRevisionProposalView view) => new(
+        view.ProposalId,
+        view.RecipeId,
+        view.BaseRevisionNumber,
+        view.Instruction,
+        view.Status,
+        view.Name,
+        view.MealTypes,
+        view.Servings,
+        view.NormalizedRecipeJson,
+        view.AcceptedRevisionNumber,
+        view.CreatedAt);
+
+    private static SuggestionHistoryEntryResponse ToResponse(SuggestionHistoryEntryView view) => new(
+        view.SessionId,
+        view.CreatedAt,
+        view.Hint,
+        view.Adaptation,
+        view.Candidates.Select(item => new SuggestionHistoryCandidateResponse(ToResponse(item.Candidate), item.RecipeId)).ToList());
 
     private static SavedCandidateResponse ToResponse(SavedCandidateView view) => new(view.SavedId, view.SessionId, ToResponse(view.Candidate), view.CreatedAt);
 
@@ -291,6 +391,7 @@ public sealed record RequestCandidatesRequest(MenuPlanningSlotRequest? MenuPlann
 /// <summary>
 /// Direction for a suggestion request (PLAN-0056). Closed codes only; unknown codes are rejected.
 /// Required lots must be used by every candidate; excluded lots are never sent to the AI.
+/// <paramref name="Hint"/> is the one free text: untrusted, cleaned, and only a wish for the model.
 /// </summary>
 /// <param name="MealKind"><c>full_meal</c>, <c>light_meal</c>, or <c>snack</c>.</param>
 /// <param name="DishFamilies">Up to three of <c>pasta</c>, <c>rice</c>, <c>meat</c>, <c>poultry</c>, <c>fish_seafood</c>, <c>eggs</c>, <c>vegetarian</c>, <c>soup_broth</c>, <c>salad</c>, <c>sandwich_wrap</c>, <c>baked</c>, <c>dessert</c>.</param>
@@ -298,7 +399,9 @@ public sealed record RequestCandidatesRequest(MenuPlanningSlotRequest? MenuPlann
 /// <param name="Time"><c>quick</c> (20 minutes or less) or <c>medium</c> (45 or less).</param>
 /// <param name="RequiredLotIds">Pantry lots every candidate must use (at most 5).</param>
 /// <param name="ExcludedLotIds">Pantry lots to leave out entirely (at most 50).</param>
-public sealed record SuggestionGuidanceRequest(string? MealKind, IReadOnlyList<string>? DishFamilies, string? Cuisine, string? Time, IReadOnlyList<Guid>? RequiredLotIds, IReadOnlyList<Guid>? ExcludedLotIds);
+/// <param name="Hint">A short wish in the person's words (at most 300 characters).</param>
+/// <param name="Adaptation"><c>adapt_to_pantry</c> or <c>stay_faithful</c>; null for the default balance.</param>
+public sealed record SuggestionGuidanceRequest(string? MealKind, IReadOnlyList<string>? DishFamilies, string? Cuisine, string? Time, IReadOnlyList<Guid>? RequiredLotIds, IReadOnlyList<Guid>? ExcludedLotIds, string? Hint = null, string? Adaptation = null);
 
 /// <summary>A slot of an owned menu.</summary>
 /// <param name="MenuId">Menu.</param>
@@ -317,6 +420,49 @@ public sealed record SelectCandidateRequest(string CandidateId);
 /// <param name="Candidate">The candidate as it was suggested.</param>
 /// <param name="CreatedAt">When it was saved.</param>
 public sealed record SavedCandidateResponse(Guid SavedId, Guid SessionId, RecipeCandidateResponse Candidate, DateTimeOffset CreatedAt);
+
+/// <summary>Asks the AI for a new version of a recipe (PLAN-0060).</summary>
+/// <param name="Instruction">What to change, at most 300 characters. Untrusted text, sent to the model only as data.</param>
+/// <param name="ExpectedRevisionNumber">Revision on screen; a newer one fails with 412.</param>
+public sealed record ProposeRevisionRequest(string? Instruction, int ExpectedRevisionNumber);
+
+/// <summary>A new version the AI wrote, waiting for the owner's decision (PLAN-0060).</summary>
+/// <param name="ProposalId">Proposal identifier.</param>
+/// <param name="RecipeId">Recipe being revised.</param>
+/// <param name="BaseRevisionNumber">Revision it was written from.</param>
+/// <param name="Instruction">The owner's request, after cleaning.</param>
+/// <param name="Status"><c>Generating</c>, <c>Ready</c>, <c>Accepted</c>, <c>Discarded</c>, or <c>Failed</c>.</param>
+/// <param name="Name">Proposed name.</param>
+/// <param name="MealTypes">Proposed meal types.</param>
+/// <param name="Servings">Proposed servings.</param>
+/// <param name="NormalizedRecipeJson">Proposed content (protocol 0.3 shape) while <c>Ready</c>.</param>
+/// <param name="AcceptedRevisionNumber">Revision created by accepting.</param>
+/// <param name="CreatedAt">When it was requested.</param>
+public sealed record RecipeRevisionProposalResponse(
+    Guid ProposalId,
+    Guid RecipeId,
+    int BaseRevisionNumber,
+    string Instruction,
+    string Status,
+    string? Name,
+    IReadOnlyList<string> MealTypes,
+    int? Servings,
+    string? NormalizedRecipeJson,
+    int? AcceptedRevisionNumber,
+    DateTimeOffset CreatedAt);
+
+/// <summary>One candidate of a past suggestion request (PLAN-0060).</summary>
+/// <param name="Candidate">The candidate as it was suggested.</param>
+/// <param name="RecipeId">The recipe it became, if the person already asked for it.</param>
+public sealed record SuggestionHistoryCandidateResponse(RecipeCandidateResponse Candidate, Guid? RecipeId);
+
+/// <summary>One past suggestion request (PLAN-0060).</summary>
+/// <param name="SessionId">Generation session; use it to ask for a candidate or remove the entry.</param>
+/// <param name="CreatedAt">When it was requested.</param>
+/// <param name="Hint">The person's hint, if any.</param>
+/// <param name="Adaptation"><c>adapt_to_pantry</c>, <c>stay_faithful</c>, or null.</param>
+/// <param name="Candidates">The candidates suggested.</param>
+public sealed record SuggestionHistoryEntryResponse(Guid SessionId, DateTimeOffset CreatedAt, string? Hint, string? Adaptation, IReadOnlyList<SuggestionHistoryCandidateResponse> Candidates);
 
 /// <summary>HTTP projection of one cook-now generation session.</summary>
 public sealed record RecipeGenerationSessionResponse(Guid SessionId, string Status, IReadOnlyList<RecipeCandidateResponse>? Candidates, string? FailureReason);
@@ -396,7 +542,7 @@ public sealed record RecipeThumbnailResponse(string State, string? Url, string? 
 /// <param name="ParentRecipeId">Parent of a derived recipe.</param>
 /// <param name="ParentRevisionNumber">Parent revision a derived recipe started from.</param>
 /// <param name="DerivationReason">How a derived recipe differs from its parent.</param>
-/// <param name="RevisionOrigin"><c>generated</c>, <c>manual</c>, <c>edited</c>, or <c>derived</c>.</param>
+/// <param name="RevisionOrigin"><c>generated</c>, <c>manual</c>, <c>edited</c>, <c>derived</c>, or <c>airevised</c>.</param>
 /// <param name="ChangeReason">Reason given for an edited revision.</param>
 /// <param name="Thumbnail">Dish image of this revision (PLAN-0030).</param>
 public sealed record RecipeDetailResponse(

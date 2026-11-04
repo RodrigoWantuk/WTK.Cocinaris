@@ -1,5 +1,6 @@
 import { useId } from "react";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { useProductionI18n } from "@/app/i18n/ProductionI18nProvider";
 import type { SuggestionGuidance } from "@/contracts/recipes";
 
@@ -37,6 +38,10 @@ export const CUISINES = [
 ] as const;
 /** Time limits offered (codes match the API). */
 export const TIMES = ["quick", "medium"] as const;
+/** Ingredient approaches offered (codes match the API). No choice means the balance. */
+export const ADAPTATIONS = ["adapt_to_pantry", "stay_faithful"] as const;
+/** The API accepts at most this many characters in the wish. */
+export const MAX_HINT = 300;
 /** The API accepts at most this many dish families and required items. */
 export const MAX_FAMILIES = 3;
 export const MAX_REQUIRED = 5;
@@ -56,6 +61,8 @@ export const EMPTY_GUIDANCE: SuggestionGuidance = {
   time: null,
   requiredLotIds: [],
   excludedLotIds: [],
+  hint: null,
+  adaptation: null,
 };
 
 /** Number of choices made, shown on the collapsed panel. */
@@ -65,19 +72,23 @@ export function guidanceCount(value: SuggestionGuidance): number {
     value.dishFamilies.length +
     (value.cuisine ? 1 : 0) +
     (value.time ? 1 : 0) +
+    (value.hint?.trim() ? 1 : 0) +
+    (value.adaptation ? 1 : 0) +
     value.requiredLotIds.length +
     value.excludedLotIds.length
   );
 }
 
 /**
- * Optional direction for the three suggestions (PLAN-0056 Phase 2, owner reports 3 and 6):
- * meal kind, up to three dish families, a cuisine, a time limit, and, per pantry item, "must use",
- * "may use" (default), or "don't use". Excluded items are never sent to the AI; required items must
- * appear in every candidate (the backend enforces it).
+ * Optional direction for the three suggestions (PLAN-0056 Phase 2, owner reports 3 and 6;
+ * PLAN-0060): a short wish in the person's words, whether to adapt to the pantry or stay faithful
+ * to the original, meal kind, up to three dish families, a cuisine, a time limit, and, per pantry
+ * item, "must use", "may use" (default), or "don't use". Excluded items are never sent to the AI;
+ * required items must appear in every candidate (the backend enforces it). The wish is only a
+ * wish: the backend treats it as untrusted data, and no rule depends on it.
  *
- * Meal kind and time are visible chips (the quick choices); dish families, cuisine, and pantry
- * items sit in a native `<details>` ("Mais opções") so the page stays short.
+ * The wish, approach, meal kind, and time are visible (the quick choices); dish families, cuisine,
+ * and pantry items sit in a native `<details>` ("Mais opções") so the page stays short.
  * Toggle chips expose `aria-pressed`; each pantry item is a labelled radio group.
  *
  * @param lots Measured pantry lots (the only ones the AI sees).
@@ -149,6 +160,53 @@ export function SuggestionGuidancePanel({
       <p className="text-sm text-muted-foreground">
         {t("recipes.guidance.hint")}
       </p>
+      <div className="space-y-2">
+        <label htmlFor={`${groupId}-wish`} className="text-sm font-medium">
+          {t("recipes.guidance.wish")}
+        </label>
+        <Textarea
+          id={`${groupId}-wish`}
+          rows={3}
+          maxLength={MAX_HINT}
+          value={value.hint ?? ""}
+          disabled={disabled}
+          placeholder={t("recipes.guidance.wishPlaceholder")}
+          aria-describedby={`${groupId}-wish-help`}
+          data-testid="recipes-guidance-wish"
+          className="text-base"
+          onChange={(event) =>
+            onChange({ ...value, hint: event.target.value || null })
+          }
+        />
+        <p
+          id={`${groupId}-wish-help`}
+          className="flex justify-between gap-3 text-xs text-muted-foreground"
+        >
+          <span>{t("recipes.guidance.wishHelp")}</span>
+          <span className="shrink-0 tabular-nums">
+            {(value.hint ?? "").length}/{MAX_HINT}
+          </span>
+        </p>
+      </div>
+      <fieldset className="space-y-2">
+        <legend className="text-sm font-medium">
+          {t("recipes.guidance.adaptation")}
+        </legend>
+        <div className="flex flex-wrap gap-2">
+          {ADAPTATIONS.map((code) =>
+            chip(
+              value.adaptation === code,
+              t(`recipes.guidance.adaptation.${code}`),
+              () =>
+                onChange({
+                  ...value,
+                  adaptation: value.adaptation === code ? null : code,
+                }),
+              `recipes-guidance-adaptation-${code}`,
+            ),
+          )}
+        </div>
+      </fieldset>
       <fieldset className="space-y-2">
         <legend className="text-sm font-medium">
           {t("recipes.guidance.mealKind")}

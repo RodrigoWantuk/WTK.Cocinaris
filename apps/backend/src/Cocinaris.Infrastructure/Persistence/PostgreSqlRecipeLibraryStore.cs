@@ -207,7 +207,7 @@ public sealed class PostgreSqlRecipeLibraryStore(ApplicationDbContext database) 
         CreationKey = recipe.CreationKey
     };
 
-    private static RecipeRevisionRecord ToRecord(RecipeRevision revision) => new()
+    internal static RecipeRevisionRecord ToRecord(RecipeRevision revision) => new()
     {
         Id = revision.Id,
         RecipeId = revision.RecipeId,

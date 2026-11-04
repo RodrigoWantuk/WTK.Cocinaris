@@ -41,6 +41,43 @@ export const REQUIRED_RECIPES_I18N_KEYS = [
   "recipes.generate.title",
   "recipes.generate.subtitle",
   "recipes.generate.confirmDetail",
+  "recipes.guidance.wish",
+  "recipes.guidance.wishPlaceholder",
+  "recipes.guidance.wishHelp",
+  "recipes.guidance.adaptation",
+  "recipes.guidance.adaptation.adapt_to_pantry",
+  "recipes.guidance.adaptation.stay_faithful",
+  "recipes.suggestionHistory.link",
+  "recipes.suggestionHistory.title",
+  "recipes.suggestionHistory.subtitle",
+  "recipes.suggestionHistory.empty",
+  "recipes.suggestionHistory.emptyDetail",
+  "recipes.suggestionHistory.suggest",
+  "recipes.suggestionHistory.ask",
+  "recipes.suggestionHistory.asking",
+  "recipes.suggestionHistory.open",
+  "recipes.suggestionHistory.remove",
+  "recipes.suggestionHistory.removeError",
+  "recipes.suggestionHistory.loadError",
+  "recipes.aiRevision.menu",
+  "recipes.aiRevision.title",
+  "recipes.aiRevision.label",
+  "recipes.aiRevision.placeholder",
+  "recipes.aiRevision.help",
+  "recipes.aiRevision.submit",
+  "recipes.aiRevision.generating",
+  "recipes.aiRevision.proposalTitle",
+  "recipes.aiRevision.proposalHint",
+  "recipes.aiRevision.changes",
+  "recipes.aiRevision.youAsked",
+  "recipes.aiRevision.added",
+  "recipes.aiRevision.removed",
+  "recipes.aiRevision.accept",
+  "recipes.aiRevision.saving",
+  "recipes.aiRevision.again",
+  "recipes.aiRevision.discard",
+  "recipes.aiRevision.invalid",
+  "recipes.aiRevision.stale",
   "recipes.saved.save",
   "recipes.saved.saved",
   "recipes.saved.hint",
@@ -115,6 +152,53 @@ export const REQUIRED_RECIPES_I18N_KEYS = [
 ] as const;
 
 const en: Record<(typeof REQUIRED_RECIPES_I18N_KEYS)[number], string> = {
+  "recipes.guidance.wish": "Anything you feel like? (optional)",
+  "recipes.guidance.wishPlaceholder":
+    "A dish you have in mind, an ingredient you want more of, a mood…",
+  "recipes.guidance.wishHelp":
+    "The AI takes this as inspiration, not as a rule. Your restrictions always come first.",
+  "recipes.guidance.adaptation": "Ingredients",
+  "recipes.guidance.adaptation.adapt_to_pantry": "Adapt to what I have",
+  "recipes.guidance.adaptation.stay_faithful":
+    "Stay true to the original, I can shop",
+  "recipes.suggestionHistory.link": "Earlier suggestions",
+  "recipes.suggestionHistory.title": "Earlier suggestions",
+  "recipes.suggestionHistory.subtitle":
+    "Changed your mind? Any of these can still become a recipe, using your pantry as it is today.",
+  "recipes.suggestionHistory.empty": "No suggestions yet",
+  "recipes.suggestionHistory.emptyDetail":
+    "Every suggestion you ask for stays here for later.",
+  "recipes.suggestionHistory.suggest": "Suggest recipes",
+  "recipes.suggestionHistory.ask": "I want this one",
+  "recipes.suggestionHistory.asking": "Writing the recipe…",
+  "recipes.suggestionHistory.open": "Open recipe",
+  "recipes.suggestionHistory.remove": "Remove",
+  "recipes.suggestionHistory.removeError": "Could not remove it. Try again.",
+  "recipes.suggestionHistory.loadError":
+    "Could not load your earlier suggestions.",
+  "recipes.aiRevision.menu": "Revise with AI",
+  "recipes.aiRevision.title": "Revise with AI",
+  "recipes.aiRevision.label": "What should change in this recipe?",
+  "recipes.aiRevision.placeholder":
+    "Less salt, no onion, make it in the air fryer…",
+  "recipes.aiRevision.help":
+    "You will read the new version before saving it. Your restrictions always come first.",
+  "recipes.aiRevision.submit": "Write new version",
+  "recipes.aiRevision.generating": "Writing the new version…",
+  "recipes.aiRevision.proposalTitle": "Here is the new version",
+  "recipes.aiRevision.proposalHint":
+    "Nothing has changed yet. If you save it, the earlier version stays in the recipe's history.",
+  "recipes.aiRevision.changes": "What changed",
+  "recipes.aiRevision.youAsked": "You asked",
+  "recipes.aiRevision.added": "New ingredients:",
+  "recipes.aiRevision.removed": "Left out:",
+  "recipes.aiRevision.accept": "Save as new version",
+  "recipes.aiRevision.saving": "Saving…",
+  "recipes.aiRevision.again": "Ask for another change",
+  "recipes.aiRevision.discard": "Discard",
+  "recipes.aiRevision.invalid": "Say what to change, in up to 300 characters.",
+  "recipes.aiRevision.stale":
+    "This recipe changed in the meantime. Go back to it and ask again.",
   "recipes.saved.save": "Save for later",
   "recipes.saved.saved": "Saved for later",
   "recipes.saved.hint":
@@ -237,6 +321,54 @@ const en: Record<(typeof REQUIRED_RECIPES_I18N_KEYS)[number], string> = {
 };
 
 const ptBR: Record<(typeof REQUIRED_RECIPES_I18N_KEYS)[number], string> = {
+  "recipes.guidance.wish": "Alguma vontade? (opcional)",
+  "recipes.guidance.wishPlaceholder":
+    "Um prato que você tem em mente, um ingrediente que quer ver mais, um clima…",
+  "recipes.guidance.wishHelp":
+    "A IA usa isso como inspiração, não como regra. Suas restrições vêm sempre primeiro.",
+  "recipes.guidance.adaptation": "Ingredientes",
+  "recipes.guidance.adaptation.adapt_to_pantry": "Adaptar ao que tenho",
+  "recipes.guidance.adaptation.stay_faithful":
+    "Fiel ao original, topo comprar mais",
+  "recipes.suggestionHistory.link": "Sugestões anteriores",
+  "recipes.suggestionHistory.title": "Sugestões anteriores",
+  "recipes.suggestionHistory.subtitle":
+    "Mudou de ideia? Qualquer uma destas ainda pode virar receita, com a sua despensa de hoje.",
+  "recipes.suggestionHistory.empty": "Nenhuma sugestão ainda",
+  "recipes.suggestionHistory.emptyDetail":
+    "Toda sugestão que você pedir fica guardada aqui.",
+  "recipes.suggestionHistory.suggest": "Sugerir receitas",
+  "recipes.suggestionHistory.ask": "Quero esta",
+  "recipes.suggestionHistory.asking": "Escrevendo a receita…",
+  "recipes.suggestionHistory.open": "Abrir receita",
+  "recipes.suggestionHistory.remove": "Remover",
+  "recipes.suggestionHistory.removeError":
+    "Não foi possível remover. Tente de novo.",
+  "recipes.suggestionHistory.loadError":
+    "Não foi possível carregar suas sugestões anteriores.",
+  "recipes.aiRevision.menu": "Revisar com IA",
+  "recipes.aiRevision.title": "Revisar com IA",
+  "recipes.aiRevision.label": "O que mudar nesta receita?",
+  "recipes.aiRevision.placeholder":
+    "Menos sal, sem cebola, fazer na air fryer…",
+  "recipes.aiRevision.help":
+    "Você lê a nova versão antes de salvar. Suas restrições vêm sempre primeiro.",
+  "recipes.aiRevision.submit": "Gerar nova versão",
+  "recipes.aiRevision.generating": "Escrevendo a nova versão…",
+  "recipes.aiRevision.proposalTitle": "Aqui está a nova versão",
+  "recipes.aiRevision.proposalHint":
+    "Nada mudou ainda. Se você salvar, a versão anterior continua no histórico da receita.",
+  "recipes.aiRevision.changes": "O que mudou",
+  "recipes.aiRevision.youAsked": "Você pediu",
+  "recipes.aiRevision.added": "Ingredientes novos:",
+  "recipes.aiRevision.removed": "Saíram:",
+  "recipes.aiRevision.accept": "Salvar como nova versão",
+  "recipes.aiRevision.saving": "Salvando…",
+  "recipes.aiRevision.again": "Pedir outro ajuste",
+  "recipes.aiRevision.discard": "Descartar",
+  "recipes.aiRevision.invalid": "Diga o que mudar, em até 300 caracteres.",
+  "recipes.aiRevision.stale":
+    "Esta receita mudou nesse meio-tempo. Volte a ela e peça de novo.",
   "recipes.saved.save": "Salvar para depois",
   "recipes.saved.saved": "Salva para depois",
   "recipes.saved.hint":
@@ -361,6 +493,54 @@ const ptBR: Record<(typeof REQUIRED_RECIPES_I18N_KEYS)[number], string> = {
 };
 
 const es: Record<(typeof REQUIRED_RECIPES_I18N_KEYS)[number], string> = {
+  "recipes.guidance.wish": "¿Algún antojo? (opcional)",
+  "recipes.guidance.wishPlaceholder":
+    "Un plato que tienes en mente, un ingrediente que quieres ver más, un ánimo…",
+  "recipes.guidance.wishHelp":
+    "La IA lo toma como inspiración, no como regla. Tus restricciones siempre van primero.",
+  "recipes.guidance.adaptation": "Ingredientes",
+  "recipes.guidance.adaptation.adapt_to_pantry": "Adaptar a lo que tengo",
+  "recipes.guidance.adaptation.stay_faithful":
+    "Fiel al original, puedo comprar más",
+  "recipes.suggestionHistory.link": "Sugerencias anteriores",
+  "recipes.suggestionHistory.title": "Sugerencias anteriores",
+  "recipes.suggestionHistory.subtitle":
+    "¿Cambiaste de idea? Cualquiera de estas aún puede ser una receta, con tu despensa de hoy.",
+  "recipes.suggestionHistory.empty": "Aún no hay sugerencias",
+  "recipes.suggestionHistory.emptyDetail":
+    "Cada sugerencia que pidas se queda aquí para después.",
+  "recipes.suggestionHistory.suggest": "Sugerir recetas",
+  "recipes.suggestionHistory.ask": "Quiero esta",
+  "recipes.suggestionHistory.asking": "Escribiendo la receta…",
+  "recipes.suggestionHistory.open": "Abrir receta",
+  "recipes.suggestionHistory.remove": "Quitar",
+  "recipes.suggestionHistory.removeError":
+    "No se pudo quitar. Inténtalo de nuevo.",
+  "recipes.suggestionHistory.loadError":
+    "No se pudieron cargar tus sugerencias anteriores.",
+  "recipes.aiRevision.menu": "Revisar con IA",
+  "recipes.aiRevision.title": "Revisar con IA",
+  "recipes.aiRevision.label": "¿Qué cambiar en esta receta?",
+  "recipes.aiRevision.placeholder":
+    "Menos sal, sin cebolla, hacerla en la freidora de aire…",
+  "recipes.aiRevision.help":
+    "Leerás la nueva versión antes de guardarla. Tus restricciones siempre van primero.",
+  "recipes.aiRevision.submit": "Generar nueva versión",
+  "recipes.aiRevision.generating": "Escribiendo la nueva versión…",
+  "recipes.aiRevision.proposalTitle": "Esta es la nueva versión",
+  "recipes.aiRevision.proposalHint":
+    "Aún no ha cambiado nada. Si la guardas, la versión anterior sigue en el historial de la receta.",
+  "recipes.aiRevision.changes": "Qué cambió",
+  "recipes.aiRevision.youAsked": "Pediste",
+  "recipes.aiRevision.added": "Ingredientes nuevos:",
+  "recipes.aiRevision.removed": "Salieron:",
+  "recipes.aiRevision.accept": "Guardar como nueva versión",
+  "recipes.aiRevision.saving": "Guardando…",
+  "recipes.aiRevision.again": "Pedir otro ajuste",
+  "recipes.aiRevision.discard": "Descartar",
+  "recipes.aiRevision.invalid": "Di qué cambiar, en hasta 300 caracteres.",
+  "recipes.aiRevision.stale":
+    "Esta receta cambió mientras tanto. Vuelve a ella y pídelo de nuevo.",
   "recipes.saved.save": "Guardar para después",
   "recipes.saved.saved": "Guardada para después",
   "recipes.saved.hint":

@@ -71,6 +71,12 @@ public interface IRecipeGenerationStore
     /// <summary>Finds one owner-scoped session by identifier without cross-user disclosure.</summary>
     Task<RecipeGenerationSession?> FindActiveAsync(Guid ownerUserId, Guid sessionId, CancellationToken cancellationToken);
 
+    /// <summary>Lists the owner's own requests that produced candidates and are still in the history, newest first.</summary>
+    Task<IReadOnlyList<RecipeGenerationSession>> ListHistoryAsync(Guid ownerUserId, int limit, CancellationToken cancellationToken);
+
+    /// <summary>Lists the sessions that reopened a candidate of any of <paramref name="sourceSessionIds"/>.</summary>
+    Task<IReadOnlyList<RecipeGenerationSession>> ListReopenedAsync(Guid ownerUserId, IReadOnlyList<Guid> sourceSessionIds, CancellationToken cancellationToken);
+
     /// <summary>Persists a state transition on an already-created session.</summary>
     Task SaveAsync(RecipeGenerationSession session, CancellationToken cancellationToken);
 }

@@ -38,7 +38,7 @@ node scripts/ai/recipe-live-eval.mjs
 ## Bounds (protocol 0.3)
 
 - exactly three candidates per suggestion response;
-- summary ≤ 18 words;
+- summary at most 320 characters (the backend fits a longer one; length alone never rejects an answer);
 - ≤ 10 inventory uses and ≤ 5 additional ingredients per candidate;
 - canonical units: `g`, `ml`, `unit`;
 - expansion ≤ 14 stages and ≤ 8 preparations;

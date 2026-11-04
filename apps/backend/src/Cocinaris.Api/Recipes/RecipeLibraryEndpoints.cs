@@ -142,7 +142,7 @@ public sealed class RecipeLibraryApiService(RecipeLibraryApplicationService appl
         _ => new RecipeThumbnailResponse("none", null, null)
     };
 
-    private static RecipeDetailResponse ToResponse(RecipeLibraryDetailView view) => new(
+    internal static RecipeDetailResponse ToResponse(RecipeLibraryDetailView view) => new(
         view.RecipeId,
         view.RevisionNumber,
         view.Name,
@@ -252,7 +252,7 @@ public sealed record RecipeArchiveRequest(bool Archived);
 /// <summary>A recipe's revisions and finished cooking sessions, newest first.</summary>
 public sealed record RecipeHistoryResponse(IReadOnlyList<RecipeRevisionEntryResponse> Revisions, IReadOnlyList<RecipeCookingEntryResponse> Cooking);
 
-/// <summary>One revision: <paramref name="Origin"/> is <c>generated</c>, <c>manual</c>, <c>edited</c>, or <c>derived</c>.</summary>
+/// <summary>One revision: <paramref name="Origin"/> is <c>generated</c>, <c>manual</c>, <c>edited</c>, <c>derived</c>, or <c>airevised</c>.</summary>
 public sealed record RecipeRevisionEntryResponse(int RevisionNumber, string Name, string Origin, string? ChangeReason, Guid? SourceExecutionId, DateTimeOffset CreatedAt);
 
 /// <summary>One finished cooking session: <paramref name="Status"/> is <c>Completed</c> or <c>Abandoned</c>.</summary>

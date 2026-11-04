@@ -72,6 +72,7 @@ public sealed class FakeAiProvider : IAiProvider
         {
             AiOperationRegistry.SuggestCandidates => BuildSuggestResponse(request.Payload),
             AiOperationRegistry.ExpandSelected => BuildExpandResponse(request.Payload),
+            AiOperationRegistry.ReviseRecipe => BuildReviseResponse(request.Payload),
             _ => throw new InvalidOperationException($"FakeAiProvider has no default response for operation '{request.Operation}'.")
         };
 
@@ -183,6 +184,30 @@ public sealed class FakeAiProvider : IAiProvider
             },
             ["assumptionsUsed"] = new JsonArray("salt", "cooking oil")
         };
+
+    /// <summary>The expansion default for a one-ingredient dish named after the current recipe, as a revision.</summary>
+    private static string BuildReviseResponse(string payload)
+    {
+        using var document = JsonDocument.Parse(payload);
+        var current = document.RootElement.GetProperty("currentRecipe");
+        var name = current.GetProperty("name").GetString() ?? "Recipe";
+        var candidate = new JsonObject
+        {
+            ["selectedCandidate"] = new JsonObject
+            {
+                ["candidateId"] = "revised",
+                ["name"] = $"{name} (revised)",
+                ["mealTypes"] = new JsonArray("dinner"),
+                ["servings"] = current.GetProperty("servings").GetInt32(),
+                ["requiredEquipmentIds"] = new JsonArray(),
+                ["inventoryUses"] = new JsonArray(),
+                ["additionalIngredients"] = new JsonArray(new JsonObject { ["name"] = "Revised ingredient", ["requiredQuantity"] = 1, ["unit"] = "unit", ["optional"] = false })
+            }
+        };
+        var response = JsonNode.Parse(BuildExpandResponse(candidate.ToJsonString()))!.AsObject();
+        response["operation"] = AiOperationRegistry.ReviseRecipe;
+        return response.ToJsonString();
+    }
 
     private static string BuildExpandResponse(string payload)
     {

@@ -49,6 +49,19 @@ public sealed class RecipeGenerationSession
     public Guid? SelectIdempotencyKey { get; private set; }
     /// <summary>Gets a non-sensitive failure classification, present only when <see cref="Status"/> is <see cref="RecipeGenerationSessionStatus.Failed"/>.</summary>
     public string? FailureReason { get; private set; }
+    /// <summary>Gets the person's normalized hint for this request (PLAN-0060), kept to show it back in the history; cleared when removed from the history.</summary>
+    public string? UserHint { get; private set; }
+    /// <summary>Gets the closed ingredient-approach code asked for this request, if any.</summary>
+    public string? Adaptation { get; private init; }
+    /// <summary>
+    /// Gets whether the person's own words shaped these candidates. Such a session, and any session
+    /// opened from its candidates, never feeds the shared idea library, even after the hint is cleared.
+    /// </summary>
+    public bool PrivateDirection { get; private init; }
+    /// <summary>Gets the session whose candidate this one was opened from (a saved or history candidate); null for a request of the person.</summary>
+    public Guid? SourceSessionId { get; private init; }
+    /// <summary>Gets when the owner removed this session from the suggestion history.</summary>
+    public DateTimeOffset? RemovedFromHistoryAt { get; private set; }
     /// <summary>Gets the creation instant.</summary>
     public DateTimeOffset CreatedAt { get; private init; }
     /// <summary>Gets the instant of the last state transition.</summary>
@@ -61,14 +74,21 @@ public sealed class RecipeGenerationSession
     /// <param name="idempotencyKey">Client replay key.</param>
     /// <param name="now">Creation instant.</param>
     /// <param name="executionMode"><c>cook_now</c>, or <c>menu_planning</c> for a menu slot (PLAN-0029 Phase 2).</param>
+    /// <param name="userHint">The person's normalized hint, if any.</param>
+    /// <param name="adaptation">The closed ingredient-approach code, if any.</param>
+    /// <param name="source">The session a candidate is being reopened from; its privacy and approach carry over.</param>
     /// <exception cref="ArgumentException">The mode is not supported.</exception>
-    public static RecipeGenerationSession Create(Guid ownerUserId, Guid idempotencyKey, DateTimeOffset now, string executionMode = "cook_now") => new()
+    public static RecipeGenerationSession Create(Guid ownerUserId, Guid idempotencyKey, DateTimeOffset now, string executionMode = "cook_now", string? userHint = null, string? adaptation = null, RecipeGenerationSession? source = null) => new()
     {
         Id = Guid.NewGuid(),
         OwnerUserId = ownerUserId,
         IdempotencyKey = idempotencyKey,
         ExecutionMode = executionMode is "cook_now" or "menu_planning" ? executionMode : throw new ArgumentException("Unsupported execution mode.", nameof(executionMode)),
         Status = RecipeGenerationSessionStatus.AwaitingCandidates,
+        UserHint = userHint,
+        Adaptation = adaptation ?? source?.Adaptation,
+        PrivateDirection = userHint is not null || source?.PrivateDirection == true,
+        SourceSessionId = source?.Id,
         CreatedAt = now,
         UpdatedAt = now,
         ExpiresAt = now.AddHours(2)
@@ -78,7 +98,8 @@ public sealed class RecipeGenerationSession
     public static RecipeGenerationSession Rehydrate(
         Guid id, Guid ownerUserId, Guid idempotencyKey, string executionMode, RecipeGenerationSessionStatus status,
         string? candidatesSnapshotJson, string? selectedCandidateId, Guid? selectedRecipeId, Guid? selectIdempotencyKey, string? failureReason,
-        DateTimeOffset createdAt, DateTimeOffset updatedAt, DateTimeOffset expiresAt) => new()
+        DateTimeOffset createdAt, DateTimeOffset updatedAt, DateTimeOffset expiresAt,
+        string? userHint = null, string? adaptation = null, bool privateDirection = false, Guid? sourceSessionId = null, DateTimeOffset? removedFromHistoryAt = null) => new()
         {
             Id = id,
             OwnerUserId = ownerUserId,
@@ -90,10 +111,22 @@ public sealed class RecipeGenerationSession
             SelectedRecipeId = selectedRecipeId,
             SelectIdempotencyKey = selectIdempotencyKey,
             FailureReason = failureReason,
+            UserHint = userHint,
+            Adaptation = adaptation,
+            PrivateDirection = privateDirection,
+            SourceSessionId = sourceSessionId,
+            RemovedFromHistoryAt = removedFromHistoryAt,
             CreatedAt = createdAt,
             UpdatedAt = updatedAt,
             ExpiresAt = expiresAt
         };
+
+    /// <summary>Removes this session from the owner's suggestion history and forgets the hint. Its candidates stay for saved entries and recipes that came from them.</summary>
+    public void RemoveFromHistory(DateTimeOffset now)
+    {
+        RemovedFromHistoryAt = now;
+        UserHint = null;
+    }
 
     /// <summary>Returns whether the session may still be acted upon.</summary>
     public bool IsExpired(DateTimeOffset now) => now >= ExpiresAt;

@@ -808,6 +808,205 @@ export function createLiveRecipeRepository(options?: {
       }
     },
 
+    async listSuggestionHistory(signal) {
+      try {
+        const { data, error, response } = await client.GET(
+          "/api/v1/recipes/suggestion-history",
+          { signal, credentials: "include" },
+        );
+        if (!response.ok || !data) {
+          await throwForFailure(
+            response,
+            "Unable to load the suggestion history.",
+            error,
+          );
+        }
+        assertData(data, response);
+        return data.map((entry) => ({
+          sessionId: assertString(entry.sessionId, "sessionId"),
+          createdAt: assertString(entry.createdAt, "createdAt"),
+          hint: entry.hint ?? null,
+          adaptation: entry.adaptation ?? null,
+          candidates: entry.candidates.map((item) => ({
+            candidate: mapCandidate(item.candidate),
+            recipeId: item.recipeId ?? null,
+          })),
+        }));
+      } catch (err) {
+        wrapAbort(err);
+      }
+    },
+
+    async reopenHistoryCandidate(
+      sessionId,
+      candidateId,
+      { csrfToken, idempotencyKey, language, signal },
+    ) {
+      try {
+        const { data, error, response } = await client.POST(
+          "/api/v1/recipes/suggestion-history/{sessionId}/recipe",
+          {
+            params: {
+              path: { sessionId },
+              header: {
+                "X-CSRF-TOKEN": csrfToken,
+                "Idempotency-Key": idempotencyKey,
+              },
+            },
+            body: { candidateId },
+            headers: language ? { "Accept-Language": language } : undefined,
+            signal,
+            credentials: "include",
+          },
+        );
+        if (!response.ok || !data) {
+          await throwForFailure(
+            response,
+            "Unable to ask for the suggestion.",
+            error,
+          );
+        }
+        assertData(data, response);
+        return mapDetail(data);
+      } catch (err) {
+        wrapAbort(err);
+      }
+    },
+
+    async removeFromSuggestionHistory(sessionId, { csrfToken, signal }) {
+      try {
+        const { error, response } = await client.DELETE(
+          "/api/v1/recipes/suggestion-history/{sessionId}",
+          {
+            params: {
+              path: { sessionId },
+              header: { "X-CSRF-TOKEN": csrfToken },
+            },
+            signal,
+            credentials: "include",
+          },
+        );
+        if (!response.ok) {
+          await throwForFailure(
+            response,
+            "Unable to remove the suggestion.",
+            error,
+          );
+        }
+      } catch (err) {
+        wrapAbort(err);
+      }
+    },
+
+    async proposeRevision(
+      recipeId,
+      {
+        csrfToken,
+        idempotencyKey,
+        instruction,
+        expectedRevisionNumber,
+        language,
+        signal,
+      },
+    ) {
+      try {
+        const { data, error, response } = await client.POST(
+          "/api/v1/recipes/{recipeId}/revision-proposals",
+          {
+            params: {
+              path: { recipeId },
+              header: {
+                "X-CSRF-TOKEN": csrfToken,
+                "Idempotency-Key": idempotencyKey,
+              },
+            },
+            body: { instruction, expectedRevisionNumber },
+            headers: language ? { "Accept-Language": language } : undefined,
+            signal,
+            credentials: "include",
+          },
+        );
+        if (!response.ok || !data) {
+          await throwForFailure(
+            response,
+            "Unable to ask for a revision.",
+            error,
+          );
+        }
+        assertData(data, response);
+        return {
+          proposalId: assertString(data.proposalId, "proposalId"),
+          recipeId: assertString(data.recipeId, "recipeId"),
+          baseRevisionNumber: asFiniteNumber(
+            data.baseRevisionNumber,
+            "baseRevisionNumber",
+          ),
+          instruction: assertString(data.instruction, "instruction"),
+          status: assertString(data.status, "status"),
+          name: data.name ?? null,
+          mealTypes: data.mealTypes ?? [],
+          servings: count(data.servings),
+          normalizedRecipeJson: data.normalizedRecipeJson ?? null,
+          acceptedRevisionNumber: count(data.acceptedRevisionNumber),
+          createdAt: assertString(data.createdAt, "createdAt"),
+        };
+      } catch (err) {
+        wrapAbort(err);
+      }
+    },
+
+    async acceptRevisionProposal(recipeId, proposalId, { csrfToken, signal }) {
+      try {
+        const { data, error, response } = await client.POST(
+          "/api/v1/recipes/{recipeId}/revision-proposals/{proposalId}/accept",
+          {
+            params: {
+              path: { recipeId, proposalId },
+              header: { "X-CSRF-TOKEN": csrfToken },
+            },
+            signal,
+            credentials: "include",
+          },
+        );
+        if (!response.ok || !data) {
+          await throwForFailure(
+            response,
+            "Unable to save the new version.",
+            error,
+          );
+        }
+        assertData(data, response);
+        return mapDetail(data);
+      } catch (err) {
+        wrapAbort(err);
+      }
+    },
+
+    async discardRevisionProposal(recipeId, proposalId, { csrfToken, signal }) {
+      try {
+        const { error, response } = await client.DELETE(
+          "/api/v1/recipes/{recipeId}/revision-proposals/{proposalId}",
+          {
+            params: {
+              path: { recipeId, proposalId },
+              header: { "X-CSRF-TOKEN": csrfToken },
+            },
+            signal,
+            credentials: "include",
+          },
+        );
+        if (!response.ok) {
+          await throwForFailure(
+            response,
+            "Unable to discard the new version.",
+            error,
+          );
+        }
+      } catch (err) {
+        wrapAbort(err);
+      }
+    },
+
     async cookSavedCandidate(
       savedId,
       { csrfToken, idempotencyKey, language, signal },

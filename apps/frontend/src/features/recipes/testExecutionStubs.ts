@@ -28,6 +28,12 @@ export const executionStubs: Pick<
   | "listSavedCandidates"
   | "deleteSavedCandidate"
   | "cookSavedCandidate"
+  | "listSuggestionHistory"
+  | "reopenHistoryCandidate"
+  | "removeFromSuggestionHistory"
+  | "proposeRevision"
+  | "acceptRevisionProposal"
+  | "discardRevisionProposal"
   | "setExecutionAdjustments"
 > = {
   startExecution: unused,
@@ -46,6 +52,12 @@ export const executionStubs: Pick<
   listSavedCandidates: async () => [],
   deleteSavedCandidate: unused,
   cookSavedCandidate: unused,
+  listSuggestionHistory: async () => [],
+  reopenHistoryCandidate: unused,
+  removeFromSuggestionHistory: unused,
+  proposeRevision: unused,
+  acceptRevisionProposal: unused,
+  discardRevisionProposal: unused,
   setExecutionAdjustments: unused,
 };
 

@@ -296,6 +296,9 @@ public sealed class RecipeCookNowApplicationServiceTests
         public Task<RecipeSuggestRequestContext> AssembleSuggestContextAsync(Guid ownerUserId, string requestId, int contextBudgetCharacters, CancellationToken cancellationToken, MenuPlanningTarget? menuTarget = null, RecipeSuggestionGuidance? guidance = null) =>
             Task.FromResult(new RecipeSuggestRequestContext(requestId, [], [], new RecipeUserPresets(menuTarget?.Servings ?? 2, [], [], []), new RecipeExecutionContext(menuTarget is null ? "cook_now" : "menu_planning", null, menuTarget?.PlannedDate, menuTarget?.MealType, menuTarget?.AlreadyPlannedRecipeNames)));
 
+        public Task<RecipeReviseRequestContext> AssembleReviseContextAsync(Guid ownerUserId, string requestId, string recipeId, int nextRevision, string currentRecipeJson, string instruction, int contextBudgetCharacters, CancellationToken cancellationToken) =>
+            Task.FromResult(new RecipeReviseRequestContext(requestId, [], [], new RecipeUserPresets(2, [], [], []), recipeId, nextRevision, currentRecipeJson, instruction));
+
         public Task<RecipeExpandRequestContext> AssembleExpandContextAsync(Guid ownerUserId, string requestId, SuggestCandidate selectedCandidate, int contextBudgetCharacters, CancellationToken cancellationToken) =>
             Task.FromResult(new RecipeExpandRequestContext(
                 requestId,
@@ -539,6 +542,12 @@ public sealed class RecipeCookNowApplicationServiceTests
                 return Task.FromResult(_sessions.TryGetValue(sessionId, out var session) && session.OwnerUserId == ownerUserId ? session : null);
             }
         }
+
+        public Task<IReadOnlyList<RecipeGenerationSession>> ListHistoryAsync(Guid ownerUserId, int limit, CancellationToken cancellationToken) =>
+            Task.FromResult<IReadOnlyList<RecipeGenerationSession>>([]);
+
+        public Task<IReadOnlyList<RecipeGenerationSession>> ListReopenedAsync(Guid ownerUserId, IReadOnlyList<Guid> sourceSessionIds, CancellationToken cancellationToken) =>
+            Task.FromResult<IReadOnlyList<RecipeGenerationSession>>([]);
 
         public Task<RecipeGenerationSession?> FindActiveAsync(Guid ownerUserId, Guid sessionId, CancellationToken cancellationToken) =>
             FindByIdAsync(ownerUserId, sessionId, cancellationToken);

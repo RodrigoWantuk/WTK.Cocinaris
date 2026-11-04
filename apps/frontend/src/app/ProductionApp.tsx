@@ -31,6 +31,8 @@ import { ShoppingPage } from "@/features/planning/ShoppingPage";
 import { RecipesListPage } from "@/features/recipes/RecipesListPage";
 import { CookPickerPage } from "@/features/recipes/CookPickerPage";
 import { RecipeGeneratePage } from "@/features/recipes/RecipeGeneratePage";
+import { RecipeAiRevisionPage } from "@/features/recipes/RecipeAiRevisionPage";
+import { SuggestionHistoryPage } from "@/features/recipes/SuggestionHistoryPage";
 import { TodayPage } from "@/features/home/TodayPage";
 import { CookingPage } from "@/features/recipes/CookingPage";
 import { RecipeEditorPage } from "@/features/recipes/RecipeEditorPage";
@@ -138,6 +140,10 @@ export function pageTitleKeyFor(pathname: string): string {
   }
   if (pathname.startsWith("/app/despensa")) return "page.title.inventory";
   if (pathname === "/app/receitas/gerar") return "page.title.recipeGenerate";
+  if (pathname === "/app/receitas/sugestoes")
+    return "page.title.suggestionHistory";
+  if (/^\/app\/receitas\/[^/]+\/revisar$/.test(pathname))
+    return "page.title.recipeAiRevision";
   if (pathname === "/app/receitas/nova") return "page.title.recipeNew";
   if (/^\/app\/receitas\/[^/]+\/editar$/.test(pathname))
     return "page.title.recipeEdit";
@@ -412,6 +418,11 @@ function createProductionRouter() {
         { path: "receitas", element: <RecipesListPage /> },
         { path: "cozinhar", element: <CookPickerPage /> },
         { path: "receitas/gerar", element: <RecipeGeneratePage /> },
+        { path: "receitas/sugestoes", element: <SuggestionHistoryPage /> },
+        {
+          path: "receitas/:recipeId/revisar",
+          element: <RecipeAiRevisionPage />,
+        },
         { path: "compras", element: <ShoppingHubPage /> },
         { path: "cardapio", element: <MenusPage /> },
         { path: "cardapio/:menuId", element: <MenuPage /> },

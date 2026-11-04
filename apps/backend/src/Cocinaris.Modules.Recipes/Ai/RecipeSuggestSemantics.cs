@@ -15,6 +15,35 @@ public static partial class RecipeSuggestSemantics
         HomemadeClaim(), FreshClaim(), HealthyClaim(), AuthenticClaim(), TraditionalClaim(), HighProteinClaim()
     ];
 
+    /// <summary>Longest stored summary, in characters. The description sells the dish, so it gets two short sentences (PLAN-0060).</summary>
+    public const int MaxSummaryCharacters = 320;
+
+    /// <summary>
+    /// Fits a summary to <see cref="MaxSummaryCharacters"/>, at the last sentence end when one falls in
+    /// the second half, else at the last space with an ellipsis. Length alone never fails a request: a
+    /// word cap here was what made suggestions fail after every repair (owner report 2026-11-04).
+    /// </summary>
+    /// <param name="summary">The model's summary.</param>
+    /// <returns>A summary within the limit, unchanged when it already fits.</returns>
+    public static string FitSummary(string summary)
+    {
+        var text = summary.Trim();
+        if (text.Length <= MaxSummaryCharacters)
+        {
+            return text;
+        }
+
+        var window = text[..MaxSummaryCharacters];
+        var sentenceEnd = window.LastIndexOfAny(['.', '!', '?']);
+        if (sentenceEnd >= MaxSummaryCharacters / 2)
+        {
+            return window[..(sentenceEnd + 1)];
+        }
+
+        var lastSpace = window[..(MaxSummaryCharacters - 1)].LastIndexOf(' ');
+        return (lastSpace > 0 ? window[..lastSpace] : window[..(MaxSummaryCharacters - 1)]).TrimEnd() + "…";
+    }
+
     /// <summary>Validates cross-candidate distinctness, injected-claim, and request-fidelity rules.</summary>
     public static List<string> Validate(SuggestCandidatesResponse response, JsonElement? request)
     {
@@ -35,12 +64,6 @@ public static partial class RecipeSuggestSemantics
                 errors.Add($"{prefix} duplicates strategy {candidate.CandidateStrategy}");
             }
 
-            var summaryWords = ProtocolCheck.WordCount(candidate.Summary);
-            if (summaryWords > 18)
-            {
-                errors.Add($"{prefix}.summary has {summaryWords} words (max 18)");
-            }
-
             var fingerprint = string.Join('|', new[] { candidate.DishFormat, candidate.PrimaryTechnique }.Concat(candidate.PrimaryIngredientRefs));
             if (!fingerprints.Add(fingerprint))
             {
@@ -54,6 +77,11 @@ public static partial class RecipeSuggestSemantics
                     errors.Add($"{prefix} contains unsupported quality claim");
                     break;
                 }
+            }
+
+            if (RecipeExpandSemantics.ContainsLinkOrMarkup(candidate.Name) || RecipeExpandSemantics.ContainsLinkOrMarkup(candidate.Summary))
+            {
+                errors.Add($"{prefix} contains a link or markup");
             }
 
             var assumptions = new HashSet<string>(candidate.AssumptionsUsed.Select(value => value.Trim().ToLowerInvariant()), StringComparer.Ordinal);

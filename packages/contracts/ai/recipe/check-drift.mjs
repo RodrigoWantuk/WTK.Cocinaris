@@ -17,6 +17,7 @@ import {
 const required = [
   join(schemasDir, SCHEMA_FILES.suggest),
   join(schemasDir, SCHEMA_FILES.expand),
+  join(schemasDir, SCHEMA_FILES.revise),
   join(fixturesDir, "responses/positive/suggest-candidates.valid.json"),
   join(fixturesDir, "responses/positive/expand-selected.valid.json"),
   join(packageRoot, "package.json"),

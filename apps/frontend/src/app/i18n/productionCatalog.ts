@@ -73,6 +73,8 @@ const sharedShell: Record<ProductionLocale, Catalog> = {
     "page.title.unavailable": "Em breve",
     "page.title.recipes": "Receitas",
     "page.title.recipeGenerate": "Gerar receita",
+    "page.title.suggestionHistory": "Sugestões anteriores",
+    "page.title.recipeAiRevision": "Revisar com IA",
     "page.title.recipeDetail": "Receita",
   },
   en: {
@@ -128,6 +130,8 @@ const sharedShell: Record<ProductionLocale, Catalog> = {
     "page.title.unavailable": "Coming soon",
     "page.title.recipes": "Recipes",
     "page.title.recipeGenerate": "Generate a recipe",
+    "page.title.suggestionHistory": "Earlier suggestions",
+    "page.title.recipeAiRevision": "Revise with AI",
     "page.title.recipeDetail": "Recipe",
   },
   es: {
@@ -184,6 +188,8 @@ const sharedShell: Record<ProductionLocale, Catalog> = {
     "page.title.unavailable": "Próximamente",
     "page.title.recipes": "Recetas",
     "page.title.recipeGenerate": "Generar receta",
+    "page.title.suggestionHistory": "Sugerencias anteriores",
+    "page.title.recipeAiRevision": "Revisar con IA",
     "page.title.recipeDetail": "Receta",
   },
 };

@@ -658,6 +658,11 @@ export function RecipeGeneratePage() {
         <Button asChild variant="secondary">
           <Link to="/app/receitas">{t("recipes.actions.back")}</Link>
         </Button>
+        <Button asChild variant="ghost" data-testid="recipes-history-link">
+          <Link to="/app/receitas/sugestoes">
+            {t("recipes.suggestionHistory.link")}
+          </Link>
+        </Button>
       </div>
       {!session.csrfToken ? (
         <p role="status" className="text-sm text-muted-foreground">

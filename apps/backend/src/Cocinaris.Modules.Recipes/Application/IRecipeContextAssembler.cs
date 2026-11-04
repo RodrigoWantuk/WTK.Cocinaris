@@ -20,4 +20,7 @@ public interface IRecipeContextAssembler
 
     /// <summary>Assembles the bounded selected-candidate expansion request context for one owner.</summary>
     Task<RecipeExpandRequestContext> AssembleExpandContextAsync(Guid ownerUserId, string requestId, SuggestCandidate selectedCandidate, int contextBudgetCharacters, CancellationToken cancellationToken);
+
+    /// <summary>Assembles the bounded revision request context for one owner's recipe (PLAN-0060).</summary>
+    Task<RecipeReviseRequestContext> AssembleReviseContextAsync(Guid ownerUserId, string requestId, string recipeId, int nextRevision, string currentRecipeJson, string instruction, int contextBudgetCharacters, CancellationToken cancellationToken);
 }

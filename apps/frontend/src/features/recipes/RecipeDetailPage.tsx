@@ -402,6 +402,16 @@ export function RecipeDetailPage() {
                   asChild
                   variant="ghost"
                   className="justify-start"
+                  data-testid="recipes-detail-ai-revise"
+                >
+                  <Link to={`/app/receitas/${detail.recipeId}/revisar`}>
+                    {t("recipes.aiRevision.menu")}
+                  </Link>
+                </Button>
+                <Button
+                  asChild
+                  variant="ghost"
+                  className="justify-start"
                   data-testid="recipes-detail-edit"
                 >
                   <Link to={`/app/receitas/${detail.recipeId}/editar`}>

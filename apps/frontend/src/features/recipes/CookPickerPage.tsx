@@ -1,6 +1,12 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { BookOpen, ChevronRight, PenLine, Sparkles } from "lucide-react";
+import {
+  BookOpen,
+  ChevronRight,
+  History,
+  PenLine,
+  Sparkles,
+} from "lucide-react";
 import { useProductionI18n } from "@/app/i18n/ProductionI18nProvider";
 import { useSession } from "@/app/session/SessionProvider";
 import { EmptyState } from "@/components/feedback/EmptyState";
@@ -111,6 +117,14 @@ export function CookPickerPage() {
           </span>
         </Link>
       </div>
+      <Link
+        to="/app/receitas/sugestoes"
+        data-testid="cook-suggestion-history"
+        className="inline-flex min-h-11 items-center gap-2 rounded-xl text-sm font-medium text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        <History aria-hidden="true" className="h-4 w-4" />
+        {t("recipes.suggestionHistory.link")}
+      </Link>
     </section>
   );
 

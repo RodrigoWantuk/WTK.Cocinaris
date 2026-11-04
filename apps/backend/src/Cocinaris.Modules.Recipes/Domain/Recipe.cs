@@ -21,7 +21,9 @@ public enum RecipeRevisionOrigin
     /// <summary>A later revision the owner edited (correction or refinement).</summary>
     Edited,
     /// <summary>First revision of a derived recipe.</summary>
-    Derived
+    Derived,
+    /// <summary>A later revision the AI wrote from the owner's request, saved because the owner accepted it (PLAN-0060).</summary>
+    AiRevised
 }
 
 /// <summary>
@@ -291,8 +293,9 @@ public sealed class RecipeRevision
     }
 
     /// <summary>
-    /// Creates a revision the owner wrote: the first revision of a manual or derived recipe, or a
-    /// later edited revision. The content was composed and validated by <c>RecipeContentComposer</c>.
+    /// Creates a revision the owner wrote or accepted: the first revision of a manual or derived
+    /// recipe, or a later edited or AI-revised revision. The content was already validated, by
+    /// <c>RecipeContentComposer</c> or by the AI protocol validator.
     /// </summary>
     /// <exception cref="ArgumentException">The origin is <see cref="RecipeRevisionOrigin.Generated"/>, the number does not match the origin, or the content is invalid.</exception>
     public static RecipeRevision CreateAuthored(
@@ -313,7 +316,7 @@ public sealed class RecipeRevision
         var expectsFirst = origin is RecipeRevisionOrigin.Manual or RecipeRevisionOrigin.Derived;
         if (origin == RecipeRevisionOrigin.Generated || revisionNumber < 1 || expectsFirst != (revisionNumber == 1))
         {
-            throw new ArgumentException("An authored revision is revision 1 of a manual or derived recipe, or a later edited revision.");
+            throw new ArgumentException("An authored revision is revision 1 of a manual or derived recipe, or a later edited or AI-revised revision.");
         }
 
         if (changeReason is { Length: > Recipe.MaxReasonLength })
