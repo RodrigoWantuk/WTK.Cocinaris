@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { BookOpen, PenLine, SearchX, Sparkles } from "lucide-react";
+import { BookOpen, History, PenLine, SearchX, Sparkles } from "lucide-react";
 import { EmptyState } from "@/components/feedback/EmptyState";
 import { RecipeCard } from "./RecipeCard";
 import { SavedCandidatesSection } from "./SavedCandidatesSection";
@@ -206,6 +206,17 @@ export function RecipesListPage() {
       </div>
 
       <SavedCandidatesSection />
+
+      <p>
+        <Link
+          to="/app/receitas/sugestoes"
+          data-testid="library-suggestion-history"
+          className="inline-flex min-h-11 items-center gap-2 rounded-xl text-sm font-medium text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <History aria-hidden="true" className="h-4 w-4" />
+          {t("recipes.suggestionHistory.link")}
+        </Link>
+      </p>
 
       {updateError ? (
         <p role="alert" className="text-sm text-destructive">

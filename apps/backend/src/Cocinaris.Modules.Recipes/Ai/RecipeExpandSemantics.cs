@@ -28,6 +28,12 @@ public static partial class RecipeExpandSemantics
     /// </summary>
     public static bool ContainsPrivateContext(string text) => PrivateThumbnailPatterns.Any(pattern => pattern.IsMatch(text));
 
+    /// <summary>
+    /// Whether text has a link or markup. A recipe has no use for either, so their presence means
+    /// the model followed something it should have treated as data (PLAN-0060).
+    /// </summary>
+    public static bool ContainsLinkOrMarkup(string text) => LinkOrMarkup().IsMatch(text);
+
     /// <summary>Validates thumbnail privacy/claim bounds and request-fidelity rules.</summary>
     public static List<string> Validate(ExpandSelectedResponse response, JsonElement? request)
     {
@@ -57,20 +63,28 @@ public static partial class RecipeExpandSemantics
             errors.Add("thumbnailVisual contains safety/nutrition/authenticity claim");
         }
 
-        if (request?.Prop("selectedCandidate") is { } selectedCandidate)
+        foreach (var text in new[] { recipe.Name, recipe.Yield }.Concat(recipe.Stages.Select(stage => stage.Instructions)))
+        {
+            if (ContainsLinkOrMarkup(text))
+            {
+                errors.Add("recipe text contains a link or markup");
+                break;
+            }
+        }
+
+        var isRevision = request.Prop("revisionRequest") is not null;
+        if (request?.Prop("selectedCandidate") is not null || isRevision)
         {
             var snapshotIds = new HashSet<string>(
                 request.Prop("confirmedInventorySnapshot").Prop("items").AsArray().Select(item => item.Prop("itemId").AsString()).OfType<string>(),
                 StringComparer.Ordinal);
             foreach (var ingredient in recipe.Ingredients)
             {
-                if (ingredient.SourceType == "inventory" && ingredient.InventoryItemId is not null && snapshotIds.Count > 0 && !snapshotIds.Contains(ingredient.InventoryItemId))
+                if (ingredient.SourceType == "inventory" && ingredient.InventoryItemId is not null && (snapshotIds.Count > 0 || isRevision) && !snapshotIds.Contains(ingredient.InventoryItemId))
                 {
                     errors.Add($"ingredient {ingredient.IngredientId} invents inventoryItemId {ingredient.InventoryItemId}");
                 }
             }
-
-            _ = selectedCandidate; // requiredEquipmentIds cross-check is intentionally advisory-only, matching the reference validator.
         }
 
         var ingredientNames = new HashSet<string>(recipe.Ingredients.Select(item => item.DisplayName.ToLowerInvariant()), StringComparer.Ordinal);
@@ -86,6 +100,8 @@ public static partial class RecipeExpandSemantics
         return errors;
     }
 
+    [GeneratedRegex(@"https?://|\bwww\.|<\s*/?\s*[a-z!]", RegexOptions.IgnoreCase)]
+    private static partial Regex LinkOrMarkup();
     [GeneratedRegex(@"\binv[-_]?\d+", RegexOptions.IgnoreCase)]
     private static partial Regex InventoryReferencePattern();
     [GeneratedRegex(@"\buser\b", RegexOptions.IgnoreCase)]

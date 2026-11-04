@@ -175,6 +175,25 @@ public sealed class PostgreSqlRecipeGenerationStore(ApplicationDbContext databas
         FindByIdAsync(ownerUserId, sessionId, cancellationToken);
 
     /// <inheritdoc />
+    public async Task<IReadOnlyList<RecipeGenerationSession>> ListHistoryAsync(Guid ownerUserId, int limit, CancellationToken cancellationToken) =>
+        (await database.RecipeGenerationSessions.AsNoTracking()
+            .Where(item => item.OwnerUserId == ownerUserId && item.SourceSessionId == null && item.RemovedFromHistoryAt == null && item.CandidatesSnapshotJson != null)
+            .OrderByDescending(item => item.CreatedAt)
+            .Take(limit)
+            .ToListAsync(cancellationToken))
+        .Select(ToDomain)
+        .ToList();
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<RecipeGenerationSession>> ListReopenedAsync(Guid ownerUserId, IReadOnlyList<Guid> sourceSessionIds, CancellationToken cancellationToken) =>
+        (await database.RecipeGenerationSessions.AsNoTracking()
+            .Where(item => item.OwnerUserId == ownerUserId && item.SourceSessionId != null && sourceSessionIds.Contains(item.SourceSessionId.Value))
+            .OrderByDescending(item => item.CreatedAt)
+            .ToListAsync(cancellationToken))
+        .Select(ToDomain)
+        .ToList();
+
+    /// <inheritdoc />
     public async Task SaveAsync(RecipeGenerationSession session, CancellationToken cancellationToken)
     {
         var record = await database.RecipeGenerationSessions
@@ -191,6 +210,8 @@ public sealed class PostgreSqlRecipeGenerationStore(ApplicationDbContext databas
         record.SelectedRecipeId = session.SelectedRecipeId;
         record.SelectIdempotencyKey = session.SelectIdempotencyKey;
         record.FailureReason = session.FailureReason;
+        record.UserHint = session.UserHint;
+        record.RemovedFromHistoryAt = session.RemovedFromHistoryAt;
         record.UpdatedAt = session.UpdatedAt;
     }
 
@@ -208,7 +229,12 @@ public sealed class PostgreSqlRecipeGenerationStore(ApplicationDbContext databas
             record.FailureReason,
             record.CreatedAt,
             record.UpdatedAt,
-            record.ExpiresAt);
+            record.ExpiresAt,
+            record.UserHint,
+            record.Adaptation,
+            record.PrivateDirection,
+            record.SourceSessionId,
+            record.RemovedFromHistoryAt);
 
     private static RecipeGenerationSessionRecord ToRecord(RecipeGenerationSession session) => new()
     {
@@ -222,6 +248,11 @@ public sealed class PostgreSqlRecipeGenerationStore(ApplicationDbContext databas
         SelectedRecipeId = session.SelectedRecipeId,
         SelectIdempotencyKey = session.SelectIdempotencyKey,
         FailureReason = session.FailureReason,
+        UserHint = session.UserHint,
+        Adaptation = session.Adaptation,
+        PrivateDirection = session.PrivateDirection,
+        SourceSessionId = session.SourceSessionId,
+        RemovedFromHistoryAt = session.RemovedFromHistoryAt,
         CreatedAt = session.CreatedAt,
         UpdatedAt = session.UpdatedAt,
         ExpiresAt = session.ExpiresAt

@@ -303,6 +303,8 @@ describe("Recipes generate flow", () => {
           time: "quick",
           requiredLotIds: ["lot-1"],
           excludedLotIds: [],
+          hint: null,
+          adaptation: null,
         },
       }),
     );

@@ -90,6 +90,16 @@ public sealed class RecipeGenerationSessionRecord
     public Guid? SelectIdempotencyKey { get; set; }
     /// <summary>Gets or sets a non-sensitive failure classification.</summary>
     public string? FailureReason { get; set; }
+    /// <summary>Gets or sets the person's normalized hint (PLAN-0060).</summary>
+    public string? UserHint { get; set; }
+    /// <summary>Gets or sets the closed ingredient-approach code.</summary>
+    public string? Adaptation { get; set; }
+    /// <summary>Gets or sets whether the person's own words shaped the candidates, which keeps them out of the shared idea library.</summary>
+    public bool PrivateDirection { get; set; }
+    /// <summary>Gets or sets the session whose candidate this one reopened.</summary>
+    public Guid? SourceSessionId { get; set; }
+    /// <summary>Gets or sets when the owner removed it from the suggestion history.</summary>
+    public DateTimeOffset? RemovedFromHistoryAt { get; set; }
     /// <summary>Gets or sets the UTC creation instant.</summary>
     public DateTimeOffset CreatedAt { get; set; }
     /// <summary>Gets or sets the UTC instant of the last state transition.</summary>

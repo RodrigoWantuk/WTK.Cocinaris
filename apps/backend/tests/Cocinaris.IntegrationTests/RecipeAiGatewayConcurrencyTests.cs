@@ -298,6 +298,9 @@ public sealed class RecipeAiGatewayConcurrencyTests : IAsyncLifetime
         public Task<RecipeSuggestRequestContext> AssembleSuggestContextAsync(Guid ownerUserId, string requestId, int contextBudgetCharacters, CancellationToken cancellationToken, MenuPlanningTarget? menuTarget = null, RecipeSuggestionGuidance? guidance = null) =>
             Task.FromResult(new RecipeSuggestRequestContext(requestId, [], [], new RecipeUserPresets(2, [], [], []), new RecipeExecutionContext("cook_now", null)));
 
+        public Task<RecipeReviseRequestContext> AssembleReviseContextAsync(Guid ownerUserId, string requestId, string recipeId, int nextRevision, string currentRecipeJson, string instruction, int contextBudgetCharacters, CancellationToken cancellationToken) =>
+            Task.FromResult(new RecipeReviseRequestContext(requestId, [], [], new RecipeUserPresets(2, [], [], []), recipeId, nextRevision, currentRecipeJson, instruction));
+
         public Task<RecipeExpandRequestContext> AssembleExpandContextAsync(Guid ownerUserId, string requestId, SuggestCandidate selectedCandidate, int contextBudgetCharacters, CancellationToken cancellationToken) =>
             Task.FromResult(new RecipeExpandRequestContext(
                 requestId,

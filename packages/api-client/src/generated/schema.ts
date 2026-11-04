@@ -764,6 +764,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/recipes/suggestion-history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** GET /api/v1/recipes/suggestion-history */
+        get: operations["getApiV1RecipesSuggestion-history"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/recipes/suggestion-history/{sessionId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** DELETE /api/v1/recipes/suggestion-history/{sessionId} */
+        delete: operations["deleteApiV1RecipesSuggestion-historySessionId"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/recipes/suggestion-history/{sessionId}/recipe": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** POST /api/v1/recipes/suggestion-history/{sessionId}/recipe */
+        post: operations["postApiV1RecipesSuggestion-historySessionIdRecipe"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/recipes/{recipeId}": {
         parameters: {
             query?: never;
@@ -877,6 +928,58 @@ export interface paths {
         get: operations["getApiV1RecipesRecipeIdHistory"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/recipes/{recipeId}/revision-proposals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** POST /api/v1/recipes/{recipeId}/revision-proposals */
+        post: operations["postApiV1RecipesRecipeIdRevision-proposals"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/recipes/{recipeId}/revision-proposals/{proposalId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** GET /api/v1/recipes/{recipeId}/revision-proposals/{proposalId} */
+        get: operations["getApiV1RecipesRecipeIdRevision-proposalsProposalId"];
+        put?: never;
+        post?: never;
+        /** DELETE /api/v1/recipes/{recipeId}/revision-proposals/{proposalId} */
+        delete: operations["deleteApiV1RecipesRecipeIdRevision-proposalsProposalId"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/recipes/{recipeId}/revision-proposals/{proposalId}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** POST /api/v1/recipes/{recipeId}/revision-proposals/{proposalId}/accept */
+        post: operations["postApiV1RecipesRecipeIdRevision-proposalsProposalIdAccept"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1733,6 +1836,16 @@ export interface components {
             /** @description Opaque profile version matching the ETag header when a profile exists; null when no profile exists yet. */
             version: null | string;
         };
+        /** @description Asks the AI for a new version of a recipe (PLAN-0060). */
+        ProposeRevisionRequest: {
+            /**
+             * Format: int32
+             * @description Revision on screen; a newer one fails with 412.
+             */
+            expectedRevisionNumber: number | string;
+            /** @description What to change, at most 300 characters. Untrusted text, sent to the model only as data. */
+            instruction: null | string;
+        };
         /** @description Represents exactly one inventory quantity mode supplied by an API client. */
         QuantityRequest: {
             availabilityState?: ("Available" | "Low" | "Unavailable") | null;
@@ -1889,7 +2002,7 @@ export interface components {
              * @description Revision shown.
              */
             revisionNumber: number | string;
-            /** @description `generated`, `manual`, `edited`, or `derived`. */
+            /** @description `generated`, `manual`, `edited`, `derived`, or `airevised`. */
             revisionOrigin: string;
             /**
              * Format: int32
@@ -2156,7 +2269,7 @@ export interface components {
              */
             totalMinutes: null | number | string;
         };
-        /** @description One revision: Origin is `generated`, `manual`, `edited`, or `derived`. */
+        /** @description One revision: Origin is `generated`, `manual`, `edited`, `derived`, or `airevised`. */
         RecipeRevisionEntryResponse: {
             changeReason: null | string;
             /** Format: date-time */
@@ -2167,6 +2280,49 @@ export interface components {
             revisionNumber: number | string;
             /** Format: uuid */
             sourceExecutionId: null | string;
+        };
+        /** @description A new version the AI wrote, waiting for the owner's decision (PLAN-0060). */
+        RecipeRevisionProposalResponse: {
+            /**
+             * Format: int32
+             * @description Revision created by accepting.
+             */
+            acceptedRevisionNumber: null | number | string;
+            /**
+             * Format: int32
+             * @description Revision it was written from.
+             */
+            baseRevisionNumber: number | string;
+            /**
+             * Format: date-time
+             * @description When it was requested.
+             */
+            createdAt: string;
+            /** @description The owner's request, after cleaning. */
+            instruction: string;
+            /** @description Proposed meal types. */
+            mealTypes: string[];
+            /** @description Proposed name. */
+            name: null | string;
+            /** @description Proposed content (protocol 0.3 shape) while `Ready`. */
+            normalizedRecipeJson: null | string;
+            /**
+             * Format: uuid
+             * @description Proposal identifier.
+             */
+            proposalId: string;
+            /**
+             * Format: uuid
+             * @description Recipe being revised.
+             */
+            recipeId: string;
+            /**
+             * Format: int32
+             * @description Proposed servings.
+             */
+            servings: null | number | string;
+            /** @description `Generating`, `Ready`, `Accepted`, `Discarded`, or `Failed`. */
+            status: string;
         };
         /** @description One stage; StageId keeps an existing stage and its dependencies. */
         RecipeStageRequest: {
@@ -2442,20 +2598,54 @@ export interface components {
             servings: null | number | string;
         };
         /** @description Direction for a suggestion request (PLAN-0056). Closed codes only; unknown codes are rejected.
-         *     Required lots must be used by every candidate; excluded lots are never sent to the AI. */
+         *     Required lots must be used by every candidate; excluded lots are never sent to the AI.
+         *     Hint is the one free text: untrusted, cleaned, and only a wish for the model. */
         SuggestionGuidanceRequest: {
+            /** @description `adapt_to_pantry` or `stay_faithful`; null for the default balance. */
+            adaptation?: null | string;
             /** @description One of `brazilian`, `italian`, `mexican`, `japanese`, `chinese`, `indian`, `middle_eastern`, `mediterranean`, `french`, `spanish`, `american`, `portuguese`. */
             cuisine: null | string;
             /** @description Up to three of `pasta`, `rice`, `meat`, `poultry`, `fish_seafood`, `eggs`, `vegetarian`, `soup_broth`, `salad`, `sandwich_wrap`, `baked`, `dessert`. */
             dishFamilies: null | string[];
             /** @description Pantry lots to leave out entirely (at most 50). */
             excludedLotIds: null | string[];
+            /** @description A short wish in the person's words (at most 300 characters). */
+            hint?: null | string;
             /** @description `full_meal`, `light_meal`, or `snack`. */
             mealKind: null | string;
             /** @description Pantry lots every candidate must use (at most 5). */
             requiredLotIds: null | string[];
             /** @description `quick` (20 minutes or less) or `medium` (45 or less). */
             time: null | string;
+        };
+        /** @description One candidate of a past suggestion request (PLAN-0060). */
+        SuggestionHistoryCandidateResponse: {
+            /** @description The candidate as it was suggested. */
+            candidate: components["schemas"]["RecipeCandidateResponse"];
+            /**
+             * Format: uuid
+             * @description The recipe it became, if the person already asked for it.
+             */
+            recipeId: null | string;
+        };
+        /** @description One past suggestion request (PLAN-0060). */
+        SuggestionHistoryEntryResponse: {
+            /** @description `adapt_to_pantry`, `stay_faithful`, or null. */
+            adaptation: null | string;
+            /** @description The candidates suggested. */
+            candidates: components["schemas"]["SuggestionHistoryCandidateResponse"][];
+            /**
+             * Format: date-time
+             * @description When it was requested.
+             */
+            createdAt: string;
+            /** @description The person's hint, if any. */
+            hint: null | string;
+            /**
+             * Format: uuid
+             * @description Generation session; use it to ask for a candidate or remove the entry.
+             */
+            sessionId: string;
         };
         /** @description A meal of an accepted menu for the requested day. */
         TodayMenuEntryResponse: {
@@ -6413,6 +6603,222 @@ export interface operations {
             };
         };
     };
+    "getApiV1RecipesSuggestion-history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuggestionHistoryEntryResponse"][];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    "deleteApiV1RecipesSuggestion-historySessionId": {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Required CSRF token issued by GET /api/v1/session. */
+                "X-CSRF-TOKEN": string;
+            };
+            path: {
+                sessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request or CSRF token is invalid. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    "postApiV1RecipesSuggestion-historySessionIdRecipe": {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Required CSRF token issued by GET /api/v1/session. */
+                "X-CSRF-TOKEN": string;
+            };
+            path: {
+                sessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SelectCandidateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecipeDetailResponse"];
+                };
+            };
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecipeDetailResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description The request content type is not supported. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
     getApiV1RecipesRecipeId: {
         parameters: {
             query?: never;
@@ -6867,6 +7273,324 @@ export interface operations {
             };
             /** @description Not Found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    "postApiV1RecipesRecipeIdRevision-proposals": {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Required CSRF token issued by GET /api/v1/session. */
+                "X-CSRF-TOKEN": string;
+            };
+            path: {
+                recipeId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProposeRevisionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecipeRevisionProposalResponse"];
+                };
+            };
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecipeRevisionProposalResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description The request content type is not supported. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    "getApiV1RecipesRecipeIdRevision-proposalsProposalId": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                recipeId: string;
+                proposalId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecipeRevisionProposalResponse"];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    "deleteApiV1RecipesRecipeIdRevision-proposalsProposalId": {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Required CSRF token issued by GET /api/v1/session. */
+                "X-CSRF-TOKEN": string;
+            };
+            path: {
+                recipeId: string;
+                proposalId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The request or CSRF token is invalid. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    "postApiV1RecipesRecipeIdRevision-proposalsProposalIdAccept": {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Required CSRF token issued by GET /api/v1/session. */
+                "X-CSRF-TOKEN": string;
+            };
+            path: {
+                recipeId: string;
+                proposalId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecipeDetailResponse"];
+                };
+            };
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecipeDetailResponse"];
+                };
+            };
+            /** @description The request or CSRF token is invalid. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
                 headers: {
                     [name: string]: unknown;
                 };

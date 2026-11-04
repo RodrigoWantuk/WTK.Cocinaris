@@ -41,6 +41,15 @@ public static class RecipeProtocolValidator
             return RecipeProtocolValidationResult<SuggestCandidatesResponse>.Failure(["response is not a JSON object"]);
         }
 
+        // Length is not a reason to reject an otherwise good answer; see FitSummary.
+        foreach (var candidate in response.Candidates ?? [])
+        {
+            if (candidate?.Summary is not null)
+            {
+                candidate.Summary = RecipeSuggestSemantics.FitSummary(candidate.Summary);
+            }
+        }
+
         var errors = response.Validate();
         if (errors.Count > 0)
         {
@@ -54,7 +63,14 @@ public static class RecipeProtocolValidator
     }
 
     /// <summary>Validates one raw <c>recipe.expand_selected.v1</c> provider response.</summary>
-    public static RecipeProtocolValidationResult<ExpandSelectedResponse> ValidateExpand(string rawJson, JsonElement? request = null)
+    public static RecipeProtocolValidationResult<ExpandSelectedResponse> ValidateExpand(string rawJson, JsonElement? request = null) =>
+        ValidateRecipe(rawJson, request, "recipe.expand_selected.v1");
+
+    /// <summary>Validates one raw <c>recipe.revise.v1</c> provider response: the same recipe shape and rules as an expansion.</summary>
+    public static RecipeProtocolValidationResult<ExpandSelectedResponse> ValidateRevise(string rawJson, JsonElement? request = null) =>
+        ValidateRecipe(rawJson, request, "recipe.revise.v1");
+
+    private static RecipeProtocolValidationResult<ExpandSelectedResponse> ValidateRecipe(string rawJson, JsonElement? request, string operation)
     {
         ExpandSelectedResponse? response;
         try
@@ -71,7 +87,7 @@ public static class RecipeProtocolValidator
             return RecipeProtocolValidationResult<ExpandSelectedResponse>.Failure(["response is not a JSON object"]);
         }
 
-        var errors = response.Validate();
+        var errors = response.Validate(operation);
         if (errors.Count > 0)
         {
             return RecipeProtocolValidationResult<ExpandSelectedResponse>.Failure(errors);

@@ -203,7 +203,7 @@ A compact candidate contains:
 - stable ID and strategy;
 - name and target meal type;
 - dish format, primary technique and primary ingredient references;
-- summary capped at 18 words;
+- summary of two short inviting sentences, at most 320 characters; the backend fits a longer one at a sentence end, so length alone never rejects an answer (PLAN-0060);
 - servings, active/passive/total time and stable difficulty;
 - complete equipment IDs and capabilities;
 - exact inventory uses and bounded additional ingredients;
@@ -267,6 +267,22 @@ renderCacheKey = hash(visual identity + style/prompt/model/format policy)
 Only the semantic descriptor belongs to the recipe artifact. Localized title and free-form summary are not durable image cache keys.
 
 Thumbnail generation is asynchronous and fail-soft. Saving, planning, opening and cooking continue with a deterministic placeholder when no image is available.
+
+## Person's direction and AI revision (PLAN-0060)
+
+`suggestionGuidance` may carry two more fields:
+
+- **`ingredientApproach`**: `code` (`adapt_to_pantry` or `stay_faithful`) and a fixed `rule`. The expansion receives it too. A candidate may list up to 12 `additionalIngredients`. Under `adapt_to_pantry`, more than 2 required ones raises a soft `adaptation` quality flag and one repair, and the answer is kept.
+- **`personHint`**: `text` (at most 300 characters, cleaned by `RecipeUntrustedText`) and a fixed `treatment` rule. It is an untrusted wish. No validator depends on it, the expansion does not receive it, and restrictions always win over it. Sessions it shaped carry `PrivateDirection`, so their recipes never enter the shared idea library, and hinted requests are not served from that library.
+
+`recipe.revise.v1` writes a complete new version of an owned recipe:
+
+- **Request:** `currentRecipe`, `revisionRequest.text` (at most 300 characters, untrusted, cleaned the same way), `revisionPolicy`, the current pantry, equipment, and presets.
+- **Response:** the same recipe shape as an expansion ([`recipe-revise.response.v0.3.json`](../../packages/contracts/ai/recipe/schemas/recipe-revise.response.v0.3.json), a test keeps it equal to the expansion schema apart from `operation`).
+- **Validation:** the same as an expansion, plus every `inventoryItemId` must be in the snapshot even when the snapshot is empty. The stored `recipeId` and `revision` are set by the backend.
+- **Effect:** none until the owner accepts. The answer is stored as a proposal, and acceptance appends a revision with origin `AiRevised` while the recipe is still at the base revision.
+
+For all operations, names, summaries, and recipe text with a link or markup are rejected.
 
 ## Model, latency and token policy
 

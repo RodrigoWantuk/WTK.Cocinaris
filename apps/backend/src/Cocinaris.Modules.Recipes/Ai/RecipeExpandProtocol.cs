@@ -10,7 +10,7 @@ namespace Cocinaris.Modules.Recipes.Ai;
 /// </summary>
 public sealed class ExpandSelectedResponse
 {
-    /// <summary>Gets the operation discriminator, which must equal <c>recipe.expand_selected.v1</c>.</summary>
+    /// <summary>Gets the operation discriminator: <c>recipe.expand_selected.v1</c>, or <c>recipe.revise.v1</c> for the same recipe shape written as a revision.</summary>
     public required string Operation { get; init; }
     /// <summary>Gets the protocol schema version, which must equal <c>0.3</c>.</summary>
     public required string SchemaVersion { get; init; }
@@ -21,11 +21,12 @@ public sealed class ExpandSelectedResponse
     public Dictionary<string, JsonElement>? Extra { get; set; }
 
     /// <summary>Performs full structural validation mirroring the closed JSON Schema 2020-12 contract.</summary>
-    public List<string> Validate()
+    /// <param name="operation">The operation this response must answer.</param>
+    public List<string> Validate(string operation = "recipe.expand_selected.v1")
     {
         var errors = new List<string>();
         ProtocolCheck.RejectAdditionalProperties(errors, "$", Extra);
-        ProtocolCheck.Const(errors, "$.operation", Operation, "recipe.expand_selected.v1");
+        ProtocolCheck.Const(errors, "$.operation", Operation, operation);
         ProtocolCheck.Const(errors, "$.schemaVersion", SchemaVersion, "0.3");
         Recipe.Validate(errors, "$.recipe");
         return errors;

@@ -3,7 +3,7 @@ using System.Text.RegularExpressions;
 namespace Cocinaris.Modules.Recipes.Ai;
 
 /// <summary>A soft quality issue of a schema-valid answer: a flag for the ledger and a repair instruction for the model.</summary>
-/// <param name="Flag"><c>language</c> or <c>detail</c>.</param>
+/// <param name="Flag"><c>language</c>, <c>detail</c>, or <c>adaptation</c>.</param>
 /// <param name="Instruction">Repair instruction sent back to the model.</param>
 public sealed record RecipeQualityIssue(string Flag, string Instruction);
 
@@ -39,9 +39,29 @@ public static partial class RecipeOutputQuality
         ["en"] = "English"
     };
 
-    /// <summary>Checks candidate summaries against the requested language.</summary>
-    public static IReadOnlyList<RecipeQualityIssue> CheckSuggest(SuggestCandidatesResponse response, string? outputLanguage) =>
-        LanguageIssue(response.Candidates.Select(candidate => candidate.Summary), outputLanguage) is { } issue ? [issue] : [];
+    /// <summary>
+    /// Checks candidate summaries against the requested language and, under <c>adapt_to_pantry</c>,
+    /// that no candidate asks to buy much. Like every soft issue, the second one asks for a repair
+    /// but never discards a valid answer.
+    /// </summary>
+    /// <param name="response">Schema-valid answer.</param>
+    /// <param name="outputLanguage">Requested language tag.</param>
+    /// <param name="adaptation">The ingredient approach requested, if any.</param>
+    public static IReadOnlyList<RecipeQualityIssue> CheckSuggest(SuggestCandidatesResponse response, string? outputLanguage, string? adaptation = null)
+    {
+        var issues = new List<RecipeQualityIssue>();
+        if (LanguageIssue(response.Candidates.Select(candidate => candidate.Summary), outputLanguage) is { } issue)
+        {
+            issues.Add(issue);
+        }
+
+        if (adaptation == "adapt_to_pantry" && response.Candidates.Any(candidate => candidate.AdditionalIngredients.Count(item => !item.Optional) > RecipeSuggestionGuidance.MaxPurchasesWhenAdapting))
+        {
+            issues.Add(new RecipeQualityIssue("adaptation", $"The person asked to adapt to what is at home. Rewrite every candidate with at most {RecipeSuggestionGuidance.MaxPurchasesWhenAdapting} non-optional additionalIngredients: substitute, omit, or simplify, using availabilitySnapshot."));
+        }
+
+        return issues;
+    }
 
     /// <summary>Checks an expanded recipe's stages against the requested language and detail level.</summary>
     /// <param name="response">Schema-valid expansion.</param>

@@ -1,0 +1,423 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cocinaris.local/contracts/ai/recipe/revise.response.v0.3.json",
+  "title": "recipe.revise.v1 response",
+  "description": "Strict closed response schema for a revised recipe: the expansion recipe shape including thumbnailVisual (protocol 0.3).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["operation", "schemaVersion", "recipe"],
+  "properties": {
+    "operation": {
+      "const": "recipe.revise.v1"
+    },
+    "schemaVersion": {
+      "const": "0.3"
+    },
+    "recipe": {
+      "$ref": "#/$defs/recipe"
+    }
+  },
+  "$defs": {
+    "stableId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$"
+    },
+    "canonicalUnit": {
+      "type": "string",
+      "enum": ["g", "ml", "unit"]
+    },
+    "mealType": {
+      "type": "string",
+      "enum": ["breakfast", "lunch", "dinner", "snack"]
+    },
+    "quantity": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "maximum": 100000
+    },
+    "ingredient": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ingredientId",
+        "sourceType",
+        "displayName",
+        "requiredQuantity",
+        "unit",
+        "optional"
+      ],
+      "properties": {
+        "ingredientId": { "$ref": "#/$defs/stableId" },
+        "sourceType": {
+          "type": "string",
+          "enum": ["inventory", "additional", "assumption"]
+        },
+        "displayName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "inventoryItemId": { "$ref": "#/$defs/stableId" },
+        "requiredQuantity": { "$ref": "#/$defs/quantity" },
+        "unit": { "$ref": "#/$defs/canonicalUnit" },
+        "optional": { "type": "boolean" }
+      }
+    },
+    "equipment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["equipmentId", "name", "capabilities"],
+      "properties": {
+        "equipmentId": { "$ref": "#/$defs/stableId" },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "capabilities": {
+          "type": "array",
+          "maxItems": 12,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 48
+          }
+        }
+      }
+    },
+    "preparation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "taskId",
+        "name",
+        "instructions",
+        "activeMinutes",
+        "passiveMinutes",
+        "minimumLeadMinutes",
+        "canRunPreviousDay",
+        "produces"
+      ],
+      "properties": {
+        "taskId": { "$ref": "#/$defs/stableId" },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "instructions": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 700
+        },
+        "activeMinutes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 480
+        },
+        "passiveMinutes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2880
+        },
+        "minimumLeadMinutes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10080
+        },
+        "canRunPreviousDay": { "type": "boolean" },
+        "produces": {
+          "type": "array",
+          "maxItems": 6,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          }
+        }
+      }
+    },
+    "stage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "stageId",
+        "name",
+        "instructions",
+        "activeMinutes",
+        "passiveMinutes",
+        "dependsOn",
+        "sensoryCues",
+        "usesIngredientIds"
+      ],
+      "properties": {
+        "stageId": { "$ref": "#/$defs/stableId" },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "instructions": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 700
+        },
+        "activeMinutes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 480
+        },
+        "passiveMinutes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2880
+        },
+        "dependsOn": {
+          "type": "array",
+          "maxItems": 8,
+          "items": { "$ref": "#/$defs/stableId" }
+        },
+        "sensoryCues": {
+          "type": "array",
+          "maxItems": 6,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          }
+        },
+        "usesIngredientIds": {
+          "type": "array",
+          "maxItems": 20,
+          "items": { "$ref": "#/$defs/stableId" }
+        }
+      }
+    },
+    "dependency": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fromId", "toId", "relationship"],
+      "properties": {
+        "fromId": { "$ref": "#/$defs/stableId" },
+        "toId": { "$ref": "#/$defs/stableId" },
+        "relationship": {
+          "type": "string",
+          "enum": ["before", "after", "requires"]
+        }
+      }
+    },
+    "storage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["refrigerateHours", "freezeCompatible", "reheatNotes"],
+      "properties": {
+        "refrigerateHours": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 336
+        },
+        "freezeCompatible": { "type": "boolean" },
+        "reheatNotes": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 240
+        }
+      }
+    },
+    "thumbnailVisual": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "appearanceDescription",
+        "visibleComponents",
+        "dishFormat",
+        "plating",
+        "sauceAppearance",
+        "textureAndDoneness",
+        "garnish",
+        "dominantColors",
+        "excludedElements"
+      ],
+      "properties": {
+        "schemaVersion": { "const": "1" },
+        "appearanceDescription": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 280
+        },
+        "visibleComponents": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 12,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          }
+        },
+        "dishFormat": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "plating": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "sauceAppearance": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "textureAndDoneness": {
+          "type": "array",
+          "maxItems": 8,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          }
+        },
+        "garnish": {
+          "type": "array",
+          "maxItems": 6,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          }
+        },
+        "dominantColors": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 8,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 32
+          }
+        },
+        "excludedElements": {
+          "type": "array",
+          "maxItems": 12,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 48
+          }
+        }
+      }
+    },
+    "recipe": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "recipeId",
+        "revision",
+        "name",
+        "mealTypes",
+        "servings",
+        "yield",
+        "ingredients",
+        "equipment",
+        "preparations",
+        "stages",
+        "dependencies",
+        "storage",
+        "producedComponents",
+        "reconciliationHints",
+        "assumptions",
+        "thumbnailVisual"
+      ],
+      "properties": {
+        "recipeId": { "$ref": "#/$defs/stableId" },
+        "revision": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100000
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "mealTypes": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4,
+          "items": { "$ref": "#/$defs/mealType" }
+        },
+        "servings": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 24
+        },
+        "yield": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "ingredients": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 40,
+          "items": { "$ref": "#/$defs/ingredient" }
+        },
+        "equipment": {
+          "type": "array",
+          "maxItems": 12,
+          "items": { "$ref": "#/$defs/equipment" }
+        },
+        "preparations": {
+          "type": "array",
+          "maxItems": 8,
+          "items": { "$ref": "#/$defs/preparation" }
+        },
+        "stages": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 14,
+          "items": { "$ref": "#/$defs/stage" }
+        },
+        "dependencies": {
+          "type": "array",
+          "maxItems": 40,
+          "items": { "$ref": "#/$defs/dependency" }
+        },
+        "storage": { "$ref": "#/$defs/storage" },
+        "producedComponents": {
+          "type": "array",
+          "maxItems": 8,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          }
+        },
+        "reconciliationHints": {
+          "type": "array",
+          "maxItems": 12,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          }
+        },
+        "assumptions": {
+          "type": "array",
+          "maxItems": 8,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 40
+          }
+        },
+        "thumbnailVisual": { "$ref": "#/$defs/thumbnailVisual" }
+      }
+    }
+  }
+}

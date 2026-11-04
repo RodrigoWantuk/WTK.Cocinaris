@@ -43,8 +43,10 @@ export type RecipeOrigin = "generated" | "manual" | "derived" | string;
 
 /** Owned recipe library row (PLAN-0038). */
 /**
- * Direction for a suggestion request (PLAN-0056): closed codes and lot ids, never free text.
- * `requiredLotIds` must appear in every candidate; `excludedLotIds` are never sent to the AI.
+ * Direction for a suggestion request (PLAN-0056, PLAN-0060): closed codes and lot ids, plus `hint`,
+ * the one free text. `requiredLotIds` must appear in every candidate; `excludedLotIds` are never
+ * sent to the AI. `hint` (at most 300 characters) is untrusted: the backend cleans it and sends it
+ * only as data, as a wish the AI may or may not follow.
  */
 export interface SuggestionGuidance {
   mealKind: "full_meal" | "light_meal" | "snack" | null;
@@ -53,6 +55,42 @@ export interface SuggestionGuidance {
   time: "quick" | "medium" | null;
   requiredLotIds: string[];
   excludedLotIds: string[];
+  hint?: string | null;
+  /** `adapt_to_pantry` (use what is at home), `stay_faithful` (a longer shopping list is fine), or null for the balance. */
+  adaptation?: "adapt_to_pantry" | "stay_faithful" | null;
+}
+
+/** One candidate of a past suggestion request; `recipeId` is the recipe it already became (PLAN-0060). */
+export interface SuggestionHistoryCandidate {
+  candidate: RecipeCandidate;
+  recipeId: string | null;
+}
+
+/** One past suggestion request (PLAN-0060). `hint` is the person's own text: render it as text. */
+export interface SuggestionHistoryEntry {
+  sessionId: string;
+  createdAt: string;
+  hint: string | null;
+  adaptation: string | null;
+  candidates: SuggestionHistoryCandidate[];
+}
+
+/**
+ * A new version of a recipe the AI wrote from the person's request (PLAN-0060). It changes nothing
+ * until accepted. `status` is `Ready` while `normalizedRecipeJson` holds the version to read.
+ */
+export interface RecipeRevisionProposal {
+  proposalId: string;
+  recipeId: string;
+  baseRevisionNumber: number;
+  instruction: string;
+  status: string;
+  name: string | null;
+  mealTypes: string[];
+  servings: number | null;
+  normalizedRecipeJson: string | null;
+  acceptedRevisionNumber: number | null;
+  createdAt: string;
 }
 
 /**
@@ -441,6 +479,56 @@ export interface RecipeRepository {
       signal?: AbortSignal;
     },
   ): Promise<RecipeDetail>;
+  /** The owner's past suggestion requests, newest first (PLAN-0060). */
+  listSuggestionHistory(
+    signal?: AbortSignal,
+  ): Promise<SuggestionHistoryEntry[]>;
+  /**
+   * Turns a candidate of a past request into a recipe against the current pantry, however old the
+   * request is. The same `idempotencyKey` returns the same recipe.
+   */
+  reopenHistoryCandidate(
+    sessionId: string,
+    candidateId: string,
+    options: {
+      csrfToken: string;
+      idempotencyKey: string;
+      language?: string;
+      signal?: AbortSignal;
+    },
+  ): Promise<RecipeDetail>;
+  /** Removes a past request from the history and forgets its hint. */
+  removeFromSuggestionHistory(
+    sessionId: string,
+    options: { csrfToken: string; signal?: AbortSignal },
+  ): Promise<void>;
+  /**
+   * Asks the AI for a new version of a recipe (PLAN-0060). The recipe does not change. The same
+   * `idempotencyKey` returns the same proposal without a second AI call.
+   */
+  proposeRevision(
+    recipeId: string,
+    options: {
+      csrfToken: string;
+      idempotencyKey: string;
+      instruction: string;
+      expectedRevisionNumber: number;
+      language?: string;
+      signal?: AbortSignal;
+    },
+  ): Promise<RecipeRevisionProposal>;
+  /** Saves a proposal as the recipe's next revision; fails with `precondition_failed` if the recipe moved on. */
+  acceptRevisionProposal(
+    recipeId: string,
+    proposalId: string,
+    options: { csrfToken: string; signal?: AbortSignal },
+  ): Promise<RecipeDetail>;
+  /** Discards a proposal. */
+  discardRevisionProposal(
+    recipeId: string,
+    proposalId: string,
+    options: { csrfToken: string; signal?: AbortSignal },
+  ): Promise<void>;
   /**
    * Starts cooking, or returns the recipe's execution already in progress. `menuEntryId` links a
    * new session to the menu meal it was started from (PLAN-0029).

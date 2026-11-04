@@ -230,7 +230,7 @@
         "summary": {
           "type": "string",
           "minLength": 1,
-          "maxLength": 160
+          "maxLength": 320
         },
         "servings": {
           "type": "integer",
@@ -260,7 +260,7 @@
         },
         "additionalIngredients": {
           "type": "array",
-          "maxItems": 5,
+          "maxItems": 12,
           "items": { "$ref": "#/$defs/additionalIngredient" }
         },
         "preparationProfile": { "$ref": "#/$defs/preparationProfile" },
