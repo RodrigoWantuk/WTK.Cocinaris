@@ -197,7 +197,13 @@ public sealed class RecipeExecutionApplicationService(
         var names = lots.Select(lot => lot.ProductName).Concat(RecipeIngredientReader.Read(recipe.NormalizedRecipeJson).Select(ingredient => ingredient.Name));
         var keys = await matching.KeysAsync(user.Id, names, cancellationToken);
         var proposal = BuildProposal(recipe.NormalizedRecipeJson, recipe.Servings, recipe.Servings, lots, committed, matchKeys: keys);
+        // Salt and water are assumed in every home, so they are never reported as missing (PLAN-0061).
+        var basics = RecipeIngredientReader.Read(recipe.NormalizedRecipeJson)
+            .Where(ingredient => Cocinaris.Modules.Ingredients.HouseholdBasics.Is(ingredient.Name))
+            .Select(ingredient => ingredient.Id)
+            .ToHashSet(StringComparer.Ordinal);
         return RecipeApplicationResult<IReadOnlyList<RecipeAvailabilityLineView>>.Succeeded(proposal.Lines
+            .Where(line => !basics.Contains(line.IngredientId))
             .Select(line =>
             {
                 var have = line.ProposedQuantity ?? 0;

@@ -116,11 +116,15 @@ public static class ShoppingProjector
                 item.Covered += covered;
                 item.HasRequired |= !ingredient.Optional && ingredient.SourceType != "assumption";
                 item.HasAssumed |= !ingredient.Optional && ingredient.SourceType == "assumption";
+                item.IsBasic |= HouseholdBasics.Is(ingredient.Name);
                 item.Uses.Add(new ShoppingUseView(meal.EntryId, meal.RecipeName, meal.PlannedDate, need, ingredient.Optional, need - covered));
             }
         }
 
+        // Salt and water are assumed in every home: never to buy, and never a warning that they run
+        // out. A tracked one with stock left stays listed as available (PLAN-0061).
         return items.Values
+            .Where(item => !item.IsBasic || (item.Required <= item.Covered && remaining.GetValueOrDefault(item.Key) > 0))
             .Select(item =>
             {
                 var toBuy = item.Required - item.Covered;
@@ -160,6 +164,7 @@ public static class ShoppingProjector
         public decimal Covered { get; set; }
         public bool HasRequired { get; set; }
         public bool HasAssumed { get; set; }
+        public bool IsBasic { get; set; }
         public List<ShoppingUseView> Uses { get; } = [];
     }
 }
