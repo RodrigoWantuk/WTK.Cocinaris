@@ -738,14 +738,14 @@ Migrations are additive, and rollback means deploying the earlier code with unus
 ## Execution state
 
 - **Current run delivery target:** Slice 1, from zero to list.
-- **Current checkpoint:** Backend of Slice 1 committed on `agent/plan-0062-s1-plan-to-list`: migration, restriction guard, AI operation and contract, ranking, sequencing, endpoints, and tests. Frontend, OpenAPI, documents, and evaluation are not done.
-- **Last completed step:** Backend unit and integration tests for shopping plans.
-- **Exact next action:** Export OpenAPI, regenerate the API client, then build `features/shopping-plan`.
-- **Blockers:** None for implementation. G1-A needs the owner's review before merge. Slice 4 limits need G2-A.
-- **Partially modified areas:** No frontend yet; the routes exist without a screen.
-- **Documentation delivered:** This plan; XML documentation on new backend code.
-- **Validation performed:** Unit filter `ShoppingPlanTests` 58/58. Integration tests for the plan journey, the guard, saved recipes, and two existing planning tests 5/5. Recipe AI contract tests and drift check passed.
-- **Known failures or limitations:** Per-stage equipment conflicts are not detected (Slice 6). Latency figures come from one recorded evaluation and must be confirmed in G1-C.
+- **Current checkpoint:** Slice 1 implemented on `agent/plan-0062-s1-plan-to-list`: backend, OpenAPI and client, frontend, documents, browser journey, and evaluation harness. Waiting on owner gates.
+- **Last completed step:** Browser journey on the proxy replica with AI off.
+- **Exact next action:** The owner reviews `docs/domain/restriction-rules-review.md` (G1-A) and runs the live evaluation with the provider key (G1-B, command in `scripts/ai/README.md`). An agent then records the result in `docs/evidence/plan-0062/`, and the owner merges. Slice 2 starts from fresh `main`.
+- **Blockers:** G1-A needs the owner's review. G1-B needs the provider key, which is not in this agent's environment and which agents must not read. Slice 4 limits need G2-A.
+- **Partially modified areas:** None.
+- **Documentation delivered:** `docs/product/guided-shopping-planning.md`, `docs/domain/restriction-rules-review.md`, and updates to the planning, AI, privacy, journey, testing, and contract documents.
+- **Validation performed:** See the Slice 1 entry in the progress log and the pull request.
+- **Known failures or limitations:** G1-B not run, so AI card quality, first-batch latency, and shared-ingredient rates are unmeasured against the real model. The offline, arrival, and cook-by behaviors belong to later slices. Per-stage equipment conflicts are not detected (Slice 6).
 - **Working tree state:** Clean after this commit.
 
 ## Progress log
@@ -774,6 +774,21 @@ Migrations are additive, and rollback means deploying the earlier code with unus
   - A failed batch is given back, so a provider outage does not use up the plan's allowance.
   - Acceptance is two steps, not one transaction, because the menu and the plan use separate stores. Each step is idempotent, so a retry completes it.
 - **Validation performed:** See `Execution state`.
+- **Next action:** See `Exact next action`.
+
+### 2026-11-04 — Claude Code (Slice 1, frontend and documents)
+
+- **Run delivery target:** Slice 1.
+- **Checkpoint:** Slice 1 implemented, awaiting owner gates.
+- **Changes included in the commit:** OpenAPI and generated client; `features/shopping-plan` (setup, cards, review, expansion queue); "Já tenho" and sharing on the list; entry points in Compras, Cardápio, and the main button; catalogs in three languages; browser journey; `PLAN0062_LIVE_EVAL` in the gateway smoke; documents. Also added the missing UTF-8 BOM to migration `20261104171014`, which `main` carries and which fails the format gate.
+- **Deviations from this plan, keeping the outcome:**
+  - The stepper for "Sim, 2 vezes" sits inline under the card rather than in a separate sheet, which needs no focus trap and keeps the card in view.
+  - The main button's half moon grew to three actions.
+- **Validation performed:**
+  - Frontend tests: shopping plan, planning, cooking, quick menu, and i18n, 52/52, including one bug they caught in restriction labels.
+  - Browser journey on the proxy replica, AI off, at 390 px: all checks passed. First card 880 ms (G1-C, instant cards). Decision round trip 61 and 71 ms with a small deck (G1-D; not measured with 60 cards).
+  - Screens read at 360 px; keyboard and 200% zoom not checked by hand.
+- **Result:** Ready for owner review, not for merge until G1-A and G1-B.
 - **Next action:** See `Exact next action`.
 
 ## Completion and handoff checklist

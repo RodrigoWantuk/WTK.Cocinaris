@@ -51,6 +51,20 @@ Select period and meal context
 
 The user may mix fixed dates with unscheduled options. Simulation and draft modes do not mutate the active plan or inventory reservations.
 
+### Without knowing what to cook (PLAN-0062)
+
+```text
+Open "Planejar compras"
+→ answer one setup screen
+→ accept or refuse dish cards, watching "+N itens novos"
+→ review the dishes in the suggested order
+→ see the list, marking "Já tenho" where needed
+→ share the list or go to the market
+→ "Usar este plano"
+```
+
+See [`guided-shopping-planning.md`](guided-shopping-planning.md).
+
 ## 4. Register a purchase
 
 ```text

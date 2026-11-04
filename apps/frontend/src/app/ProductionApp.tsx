@@ -29,6 +29,10 @@ import { AccountMenu, LanguageChoice } from "@/app/shell/AccountMenu";
 import { AppNavigation } from "@/app/shell/AppNavigation";
 import { MenuPage } from "@/features/planning/MenuPage";
 import { ShoppingPage } from "@/features/planning/ShoppingPage";
+import { ShoppingPlanDeckPage } from "@/features/shopping-plan/ShoppingPlanDeckPage";
+import { ShoppingPlanProvider } from "@/features/shopping-plan/ShoppingPlanProvider";
+import { ShoppingPlanReviewPage } from "@/features/shopping-plan/ShoppingPlanReviewPage";
+import { ShoppingPlanSetupPage } from "@/features/shopping-plan/ShoppingPlanSetupPage";
 import { RecipesListPage } from "@/features/recipes/RecipesListPage";
 import { CookPickerPage } from "@/features/recipes/CookPickerPage";
 import { RecipeGeneratePage } from "@/features/recipes/RecipeGeneratePage";
@@ -154,6 +158,8 @@ export function pageTitleKeyFor(pathname: string): string {
   if (/^\/app\/receitas\/[^/]+\/versoes\//.test(pathname))
     return "page.title.recipeRevision";
   if (pathname === "/app/cozinhar") return "page.title.cook";
+  if (pathname.startsWith("/app/compras/planejar"))
+    return "page.title.shoppingPlan";
   if (pathname === "/app/compras") return "page.title.shopping";
   if (pathname === "/app/cardapio") return "page.title.planning";
   if (/^\/app\/cardapio\/[^/]+\/compras$/.test(pathname))
@@ -292,7 +298,7 @@ function SessionScopedRoutes({ children }: { children: ReactNode }) {
       <InventoryProvider repository={runtime.inventoryRepository}>
         <RecipeProvider repository={runtime.recipeRepository}>
           <PlanningProvider repository={runtime.planningRepository}>
-            {children}
+            <ShoppingPlanProvider>{children}</ShoppingPlanProvider>
           </PlanningProvider>
         </RecipeProvider>
       </InventoryProvider>
@@ -427,6 +433,15 @@ function createProductionRouter() {
           element: <RecipeAiRevisionPage />,
         },
         { path: "compras", element: <ShoppingHubPage /> },
+        { path: "compras/planejar", element: <ShoppingPlanSetupPage /> },
+        {
+          path: "compras/planejar/:sessionId",
+          element: <ShoppingPlanDeckPage />,
+        },
+        {
+          path: "compras/planejar/:sessionId/revisar",
+          element: <ShoppingPlanReviewPage />,
+        },
         { path: "cardapio", element: <MenusPage /> },
         { path: "cardapio/:menuId", element: <MenuPage /> },
         { path: "cardapio/:menuId/compras", element: <ShoppingPage /> },

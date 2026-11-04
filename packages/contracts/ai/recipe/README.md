@@ -1,6 +1,6 @@
 # Recipe AI Artifact Contracts (protocol 0.3)
 
-Strict machine contracts for `recipe.suggest_candidates.v1` and `recipe.expand_selected.v1`.
+Strict machine contracts for `recipe.suggest_candidates.v1`, `recipe.suggest_plan_deck.v1` (PLAN-0062), and `recipe.expand_selected.v1`.
 
 Governing research plan: [`../../../docs/plans/PLAN-0022-evaluate-and-finalize-recipe-ai-contracts.md`](../../../docs/plans/PLAN-0022-evaluate-and-finalize-recipe-ai-contracts.md)  
 Lean amendment: [`../../../docs/plans/PLAN-0022-amendment-2026-08-05-lean-evaluation.md`](../../../docs/plans/PLAN-0022-amendment-2026-08-05-lean-evaluation.md)

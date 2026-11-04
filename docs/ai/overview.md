@@ -154,6 +154,10 @@ Target behavior: persistent job with progress and completion notification. The u
 
 Exact objectives are defined and load-tested per operation.
 
+### Shopping plan cards (PLAN-0062)
+
+`recipe.suggest_plan_deck.v1` is interactive, but the first cards need no model: saved recipes and library ideas appear at once, and AI cards join in the background. Without AI, the flow continues on those.
+
 ## Validation layers
 
 1. transport and parsing;

@@ -80,6 +80,11 @@ function mapEntry(dto: EntryDto): MenuEntry {
     executionId: text(dto.executionId),
     reserveIngredients: dto.reserveIngredients !== false,
     readiness: dto.readiness ? mapReadiness(dto.readiness) : null,
+    mealsCovered: dto.mealsCovered === undefined ? 1 : num(dto.mealsCovered),
+    suggestedOrder:
+      dto.suggestedOrder === null || dto.suggestedOrder === undefined
+        ? null
+        : num(dto.suggestedOrder),
   };
 }
 

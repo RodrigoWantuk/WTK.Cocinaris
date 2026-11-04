@@ -1,9 +1,9 @@
 import { useEffect, useId, useRef, useState } from "react";
-import { ChefHat, Refrigerator, Sparkles, X } from "lucide-react";
+import { ChefHat, Refrigerator, ShoppingBag, Sparkles, X } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { useProductionI18n } from "@/app/i18n/ProductionI18nProvider";
 
-/** The two things the main button starts (PLAN-0059, owner idea 2026-10-31). */
+/** What the main button starts (PLAN-0059, owner idea 2026-10-31; shopping plan from PLAN-0062). */
 const ACTIONS = [
   {
     to: "/app/despensa/novo",
@@ -11,6 +11,13 @@ const ACTIONS = [
     shortKey: "quick.addPantryShort",
     icon: Refrigerator,
     testId: "quick-action-pantry",
+  },
+  {
+    to: "/app/compras/planejar",
+    labelKey: "quick.planShopping",
+    shortKey: "quick.planShoppingShort",
+    icon: ShoppingBag,
+    testId: "quick-action-plan-shopping",
   },
   {
     to: "/app/cozinhar",
@@ -21,10 +28,17 @@ const ACTIONS = [
   },
 ] as const;
 
+/** Where each action rests on the half moon: the middle one at the top of the curve. */
+const ARC_POSITIONS = [
+  "left-[8px] top-[52px]",
+  "left-[100px] top-[12px]",
+  "right-[8px] top-[52px]",
+];
+
 /**
- * The central main button and its half-moon menu (PLAN-0059). Tapping the accent button opens two
- * round actions on an arc just above it, "Adicionar à despensa" and "Cozinhar", over a dimmed
- * page; from `md` up, the same choices open as a small panel under the header button.
+ * The central main button and its half-moon menu (PLAN-0059). Tapping the accent button opens three
+ * round actions on an arc just above it, "Adicionar à despensa", "Planejar compras", and "Cozinhar",
+ * over a dimmed page; from `md` up, the same choices open as a small panel under the header button.
  *
  * Disclosure pattern: the trigger has `aria-expanded` and `aria-controls`; opening moves focus to
  * the first action; Escape, a tap outside, or a navigation closes it and focus returns to the
@@ -98,14 +112,11 @@ export function QuickActionMenu({ active }: { active: boolean }) {
               actions resting on its curve. */}
           <ul
             aria-label={t("nav.add")}
-            className="absolute bottom-full left-1/2 z-50 mb-4 h-[110px] w-[220px] -translate-x-1/2 rounded-t-full border border-border/60 bg-popover/95 shadow-[0_-6px_24px_-10px_rgb(0_0_0/0.2)] backdrop-blur-sm motion-safe:animate-in motion-safe:fade-in motion-safe:zoom-in-90 motion-safe:slide-in-from-bottom-3 md:hidden"
+            className="absolute bottom-full left-1/2 z-50 mb-4 h-[136px] w-[272px] -translate-x-1/2 rounded-t-full border border-border/60 bg-popover/95 shadow-[0_-6px_24px_-10px_rgb(0_0_0/0.2)] backdrop-blur-sm motion-safe:animate-in motion-safe:fade-in motion-safe:zoom-in-90 motion-safe:slide-in-from-bottom-3 md:hidden"
           >
             {ACTIONS.map(
               ({ to, labelKey, shortKey, icon: Icon, testId }, index) => (
-                <li
-                  key={to}
-                  className={`absolute top-[30px] ${index === 0 ? "left-[24px]" : "right-[24px]"}`}
-                >
+                <li key={to} className={`absolute ${ARC_POSITIONS[index]}`}>
                   <Link
                     ref={index === 0 ? firstRef : undefined}
                     to={to}

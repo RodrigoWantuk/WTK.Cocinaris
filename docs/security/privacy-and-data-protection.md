@@ -168,6 +168,16 @@ PLAN-0060 stores short free text the owner writes for the AI, which may be perso
 - **Proposals.** A proposal's content is cleared when it is accepted or discarded. An undecided proposal stays until the account is deleted, and it changes nothing.
 - **Retention and deletion.** Rows live as long as the account. Export and deletion must include them, together with the owner's recipes and generation sessions.
 
+## Shopping plans
+
+PLAN-0062 stores, per owner, the setup answers of each plan, and dish cards that may hold pantry names.
+
+- **Purpose.** Build the plan and reuse the last answers as defaults. Answers never update the profile.
+- **Retention.** Unseen and rejected cards are deleted when the plan is accepted, and all cards when it is discarded. Abandoned plans older than 30 days are deleted when the owner starts a new plan; there is no background job yet.
+- **Typed ingredient.** It is untrusted text, limited to 60 characters, kept in the plan's setup, and never logged. A plan with one never feeds the shared idea library.
+- **Metrics.** They hold counts and closed codes, never dish or ingredient names.
+- **Rights.** Export and deletion must include `planning.shopping_plan_sessions` and `planning.shopping_plan_cards` when the privacy center (PLAN-0049) is delivered.
+
 ## Shared recipe ideas
 
 PLAN-0055 Phase 2 ([ADR-0011](../architecture/decisions/0011-shared-recipe-idea-library.md)) adds `recipes.recipe_ideas`: generic recipe ideas shared by everyone, with no owner column. An idea is stored only after an AI expansion, and only when it can be made generic:

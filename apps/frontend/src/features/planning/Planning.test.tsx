@@ -56,6 +56,8 @@ const MENU: Menu = {
       status: "planned",
       executionId: null,
       reserveIngredients: true,
+      mealsCovered: 1,
+      suggestedOrder: null,
       readiness: {
         entryId: "entry-1",
         readiness: "missing",
@@ -716,6 +718,61 @@ describe("menu planning (PLAN-0029)", () => {
           servings: 3,
         },
         { csrfToken: expect.any(String), idempotencyKey: expect.any(String) },
+      ),
+    );
+  });
+
+  it("records 'I have it' as an approximate pantry item and can undo it (PLAN-0062)", async () => {
+    const user = userEvent.setup();
+    const item: ShoppingItem = {
+      itemKey: "alho|Gram",
+      displayName: "Alho",
+      unit: "Gram",
+      category: "required",
+      requiredQuantity: 50,
+      availableQuantity: 0,
+      toBuyQuantity: 50,
+      checked: false,
+      uses: [],
+    };
+    const repo: PlanningRepository = {
+      ...createUnavailablePlanningRepository(),
+      getMenu: vi.fn(async () => MENU),
+      getShopping: vi.fn(
+        async (): Promise<ShoppingList> => ({
+          menuId: "menu-1",
+          from: "2026-11-02",
+          mealCount: 1,
+          items: [item],
+        }),
+      ),
+    };
+    const createLot = vi.fn(async () => ({ ...sampleLot, etag: "e1" }));
+    const deleteLot = vi.fn(async () => undefined);
+    renderAt("/app/cardapio/menu-1/compras", repo, {
+      inventory: createMockInventoryRepo({ createLot, deleteLot }),
+    });
+
+    await user.click(await screen.findByTestId("shopping-item-have"));
+
+    await waitFor(() => expect(createLot).toHaveBeenCalled());
+    expect(createLot.mock.calls[0]).toEqual([
+      expect.objectContaining({
+        productName: "Alho",
+        quantity: {
+          kind: "measured",
+          value: 50,
+          unit: "Gram",
+          estimated: true,
+        },
+      }),
+      expect.objectContaining({ idempotencyKey: expect.any(String) }),
+    ]);
+    await user.click(await screen.findByTestId("shopping-have-undo"));
+    await waitFor(() =>
+      expect(deleteLot).toHaveBeenCalledWith(
+        sampleLot.lotId,
+        expect.objectContaining({ etag: "e1" }),
       ),
     );
   });

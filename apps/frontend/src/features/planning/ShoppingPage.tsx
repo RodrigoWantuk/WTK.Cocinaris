@@ -9,6 +9,7 @@ import {
   Milk,
   Package,
   PackageCheck,
+  Share2,
   ShoppingCart,
   Wheat,
 } from "lucide-react";
@@ -26,6 +27,7 @@ import type { ShoppingItem, ShoppingList } from "@/contracts/planning";
 import { useInventoryRepository } from "@/features/inventory/InventoryProvider";
 import { formatLocaleDecimal, parseLocaleDecimal } from "@/lib/localeDecimal";
 import { formatMenuDay, localIsoDate } from "./planningDates";
+import { buildShoppingListText } from "./shoppingListText";
 import { usePlanningRepository } from "./PlanningProvider";
 
 /** Lines still to buy, grouped by store section; the rest keep their own blocks below. */
@@ -87,13 +89,21 @@ export function ShoppingPage({
   const params = useParams<{ menuId: string }>();
   const menuId = fixedMenuId ?? params.menuId ?? "";
   const repo = usePlanningRepository();
-  const { t } = useProductionI18n();
+  const { t, locale } = useProductionI18n();
   const { session } = useSession();
   const [list, setList] = useState<ShoppingList | null>(null);
   const [failed, setFailed] = useState(false);
   const [reload, setReload] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [impact, setImpact] = useState<PurchaseImpact | null>(null);
+  const [undoHave, setUndoHave] = useState<{
+    name: string;
+    lotId: string;
+    etag: string;
+  } | null>(null);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const inventoryRepo = useInventoryRepository();
 
   useEffect(() => {
     const controller = new AbortController();
@@ -133,6 +143,56 @@ export function ShoppingPage({
     [refresh],
   );
 
+  // "Desfazer" stays for a few seconds; the item remains editable in the pantry afterward.
+  useEffect(() => {
+    if (!undoHave) return;
+    const timer = globalThis.setTimeout(() => setUndoHave(null), 8000);
+    return () => globalThis.clearTimeout(timer);
+  }, [undoHave]);
+
+  const undoAlreadyHave = async () => {
+    if (!undoHave || !session.csrfToken) return;
+    const target = undoHave;
+    setUndoHave(null);
+    try {
+      await inventoryRepo.deleteLot(target.lotId, {
+        csrfToken: session.csrfToken,
+        etag: target.etag,
+      });
+      refresh();
+    } catch {
+      setError("shopping.have.undoError");
+    }
+  };
+
+  const shareText = () =>
+    buildShoppingListText(list?.items ?? [], t, (value) =>
+      formatLocaleDecimal(value, locale),
+    );
+
+  const share = async () => {
+    setCopied(false);
+    // The system share sheet is best; a browser without it gets explicit choices.
+    if (typeof navigator.share === "function") {
+      try {
+        await navigator.share({ text: shareText() });
+      } catch {
+        // The person closed the sheet: nothing to report.
+      }
+      return;
+    }
+    setShareOpen((value) => !value);
+  };
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(shareText());
+      setCopied(true);
+    } catch {
+      setError("shopping.share.copyError");
+    }
+  };
+
   if (failed) {
     return (
       <div data-testid="shopping-error" className="space-y-4">
@@ -163,6 +223,72 @@ export function ShoppingPage({
         <p className="text-sm text-muted-foreground">{t("shopping.hint")}</p>
       </div>
       {list.mealCount > 0 ? <ShoppingSummary items={list.items} /> : null}
+      {list.mealCount > 0 ? (
+        <div className="space-y-2">
+          <Button
+            type="button"
+            variant="secondary"
+            data-testid="shopping-share"
+            aria-expanded={shareOpen}
+            onClick={() => void share()}
+          >
+            <Share2 aria-hidden="true" className="mr-2 h-4 w-4" />
+            {t("shopping.share")}
+          </Button>
+          {shareOpen ? (
+            <div
+              className="flex flex-wrap gap-2"
+              data-testid="shopping-share-options"
+            >
+              <Button asChild size="sm" variant="secondary">
+                <a
+                  href={`https://wa.me/?text=${encodeURIComponent(shareText())}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  data-testid="shopping-share-whatsapp"
+                >
+                  {t("shopping.share.whatsapp")}
+                </a>
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                data-testid="shopping-share-copy"
+                onClick={() => void copy()}
+              >
+                {t("shopping.share.copy")}
+              </Button>
+              {copied ? (
+                <p
+                  role="status"
+                  className="self-center text-sm text-muted-foreground"
+                >
+                  {t("shopping.share.copied")}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+      {undoHave ? (
+        <div
+          role="status"
+          data-testid="shopping-have-notice"
+          className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-border bg-secondary/40 p-3 text-sm"
+        >
+          <span>{t("shopping.have.done", { item: undoHave.name })}</span>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            data-testid="shopping-have-undo"
+            onClick={() => void undoAlreadyHave()}
+          >
+            {t("shopping.have.undo")}
+          </Button>
+        </div>
+      ) : null}
       {error ? (
         <p role="alert" className="text-sm text-destructive">
           {t(error)}
@@ -228,6 +354,11 @@ export function ShoppingPage({
                     onToggle={() => void toggle(item)}
                     onPurchased={(bought) => purchased(item, bought)}
                     onPackageChanged={refresh}
+                    onAlreadyHave={(lot) => {
+                      setUndoHave({ name: item.displayName, ...lot });
+                      setImpact(null);
+                      refresh();
+                    }}
                   />
                 ))}
               </ul>
@@ -467,11 +598,14 @@ function ShoppingRow({
   onToggle,
   onPurchased,
   onPackageChanged,
+  onAlreadyHave,
 }: {
   item: ShoppingItem;
   onToggle: () => void;
   onPurchased: (bought: number) => void;
   onPackageChanged: () => void;
+  /** Present for lines to buy: records the item as approximately at home, then offers undo. */
+  onAlreadyHave?: (lot: { lotId: string; etag: string }) => void;
 }) {
   const { t, locale } = useProductionI18n();
   const { session } = useSession();
@@ -498,6 +632,7 @@ function ShoppingRow({
   const [error, setError] = useState(false);
   // One key per purchase form, so a retried request creates one lot.
   const keyRef = useRef(crypto.randomUUID());
+  const haveKeyRef = useRef(crypto.randomUUID());
   const unit = t(UNIT_KEYS[item.unit] ?? "recipes.unit.unit");
   const amount = (value: number) =>
     `${formatLocaleDecimal(value, locale)} ${unit}`;
@@ -527,6 +662,35 @@ function ShoppingRow({
       setBuying(false);
       keyRef.current = crypto.randomUUID();
       onPurchased(parsed.value);
+    } catch {
+      setError(true);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // The person says they have it, not how much, so the amount is an estimate of what the plan
+  // needs. The pantry shows it as approximate, and it covers the line like any other stock.
+  const alreadyHave = async () => {
+    if (!session.csrfToken || saving) return;
+    setSaving(true);
+    setError(false);
+    try {
+      const lot = await inventory.createLot(
+        {
+          productName: item.displayName,
+          quantity: {
+            kind: "measured",
+            value: item.toBuyQuantity,
+            unit: item.unit as MeasuredUnit,
+            estimated: true,
+          },
+          storageLocation: storage,
+        },
+        { csrfToken: session.csrfToken, idempotencyKey: haveKeyRef.current },
+      );
+      haveKeyRef.current = crypto.randomUUID();
+      onAlreadyHave?.({ lotId: lot.lotId, etag: lot.etag });
     } catch {
       setError(true);
     } finally {
@@ -618,6 +782,19 @@ function ShoppingRow({
               .join(" · ")}
           </p>
         </div>
+        {toBuy && onAlreadyHave ? (
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="shrink-0"
+            data-testid="shopping-item-have"
+            disabled={saving}
+            onClick={() => void alreadyHave()}
+          >
+            {t("shopping.have")}
+          </Button>
+        ) : null}
         {toBuy ? (
           <Button
             type="button"
