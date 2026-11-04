@@ -737,15 +737,15 @@ Migrations are additive, and rollback means deploying the earlier code with unus
 
 ## Execution state
 
-- **Current run delivery target:** Slice 1, from zero to list.
-- **Current checkpoint:** Slice 1 implemented on `agent/plan-0062-s1-plan-to-list`: backend, OpenAPI and client, frontend, documents, browser journey, and evaluation harness. Waiting on owner gates.
-- **Last completed step:** Browser journey on the proxy replica with AI off.
-- **Exact next action:** The owner reviews `docs/domain/restriction-rules-review.md` (G1-A) and runs the live evaluation with the provider key (G1-B, command in `scripts/ai/README.md`). An agent reruns `scripts/ci/run-local-gates.sh --ref <head>` (G1-G) and records the evaluation in `docs/evidence/plan-0062/`, and the owner merges. Slice 2 starts from fresh `main`.
-- **Blockers:** G1-A needs the owner's review. G1-B needs the provider key, which is not in this agent's environment and which agents must not read. Slice 4 limits need G2-A.
-- **Partially modified areas:** None.
-- **Documentation delivered:** `docs/product/guided-shopping-planning.md`, `docs/domain/restriction-rules-review.md`, and updates to the planning, AI, privacy, journey, testing, and contract documents.
-- **Validation performed:** See the Slice 1 entry in the progress log and the pull request.
-- **Known failures or limitations:** G1-G incomplete: the host stopped the gate run for low memory; rerun it when the host has room. G1-B not run, so AI card quality, first-batch latency, and shared-ingredient rates are unmeasured against the real model. The offline, arrival, and cook-by behaviors belong to later slices. Per-stage equipment conflicts are not detected (Slice 6).
+- **Current run delivery target:** Slice 2, market and arrival.
+- **Current checkpoint:** Slice 1 merged via #84. Slice 2 backend partly done on `agent/plan-0062-s2-arrival`, not ready for a pull request: storage table behind a flag that is off, line marks, arrival advisor and routes, migration `AddShoppingLineMarks`, curated attention rule, tests.
+- **Last completed step:** Unit filter 42/42. Integration: 3 of 4 pass.
+- **Exact next action:** Fix `AnArrivalWithTheFlagOffStoresWholeAndARetryNeverCountsTwice`: in `ShoppingArrivalService.RecordAsync`, the `Freeze` transition returns `domain_rule_violated` for freezer portions. The likely source is the exception caught near line 525 of `InventoryLotApplicationService.cs`; read its message. Then regenerate OpenAPI and the client, build the frontend (arrival page, "Não achei", later block, split by store, list hint, banner, "Prepare-se" entry, reason text for `curated_fridge_days`, catalogs), write `docs/domain/storage-guidance-review.md`, extend the journey, and update documents.
+- **Blockers:** G1-A: the owner merged #84 and said "PR aprovado, pode seguir", with no separate comment on the restriction table. G1-B (live AI evaluation) and G1-G (full gates) never ran on Slice 1. Deploying `main` was refused by this agent's permission classifier, so Slice 1 is not deployed by the agent. G2-A is needed before the storage flag is enabled.
+- **Partially modified areas:** Backend of Slice 2; no frontend. `ShoppingArrivalApiTests` has one failing test.
+- **Documentation delivered:** None yet for Slice 2 beyond XML documentation.
+- **Validation performed:** See the last completed step.
+- **Known failures or limitations:** The failing test above: freezer portions are not recorded. Storage values were not verified against primary sources: FSIS and foodsafety.gov refused automated fetches, and only search summaries were read for meat, poultry, fish, eggs, and leftovers. Dairy, produce, and herb values are unverified and must be marked so in the review document. Hard-coded rule: an empty equipment list does not rule out a freezer.
 - **Working tree state:** Clean after this commit.
 
 ## Progress log

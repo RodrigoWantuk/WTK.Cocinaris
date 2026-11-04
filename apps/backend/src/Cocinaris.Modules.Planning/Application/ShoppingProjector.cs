@@ -41,7 +41,47 @@ public sealed record ShoppingUseView(Guid EntryId, string RecipeName, DateOnly? 
 /// <param name="PackageSize">Package size the owner confirmed for this item, if any (PLAN-0029 Phase 4); never assumed.</param>
 /// <param name="PackageCount">Whole packages that cover <paramref name="ToBuyQuantity"/>, when a package size is known and something is left to buy.</param>
 /// <param name="ExpectedRemainder">What those packages leave after the menu, in <paramref name="Unit"/>, when <paramref name="PackageCount"/> is set.</param>
-public sealed record ShoppingItemView(string ItemKey, string DisplayName, string Unit, string Category, decimal RequiredQuantity, decimal AvailableQuantity, decimal ToBuyQuantity, bool Checked, IReadOnlyList<ShoppingUseView> Uses, bool AvailableIsEstimate = false, string StoreSection = StoreSections.Other, decimal? PackageSize = null, int? PackageCount = null, decimal? ExpectedRemainder = null);
+/// <param name="MarkKey">Key to address this line's marks: its key before any substitution.</param>
+/// <param name="Later">Whether the person left it for a later purchase.</param>
+/// <param name="SubstituteFor">The ingredient this line replaces, if any.</param>
+/// <param name="Place">Where it is bought (<see cref="ShoppingPlaces"/>).</param>
+public sealed record ShoppingItemView(string ItemKey, string DisplayName, string Unit, string Category, decimal RequiredQuantity, decimal AvailableQuantity, decimal ToBuyQuantity, bool Checked, IReadOnlyList<ShoppingUseView> Uses, bool AvailableIsEstimate = false, string StoreSection = StoreSections.Other, decimal? PackageSize = null, int? PackageCount = null, decimal? ExpectedRemainder = null, string? MarkKey = null, bool Later = false, string? SubstituteFor = null, string Place = ShoppingPlaces.Market);
+
+/// <summary>
+/// Where a shopping line is bought (PLAN-0062). Closed codes; the frontend localizes them. The default
+/// comes from the store section until the person moves the line.
+/// </summary>
+public static class ShoppingPlaces
+{
+    /// <summary>The supermarket.</summary>
+    public const string Market = "market";
+    /// <summary>A street market.</summary>
+    public const string StreetMarket = "street_market";
+    /// <summary>A butcher.</summary>
+    public const string Butcher = "butcher";
+    /// <summary>A bakery.</summary>
+    public const string Bakery = "bakery";
+
+    /// <summary>Accepted codes.</summary>
+    public static readonly IReadOnlySet<string> All = new HashSet<string>(StringComparer.Ordinal) { Market, StreetMarket, Butcher, Bakery };
+
+    /// <summary>The default place of a store section.</summary>
+    /// <param name="section">Store section.</param>
+    public static string OfSection(string section) => section switch
+    {
+        StoreSections.Produce => StreetMarket,
+        StoreSections.ButcherFish => Butcher,
+        StoreSections.Bakery => Bakery,
+        _ => Market
+    };
+}
+
+/// <summary>What the person said about a line while shopping (PLAN-0062).</summary>
+/// <param name="ItemKey">The line's key before any substitution.</param>
+/// <param name="State"><c>later</c>, or null.</param>
+/// <param name="SubstituteName">Name of the product bought instead; the recipe does not change.</param>
+/// <param name="Place">Where the person buys it, or null for the section's default.</param>
+public sealed record ShoppingLineMark(string ItemKey, string? State, string? SubstituteName, string? Place);
 
 /// <summary>
 /// Derives a shopping list from the meals still to cook and the current pantry (PLAN-0029).
@@ -70,9 +110,11 @@ public static class ShoppingProjector
     /// <param name="checkedKeys">Item keys the owner checked off.</param>
     /// <param name="matchKeys">Ingredient matching keys (PLAN-0055); names only when null.</param>
     /// <param name="packageSizes">Package sizes the owner confirmed, by item key; none when null.</param>
-    public static IReadOnlyList<ShoppingItemView> Build(IReadOnlyList<ShoppingMeal> meals, IReadOnlyList<InventoryLotReadModel> lots, IReadOnlySet<string> checkedKeys, IngredientMatchKeys? matchKeys = null, IReadOnlyDictionary<string, PackageSize>? packageSizes = null)
+    /// <param name="marks">What the owner said about lines while shopping, by the line's original key; none when null.</param>
+    public static IReadOnlyList<ShoppingItemView> Build(IReadOnlyList<ShoppingMeal> meals, IReadOnlyList<InventoryLotReadModel> lots, IReadOnlySet<string> checkedKeys, IngredientMatchKeys? matchKeys = null, IReadOnlyDictionary<string, PackageSize>? packageSizes = null, IReadOnlyDictionary<string, ShoppingLineMark>? marks = null)
     {
         matchKeys ??= IngredientMatchKeys.NamesOnly;
+        marks ??= new Dictionary<string, ShoppingLineMark>();
         var measured = lots.Where(lot => lot.MeasuredValue is > 0 && lot.MeasuredUnit is not null).ToList();
         var lotById = measured.ToDictionary(lot => lot.LotId);
         var stock = new Dictionary<string, decimal>(StringComparer.Ordinal);
@@ -105,9 +147,20 @@ public static class ShoppingProjector
                     ? linked.ProductName
                     : ingredient.Name;
                 var key = Key(name, unit, matchKeys);
+                var markKey = key;
+                string? substituted = null;
+                // A substitute takes over the line's identity, so stock, check marks, and package sizes
+                // follow the product actually bought. The quantity and the recipe stay as they are.
+                if (marks.TryGetValue(key, out var replaced) && !string.IsNullOrWhiteSpace(replaced.SubstituteName))
+                {
+                    substituted = name.Trim();
+                    name = replaced.SubstituteName;
+                    key = Key(name, unit, matchKeys);
+                }
+
                 if (!items.TryGetValue(key, out var item))
                 {
-                    items[key] = item = new Accumulator(key, name.Trim(), unit);
+                    items[key] = item = new Accumulator(key, name.Trim(), unit) { MarkKey = markKey, SubstituteFor = substituted };
                 }
 
                 var covered = Math.Min(need, remaining.GetValueOrDefault(key));
@@ -137,7 +190,11 @@ public static class ShoppingProjector
                     StoreSections.OfMatchKey(item.Key[..item.Key.LastIndexOf('|')], IngredientCatalog.Default),
                     package?.Size,
                     count > 0 ? count : null,
-                    count > 0 ? remainder : null);
+                    count > 0 ? remainder : null,
+                    item.MarkKey,
+                    marks.GetValueOrDefault(item.MarkKey)?.State == "later",
+                    item.SubstituteFor,
+                    marks.GetValueOrDefault(item.MarkKey)?.Place ?? ShoppingPlaces.OfSection(StoreSections.OfMatchKey(item.Key[..item.Key.LastIndexOf('|')], IngredientCatalog.Default)));
             })
             .OrderBy(item => Array.IndexOf(CategoryOrder, item.Category))
             .ThenBy(item => item.DisplayName, StringComparer.CurrentCultureIgnoreCase)
@@ -165,6 +222,8 @@ public static class ShoppingProjector
         public bool HasRequired { get; set; }
         public bool HasAssumed { get; set; }
         public bool IsBasic { get; set; }
+        public string MarkKey { get; init; } = key;
+        public string? SubstituteFor { get; init; }
         public List<ShoppingUseView> Uses { get; } = [];
     }
 }

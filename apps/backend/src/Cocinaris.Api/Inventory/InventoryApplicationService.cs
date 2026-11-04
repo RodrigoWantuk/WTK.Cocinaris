@@ -26,7 +26,8 @@ public sealed class InventoryApplicationService(
     IGetInventoryAttentionUseCase attention,
     InventoryCalendar calendar,
     IInventoryHttpTokenService tokens,
-    InventoryMetrics metrics)
+    InventoryMetrics metrics,
+    Cocinaris.Modules.Ingredients.StorageGuidance storageGuidance)
 {
     /// <summary>Maps the attention query, evaluated in the user's calendar, to its transport result.</summary>
     public async Task<IResult> AttentionAsync(HttpContext context, CancellationToken cancellationToken)
@@ -131,7 +132,7 @@ public sealed class InventoryApplicationService(
     private LotResponse ToResponse(InventoryLotView item) => ToResponse(item, tokens.WriteVersion(item.LotId, item.ConcurrencyToken));
     private LotResponse ToResponse(InventoryLotView item, string version, InventoryAttention? known = null)
     {
-        var advice = known ?? InventoryAttentionAdvisor.Evaluate(InventoryLotApplicationWorkflow.ToAttentionFacts(item), calendar.Today, calendar.Zone);
+        var advice = known ?? InventoryAttentionAdvisor.Evaluate(InventoryLotApplicationWorkflow.ToAttentionFacts(item, storageGuidance), calendar.Today, calendar.Zone);
         return new(item.LotId, item.ProductId, item.ProductName, ToQuantity(item.Quantity)!, item.StorageLocation, item.CustomLocation, item.PackageState, item.PrintedExpirationDate, item.Notes, version, item.CreatedAt, item.UpdatedAt, ToLifecycle(item.Lifecycle), new LotAttentionResponse(advice.State.ToString(), advice.EstimatedUseBy, advice.Evidence.ToString(), advice.Reasons), item.AutoRemoveOn);
     }
     // Idempotency replays stored before lifecycle support carry no lifecycle; those lots were AsAcquired.
