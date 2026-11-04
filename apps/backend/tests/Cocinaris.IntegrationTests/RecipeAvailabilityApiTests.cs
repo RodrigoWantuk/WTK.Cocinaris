@@ -8,6 +8,22 @@ namespace Cocinaris.IntegrationTests;
 public sealed partial class RecipeExecutionApiTests
 {
     [Fact]
+    public async Task SaltAndWaterAreNeverReportedAsMissing()
+    {
+        using var client = Client("basics-reader");
+        var csrf = await CsrfAsync(client);
+        await CreateLotAsync(client, csrf, "Arroz", 500m);
+        var recipe = await CreateRecipeAsync(client, csrf, "Arroz simples", ("Arroz", 300m, "g"), ("Sal", 5m, "g"), ("Água", 600m, "ml"));
+
+        var lines = (await client.GetFromJsonAsync<JsonElement>($"/api/v1/recipes/{recipe}/availability")).EnumerateArray().ToList();
+        Assert.Equal("available", Assert.Single(lines).GetProperty("status").GetString());
+
+        // The cook page counts the recipe as fully covered.
+        var readiness = (await client.GetFromJsonAsync<JsonElement>("/api/v1/recipes/readiness")).EnumerateArray().Single();
+        Assert.Equal((1, 0, 0), (readiness.GetProperty("available").GetInt32(), readiness.GetProperty("partial").GetInt32(), readiness.GetProperty("missing").GetInt32()));
+    }
+
+    [Fact]
     public async Task RecipeAvailabilitySaysWhatThePantryCoversWithoutChangingIt()
     {
         using var client = Client("availability-reader");

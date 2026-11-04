@@ -7,7 +7,7 @@ namespace Cocinaris.Modules.Recipes.Application;
 /// <summary>One ingredient of a stored revision, as the cooking proposal and the shopping projection read it.</summary>
 /// <param name="Id">Ingredient identifier within the revision.</param>
 /// <param name="Name">Display name.</param>
-/// <param name="SourceType"><c>inventory</c>, <c>additional</c>, or <c>assumption</c>.</param>
+/// <param name="SourceType"><c>inventory</c>, <c>additional</c>, or <c>assumption</c>. Salt and water always read as <c>assumption</c> (<see cref="Cocinaris.Modules.Ingredients.HouseholdBasics"/>), so stored recipes need no change.</param>
 /// <param name="LotId">Pantry lot the ingredient was taken from, for <c>inventory</c> ingredients.</param>
 /// <param name="Quantity">Quantity for the revision's servings, in <paramref name="Unit"/>.</param>
 /// <param name="Unit">Recipe unit: <c>g</c>, <c>ml</c>, or <c>unit</c>.</param>
@@ -36,10 +36,11 @@ public static class RecipeIngredientReader
             {
                 if (item.ValueKind != JsonValueKind.Object || !item.TryGetProperty("requiredQuantity", out var quantity) || quantity.ValueKind != JsonValueKind.Number) { continue; }
                 Guid? lotId = item.TryGetProperty("inventoryItemId", out var reference) && reference.ValueKind == JsonValueKind.String && Guid.TryParse(reference.GetString(), out var parsed) ? parsed : null;
+                var displayName = Text(item, "displayName") ?? string.Empty;
                 yield return new RecipeIngredient(
                     Text(item, "ingredientId") ?? string.Empty,
-                    Text(item, "displayName") ?? string.Empty,
-                    Text(item, "sourceType") ?? "assumption",
+                    displayName,
+                    Cocinaris.Modules.Ingredients.HouseholdBasics.Is(displayName) ? "assumption" : Text(item, "sourceType") ?? "assumption",
                     lotId,
                     quantity.GetDecimal(),
                     Text(item, "unit") ?? "unit",

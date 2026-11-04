@@ -55,7 +55,7 @@ public static partial class RecipeOutputQuality
             issues.Add(issue);
         }
 
-        if (adaptation == "adapt_to_pantry" && response.Candidates.Any(candidate => candidate.AdditionalIngredients.Count(item => !item.Optional) > RecipeSuggestionGuidance.MaxPurchasesWhenAdapting))
+        if (adaptation == "adapt_to_pantry" && response.Candidates.Any(candidate => candidate.AdditionalIngredients.Count(item => !item.Optional && !Cocinaris.Modules.Ingredients.HouseholdBasics.Is(item.Name)) > RecipeSuggestionGuidance.MaxPurchasesWhenAdapting))
         {
             issues.Add(new RecipeQualityIssue("adaptation", $"The person asked to adapt to what is at home. Rewrite every candidate with at most {RecipeSuggestionGuidance.MaxPurchasesWhenAdapting} non-optional additionalIngredients: substitute, omit, or simplify, using availabilitySnapshot."));
         }

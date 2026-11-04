@@ -142,3 +142,7 @@ The same check is possible on live data: The fixture `apps/backend/tests/fixture
 - **Report:** `sudo scripts/ops/ingredient-identity-report.sh`. It shows aliases by method, the queue by state and reason, the learned aliases with the lowest scores, and unresolved best scores.
 - **Removing a wrong learned alias:** `DELETE FROM ingredients.aliases WHERE "NormalizedText" = '<name>' AND "Method" <> 'Catalog';`. The name is queued again the next time it is read. Fix the catalog first if the name belongs in it.
 - **Catalog change:** edit the JSON (ids are permanent; never reuse one), deploy, and the job syncs on its next step.
+
+## Household basics (PLAN-0061)
+
+Salt and water are assumed in every home. `HouseholdBasics.Is` recognizes them by name: salt or water plus words from a closed list (temperature, grain, measure, "to taste"). `RecipeIngredientReader` reads them as `assumption` whatever the recipe stored, so they are never missing on a recipe, on a menu, or in the cook page's counts. The shopping list leaves them out unless a tracked one still has stock. Any other word keeps a name a real ingredient: "água de coco", "flor de sal", and "sal e pimenta" are still bought.
