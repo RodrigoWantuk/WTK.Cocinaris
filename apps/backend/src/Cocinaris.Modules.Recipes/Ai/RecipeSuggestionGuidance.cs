@@ -4,7 +4,7 @@ namespace Cocinaris.Modules.Recipes.Ai;
 /// What the person asks of a suggestion request before the three candidates are generated
 /// (PLAN-0056 Phase 2, owner reports 3 and 6; PLAN-0060). Every value is a closed code or a lot id,
 /// except <paramref name="Hint"/>, the one free text: it is untrusted, cleaned by
-/// <see cref="RecipeUntrustedText"/>, sent only inside a named data field, and only a soft wish.
+/// <see cref="Cocinaris.Modules.Ai.Safety.UntrustedText"/>, sent only inside a named data field, and only a soft wish.
 /// </summary>
 /// <param name="MealKind"><c>full_meal</c>, <c>light_meal</c>, or <c>snack</c>, or null for any.</param>
 /// <param name="DishFamilies">Up to three of <see cref="DishFamilyCodes"/>; empty for any.</param>

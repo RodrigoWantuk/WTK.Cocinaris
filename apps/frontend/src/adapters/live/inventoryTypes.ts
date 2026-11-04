@@ -269,6 +269,44 @@ export interface InventoryRepository {
     text: string,
     options: { language?: string; signal?: AbortSignal },
   ): Promise<InventoryNameSuggestion[]>;
+  /**
+   * Reads a typed or pasted list into proposed items for review (PLAN-0046 Phase 1). Nothing is
+   * saved. Optional: without it the list entry page is unavailable.
+   */
+  parseList?(
+    text: string,
+    options: { csrfToken: string; signal?: AbortSignal },
+  ): Promise<PantryListLine[]>;
+  /** Organizes a messy list with the AI (PLAN-0046 Phase 2); same review, nothing saved. Uses AI credits. */
+  parseListWithAi?(
+    text: string,
+    options: { csrfToken: string; language?: string; signal?: AbortSignal },
+  ): Promise<PantryListLine[]>;
+  /** Whether this deployment can read receipt photos; the option is hidden otherwise. */
+  isReceiptReadingAvailable?(signal?: AbortSignal): Promise<boolean>;
+  /**
+   * Reads a receipt photo into proposed items (PLAN-0046 Phase 3). The photo is discarded by the
+   * backend after this one call; nothing is saved.
+   */
+  parseReceipt?(
+    photo: Blob,
+    options: { csrfToken: string; language?: string; signal?: AbortSignal },
+  ): Promise<PantryListLine[]>;
+}
+
+/** One proposed pantry item read from a list line; the person reviews it before saving. */
+export interface PantryListLine {
+  lineNumber: number;
+  original: string;
+  name: string;
+  /** Amount in `unit`; null when the line had none. */
+  quantity: number | null;
+  unit: MeasuredUnit | null;
+  storageLocation: StorageLocation;
+  /** Whether the name is a curated catalog ingredient. */
+  recognized: boolean;
+  /** Whether an AI reading was unsure of this item, so the person should check it. */
+  uncertain?: boolean;
 }
 
 /** A suggested product name and where it comes from. */

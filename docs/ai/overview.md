@@ -15,7 +15,7 @@ All AI access passes through an application-owned backend gateway.
 AI may support:
 
 - profile clarification and natural-language onboarding;
-- manual-list, receipt, URL, and image extraction;
+- manual-list, receipt, URL, and image extraction (list and receipt: [`pantry-import.md`](pantry-import.md));
 - product classification and culinary-role suggestions;
 - recipe generation, normalization, analysis, and adaptation;
 - meal, shopping, preservation, and preparation proposals;

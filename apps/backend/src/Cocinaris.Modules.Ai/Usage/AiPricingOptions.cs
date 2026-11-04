@@ -23,7 +23,9 @@ public sealed class AiPricingOptions
     public Dictionary<string, AiModelPrice> Models { get; } = new(StringComparer.OrdinalIgnoreCase)
     {
         ["deepseek-v4-flash"] = new AiModelPrice { InputUsdPerMillion = 0.14m, OutputUsdPerMillion = 0.28m },
-        ["deepseek-chat"] = new AiModelPrice { InputUsdPerMillion = 0.28m, OutputUsdPerMillion = 0.42m }
+        ["deepseek-chat"] = new AiModelPrice { InputUsdPerMillion = 0.28m, OutputUsdPerMillion = 0.42m },
+        // Receipt reading (PLAN-0046), as listed by OpenRouter on 2026-11-04.
+        ["openai/gpt-5-nano"] = new AiModelPrice { InputUsdPerMillion = 0.05m, OutputUsdPerMillion = 0.40m }
     };
 
     /// <summary>Validates that every price is non-negative and at least one model is priced.</summary>

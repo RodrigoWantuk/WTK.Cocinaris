@@ -7,7 +7,7 @@
 - **Created:** 2026-11-04
 - **Last updated:** 2026-11-04
 - **Branch:** `agent/plan-0060-ai-direction-history-revision`
-- **Pull request:** Draft, opened with this delivery
+- **Pull request:** #79, merged by the owner; deployed `9a9016f` on 2026-11-04
 - **Related documents:** [`docs/ai/recipe-artifact-protocol.md`](../ai/recipe-artifact-protocol.md), [`docs/security/privacy-and-data-protection.md`](../security/privacy-and-data-protection.md), [PLAN-0056](PLAN-0056-owner-feedback-2026-10-30.md), [ADR-0011](../architecture/decisions/0011-shared-recipe-idea-library.md)
 
 ## Owner requests (2026-11-04)
@@ -76,7 +76,7 @@ The usage ledger (`ai.usage_ledger`, read-only) showed the failure on 2026-11-04
 ## Execution state
 
 - **Current run delivery target:** all six requests, end to end.
-- **Current checkpoint:** implemented and validated as below; awaiting deployment and the owner's check.
+- **Current checkpoint:** merged and deployed (`9a9016f`), with the migration applied and the service healthy; awaiting the owner's check and the live evaluation.
 - **Validation (lean):**
   - **Backend unit:** `RecipeAiDirection`, `RecipeCookNow`, `RecipeSuggestionGuidance`, `RecipeProtocol`, `RecipeAiLanguage`, `RecipeLibrary` filters.
   - **Backend integration (Testcontainers):** new history and revision tests, plus saved candidates, guidance, gateway concurrency, idea library, menu suggestions, and library.
@@ -90,9 +90,10 @@ The usage ledger (`ai.usage_ledger`, read-only) showed the failure on 2026-11-04
   - Restrictions reach the model and take precedence over the hint by rule, but there is no deterministic allergen check of the output. That is the same as for expansions today.
   - Injection defense cannot detect every wrong dish a hint might steer the model to: output constraints bound what can happen, not what the model prefers.
   - An accepted AI revision with a new visual descriptor generates a new dish image, at the usual image cost.
-- **Exact next action:** The owner runs the deployment from this branch (`! sudo scripts/deploy/deploy-linux-host.sh --ref agent/plan-0060-ai-direction-history-revision`), tries the suggestion and revision flows, and merges. Then run a real-model evaluation of the hint and `recipe.revise.v1`.
+- **Exact next action:** The owner checks the flows on the host and runs the live evaluation, which needs the provider key that agents do not read: `! sudo env DOTNET_ROOT=/opt/dotnet PLAN0028_LIVE_SMOKE=1 PLAN0060_LIVE_EVAL=1 DEEPSEEK_API_KEY="$(sudo sed -n 's/^Ai__Providers__DeepSeek__ApiKey=//p' /etc/wtk-cocinaris/api.env)" /opt/dotnet/dotnet run --project scripts/ai/RecipeGatewayLiveSmoke/RecipeGatewayLiveSmoke.csproj -c Release` (after PLAN-0046's pull request is merged; the file is not sourced because its connection string has semicolons). Every `markerLeaked` must be false.
 - **Blockers:** None.
 
 ## Progress log
 
+- 2026-11-04: The owner merged #79 and asked for deployment; `9a9016f` is deployed. The live evaluation was added to `scripts/ai/RecipeGatewayLiveSmoke` in PLAN-0046's pull request and still has to run with the owner's key, so this plan stays Validating.
 - 2026-11-04: Read the ledger, found the summary word cap behind request 2, and delivered all six requests in one run on a branch from `main`. The uncommitted PLAN-0046 work in the main checkout was left untouched.

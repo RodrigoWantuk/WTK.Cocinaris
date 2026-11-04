@@ -195,6 +195,13 @@ It keeps the restriction codes it was generated under, without linking them to a
 
 Receipt and recipe-import images are deleted immediately after successful parsing or immediately after a reported failure. No automatic retry retains the file.
 
+Receipt photos (PLAN-0046, off until `Ai__Receipts__Enabled=true`):
+- **Why this matters.** A receipt can show a tax id, an address, the store visited, and card digits.
+- **Never on disk.** The upload is a raw request body, not a form, because ASP.NET buffers large forms to a temporary file. The bytes stay in process memory for that one request and are cleared when it ends, on every path. No object storage, queue, log, or ledger entry holds them.
+- **Re-encoded.** A new JPEG of at most 1600 pixels is what leaves the host, so metadata such as location does not.
+- **Third party.** The image goes once through OpenRouter to the configured vision model, with `data_collection: deny`. The person is told before choosing a photo. That option depends on the providers honoring it; review OpenRouter's terms before enabling.
+- **Output.** The model is told to leave out personal data, and code independently drops any item whose name has a run of 8 or more digits, a link, or markup. Items are proposals: nothing reaches the pantry until the person confirms them.
+
 ### Permanent user photos
 
 A recipe or execution photo is stored only through explicit user action. The user can view and delete it. Publication is a separate explicit action.

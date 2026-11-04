@@ -50,6 +50,12 @@ public sealed class AiOperationRegistry
     /// <summary>Stable registered name for a new version of a recipe from the owner's short request (PLAN-0060).</summary>
     public const string ReviseRecipe = "recipe.revise.v1";
 
+    /// <summary>Stable registered name for organizing a pantry list (PLAN-0046).</summary>
+    public const string PantryListParse = "inventory.list_parse.v1";
+
+    /// <summary>Stable registered name for reading a purchase receipt photo (PLAN-0046).</summary>
+    public const string ReceiptParse = "inventory.receipt_parse.v1";
+
     /// <summary>Stable registered name for recipe thumbnail generation (PLAN-0030).</summary>
     public const string ThumbnailGenerate = "recipe.thumbnail.generate.v1";
 
@@ -72,6 +78,9 @@ public sealed class AiOperationRegistry
         new AiOperationDefinition(ExpandSelected, "recipe-expand-selected.v1", "0.3", PreferNonThinking: true, TimeoutSeconds: 45, MaxRepairAttempts: 1, EstimatedUsageUnits: 5, ContextBudgetCharacters: 12_000, MaxOutputTokens: 6144, EstimatedCostMicroUsd: 5_000, EstimatedTokens: 18_000),
         // The prompt also carries the whole recipe, so more tokens are held than for an expansion.
         new AiOperationDefinition(ReviseRecipe, "recipe-revise.v1", "0.3", PreferNonThinking: true, TimeoutSeconds: 45, MaxRepairAttempts: 1, EstimatedUsageUnits: 5, ContextBudgetCharacters: 12_000, MaxOutputTokens: 6144, EstimatedCostMicroUsd: 6_000, EstimatedTokens: 24_000),
+        new AiOperationDefinition(PantryListParse, "inventory-list-parse.v1", "0.3", PreferNonThinking: true, TimeoutSeconds: 30, MaxRepairAttempts: 1, EstimatedUsageUnits: 2, ContextBudgetCharacters: 8_000, MaxOutputTokens: 4096, EstimatedCostMicroUsd: 2_000, EstimatedTokens: 12_000),
+        // No repair: an image is read once and discarded, so a failure is reported, never retried.
+        new AiOperationDefinition(ReceiptParse, "inventory-receipt-parse.v1", "0.3", PreferNonThinking: true, TimeoutSeconds: 60, MaxRepairAttempts: 0, EstimatedUsageUnits: 3, ContextBudgetCharacters: 2_000, MaxOutputTokens: 4096, EstimatedCostMicroUsd: 3_000, EstimatedTokens: 10_000),
         // One image per call, priced per image; the job reserves the configured image price instead
         // of this estimate. Images use no text tokens, so they never count against the token windows.
         new AiOperationDefinition(ThumbnailGenerate, "recipe-thumbnail-style-v2", "1", PreferNonThinking: true, TimeoutSeconds: 90, MaxRepairAttempts: 0, EstimatedUsageUnits: 1, ContextBudgetCharacters: 2_000, MaxOutputTokens: 0, EstimatedCostMicroUsd: 8_000, EstimatedTokens: 0),

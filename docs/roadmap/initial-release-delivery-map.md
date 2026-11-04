@@ -49,7 +49,7 @@ _None at this checkpoint._
 | Localized plan recovery | PLAN-0043 |
 | Multi-day preparation route | PLAN-0044 |
 | Troubleshooting and controlled learning | PLAN-0045 |
-| Object storage, AI list parsing and receipt-photo inventory import | PLAN-0046 |
+| AI list parsing and receipt-photo inventory import (no object storage needed: the photo is never stored) | PLAN-0046 |
 | Recipe import, private sharing, permanent photos | PLAN-0047 |
 | Recipe thumbnail generation | PLAN-0030 (Draft) |
 | Attention dashboard and notifications | PLAN-0048 |

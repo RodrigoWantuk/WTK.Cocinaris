@@ -1,3 +1,4 @@
+using Cocinaris.Modules.Ai.Safety;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Cocinaris.Modules.Ai.Abstractions;
@@ -102,7 +103,7 @@ public sealed class RecipeRevisionProposalService(
         }
 
         if (command.Instruction is { Length: > RecipeRevisionProposal.MaxInstructionLength }
-            || RecipeUntrustedText.Normalize(command.Instruction, RecipeRevisionProposal.MaxInstructionLength) is not { } instruction)
+            || UntrustedText.Normalize(command.Instruction, RecipeRevisionProposal.MaxInstructionLength) is not { } instruction)
         {
             return Failure<RecipeRevisionProposalView>("validation_failed", "Say what to change, in at most 300 characters.", new Dictionary<string, string[]> { ["instruction"] = ["Say what to change, in at most 300 characters."] });
         }

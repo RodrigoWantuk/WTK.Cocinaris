@@ -73,6 +73,7 @@ public sealed class FakeAiProvider : IAiProvider
             AiOperationRegistry.SuggestCandidates => BuildSuggestResponse(request.Payload),
             AiOperationRegistry.ExpandSelected => BuildExpandResponse(request.Payload),
             AiOperationRegistry.ReviseRecipe => BuildReviseResponse(request.Payload),
+            AiOperationRegistry.PantryListParse => """{"operation":"inventory.list_parse.v1","schemaVersion":"0.3","items":[{"name":"Batata","quantity":null,"unit":null,"storageLocation":"pantry","uncertain":true,"sourceText":"umas batatas"},{"name":"Arroz","quantity":1000,"unit":"g","storageLocation":"pantry","uncertain":false,"sourceText":"pacote de arroz 1kg"}]}""",
             _ => throw new InvalidOperationException($"FakeAiProvider has no default response for operation '{request.Operation}'.")
         };
 

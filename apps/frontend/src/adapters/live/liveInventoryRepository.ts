@@ -4,6 +4,7 @@ import {
   readProblemDetails,
   type components,
 } from "@cocinaris/api-client";
+import type { PantryListLine } from "./inventoryTypes";
 import {
   InventoryApiError,
   type AdjustLotInput,
@@ -198,6 +199,40 @@ async function throwForFailure(
  * Live inventory boundary over the generated OpenAPI client.
  * Performs no authoritative arithmetic; backend owns lifecycle transitions.
  */
+function mapListLines(
+  lines:
+    | readonly {
+        lineNumber: number | string;
+        original: string;
+        name: string;
+        quantity?: number | string | null;
+        unit?: string | null;
+        storageLocation: string;
+        recognized: boolean;
+        uncertain?: boolean;
+      }[]
+    | null
+    | undefined,
+): PantryListLine[] {
+  return (lines ?? []).map((line) => ({
+    lineNumber: Number(line.lineNumber),
+    original: String(line.original),
+    name: String(line.name),
+    quantity: line.quantity == null ? null : Number(line.quantity),
+    unit:
+      line.unit === "Gram" || line.unit === "Milliliter" || line.unit === "Unit"
+        ? line.unit
+        : null,
+    storageLocation:
+      line.storageLocation === "Refrigerator" ||
+      line.storageLocation === "Freezer"
+        ? line.storageLocation
+        : "Pantry",
+    recognized: line.recognized === true,
+    uncertain: line.uncertain === true,
+  }));
+}
+
 export function createLiveInventoryRepository(options?: {
   fetchImpl?: typeof fetch;
   baseUrl?: string;
@@ -449,6 +484,72 @@ export function createLiveInventoryRepository(options?: {
       if (!response.ok && response.status !== 204) {
         await throwForFailure(response, "Unable to delete lot.", error);
       }
+    },
+
+    async parseList(text, { csrfToken, signal }) {
+      const { data, error, response } = await client.POST(
+        "/api/v1/inventory/list-parse",
+        {
+          params: { header: { "X-CSRF-TOKEN": csrfToken } },
+          body: { text },
+          signal,
+          credentials: "include",
+        },
+      );
+      if (!response.ok || !data) {
+        await throwForFailure(response, "Unable to read the list.", error);
+      }
+      assertData(data, response);
+      return mapListLines(data.lines);
+    },
+
+    async parseListWithAi(text, { csrfToken, language, signal }) {
+      const { data, error, response } = await client.POST(
+        "/api/v1/inventory/list-parse/ai",
+        {
+          params: { header: { "X-CSRF-TOKEN": csrfToken } },
+          body: { text },
+          headers: language ? { "Accept-Language": language } : undefined,
+          signal,
+          credentials: "include",
+        },
+      );
+      if (!response.ok || !data) {
+        await throwForFailure(response, "Unable to read the list.", error);
+      }
+      assertData(data, response);
+      return mapListLines(data.lines);
+    },
+
+    async isReceiptReadingAvailable(signal) {
+      const { data, response } = await client.GET(
+        "/api/v1/inventory/receipt-parse/availability",
+        { signal, credentials: "include" },
+      );
+      return response.ok && data?.available === true;
+    },
+
+    async parseReceipt(photo, { csrfToken, language, signal }) {
+      const { data, error, response } = await client.POST(
+        "/api/v1/inventory/receipt-parse",
+        {
+          params: { header: { "X-CSRF-TOKEN": csrfToken } },
+          // Raw bytes, not a form: the backend keeps the photo out of any temporary file.
+          body: photo as never,
+          bodySerializer: (body: unknown) => body as never,
+          headers: {
+            "Content-Type": photo.type || "application/octet-stream",
+            ...(language ? { "Accept-Language": language } : {}),
+          },
+          signal,
+          credentials: "include",
+        },
+      );
+      if (!response.ok || !data) {
+        await throwForFailure(response, "Unable to read the photo.", error);
+      }
+      assertData(data, response);
+      return mapListLines(data.lines);
     },
 
     async suggestNames(text, { language, signal }) {
