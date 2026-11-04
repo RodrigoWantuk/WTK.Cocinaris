@@ -2,7 +2,7 @@
 
 - **Status:** Accepted operational map
 - **Created:** 2026-08-05
-- **Last updated:** 2026-10-28 (PLAN-0031 coverage review integrated with PR #44)
+- **Last updated:** 2026-11-04 (PLAN-0062 added)
 - **Baseline:** `main` at `e8c2cfa` (PLAN-0028 merged) plus the PLAN-0031–PLAN-0036 foundation stack
 - **Ordered roadmap and dependencies:** [PLAN-0031 coverage review](../plans/PLAN-0031-amendment-2026-10-28-coverage-review.md)
 
@@ -34,6 +34,7 @@ _None at this checkpoint._
 |---|---|---|
 | Launch / AI-economics Phases 1–2 documentation execution | PLAN-0008 | Recipe evaluation consumed from PLAN-0022; spend/billing still gated |
 | Contextual-home deterministic inventory/profile tiers | PLAN-0021 | Menu tier waits for PLAN-0029 |
+| Guided shopping planning: setup and dish cards, list, "Cheguei do mercado", offline list, pre-prep, session route, web push | [PLAN-0062](../plans/PLAN-0062-guided-shopping-planning.md) | Seven slices; absorbs the session route of PLAN-0044 and web push of PLAN-0048 |
 
 ## Planned
 
