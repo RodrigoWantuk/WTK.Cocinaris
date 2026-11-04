@@ -212,6 +212,15 @@ public sealed class MenuEntry
     /// </summary>
     public bool ReserveIngredients { get; private set; } = true;
 
+    /// <summary>Gets the meals this one cooking covers, 1 to 4 (PLAN-0062): "yields 2 meals" is one entry covering two.</summary>
+    public int MealsCovered { get; private set; } = 1;
+
+    /// <summary>
+    /// Gets the suggested cooking order within the menu (PLAN-0062), or null for a menu built by hand.
+    /// A flexible entry with an order appears on the home page only when it is next.
+    /// </summary>
+    public int? SuggestedOrder { get; private set; }
+
     /// <summary>Gets the UTC creation instant.</summary>
     public DateTimeOffset CreatedAt { get; private init; }
 
@@ -224,10 +233,16 @@ public sealed class MenuEntry
     /// <summary>Adds an entry to an editable plan.</summary>
     /// <exception cref="ArgumentException">The day is outside the period, or the meal or portions are invalid.</exception>
     /// <exception cref="InvalidOperationException">The plan is archived.</exception>
-    public static MenuEntry Create(MenuPlan plan, Guid creationKey, Guid recipeId, int? pinnedRevisionNumber, DateOnly? plannedDate, string? mealType, int servings, DateTimeOffset now)
+    public static MenuEntry Create(MenuPlan plan, Guid creationKey, Guid recipeId, int? pinnedRevisionNumber, DateOnly? plannedDate, string? mealType, int servings, DateTimeOffset now, int mealsCovered = 1)
     {
+        if (mealsCovered is < 1 or > 4)
+        {
+            throw new ArgumentException("An entry covers one to four meals.", nameof(mealsCovered));
+        }
+
         var entry = new MenuEntry
         {
+            MealsCovered = mealsCovered,
             Id = Guid.NewGuid(),
             MenuPlanId = plan.Id,
             OwnerUserId = plan.OwnerUserId,
@@ -241,9 +256,11 @@ public sealed class MenuEntry
     }
 
     /// <summary>Restores a persisted entry.</summary>
-    public static MenuEntry Restore(Guid id, Guid menuPlanId, Guid ownerUserId, Guid creationKey, Guid recipeId, int? pinnedRevisionNumber, DateOnly? plannedDate, string? mealType, int servings, MenuEntryStatus status, DateTimeOffset createdAt, DateTimeOffset updatedAt, bool reserveIngredients = true) => new()
+    public static MenuEntry Restore(Guid id, Guid menuPlanId, Guid ownerUserId, Guid creationKey, Guid recipeId, int? pinnedRevisionNumber, DateOnly? plannedDate, string? mealType, int servings, MenuEntryStatus status, DateTimeOffset createdAt, DateTimeOffset updatedAt, bool reserveIngredients = true, int mealsCovered = 1, int? suggestedOrder = null) => new()
     {
         ReserveIngredients = reserveIngredients,
+        MealsCovered = mealsCovered,
+        SuggestedOrder = suggestedOrder,
         Id = id,
         MenuPlanId = menuPlanId,
         OwnerUserId = ownerUserId,

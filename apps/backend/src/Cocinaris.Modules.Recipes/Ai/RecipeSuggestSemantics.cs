@@ -64,43 +64,99 @@ public static partial class RecipeSuggestSemantics
                 errors.Add($"{prefix} duplicates strategy {candidate.CandidateStrategy}");
             }
 
-            var fingerprint = string.Join('|', new[] { candidate.DishFormat, candidate.PrimaryTechnique }.Concat(candidate.PrimaryIngredientRefs));
-            if (!fingerprints.Add(fingerprint))
+            if (!fingerprints.Add(Fingerprint(candidate)))
             {
                 errors.Add($"{prefix} is not materially distinct from another candidate");
             }
 
-            foreach (var claim in UnsupportedClaims)
-            {
-                if (claim.IsMatch(candidate.Name) || claim.IsMatch(candidate.Summary))
-                {
-                    errors.Add($"{prefix} contains unsupported quality claim");
-                    break;
-                }
-            }
-
-            if (RecipeExpandSemantics.ContainsLinkOrMarkup(candidate.Name) || RecipeExpandSemantics.ContainsLinkOrMarkup(candidate.Summary))
-            {
-                errors.Add($"{prefix} contains a link or markup");
-            }
-
-            var assumptions = new HashSet<string>(candidate.AssumptionsUsed.Select(value => value.Trim().ToLowerInvariant()), StringComparer.Ordinal);
-            for (var additionalIndex = 0; additionalIndex < candidate.AdditionalIngredients.Count; additionalIndex++)
-            {
-                var name = candidate.AdditionalIngredients[additionalIndex].Name.Trim().ToLowerInvariant();
-                if (name.Length > 0 && assumptions.Contains(name))
-                {
-                    errors.Add($"{prefix}.additionalIngredients[{additionalIndex}] repeats assumption \"{name}\"");
-                }
-            }
-
-            if (request is not null)
-            {
-                ValidateAgainstRequest(errors, prefix, candidate, request);
-            }
+            ValidateCandidate(errors, prefix, candidate, request);
         }
 
         return errors;
+    }
+
+    /// <summary>
+    /// Validates a shopping plan's dish cards (PLAN-0062). Each candidate passes the same rules as a
+    /// suggestion; the rules of the whole answer differ: exactly six, strategies may repeat, and every
+    /// dish targets a requested meal.
+    /// </summary>
+    /// <param name="response">Structurally valid answer.</param>
+    /// <param name="request">The request envelope, when available.</param>
+    public static List<string> ValidatePlanDeck(PlanDeckResponse response, JsonElement? request)
+    {
+        var errors = new List<string>();
+        if (response.Candidates.Count != PlanDeckResponse.CandidateCount)
+        {
+            errors.Add($"expected exactly {PlanDeckResponse.CandidateCount} candidates, got {response.Candidates.Count}");
+        }
+
+        var mealTypes = request.Prop("planDeck").Prop("mealTypes").AsArray().Select(item => ((JsonElement?)item).AsString()).OfType<string>().ToHashSet(StringComparer.Ordinal);
+        var fingerprints = new HashSet<string>(StringComparer.Ordinal);
+        for (var index = 0; index < response.Candidates.Count; index++)
+        {
+            var candidate = response.Candidates[index];
+            var prefix = $"candidates[{index}]";
+            if (!PlanDeckResponse.Strategies.Contains(candidate.CandidateStrategy))
+            {
+                errors.Add($"{prefix} uses strategy {candidate.CandidateStrategy}, not allowed in a plan deck");
+            }
+
+            if (!fingerprints.Add(Fingerprint(candidate)))
+            {
+                errors.Add($"{prefix} is not materially distinct from another candidate");
+            }
+
+            if (mealTypes.Count > 0 && !mealTypes.Contains(candidate.TargetMealType))
+            {
+                errors.Add($"{prefix} targets meal {candidate.TargetMealType}, which was not requested");
+            }
+
+            ValidateCandidate(errors, prefix, candidate, request);
+        }
+
+        return errors;
+    }
+
+    /// <summary>The semantic identity of a dish: format, technique, and main ingredients.</summary>
+    /// <param name="candidate">Candidate.</param>
+    public static string Fingerprint(SuggestCandidate candidate) =>
+        string.Join('|', new[] { candidate.DishFormat, candidate.PrimaryTechnique }.Concat(candidate.PrimaryIngredientRefs));
+
+    /// <summary>The rules every candidate must pass, whichever operation produced it.</summary>
+    /// <param name="errors">Receives the errors.</param>
+    /// <param name="prefix">Error path of this candidate.</param>
+    /// <param name="candidate">Candidate.</param>
+    /// <param name="request">The request envelope, when available.</param>
+    public static void ValidateCandidate(List<string> errors, string prefix, SuggestCandidate candidate, JsonElement? request)
+    {
+        foreach (var claim in UnsupportedClaims)
+        {
+            if (claim.IsMatch(candidate.Name) || claim.IsMatch(candidate.Summary))
+            {
+                errors.Add($"{prefix} contains unsupported quality claim");
+                break;
+            }
+        }
+
+        if (RecipeExpandSemantics.ContainsLinkOrMarkup(candidate.Name) || RecipeExpandSemantics.ContainsLinkOrMarkup(candidate.Summary))
+        {
+            errors.Add($"{prefix} contains a link or markup");
+        }
+
+        var assumptions = new HashSet<string>(candidate.AssumptionsUsed.Select(value => value.Trim().ToLowerInvariant()), StringComparer.Ordinal);
+        for (var additionalIndex = 0; additionalIndex < candidate.AdditionalIngredients.Count; additionalIndex++)
+        {
+            var name = candidate.AdditionalIngredients[additionalIndex].Name.Trim().ToLowerInvariant();
+            if (name.Length > 0 && assumptions.Contains(name))
+            {
+                errors.Add($"{prefix}.additionalIngredients[{additionalIndex}] repeats assumption \"{name}\"");
+            }
+        }
+
+        if (request is not null)
+        {
+            ValidateAgainstRequest(errors, prefix, candidate, request);
+        }
     }
 
     private static void ValidateAgainstRequest(List<string> errors, string prefix, SuggestCandidate candidate, JsonElement? request)

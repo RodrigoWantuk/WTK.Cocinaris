@@ -131,6 +131,19 @@ public sealed class PostgreSqlMenuPlanStore(ApplicationDbContext database) : IMe
     }
 
     /// <inheritdoc />
+    public async Task SetSuggestedOrdersAsync(Guid ownerUserId, Guid planId, IReadOnlyDictionary<Guid, int> orders, DateTimeOffset now, CancellationToken cancellationToken)
+    {
+        var records = await database.MenuEntries.Where(item => item.OwnerUserId == ownerUserId && item.MenuPlanId == planId).ToListAsync(cancellationToken);
+        foreach (var record in records)
+        {
+            record.SuggestedOrder = orders.TryGetValue(record.Id, out var order) ? order : null;
+            record.UpdatedAt = now;
+        }
+
+        await SaveAndClearAsync(cancellationToken);
+    }
+
+    /// <inheritdoc />
     public async Task RemoveEntryAsync(MenuPlan plan, MenuEntry entry, CancellationToken cancellationToken)
     {
         database.MenuEntries.Remove(ToRecord(entry));
@@ -218,7 +231,7 @@ public sealed class PostgreSqlMenuPlanStore(ApplicationDbContext database) : IMe
         record.Id, record.OwnerUserId, record.CreationKey, record.Name, record.StartDate, record.EndDate, Enum.Parse<MenuPlanStatus>(record.Status), record.CreatedAt, record.UpdatedAt, record.AcceptedAt);
 
     private static MenuEntry ToDomain(MenuEntryRecord record) => MenuEntry.Restore(
-        record.Id, record.MenuPlanId, record.OwnerUserId, record.CreationKey, record.RecipeId, record.PinnedRevisionNumber, record.PlannedDate, record.MealType, record.Servings, Enum.Parse<MenuEntryStatus>(record.Status), record.CreatedAt, record.UpdatedAt, record.ReserveIngredients);
+        record.Id, record.MenuPlanId, record.OwnerUserId, record.CreationKey, record.RecipeId, record.PinnedRevisionNumber, record.PlannedDate, record.MealType, record.Servings, Enum.Parse<MenuEntryStatus>(record.Status), record.CreatedAt, record.UpdatedAt, record.ReserveIngredients, record.MealsCovered, record.SuggestedOrder);
 
     private static MenuPlanRecord ToRecord(MenuPlan plan) => new()
     {
@@ -247,6 +260,8 @@ public sealed class PostgreSqlMenuPlanStore(ApplicationDbContext database) : IMe
         Servings = entry.Servings,
         Status = entry.Status.ToString(),
         ReserveIngredients = entry.ReserveIngredients,
+        MealsCovered = entry.MealsCovered,
+        SuggestedOrder = entry.SuggestedOrder,
         CreatedAt = entry.CreatedAt,
         UpdatedAt = entry.UpdatedAt
     };

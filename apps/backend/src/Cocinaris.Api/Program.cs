@@ -157,6 +157,8 @@ builder.Services.AddRateLimiter(options =>
         await ApiProblem.Create(context.HttpContext, StatusCodes.Status429TooManyRequests, "rate_limit_exceeded", "The request rate limit was exceeded.").ExecuteAsync(context.HttpContext);
     };
     options.AddPolicy("authentication", context => RateLimitPartition.GetFixedWindowLimiter(context.Connection.RemoteIpAddress?.ToString() ?? "unknown", _ => new FixedWindowRateLimiterOptions { PermitLimit = 20, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
+    // A person deciding cards taps about once a second, which the general mutation limit would stop.
+    options.AddPolicy("shopping-plan-decision", context => RateLimitPartition.GetFixedWindowLimiter(context.User.FindFirst("sub")?.Value ?? context.User.Identity?.Name ?? context.Connection.RemoteIpAddress?.ToString() ?? "unknown", _ => new FixedWindowRateLimiterOptions { PermitLimit = 120, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
     options.AddPolicy("mutation", context => RateLimitPartition.GetFixedWindowLimiter(context.User.FindFirst("sub")?.Value ?? context.User.Identity?.Name ?? context.Connection.RemoteIpAddress?.ToString() ?? "unknown", _ => new FixedWindowRateLimiterOptions { PermitLimit = 60, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
 });
 builder.Services.AddOpenApi(options => options.AddDocumentTransformer(async (document, context, cancellationToken) =>
@@ -175,7 +177,7 @@ telemetry.WithTracing(tracing =>
 });
 telemetry.WithMetrics(metrics =>
 {
-    metrics.AddAspNetCoreInstrumentation().AddMeter("Cocinaris.Inventory").AddMeter("Cocinaris.Profiles").AddMeter("Cocinaris.Security");
+    metrics.AddAspNetCoreInstrumentation().AddMeter("Cocinaris.Inventory").AddMeter("Cocinaris.ShoppingPlans").AddMeter("Cocinaris.Profiles").AddMeter("Cocinaris.Security");
     if (Uri.TryCreate(builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"], UriKind.Absolute, out var endpoint))
     {
         metrics.AddOtlpExporter(options => options.Endpoint = endpoint);
@@ -263,6 +265,7 @@ api.MapGroup("/inventory").RequireAuthorization().MapInventoryEndpoints();
 api.MapGroup("/profile").RequireAuthorization().MapProfileEndpoints();
 api.MapGroup("/recipes").RequireAuthorization().MapRecipeEndpoints();
 api.MapGroup("/planning").RequireAuthorization().MapPlanningEndpoints();
+api.MapGroup("/planning/shopping-plans").RequireAuthorization().MapShoppingPlanEndpoints();
 app.Run();
 
 /// <summary>API entry point; partial so the integration-test host can reach it.</summary>

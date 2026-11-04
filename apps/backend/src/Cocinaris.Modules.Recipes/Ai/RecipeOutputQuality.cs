@@ -63,6 +63,12 @@ public static partial class RecipeOutputQuality
         return issues;
     }
 
+    /// <summary>Checks plan cards' summaries against the requested language (PLAN-0062).</summary>
+    /// <param name="response">Schema-valid answer.</param>
+    /// <param name="outputLanguage">Requested language tag.</param>
+    public static IReadOnlyList<RecipeQualityIssue> CheckPlanDeck(PlanDeckResponse response, string? outputLanguage) =>
+        LanguageIssue(response.Candidates.Select(candidate => candidate.Summary), outputLanguage) is { } issue ? [issue] : [];
+
     /// <summary>Checks an expanded recipe's stages against the requested language and detail level.</summary>
     /// <param name="response">Schema-valid expansion.</param>
     /// <param name="outputLanguage">Requested language tag (<c>pt-BR</c>, <c>en</c>, <c>es</c>).</param>

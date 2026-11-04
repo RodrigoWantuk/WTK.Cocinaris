@@ -573,6 +573,11 @@ namespace Cocinaris.Infrastructure.Persistence.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
 
+                    b.Property<int>("MealsCovered")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1);
+
                     b.Property<Guid>("MenuPlanId")
                         .HasColumnType("uuid");
 
@@ -601,6 +606,9 @@ namespace Cocinaris.Infrastructure.Persistence.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
 
+                    b.Property<int?>("SuggestedOrder")
+                        .HasColumnType("integer");
+
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -618,6 +626,8 @@ namespace Cocinaris.Infrastructure.Persistence.Migrations
                     b.ToTable("menu_entries", "planning", t =>
                         {
                             t.HasCheckConstraint("ck_menu_entries_meal_type", "\"MealType\" IS NULL OR \"MealType\" IN ('breakfast', 'lunch', 'dinner', 'snack')");
+
+                            t.HasCheckConstraint("ck_menu_entries_meals_covered", "\"MealsCovered\" BETWEEN 1 AND 4");
 
                             t.HasCheckConstraint("ck_menu_entries_pinned_revision", "\"PinnedRevisionNumber\" IS NULL OR \"PinnedRevisionNumber\" >= 1");
 
@@ -1628,6 +1638,155 @@ namespace Cocinaris.Infrastructure.Persistence.Migrations
                     b.ToTable("shopping_checks", "planning");
                 });
 
+            modelBuilder.Entity("Cocinaris.Infrastructure.Persistence.ShoppingPlanCardRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AcceptMode")
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
+                    b.Property<string>("CandidateJson")
+                        .HasColumnType("jsonb");
+
+                    b.Property<DateTimeOffset?>("DecidedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("ExpansionKey")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ExpansionState")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
+                    b.Property<int>("FirstSeenOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("OwnerUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("RecipeId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("RejectIngredientKey")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("RejectReason")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<int>("Repeats")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("SessionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("SnapshotJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
+                    b.Property<string>("State")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SessionId", "OwnerUserId");
+
+                    b.HasIndex("OwnerUserId", "SessionId", "FirstSeenOrder");
+
+                    b.ToTable("shopping_plan_cards", "planning", t =>
+                        {
+                            t.HasCheckConstraint("ck_shopping_plan_cards_expansion", "\"ExpansionState\" IN ('None', 'Pending', 'Ready', 'Failed')");
+
+                            t.HasCheckConstraint("ck_shopping_plan_cards_repeats", "\"Repeats\" BETWEEN 1 AND 4");
+
+                            t.HasCheckConstraint("ck_shopping_plan_cards_source", "\"Source\" IN ('Saved', 'Idea', 'Ai')");
+
+                            t.HasCheckConstraint("ck_shopping_plan_cards_state", "\"State\" IN ('Unseen', 'Accepted', 'Rejected')");
+                        });
+                });
+
+            modelBuilder.Entity("Cocinaris.Infrastructure.Persistence.ShoppingPlanSessionRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("BatchCount")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("ConsecutiveRejections")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("CreationKey")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("LastBatchKey")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("LastDecidedCardId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("MenuPlanId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("OwnerUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("PrivateDirection")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("SetupJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MenuPlanId")
+                        .IsUnique();
+
+                    b.HasIndex("OwnerUserId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_shopping_plan_sessions_in_progress")
+                        .HasFilter("\"Status\" IN ('Building', 'Reviewing')");
+
+                    b.HasIndex("MenuPlanId", "OwnerUserId");
+
+                    b.HasIndex("OwnerUserId", "CreatedAt");
+
+                    b.HasIndex("OwnerUserId", "CreationKey")
+                        .IsUnique();
+
+                    b.ToTable("shopping_plan_sessions", "planning", t =>
+                        {
+                            t.HasCheckConstraint("ck_shopping_plan_sessions_batches", "\"BatchCount\" BETWEEN 0 AND 5");
+
+                            t.HasCheckConstraint("ck_shopping_plan_sessions_status", "\"Status\" IN ('Building', 'Reviewing', 'Finished', 'Abandoned')");
+                        });
+                });
+
             modelBuilder.Entity("Cocinaris.Infrastructure.Persistence.TransactionRecord", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2291,6 +2450,32 @@ namespace Cocinaris.Infrastructure.Persistence.Migrations
                 });
 
             modelBuilder.Entity("Cocinaris.Infrastructure.Persistence.ShoppingCheckRecord", b =>
+                {
+                    b.HasOne("Cocinaris.Modules.Identity.InternalUser", null)
+                        .WithMany()
+                        .HasForeignKey("OwnerUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Cocinaris.Infrastructure.Persistence.MenuPlanRecord", null)
+                        .WithMany()
+                        .HasForeignKey("MenuPlanId", "OwnerUserId")
+                        .HasPrincipalKey("Id", "OwnerUserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Cocinaris.Infrastructure.Persistence.ShoppingPlanCardRecord", b =>
+                {
+                    b.HasOne("Cocinaris.Infrastructure.Persistence.ShoppingPlanSessionRecord", null)
+                        .WithMany()
+                        .HasForeignKey("SessionId", "OwnerUserId")
+                        .HasPrincipalKey("Id", "OwnerUserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Cocinaris.Infrastructure.Persistence.ShoppingPlanSessionRecord", b =>
                 {
                     b.HasOne("Cocinaris.Modules.Identity.InternalUser", null)
                         .WithMany()

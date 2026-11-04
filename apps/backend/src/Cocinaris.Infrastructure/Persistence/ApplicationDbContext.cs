@@ -77,6 +77,12 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
     /// <summary>Gets menu entries.</summary>
     public DbSet<MenuEntryRecord> MenuEntries => Set<MenuEntryRecord>();
 
+    /// <summary>Gets shopping plans (PLAN-0062).</summary>
+    public DbSet<ShoppingPlanSessionRecord> ShoppingPlanSessions => Set<ShoppingPlanSessionRecord>();
+
+    /// <summary>Gets shopping plan cards (PLAN-0062).</summary>
+    public DbSet<ShoppingPlanCardRecord> ShoppingPlanCards => Set<ShoppingPlanCardRecord>();
+
     /// <summary>Gets shopping lines checked off per plan.</summary>
     public DbSet<ShoppingCheckRecord> ShoppingChecks => Set<ShoppingCheckRecord>();
 
@@ -478,12 +484,55 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             entity.HasIndex(x => new { x.OwnerUserId, x.Status, x.StartDate });
         });
 
+        modelBuilder.Entity<ShoppingPlanSessionRecord>(entity =>
+        {
+            entity.ToTable("shopping_plan_sessions", "planning", table =>
+            {
+                table.HasCheckConstraint("ck_shopping_plan_sessions_status", "\"Status\" IN ('Building', 'Reviewing', 'Finished', 'Abandoned')");
+                table.HasCheckConstraint("ck_shopping_plan_sessions_batches", "\"BatchCount\" BETWEEN 0 AND 5");
+            });
+            entity.HasKey(x => x.Id);
+            entity.HasAlternateKey(x => new { x.Id, x.OwnerUserId });
+            entity.Property(x => x.Status).HasMaxLength(20).IsRequired();
+            entity.Property(x => x.SetupJson).HasColumnType("jsonb").IsRequired();
+            entity.HasOne<MenuPlanRecord>().WithMany().HasForeignKey(x => new { x.MenuPlanId, x.OwnerUserId }).HasPrincipalKey(x => new { x.Id, x.OwnerUserId }).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<InternalUser>().WithMany().HasForeignKey(x => x.OwnerUserId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasIndex(x => x.MenuPlanId).IsUnique();
+            entity.HasIndex(x => new { x.OwnerUserId, x.CreationKey }).IsUnique();
+            entity.HasIndex(x => new { x.OwnerUserId, x.CreatedAt });
+            // One plan in progress per owner, enforced by the database so two tabs cannot race past it.
+            entity.HasIndex(x => x.OwnerUserId).IsUnique().HasDatabaseName("ux_shopping_plan_sessions_in_progress").HasFilter("\"Status\" IN ('Building', 'Reviewing')");
+        });
+
+        modelBuilder.Entity<ShoppingPlanCardRecord>(entity =>
+        {
+            entity.ToTable("shopping_plan_cards", "planning", table =>
+            {
+                table.HasCheckConstraint("ck_shopping_plan_cards_state", "\"State\" IN ('Unseen', 'Accepted', 'Rejected')");
+                table.HasCheckConstraint("ck_shopping_plan_cards_source", "\"Source\" IN ('Saved', 'Idea', 'Ai')");
+                table.HasCheckConstraint("ck_shopping_plan_cards_expansion", "\"ExpansionState\" IN ('None', 'Pending', 'Ready', 'Failed')");
+                table.HasCheckConstraint("ck_shopping_plan_cards_repeats", "\"Repeats\" BETWEEN 1 AND 4");
+            });
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Source).HasMaxLength(10).IsRequired();
+            entity.Property(x => x.State).HasMaxLength(10).IsRequired();
+            entity.Property(x => x.ExpansionState).HasMaxLength(10).IsRequired();
+            entity.Property(x => x.RejectReason).HasMaxLength(20);
+            entity.Property(x => x.RejectIngredientKey).HasMaxLength(200);
+            entity.Property(x => x.AcceptMode).HasMaxLength(10);
+            entity.Property(x => x.CandidateJson).HasColumnType("jsonb");
+            entity.Property(x => x.SnapshotJson).HasColumnType("jsonb").IsRequired();
+            entity.HasOne<ShoppingPlanSessionRecord>().WithMany().HasForeignKey(x => new { x.SessionId, x.OwnerUserId }).HasPrincipalKey(x => new { x.Id, x.OwnerUserId }).OnDelete(DeleteBehavior.Cascade);
+            entity.HasIndex(x => new { x.OwnerUserId, x.SessionId, x.FirstSeenOrder });
+        });
+
         modelBuilder.Entity<MenuEntryRecord>(entity =>
         {
             entity.ToTable("menu_entries", "planning", table =>
             {
                 table.HasCheckConstraint("ck_menu_entries_status", "\"Status\" IN ('Planned', 'Skipped')");
                 table.HasCheckConstraint("ck_menu_entries_servings", "\"Servings\" BETWEEN 1 AND 24");
+                table.HasCheckConstraint("ck_menu_entries_meals_covered", "\"MealsCovered\" BETWEEN 1 AND 4");
                 table.HasCheckConstraint("ck_menu_entries_meal_type", "\"MealType\" IS NULL OR \"MealType\" IN ('breakfast', 'lunch', 'dinner', 'snack')");
                 table.HasCheckConstraint("ck_menu_entries_pinned_revision", "\"PinnedRevisionNumber\" IS NULL OR \"PinnedRevisionNumber\" >= 1");
             });
@@ -491,6 +540,7 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             entity.Property(x => x.Status).HasMaxLength(20).IsRequired();
             entity.Property(x => x.MealType).HasMaxLength(20);
             entity.Property(x => x.ReserveIngredients).HasDefaultValue(true);
+            entity.Property(x => x.MealsCovered).HasDefaultValue(1);
             // Both foreign keys include the owner, so an entry can only point at the owner's plan and recipe.
             entity.HasOne<MenuPlanRecord>().WithMany().HasForeignKey(x => new { x.MenuPlanId, x.OwnerUserId }).HasPrincipalKey(x => new { x.Id, x.OwnerUserId }).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne<RecipeRecord>().WithMany().HasForeignKey(x => new { x.RecipeId, x.OwnerUserId }).HasPrincipalKey(x => new { x.Id, x.OwnerUserId }).OnDelete(DeleteBehavior.Restrict);

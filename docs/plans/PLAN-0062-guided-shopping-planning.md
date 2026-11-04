@@ -1,9 +1,9 @@
 # PLAN-0062: Guided Shopping Planning ("Planejar compras")
 
-- **Status:** Ready (owner approved this plan on 2026-11-04; Slice 1 not started)
+- **Status:** In Progress (owner approved this plan on 2026-11-04; Slice 1 underway)
 - **Type:** Implementation
 - **Priority:** High (owner request)
-- **Owner:** Unassigned; the next execution agent claims it
+- **Owner:** Claude Code (claimed 2026-11-04)
 - **Created:** 2026-11-04
 - **Last updated:** 2026-11-04
 - **Branch:** Plan publication `agent/plan-0062-guided-shopping-planning`; each slice uses the branch named in its section
@@ -737,16 +737,16 @@ Migrations are additive, and rollback means deploying the earlier code with unus
 
 ## Execution state
 
-- **Current run delivery target:** Plan publication.
-- **Current checkpoint:** Plan approved by the owner and published in a draft PR.
-- **Last completed step:** Functional discovery and technical design.
-- **Exact next action:** The owner merges the plan PR. Then claim the plan and start Slice 1 from fresh `origin/main` on `agent/plan-0062-s1-plan-to-list`, beginning with the migration and `RestrictionGuard`.
-- **Blockers:** None for Slice 1 implementation. G1-A needs the owner's review before merge. Slice 4 limits need G2-A.
-- **Partially modified areas:** None.
-- **Documentation delivered:** This plan.
-- **Validation performed:** Code reading of the affected modules; no code changed.
+- **Current run delivery target:** Slice 1, from zero to list.
+- **Current checkpoint:** Backend of Slice 1 committed on `agent/plan-0062-s1-plan-to-list`: migration, restriction guard, AI operation and contract, ranking, sequencing, endpoints, and tests. Frontend, OpenAPI, documents, and evaluation are not done.
+- **Last completed step:** Backend unit and integration tests for shopping plans.
+- **Exact next action:** Export OpenAPI, regenerate the API client, then build `features/shopping-plan`.
+- **Blockers:** None for implementation. G1-A needs the owner's review before merge. Slice 4 limits need G2-A.
+- **Partially modified areas:** No frontend yet; the routes exist without a screen.
+- **Documentation delivered:** This plan; XML documentation on new backend code.
+- **Validation performed:** Unit filter `ShoppingPlanTests` 58/58. Integration tests for the plan journey, the guard, saved recipes, and two existing planning tests 5/5. Recipe AI contract tests and drift check passed.
 - **Known failures or limitations:** Per-stage equipment conflicts are not detected (Slice 6). Latency figures come from one recorded evaluation and must be confirmed in G1-C.
-- **Working tree state:** Clean after the publication commit.
+- **Working tree state:** Clean after this commit.
 
 ## Progress log
 
@@ -760,6 +760,21 @@ Migrations are additive, and rollback means deploying the earlier code with unus
 - **Result:** Plan ready for Slice 1.
 - **Next action:** See "Exact next action".
 - **Blockers or handoff notes:** Owner gates G1-A and G2-A.
+
+### 2026-11-04 — Claude Code (Slice 1, backend)
+
+- **Run delivery target:** Slice 1.
+- **Checkpoint:** Backend committed.
+- **Changes included in the commit:** Migration `AddShoppingPlans`; `RestrictionGuard` and rules; `IngredientPerishability`; `recipe.suggest_plan_deck.v1` with schema, fixtures, and validators; `RecipePlanDeckService`; `RecipeIdeaLibrary.FindPlanDeckAsync`; `ShoppingPlanApplicationService`, ranking, and sequencer; endpoints; "Hoje" and allocation order.
+- **Deviations from this plan, keeping the outcome:**
+  - The card's lead ingredient is its largest ingredient by weight or volume, not `primaryIngredientRefs[0]`, because model references are not stable across batches and the "tired of" reason needs a real name.
+  - `DietaryPattern`, `Intolerance`, and `MedicalRestriction` codes that no word list can express (for example `keto`, `renal_diet`) are marked `unverifiable`, so every card shows the note.
+  - Added `POST /{id}/cards/{cardId}/removal`, so "Remover" works on a failed card that has no menu entry.
+  - Added `last_batch_key` to the session, so a retried batch does not spend another.
+  - A failed batch is given back, so a provider outage does not use up the plan's allowance.
+  - Acceptance is two steps, not one transaction, because the menu and the plan use separate stores. Each step is idempotent, so a retry completes it.
+- **Validation performed:** See `Execution state`.
+- **Next action:** See `Exact next action`.
 
 ## Completion and handoff checklist
 

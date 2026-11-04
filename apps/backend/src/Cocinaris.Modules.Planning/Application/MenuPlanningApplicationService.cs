@@ -52,6 +52,9 @@ public interface IMenuPlanStore
     /// <summary>Saves an entry and the plan's change instant.</summary>
     Task SaveEntryAsync(MenuPlan plan, MenuEntry entry, CancellationToken cancellationToken);
 
+    /// <summary>Saves the suggested order of entries, by entry id, and clears it from the plan's other entries.</summary>
+    Task SetSuggestedOrdersAsync(Guid ownerUserId, Guid planId, IReadOnlyDictionary<Guid, int> orders, DateTimeOffset now, CancellationToken cancellationToken);
+
     /// <summary>Removes an entry; cooking sessions started from it keep their history and lose the link.</summary>
     Task RemoveEntryAsync(MenuPlan plan, MenuEntry entry, CancellationToken cancellationToken);
 
@@ -93,7 +96,9 @@ public sealed record MenuEntryView(
     string Status,
     Guid? ExecutionId,
     bool ReserveIngredients = true,
-    MealReadinessView? Readiness = null);
+    MealReadinessView? Readiness = null,
+    int MealsCovered = 1,
+    int? SuggestedOrder = null);
 
 /// <summary>A plan with its entries, ordered by day (flexible last), meal, and creation.</summary>
 public sealed record MenuPlanView(Guid PlanId, string Name, DateOnly StartDate, DateOnly EndDate, string Status, DateTimeOffset? AcceptedAt, DateTimeOffset UpdatedAt, IReadOnlyList<MenuEntryView> Entries);
@@ -498,8 +503,15 @@ public sealed class MenuPlanningApplicationService(
             .ToList();
         var names = plans.ToDictionary(plan => plan.Id, plan => plan.Name);
         var resolved = await ResolveEntriesAsync(user.Id, entries, cancellationToken);
+        // A shopping plan's flexible meals have an order (PLAN-0062). Only the next one is shown, or
+        // "Hoje" would list every meal of the plan each day. Other entries behave as before.
+        var nextByPlan = resolved
+            .Where(item => item.View.Status == "planned" && item.View.PlannedDate is null && item.View.SuggestedOrder is not null)
+            .GroupBy(item => item.PlanId)
+            .ToDictionary(group => group.Key, group => group.Min(item => item.View.SuggestedOrder!.Value));
         return RecipeApplicationResult<IReadOnlyList<TodayMenuEntryView>>.Succeeded(resolved
             .Where(item => item.View.Status is "planned" or "cooking")
+            .Where(item => item.View.Status == "cooking" || item.View.PlannedDate is not null || item.View.SuggestedOrder is null || item.View.SuggestedOrder == nextByPlan[item.PlanId])
             // Meals dated today come before flexible ones.
             .OrderBy(item => item.View.PlannedDate is null)
             .Select(item => new TodayMenuEntryView(item.PlanId, names[item.PlanId], item.View))
@@ -683,6 +695,9 @@ public sealed class MenuPlanningApplicationService(
         foreach (var entry in entries
             .OrderBy(item => item.PlannedDate is null)
             .ThenBy(item => item.PlannedDate)
+            // Shopping and reservations allocate the pantry in this order, so a suggested order must lead
+            // among flexible meals. Meal type stays for hand-built menus, whose order is null.
+            .ThenBy(item => item.SuggestedOrder ?? int.MaxValue)
             .ThenBy(item => item.MealType is null ? MealOrder.Length : Array.IndexOf(MealOrder, item.MealType))
             .ThenBy(item => item.CreatedAt))
         {
@@ -718,7 +733,9 @@ public sealed class MenuPlanningApplicationService(
                 entry.Servings,
                 status,
                 session?.Status is RecipeExecutionStatus.Completed or RecipeExecutionStatus.InProgress ? session.Id : null,
-                entry.ReserveIngredients), content));
+                entry.ReserveIngredients,
+                MealsCovered: entry.MealsCovered,
+                SuggestedOrder: entry.SuggestedOrder), content));
         }
 
         return resolved;

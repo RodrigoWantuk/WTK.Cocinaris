@@ -22,6 +22,7 @@ export const SCHEMA_FILES = {
   suggest: "recipe-suggest-candidates.response.v0.3.json",
   expand: "recipe-expand-selected.response.v0.3.json",
   revise: "recipe-revise.response.v0.3.json",
+  planDeck: "recipe-plan-deck.response.v0.3.json",
 };
 
 /**
@@ -47,11 +48,15 @@ export function compileSchemas(ajv) {
   const expand = JSON.parse(
     readFileSync(join(schemasDir, SCHEMA_FILES.expand), "utf8"),
   );
+  const planDeck = JSON.parse(
+    readFileSync(join(schemasDir, SCHEMA_FILES.planDeck), "utf8"),
+  );
   return {
     suggestSchema: suggest,
     expandSchema: expand,
     validateSuggest: ajv.compile(suggest),
     validateExpand: ajv.compile(expand),
+    validatePlanDeck: ajv.compile(planDeck),
   };
 }
 
@@ -262,6 +267,60 @@ export function validateSuggestSemantics(response, request = null) {
     errors.push("response must not include authorityOverride");
   }
 
+  return { ok: errors.length === 0, errors };
+}
+
+const PLAN_DECK_STRATEGIES = new Set([
+  "on_hand_first",
+  "planned_purchase_reuse",
+  "exploratory",
+]);
+
+/**
+ * Semantic validation for suggest_plan_deck responses (PLAN-0062). Each candidate passes the same
+ * per-candidate rules as suggest_candidates; the rules for the whole answer differ: exactly six,
+ * strategies may repeat, and each dish targets a requested meal.
+ * @param {object} response
+ * @param {object | null} request
+ */
+export function validatePlanDeckSemantics(response, request = null) {
+  const errors = [];
+  if (!response || typeof response !== "object") {
+    return { ok: false, errors: ["response is not an object"] };
+  }
+  const candidates = Array.isArray(response.candidates)
+    ? response.candidates
+    : [];
+  if (candidates.length !== 6) {
+    errors.push(`expected exactly 6 candidates, got ${candidates.length}`);
+  }
+  const fingerprints = new Set();
+  const mealTypes = request?.planDeck?.mealTypes;
+  for (const [index, candidate] of candidates.entries()) {
+    const prefix = `candidates[${index}]`;
+    const single = validateSuggestSemantics({ candidates: [candidate] }, request);
+    for (const error of single.errors) {
+      if (!error.startsWith("expected exactly")) {
+        errors.push(error.replace("candidates[0]", prefix));
+      }
+    }
+    if (!candidate || typeof candidate !== "object") continue;
+    if (!PLAN_DECK_STRATEGIES.has(candidate.candidateStrategy)) {
+      errors.push(`${prefix} uses strategy ${candidate.candidateStrategy}, not allowed in a plan deck`);
+    }
+    const fingerprint = [
+      candidate.dishFormat,
+      candidate.primaryTechnique,
+      ...(candidate.primaryIngredientRefs ?? []),
+    ].join("|");
+    if (fingerprints.has(fingerprint)) {
+      errors.push(`${prefix} is not materially distinct from another candidate`);
+    }
+    fingerprints.add(fingerprint);
+    if (Array.isArray(mealTypes) && !mealTypes.includes(candidate.targetMealType)) {
+      errors.push(`${prefix} targets meal ${candidate.targetMealType}, which was not requested`);
+    }
+  }
   return { ok: errors.length === 0, errors };
 }
 
