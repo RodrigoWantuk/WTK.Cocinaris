@@ -90,7 +90,7 @@ The usage ledger (`ai.usage_ledger`, read-only) showed the failure on 2026-11-04
   - Restrictions reach the model and take precedence over the hint by rule, but there is no deterministic allergen check of the output. That is the same as for expansions today.
   - Injection defense cannot detect every wrong dish a hint might steer the model to: output constraints bound what can happen, not what the model prefers.
   - An accepted AI revision with a new visual descriptor generates a new dish image, at the usual image cost.
-- **Exact next action:** The owner checks the flows on the host and runs the live evaluation, which needs the provider key that agents do not read: `! sudo bash -c 'set -a; . /etc/wtk-cocinaris/api.env; set +a; DEEPSEEK_API_KEY="$Ai__Providers__DeepSeek__ApiKey" PLAN0028_LIVE_SMOKE=1 PLAN0060_LIVE_EVAL=1 /opt/dotnet/dotnet run --project scripts/ai/RecipeGatewayLiveSmoke/RecipeGatewayLiveSmoke.csproj -c Release'`. Every `markerLeaked` must be false.
+- **Exact next action:** The owner checks the flows on the host and runs the live evaluation, which needs the provider key that agents do not read: `! sudo env DOTNET_ROOT=/opt/dotnet PLAN0028_LIVE_SMOKE=1 PLAN0060_LIVE_EVAL=1 DEEPSEEK_API_KEY="$(sudo sed -n 's/^Ai__Providers__DeepSeek__ApiKey=//p' /etc/wtk-cocinaris/api.env)" /opt/dotnet/dotnet run --project scripts/ai/RecipeGatewayLiveSmoke/RecipeGatewayLiveSmoke.csproj -c Release` (after PLAN-0046's pull request is merged; the file is not sourced because its connection string has semicolons). Every `markerLeaked` must be false.
 - **Blockers:** None.
 
 ## Progress log

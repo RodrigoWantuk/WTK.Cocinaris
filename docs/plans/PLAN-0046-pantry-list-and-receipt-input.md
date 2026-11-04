@@ -57,4 +57,5 @@ The accepted first release requires manual list entry, AI parsing of a manual li
 
 ## Progress log
 
+- 2026-11-04: Corrected PLAN-0060's live evaluation command, which would have sourced an environment file that is not shell-safe.
 - 2026-11-04: Moved the Phase 1 work to a branch from fresh `main` and delivered Phases 2 and 3 with tests and documentation.
