@@ -35,6 +35,7 @@ const count = (value: unknown): number | null =>
 
 const KNOWN_ERROR_CODES = new Set<RecipeApiErrorCode>([
   "plan_in_progress",
+  "restriction_blocked",
   "expansions_pending",
   "authentication_required",
   "validation_failed",

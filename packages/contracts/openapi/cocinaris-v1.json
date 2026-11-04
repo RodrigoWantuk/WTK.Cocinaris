@@ -166,6 +166,352 @@
         ],
         "type": "object"
       },
+      "ArrivalFailure": {
+        "description": "A lot that could not be recorded.",
+        "properties": {
+          "errorCode": {
+            "description": "Stable reason.",
+            "type": "string"
+          },
+          "itemKey": {
+            "description": "Shopping line.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "itemKey",
+          "errorCode"
+        ],
+        "type": "object"
+      },
+      "ArrivalLineView": {
+        "description": "One purchased line and what to do with it.",
+        "properties": {
+          "boughtQuantity": {
+            "description": "Quantity taken as bought; editable.",
+            "format": "double",
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ]
+          },
+          "checked": {
+            "description": "Whether the line was checked off.",
+            "type": "boolean"
+          },
+          "displayName": {
+            "description": "Name shown; the lot takes this name, so the list recalculates.",
+            "type": "string"
+          },
+          "itemKey": {
+            "description": "Shopping line.",
+            "type": "string"
+          },
+          "needsRealQuantity": {
+            "description": "Whether to ask how much came: perishable, with no confirmed package size.",
+            "type": "boolean"
+          },
+          "packageSize": {
+            "description": "Confirmed package size, if any.",
+            "format": "double",
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ]
+          },
+          "portions": {
+            "description": "How to store it.",
+            "items": {
+              "$ref": "#/components/schemas/ArrivalPortion"
+            },
+            "type": "array"
+          },
+          "requiredQuantity": {
+            "description": "What is left to buy, to compare with the amount bought.",
+            "format": "double",
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ]
+          },
+          "storeSection": {
+            "description": "Store section.",
+            "type": "string"
+          },
+          "unit": {
+            "description": "Canonical unit.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "itemKey",
+          "displayName",
+          "unit",
+          "storeSection",
+          "checked",
+          "boughtQuantity",
+          "needsRealQuantity",
+          "packageSize",
+          "requiredQuantity",
+          "portions"
+        ],
+        "type": "object"
+      },
+      "ArrivalPlanView": {
+        "description": "What arrival proposes.",
+        "properties": {
+          "containerCount": {
+            "description": "Containers or bags to set aside.",
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ]
+          },
+          "guidanceEnabled": {
+            "description": "Whether curated storage guidance is active. When false, nothing mentions freezing or dates.",
+            "type": "boolean"
+          },
+          "lines": {
+            "description": "Lines to store.",
+            "items": {
+              "$ref": "#/components/schemas/ArrivalLineView"
+            },
+            "type": "array"
+          },
+          "menuId": {
+            "description": "Menu.",
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "menuId",
+          "guidanceEnabled",
+          "containerCount",
+          "lines"
+        ],
+        "type": "object"
+      },
+      "ArrivalPortion": {
+        "description": "A part of a purchase to store together.",
+        "properties": {
+          "count": {
+            "description": "Portions of this size.",
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ]
+          },
+          "dish": {
+            "description": "The dish it is for, when it has one use.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "location": {
+            "description": "`Pantry`, `Refrigerator`, or `Freezer`.",
+            "type": "string"
+          },
+          "quantity": {
+            "description": "Quantity of one portion.",
+            "format": "double",
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ]
+          },
+          "useFirst": {
+            "description": "Whether it will not keep until its meal and cannot be frozen, so it should be used first.",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "location",
+          "quantity",
+          "count",
+          "dish",
+          "useFirst"
+        ],
+        "type": "object"
+      },
+      "ArrivalPreviewRequest": {
+        "description": "Body for recomputing arrival.",
+        "properties": {
+          "from": {
+            "description": "The owner's current day.",
+            "format": "date",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "quantities": {
+            "description": "Quantities the person corrected.",
+            "items": {
+              "$ref": "#/components/schemas/ArrivalQuantity"
+            },
+            "type": [
+              "null",
+              "array"
+            ]
+          }
+        },
+        "required": [
+          "from",
+          "quantities"
+        ],
+        "type": "object"
+      },
+      "ArrivalQuantity": {
+        "description": "A quantity the person corrected.",
+        "properties": {
+          "boughtQuantity": {
+            "description": "Quantity bought.",
+            "format": "double",
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ]
+          },
+          "itemKey": {
+            "description": "Shopping line.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "itemKey",
+          "boughtQuantity"
+        ],
+        "type": "object"
+      },
+      "ArrivalRecordLine": {
+        "description": "A line to record.",
+        "properties": {
+          "displayName": {
+            "description": "Product name.",
+            "type": "string"
+          },
+          "itemKey": {
+            "description": "Shopping line.",
+            "type": "string"
+          },
+          "portions": {
+            "description": "Portions.",
+            "items": {
+              "$ref": "#/components/schemas/ArrivalRecordPortion"
+            },
+            "type": "array"
+          },
+          "unit": {
+            "description": "Canonical unit.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "itemKey",
+          "displayName",
+          "unit",
+          "portions"
+        ],
+        "type": "object"
+      },
+      "ArrivalRecordPortion": {
+        "description": "A portion to record.",
+        "properties": {
+          "count": {
+            "description": "Portions of this size.",
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ]
+          },
+          "location": {
+            "description": "`Pantry`, `Refrigerator`, or `Freezer`.",
+            "type": "string"
+          },
+          "notes": {
+            "description": "Note for the lot, such as what it is for.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "quantity": {
+            "description": "Quantity of one portion.",
+            "format": "double",
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ]
+          }
+        },
+        "required": [
+          "location",
+          "quantity",
+          "count",
+          "notes"
+        ],
+        "type": "object"
+      },
+      "ArrivalRecordRequest": {
+        "description": "Body for recording arrival.",
+        "properties": {
+          "lines": {
+            "description": "Lines to record, at most 120 portions in all.",
+            "items": {
+              "$ref": "#/components/schemas/ArrivalRecordLine"
+            },
+            "type": [
+              "null",
+              "array"
+            ]
+          }
+        },
+        "required": [
+          "lines"
+        ],
+        "type": "object"
+      },
+      "ArrivalResultView": {
+        "description": "Result of recording arrival. Lots are not one transaction; a retry with the same key replays what was recorded.",
+        "properties": {
+          "failed": {
+            "description": "Lots that failed.",
+            "items": {
+              "$ref": "#/components/schemas/ArrivalFailure"
+            },
+            "type": "array"
+          },
+          "recorded": {
+            "description": "Lots recorded or replayed.",
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ]
+          }
+        },
+        "required": [
+          "recorded",
+          "failed"
+        ],
+        "type": "object"
+      },
       "AttentionListResponse": {
         "description": "Lots that need attention, most urgent first; at most 100.",
         "properties": {
@@ -4965,6 +5311,14 @@
             "description": "Key to check the line off.",
             "type": "string"
           },
+          "later": {
+            "description": "Whether it was left for a later purchase.",
+            "type": "boolean"
+          },
+          "markKey": {
+            "description": "Key to address this line's marks.",
+            "type": "string"
+          },
           "packageCount": {
             "description": "Whole packages that cover ToBuyQuantity; null without a package size or with nothing to buy.",
             "format": "int32",
@@ -4985,6 +5339,10 @@
               "string"
             ]
           },
+          "place": {
+            "description": "`market`, `street_market`, `butcher`, or `bakery`.",
+            "type": "string"
+          },
           "requiredQuantity": {
             "description": "What the meals need in all.",
             "format": "double",
@@ -4997,6 +5355,13 @@
           "storeSection": {
             "description": "Store section to group the line by: `produce`, `butcher_fish`, `dairy_eggs`, `bakery`, `dry_goods`, `drinks`, or `other` (PLAN-0037 Phase 3).",
             "type": "string"
+          },
+          "substituteFor": {
+            "description": "The ingredient this line replaces, if any.",
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "toBuyQuantity": {
             "description": "What is left to buy, never negative; no package size is assumed.",
@@ -5033,7 +5398,11 @@
           "storeSection",
           "packageSize",
           "packageCount",
-          "expectedRemainder"
+          "expectedRemainder",
+          "markKey",
+          "later",
+          "substituteFor",
+          "place"
         ],
         "type": "object"
       },
@@ -5072,6 +5441,46 @@
           "from",
           "mealCount",
           "items"
+        ],
+        "type": "object"
+      },
+      "ShoppingMarkRequest": {
+        "description": "Body (and response) for what the person said about a line; every field is replaced, and all empty removes the mark.",
+        "properties": {
+          "itemKey": {
+            "description": "The line's `markKey`.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "place": {
+            "description": "Place code, or null for the section's default.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "state": {
+            "description": "`later`, or null.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "substituteName": {
+            "description": "Product bought instead, at most 120 characters. Refused with `restriction_blocked` when it conflicts with the profile.",
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "required": [
+          "itemKey",
+          "state",
+          "substituteName",
+          "place"
         ],
         "type": "object"
       },
@@ -9863,6 +10272,422 @@
         ]
       }
     },
+    "/api/v1/planning/menus/{menuId}/arrival": {
+      "get": {
+        "operationId": "getApiV1PlanningMenusMenuIdArrival",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "menuId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "from",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "all",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArrivalPlanView"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "authenticationFailure": {
+                    "summary": "The backend-managed session is absent or invalid.",
+                    "value": {
+                      "detail": "Authentication is required.",
+                      "errorCode": "authentication_required",
+                      "status": 401,
+                      "title": "Unauthorized",
+                      "traceId": "00-00000000000000000000000000000000-0000000000000000-00",
+                      "type": "about:blank"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authentication is required."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "unexpectedFailure": {
+                    "summary": "An unexpected error was safely redacted.",
+                    "value": {
+                      "detail": "An unexpected error occurred.",
+                      "errorCode": "unexpected_error",
+                      "status": 500,
+                      "title": "Internal Server Error",
+                      "traceId": "00-00000000000000000000000000000000-0000000000000000-00",
+                      "type": "about:blank"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An unexpected server error occurred."
+          }
+        },
+        "security": [
+          {
+            "cocinarisSession": []
+          }
+        ],
+        "summary": "GET /api/v1/planning/menus/{menuId}/arrival",
+        "tags": [
+          "Cocinaris.Api"
+        ]
+      },
+      "post": {
+        "operationId": "postApiV1PlanningMenusMenuIdArrival",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "menuId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Required CSRF token issued by GET /api/v1/session.",
+            "in": "header",
+            "name": "X-CSRF-TOKEN",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Required UUID key; a retry with the same key returns the plan without creating another or spending another batch.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ArrivalRecordRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArrivalResultView"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "authenticationFailure": {
+                    "summary": "The backend-managed session is absent or invalid.",
+                    "value": {
+                      "detail": "Authentication is required.",
+                      "errorCode": "authentication_required",
+                      "status": 401,
+                      "title": "Unauthorized",
+                      "traceId": "00-00000000000000000000000000000000-0000000000000000-00",
+                      "type": "about:blank"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authentication is required."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "415": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "unsupportedMediaType": {
+                    "summary": "The request content type is unsupported.",
+                    "value": {
+                      "detail": "The request content type is not supported.",
+                      "errorCode": "unsupported_media_type",
+                      "status": 415,
+                      "title": "Unsupported Media Type",
+                      "traceId": "00-00000000000000000000000000000000-0000000000000000-00",
+                      "type": "about:blank"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request content type is not supported."
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "unexpectedFailure": {
+                    "summary": "An unexpected error was safely redacted.",
+                    "value": {
+                      "detail": "An unexpected error occurred.",
+                      "errorCode": "unexpected_error",
+                      "status": 500,
+                      "title": "Internal Server Error",
+                      "traceId": "00-00000000000000000000000000000000-0000000000000000-00",
+                      "type": "about:blank"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An unexpected server error occurred."
+          }
+        },
+        "security": [
+          {
+            "cocinarisSession": []
+          }
+        ],
+        "summary": "POST /api/v1/planning/menus/{menuId}/arrival",
+        "tags": [
+          "Cocinaris.Api"
+        ]
+      }
+    },
+    "/api/v1/planning/menus/{menuId}/arrival/preview": {
+      "post": {
+        "operationId": "postApiV1PlanningMenusMenuIdArrivalPreview",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "menuId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Required CSRF token issued by GET /api/v1/session.",
+            "in": "header",
+            "name": "X-CSRF-TOKEN",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ArrivalPreviewRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArrivalPlanView"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "authenticationFailure": {
+                    "summary": "The backend-managed session is absent or invalid.",
+                    "value": {
+                      "detail": "Authentication is required.",
+                      "errorCode": "authentication_required",
+                      "status": 401,
+                      "title": "Unauthorized",
+                      "traceId": "00-00000000000000000000000000000000-0000000000000000-00",
+                      "type": "about:blank"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authentication is required."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "415": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "unsupportedMediaType": {
+                    "summary": "The request content type is unsupported.",
+                    "value": {
+                      "detail": "The request content type is not supported.",
+                      "errorCode": "unsupported_media_type",
+                      "status": 415,
+                      "title": "Unsupported Media Type",
+                      "traceId": "00-00000000000000000000000000000000-0000000000000000-00",
+                      "type": "about:blank"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request content type is not supported."
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "unexpectedFailure": {
+                    "summary": "An unexpected error was safely redacted.",
+                    "value": {
+                      "detail": "An unexpected error occurred.",
+                      "errorCode": "unexpected_error",
+                      "status": 500,
+                      "title": "Internal Server Error",
+                      "traceId": "00-00000000000000000000000000000000-0000000000000000-00",
+                      "type": "about:blank"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An unexpected server error occurred."
+          }
+        },
+        "security": [
+          {
+            "cocinarisSession": []
+          }
+        ],
+        "summary": "POST /api/v1/planning/menus/{menuId}/arrival/preview",
+        "tags": [
+          "Cocinaris.Api"
+        ]
+      }
+    },
     "/api/v1/planning/menus/{menuId}/entries": {
       "post": {
         "operationId": "postApiV1PlanningMenusMenuIdEntries",
@@ -10572,6 +11397,161 @@
           }
         ],
         "summary": "PUT /api/v1/planning/menus/{menuId}/shopping/checks",
+        "tags": [
+          "Cocinaris.Api"
+        ]
+      }
+    },
+    "/api/v1/planning/menus/{menuId}/shopping/marks": {
+      "put": {
+        "operationId": "putApiV1PlanningMenusMenuIdShoppingMarks",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "menuId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Required CSRF token issued by GET /api/v1/session.",
+            "in": "header",
+            "name": "X-CSRF-TOKEN",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ShoppingMarkRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShoppingMarkRequest"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "authenticationFailure": {
+                    "summary": "The backend-managed session is absent or invalid.",
+                    "value": {
+                      "detail": "Authentication is required.",
+                      "errorCode": "authentication_required",
+                      "status": 401,
+                      "title": "Unauthorized",
+                      "traceId": "00-00000000000000000000000000000000-0000000000000000-00",
+                      "type": "about:blank"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authentication is required."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "415": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "unsupportedMediaType": {
+                    "summary": "The request content type is unsupported.",
+                    "value": {
+                      "detail": "The request content type is not supported.",
+                      "errorCode": "unsupported_media_type",
+                      "status": 415,
+                      "title": "Unsupported Media Type",
+                      "traceId": "00-00000000000000000000000000000000-0000000000000000-00",
+                      "type": "about:blank"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request content type is not supported."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "unexpectedFailure": {
+                    "summary": "An unexpected error was safely redacted.",
+                    "value": {
+                      "detail": "An unexpected error occurred.",
+                      "errorCode": "unexpected_error",
+                      "status": 500,
+                      "title": "Internal Server Error",
+                      "traceId": "00-00000000000000000000000000000000-0000000000000000-00",
+                      "type": "about:blank"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An unexpected server error occurred."
+          }
+        },
+        "security": [
+          {
+            "cocinarisSession": []
+          }
+        ],
+        "summary": "PUT /api/v1/planning/menus/{menuId}/shopping/marks",
         "tags": [
           "Cocinaris.Api"
         ]

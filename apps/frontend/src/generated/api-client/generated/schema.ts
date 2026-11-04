@@ -349,6 +349,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/planning/menus/{menuId}/arrival": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** GET /api/v1/planning/menus/{menuId}/arrival */
+        get: operations["getApiV1PlanningMenusMenuIdArrival"];
+        put?: never;
+        /** POST /api/v1/planning/menus/{menuId}/arrival */
+        post: operations["postApiV1PlanningMenusMenuIdArrival"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/planning/menus/{menuId}/arrival/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** POST /api/v1/planning/menus/{menuId}/arrival/preview */
+        post: operations["postApiV1PlanningMenusMenuIdArrivalPreview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/planning/menus/{menuId}/entries": {
         parameters: {
             query?: never;
@@ -411,6 +446,23 @@ export interface paths {
         get?: never;
         /** PUT /api/v1/planning/menus/{menuId}/shopping/checks */
         put: operations["putApiV1PlanningMenusMenuIdShoppingChecks"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/planning/menus/{menuId}/shopping/marks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** PUT /api/v1/planning/menus/{menuId}/shopping/marks */
+        put: operations["putApiV1PlanningMenusMenuIdShoppingMarks"];
         post?: never;
         delete?: never;
         options?: never;
@@ -1431,6 +1483,144 @@ export interface components {
             adultDeclared: boolean;
             privacyVersion: null | string;
             termsVersion: string;
+        };
+        /** @description A lot that could not be recorded. */
+        ArrivalFailure: {
+            /** @description Stable reason. */
+            errorCode: string;
+            /** @description Shopping line. */
+            itemKey: string;
+        };
+        /** @description One purchased line and what to do with it. */
+        ArrivalLineView: {
+            /**
+             * Format: double
+             * @description Quantity taken as bought; editable.
+             */
+            boughtQuantity: number | string;
+            /** @description Whether the line was checked off. */
+            checked: boolean;
+            /** @description Name shown; the lot takes this name, so the list recalculates. */
+            displayName: string;
+            /** @description Shopping line. */
+            itemKey: string;
+            /** @description Whether to ask how much came: perishable, with no confirmed package size. */
+            needsRealQuantity: boolean;
+            /**
+             * Format: double
+             * @description Confirmed package size, if any.
+             */
+            packageSize: null | number | string;
+            /** @description How to store it. */
+            portions: components["schemas"]["ArrivalPortion"][];
+            /**
+             * Format: double
+             * @description What is left to buy, to compare with the amount bought.
+             */
+            requiredQuantity: number | string;
+            /** @description Store section. */
+            storeSection: string;
+            /** @description Canonical unit. */
+            unit: string;
+        };
+        /** @description What arrival proposes. */
+        ArrivalPlanView: {
+            /**
+             * Format: int32
+             * @description Containers or bags to set aside.
+             */
+            containerCount: number | string;
+            /** @description Whether curated storage guidance is active. When false, nothing mentions freezing or dates. */
+            guidanceEnabled: boolean;
+            /** @description Lines to store. */
+            lines: components["schemas"]["ArrivalLineView"][];
+            /**
+             * Format: uuid
+             * @description Menu.
+             */
+            menuId: string;
+        };
+        /** @description A part of a purchase to store together. */
+        ArrivalPortion: {
+            /**
+             * Format: int32
+             * @description Portions of this size.
+             */
+            count: number | string;
+            /** @description The dish it is for, when it has one use. */
+            dish: null | string;
+            /** @description `Pantry`, `Refrigerator`, or `Freezer`. */
+            location: string;
+            /**
+             * Format: double
+             * @description Quantity of one portion.
+             */
+            quantity: number | string;
+            /** @description Whether it will not keep until its meal and cannot be frozen, so it should be used first. */
+            useFirst: boolean;
+        };
+        /** @description Body for recomputing arrival. */
+        ArrivalPreviewRequest: {
+            /**
+             * Format: date
+             * @description The owner's current day.
+             */
+            from: null | string;
+            /** @description Quantities the person corrected. */
+            quantities: null | components["schemas"]["ArrivalQuantity"][];
+        };
+        /** @description A quantity the person corrected. */
+        ArrivalQuantity: {
+            /**
+             * Format: double
+             * @description Quantity bought.
+             */
+            boughtQuantity: number | string;
+            /** @description Shopping line. */
+            itemKey: string;
+        };
+        /** @description A line to record. */
+        ArrivalRecordLine: {
+            /** @description Product name. */
+            displayName: string;
+            /** @description Shopping line. */
+            itemKey: string;
+            /** @description Portions. */
+            portions: components["schemas"]["ArrivalRecordPortion"][];
+            /** @description Canonical unit. */
+            unit: string;
+        };
+        /** @description A portion to record. */
+        ArrivalRecordPortion: {
+            /**
+             * Format: int32
+             * @description Portions of this size.
+             */
+            count: number | string;
+            /** @description `Pantry`, `Refrigerator`, or `Freezer`. */
+            location: string;
+            /** @description Note for the lot, such as what it is for. */
+            notes: null | string;
+            /**
+             * Format: double
+             * @description Quantity of one portion.
+             */
+            quantity: number | string;
+        };
+        /** @description Body for recording arrival. */
+        ArrivalRecordRequest: {
+            /** @description Lines to record, at most 120 portions in all. */
+            lines: null | components["schemas"]["ArrivalRecordLine"][];
+        };
+        /** @description Result of recording arrival. Lots are not one transaction; a retry with the same key replays what was recorded. */
+        ArrivalResultView: {
+            /** @description Lots that failed. */
+            failed: components["schemas"]["ArrivalFailure"][];
+            /**
+             * Format: int32
+             * @description Lots recorded or replayed.
+             */
+            recorded: number | string;
         };
         /** @description Lots that need attention, most urgent first; at most 100. */
         AttentionListResponse: {
@@ -2884,6 +3074,10 @@ export interface components {
             expectedRemainder: null | number | string;
             /** @description Key to check the line off. */
             itemKey: string;
+            /** @description Whether it was left for a later purchase. */
+            later: boolean;
+            /** @description Key to address this line's marks. */
+            markKey: string;
             /**
              * Format: int32
              * @description Whole packages that cover ToBuyQuantity; null without a package size or with nothing to buy.
@@ -2894,6 +3088,8 @@ export interface components {
              * @description Package size the owner confirmed for this item, in Unit (PLAN-0029 Phase 4); null when none was confirmed.
              */
             packageSize: null | number | string;
+            /** @description `market`, `street_market`, `butcher`, or `bakery`. */
+            place: string;
             /**
              * Format: double
              * @description What the meals need in all.
@@ -2901,6 +3097,8 @@ export interface components {
             requiredQuantity: number | string;
             /** @description Store section to group the line by: `produce`, `butcher_fish`, `dairy_eggs`, `bakery`, `dry_goods`, `drinks`, or `other` (PLAN-0037 Phase 3). */
             storeSection: string;
+            /** @description The ingredient this line replaces, if any. */
+            substituteFor: null | string;
             /**
              * Format: double
              * @description What is left to buy, never negative; no package size is assumed.
@@ -2930,6 +3128,17 @@ export interface components {
              * @description Menu.
              */
             menuId: string;
+        };
+        /** @description Body (and response) for what the person said about a line; every field is replaced, and all empty removes the mark. */
+        ShoppingMarkRequest: {
+            /** @description The line's `markKey`. */
+            itemKey: null | string;
+            /** @description Place code, or null for the section's default. */
+            place: null | string;
+            /** @description `later`, or null. */
+            state: null | string;
+            /** @description Product bought instead, at most 120 characters. Refused with `restriction_blocked` when it conflicts with the profile. */
+            substituteName: null | string;
         };
         /** @description An accepted card. */
         ShoppingPlanAcceptedView: {
@@ -5101,6 +5310,217 @@ export interface operations {
             };
         };
     };
+    getApiV1PlanningMenusMenuIdArrival: {
+        parameters: {
+            query?: {
+                from?: string;
+                all?: boolean;
+            };
+            header?: never;
+            path: {
+                menuId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ArrivalPlanView"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    postApiV1PlanningMenusMenuIdArrival: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Required CSRF token issued by GET /api/v1/session. */
+                "X-CSRF-TOKEN": string;
+                /** @description Required UUID key; a retry with the same key returns the plan without creating another or spending another batch. */
+                "Idempotency-Key": string;
+            };
+            path: {
+                menuId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ArrivalRecordRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ArrivalResultView"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description The request content type is not supported. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    postApiV1PlanningMenusMenuIdArrivalPreview: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Required CSRF token issued by GET /api/v1/session. */
+                "X-CSRF-TOKEN": string;
+            };
+            path: {
+                menuId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ArrivalPreviewRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ArrivalPlanView"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description The request content type is not supported. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
     postApiV1PlanningMenusMenuIdEntries: {
         parameters: {
             query?: never;
@@ -5457,6 +5877,89 @@ export interface operations {
             };
             /** @description The request content type is not supported. */
             415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    putApiV1PlanningMenusMenuIdShoppingMarks: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Required CSRF token issued by GET /api/v1/session. */
+                "X-CSRF-TOKEN": string;
+            };
+            path: {
+                menuId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ShoppingMarkRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShoppingMarkRequest"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description The request content type is not supported. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

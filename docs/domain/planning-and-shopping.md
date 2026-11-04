@@ -45,6 +45,17 @@ A shopping plan fills a draft menu through dish cards ([product behavior](../pro
 - **Period.** The menu starts on the preparation day when there is one, else on the browser's local day, and covers the chosen days (1 to 14; at most 40 meals).
 - **Acceptance.** Accepting the menu and closing the plan are two idempotent steps, so a retry completes them. Unseen and rejected cards are deleted on acceptance, and all cards on discard. The owner's abandoned plans older than 30 days are deleted when they start a new plan.
 
+## Shopping line marks and arrival (PLAN-0062 Slice 2)
+
+- **Marks.** `planning.shopping_line_marks` keeps what the owner said about a line, by its key before any substitution (`markKey`): `later`, a substitute name, or a place. All empty removes the row. The line stays derived.
+- **Substitutes.** A substitute takes over the line's name and key, so stock, check marks, and package sizes follow the product bought. The quantity and the recipe stay. `RestrictionGuard` refuses a blocked one with `restriction_blocked`.
+- **Later.** A later line leaves the pending lines and the arrival proposal.
+- **Places.** Closed codes: `market`, `street_market`, `butcher`, `bakery`. Default from the section: produce goes to `street_market`, butcher and fish to `butcher`, bakery to `bakery`, the rest to `market`.
+- **`ArrivalAdvisor`** is pure. A use whose day is within `fridgeDays` goes to the refrigerator; otherwise to the freezer when freezable and possible; otherwise to the refrigerator marked "use first". A flexible meal's day is `start + floor(position × days / meals)`. A perishable, freezable surplus becomes at most 6 even portions about the size of the largest use, in whole grams, with the last taking the rest so the total is exact. Unit lines that do not divide evenly stay together.
+- **Without a rule,** or with `Planning:StorageGuidance:Enabled` off, a line stays whole in the section's default place.
+- **Recording.** One lot per portion, each with a key derived from the request key, item key, and position. A freezer portion is created in the refrigerator and then frozen, so it is `Frozen` with `FrozenAt`. This is not one transaction: the result lists `recorded` and `failed`, and a retry with the same key replays what was done. Reservations are derived, so new lots are reserved on the next read.
+- **At most** 120 lots per request.
+
 ## Planning states
 
 - **Simulation:** calculates possibilities and shopping impact without persistent reservations, tasks, or active-plan mutation.

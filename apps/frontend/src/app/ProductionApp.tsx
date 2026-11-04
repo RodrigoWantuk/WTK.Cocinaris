@@ -28,6 +28,7 @@ import { ShoppingHubPage } from "@/features/planning/ShoppingHubPage";
 import { AccountMenu, LanguageChoice } from "@/app/shell/AccountMenu";
 import { AppNavigation } from "@/app/shell/AppNavigation";
 import { MenuPage } from "@/features/planning/MenuPage";
+import { ArrivalPage } from "@/features/planning/ArrivalPage";
 import { ShoppingPage } from "@/features/planning/ShoppingPage";
 import { ShoppingPlanDeckPage } from "@/features/shopping-plan/ShoppingPlanDeckPage";
 import { ShoppingPlanProvider } from "@/features/shopping-plan/ShoppingPlanProvider";
@@ -164,6 +165,8 @@ export function pageTitleKeyFor(pathname: string): string {
   if (pathname === "/app/cardapio") return "page.title.planning";
   if (/^\/app\/cardapio\/[^/]+\/compras$/.test(pathname))
     return "page.title.shopping";
+  if (/^\/app\/cardapio\/[^/]+\/chegada$/.test(pathname))
+    return "page.title.arrival";
   if (pathname.startsWith("/app/cardapio/")) return "page.title.menu";
   if (pathname.startsWith("/app/receitas/cozinhar/"))
     return "page.title.cooking";
@@ -445,6 +448,7 @@ function createProductionRouter() {
         { path: "cardapio", element: <MenusPage /> },
         { path: "cardapio/:menuId", element: <MenuPage /> },
         { path: "cardapio/:menuId/compras", element: <ShoppingPage /> },
+        { path: "cardapio/:menuId/chegada", element: <ArrivalPage /> },
         { path: "receitas/nova", element: <RecipeEditorPage mode="new" /> },
         { path: "receitas/:recipeId", element: <RecipeDetailPage /> },
         {

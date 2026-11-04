@@ -326,6 +326,7 @@ export type RecipeApiErrorCode =
   | "ai_output_invalid"
   | "ai_operation_conflict"
   | "plan_in_progress"
+  | "restriction_blocked"
   | "expansions_pending"
   | "unavailable"
   | "cancelled"

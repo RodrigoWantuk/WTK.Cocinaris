@@ -66,6 +66,7 @@ Read:
 - [`domain/inventory-lifecycle.md`](domain/inventory-lifecycle.md)
 - [`domain/planning-and-shopping.md`](domain/planning-and-shopping.md)
 - [`domain/restriction-rules-review.md`](domain/restriction-rules-review.md)
+- [`domain/storage-guidance-review.md`](domain/storage-guidance-review.md)
 - [`domain/recipes-and-cooking.md`](domain/recipes-and-cooking.md)
 - [`architecture/overview.md`](architecture/overview.md)
 - [`development/environment.md`](development/environment.md)

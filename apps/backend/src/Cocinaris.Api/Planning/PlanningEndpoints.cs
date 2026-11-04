@@ -71,7 +71,7 @@ public static class PlanningEndpoints
             .ProducesProblem(400)
             .ProducesProblem(404)
             .ProducesProblem(422);
-        group.MapGet("/menus/{menuId:guid}/arrival", (PlanningApiService service, Guid menuId, DateOnly? from, HttpContext context, CancellationToken cancellationToken) => service.GetArrivalAsync(menuId, from, context, cancellationToken))
+        group.MapGet("/menus/{menuId:guid}/arrival", (PlanningApiService service, Guid menuId, DateOnly? from, bool? all, HttpContext context, CancellationToken cancellationToken) => service.GetArrivalAsync(menuId, from, all == true, context, cancellationToken))
             .Produces<ArrivalPlanView>()
             .ProducesProblem(400)
             .ProducesProblem(404);
@@ -136,8 +136,8 @@ public sealed class PlanningApiService(MenuPlanningApplicationService applicatio
         ToResult(await application.SetLineMarkAsync(menuId, body.ItemKey, body.State, body.SubstituteName, body.Place, cancellationToken), context.TraceIdentifier, _ => body);
 
     /// <summary>Proposes where a purchase goes.</summary>
-    public async Task<IResult> GetArrivalAsync(Guid menuId, DateOnly? from, HttpContext context, CancellationToken cancellationToken) =>
-        ToResult(await arrival.ProposeAsync(menuId, from, null, cancellationToken), context.TraceIdentifier, view => view);
+    public async Task<IResult> GetArrivalAsync(Guid menuId, DateOnly? from, bool all, HttpContext context, CancellationToken cancellationToken) =>
+        ToResult(await arrival.ProposeAsync(menuId, from, null, cancellationToken, all), context.TraceIdentifier, view => view);
 
     /// <summary>Recomputes the proposal for corrected quantities. It changes nothing.</summary>
     public async Task<IResult> PreviewArrivalAsync(Guid menuId, ArrivalPreviewRequest body, HttpContext context, CancellationToken cancellationToken) =>

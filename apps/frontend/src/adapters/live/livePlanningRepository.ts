@@ -1,6 +1,7 @@
 import { createCocinarisClient, type components } from "@cocinaris/api-client";
 import { RecipeApiError } from "@/contracts/recipes";
 import type {
+  ArrivalPlan,
   Menu,
   MenuEntry,
   MenuSummary,
@@ -113,6 +114,34 @@ function mapSummary(dto: SummaryDto): MenuSummary {
   };
 }
 
+function mapArrival(
+  dto: components["schemas"]["ArrivalPlanView"],
+): ArrivalPlan {
+  return {
+    menuId: String(dto.menuId),
+    guidanceEnabled: dto.guidanceEnabled === true,
+    containerCount: num(dto.containerCount),
+    lines: (dto.lines ?? []).map((line) => ({
+      itemKey: String(line.itemKey),
+      displayName: String(line.displayName),
+      unit: String(line.unit),
+      storeSection: String(line.storeSection),
+      checked: line.checked === true,
+      boughtQuantity: num(line.boughtQuantity),
+      needsRealQuantity: line.needsRealQuantity === true,
+      packageSize: line.packageSize == null ? null : num(line.packageSize),
+      requiredQuantity: num(line.requiredQuantity),
+      portions: (line.portions ?? []).map((portion) => ({
+        location: String(portion.location),
+        quantity: num(portion.quantity),
+        count: num(portion.count),
+        dish: text(portion.dish),
+        useFirst: portion.useFirst === true,
+      })),
+    })),
+  };
+}
+
 function mapShopping(dto: ShoppingDto): ShoppingList {
   return {
     menuId: String(dto.menuId),
@@ -133,6 +162,10 @@ function mapShopping(dto: ShoppingDto): ShoppingList {
       packageCount: item.packageCount == null ? null : num(item.packageCount),
       expectedRemainder:
         item.expectedRemainder == null ? null : num(item.expectedRemainder),
+      markKey: String(item.markKey ?? item.itemKey),
+      later: item.later === true,
+      substituteFor: text(item.substituteFor),
+      place: item.place ? String(item.place) : "market",
       uses: (item.uses ?? []).map((use) => ({
         entryId: String(use.entryId),
         recipeName: String(use.recipeName),
@@ -410,6 +443,74 @@ export function createLivePlanningRepository(options?: {
           }),
         "Unable to save the package size.",
         () => undefined,
+      ),
+    setLineMark: (menuId, mark, { csrfToken, signal }) =>
+      run(
+        () =>
+          client.PUT("/api/v1/planning/menus/{menuId}/shopping/marks", {
+            params: {
+              path: { menuId },
+              header: { "X-CSRF-TOKEN": csrfToken },
+            },
+            body: mark,
+            signal,
+            ...include,
+          }),
+        "Unable to save the line.",
+        () => undefined,
+      ),
+    getArrival: (menuId, from, signal, options) =>
+      run(
+        () =>
+          client.GET("/api/v1/planning/menus/{menuId}/arrival", {
+            params: {
+              path: { menuId },
+              query: { from, all: options?.all || undefined },
+            },
+            signal,
+            ...include,
+          }),
+        "Unable to load the arrival.",
+        mapArrival,
+      ),
+    previewArrival: (menuId, from, quantities, { csrfToken, signal }) =>
+      run(
+        () =>
+          client.POST("/api/v1/planning/menus/{menuId}/arrival/preview", {
+            params: {
+              path: { menuId },
+              header: { "X-CSRF-TOKEN": csrfToken },
+            },
+            body: { from, quantities },
+            signal,
+            ...include,
+          }),
+        "Unable to recompute the arrival.",
+        mapArrival,
+      ),
+    recordArrival: (menuId, lines, { csrfToken, idempotencyKey, signal }) =>
+      run(
+        () =>
+          client.POST("/api/v1/planning/menus/{menuId}/arrival", {
+            params: {
+              path: { menuId },
+              header: {
+                "X-CSRF-TOKEN": csrfToken,
+                "Idempotency-Key": idempotencyKey,
+              },
+            },
+            body: { lines },
+            signal,
+            ...include,
+          }),
+        "Unable to record the arrival.",
+        (data) => ({
+          recorded: num(data.recorded),
+          failed: (data.failed ?? []).map((item) => ({
+            itemKey: String(item.itemKey),
+            errorCode: String(item.errorCode),
+          })),
+        }),
       ),
     getPreparation: (from, days, signal) =>
       run(

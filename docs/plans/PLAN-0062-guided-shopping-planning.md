@@ -738,14 +738,14 @@ Migrations are additive, and rollback means deploying the earlier code with unus
 ## Execution state
 
 - **Current run delivery target:** Slice 2, market and arrival.
-- **Current checkpoint:** Slice 1 merged via #84. Slice 2 backend partly done on `agent/plan-0062-s2-arrival`, not ready for a pull request: storage table behind a flag that is off, line marks, arrival advisor and routes, migration `AddShoppingLineMarks`, curated attention rule, tests.
-- **Last completed step:** Unit filter 42/42. Integration: 3 of 4 pass.
-- **Exact next action:** Fix `AnArrivalWithTheFlagOffStoresWholeAndARetryNeverCountsTwice`: in `ShoppingArrivalService.RecordAsync`, the `Freeze` transition returns `domain_rule_violated` for freezer portions. The likely source is the exception caught near line 525 of `InventoryLotApplicationService.cs`; read its message. Then regenerate OpenAPI and the client, build the frontend (arrival page, "Não achei", later block, split by store, list hint, banner, "Prepare-se" entry, reason text for `curated_fridge_days`, catalogs), write `docs/domain/storage-guidance-review.md`, extend the journey, and update documents.
-- **Blockers:** G1-A: the owner merged #84 and said "PR aprovado, pode seguir", with no separate comment on the restriction table. G1-B (live AI evaluation) and G1-G (full gates) never ran on Slice 1. Deploying `main` was refused by this agent's permission classifier, so Slice 1 is not deployed by the agent. G2-A is needed before the storage flag is enabled.
-- **Partially modified areas:** Backend of Slice 2; no frontend. `ShoppingArrivalApiTests` has one failing test.
-- **Documentation delivered:** None yet for Slice 2 beyond XML documentation.
-- **Validation performed:** See the last completed step.
-- **Known failures or limitations:** The failing test above: freezer portions are not recorded. Storage values were not verified against primary sources: FSIS and foodsafety.gov refused automated fetches, and only search summaries were read for meat, poultry, fish, eggs, and leftovers. Dairy, produce, and herb values are unverified and must be marked so in the review document. Hard-coded rule: an empty equipment list does not rule out a freezer.
+- **Current checkpoint:** Slice 2 implemented on `agent/plan-0062-s2-arrival`, in a draft pull request, with storage guidance off.
+- **Last completed step:** Browser journey on the proxy replica through arrival.
+- **Exact next action:** The owner reviews the pull request and merges it. Slice 3 (offline list) then starts from fresh `origin/main` on `agent/plan-0062-s3-offline-list`, with ADR-0012 first. The owner separately reviews `docs/domain/storage-guidance-review.md` (G2-A) whenever convenient; the slice does not wait for it.
+- **Blockers:** G2-A before storage guidance is enabled and before Slice 4 limits. G1-B (live AI evaluation) and G1-G and G2-F (full local gates) have not run: the first needs the provider key, and the host stopped the last gate run for low memory. Deploying `main` was refused by this agent's permission classifier, so the owner must run it.
+- **Partially modified areas:** None.
+- **Documentation delivered:** `docs/domain/storage-guidance-review.md`, and updates to the product, planning, inventory, privacy, and runbook documents.
+- **Validation performed:** See the Slice 2 entry in the progress log.
+- **Known failures or limitations:** Storage values were not checked against primary sources, because USDA pages refused automated fetches; the review document says which are unverified. G1-A: the owner merged #84 and said "PR aprovado, pode seguir", with no separate comment on the restriction table. Per-stage equipment conflicts are not detected (Slice 6).
 - **Working tree state:** Clean after this commit.
 
 ## Progress log
@@ -790,6 +790,28 @@ Migrations are additive, and rollback means deploying the earlier code with unus
   - Screens read at 360 px; keyboard and 200% zoom not checked by hand.
 - **Gate G1-G not complete:** `run-local-gates.sh` was stopped by the host when memory ran low, during the backend build. Restore, vulnerabilities, and format had passed. The full backend suite, migrations applied twice, OpenAPI drift, frontend gates, and the smoke matrix did not run on this head.
 - **Result:** Ready for owner review, not for merge until G1-A, G1-B, and G1-G.
+- **Next action:** See `Exact next action`.
+
+### 2026-11-04 — Claude Code (Slice 2)
+
+- **Run delivery target:** Slice 2.
+- **Checkpoint:** Slice 2 implemented, with guidance off.
+- **Changes included in the commits:** Storage table behind a flag; curated attention rule; line marks; arrival advisor, routes, and page; "Não achei", later block, and split by place on the list; portions hint; entry on "Hoje"; browser journey; documents.
+- **Defect found and fixed:** `SaveCreatedAsync` left the new lot tracked, so a freeze in the same request failed with an Entity Framework error surfaced as `domain_rule_violated`. HTTP callers never saw it, because each request has its own context. It now clears the tracker after saving.
+- **Deviations from this plan, keeping the outcome:**
+  - "Trocar prato" opens the menu instead of calling `POST /replacements`, because the list does not know the plan's session. Slice 4 extends replacement to accepted menus.
+  - The "Hoje" entry appears when a reminder says something is to buy, not when lines are checked, which would need a list request per menu on the home page.
+  - `GET arrival` takes `all=true`, so the list's portions hint does not vanish once a line is checked.
+  - Surplus portions are whole grams, with the last taking the rest, so the total is exact.
+  - An empty equipment list does not rule out a freezer; only a list without one does.
+- **Validation performed:**
+  - Backend: unit suite 350/350; architecture 14/14; integration filters for arrival, marks, guidance on, transitions, and purchase 10/10; format clean.
+  - Frontend: typecheck clean; lint and format clean; planning, shopping plan, and i18n tests 57/57.
+  - Contracts: recipe AI tests passed; OpenAPI exported and client regenerated.
+  - Browser journey on the proxy replica, flag off, at 390 px: all checks passed.
+  - The journey needed two fixes of its own: this run's menu is counted alone, and the fixture user's pantry is cleared first.
+- **Not run:** the full local gates (G2-F), because the host has too little free memory (about 700 MB at the last check, and the earlier run was stopped for this). The full integration suite did not run. Flag on is covered by one integration test, not by the browser.
+- **Result:** Ready for owner review. G2-A remains open.
 - **Next action:** See `Exact next action`.
 
 ## Completion and handoff checklist

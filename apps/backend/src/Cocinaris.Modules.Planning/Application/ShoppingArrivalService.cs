@@ -82,7 +82,8 @@ public sealed class ShoppingArrivalService(
     /// <param name="from">The owner's day.</param>
     /// <param name="quantities">Quantities the person corrected; none for the first proposal.</param>
     /// <param name="cancellationToken">Cancellation.</param>
-    public async Task<RecipeApplicationResult<ArrivalPlanView>> ProposeAsync(Guid menuId, DateOnly? from, IReadOnlyList<ArrivalQuantity>? quantities, CancellationToken cancellationToken)
+    /// <param name="allLines">Proposes for every line to buy, so the list can show a hint before anything is checked.</param>
+    public async Task<RecipeApplicationResult<ArrivalPlanView>> ProposeAsync(Guid menuId, DateOnly? from, IReadOnlyList<ArrivalQuantity>? quantities, CancellationToken cancellationToken, bool allLines = false)
     {
         if (from is not { } today)
         {
@@ -108,7 +109,7 @@ public sealed class ShoppingArrivalService(
         var hasFreezer = equipment.Count == 0 || equipment.Any(item => item.StableCode.Value == "freezer");
         var corrected = (quantities ?? []).ToDictionary(item => item.ItemKey, item => item.BoughtQuantity, StringComparer.Ordinal);
         var toBuy = list.Value!.Items.Where(item => ToBuy.Contains(item.Category) && item.ToBuyQuantity > 0 && !item.Later).ToList();
-        var lines = toBuy.Any(item => item.Checked) ? toBuy.Where(item => item.Checked) : toBuy;
+        var lines = !allLines && toBuy.Any(item => item.Checked) ? toBuy.Where(item => item.Checked) : toBuy;
         var keys = await matching.KeysAsync(user.Id, lines.Select(item => item.DisplayName), cancellationToken);
         var order = (menu.Value?.Entries ?? []).Select((entry, index) => (entry.EntryId, index)).ToDictionary(item => item.EntryId, item => item.index);
         var start = menu.Value?.StartDate ?? today;

@@ -151,3 +151,7 @@ Restoring a backup on another server needs the same package; otherwise the resto
 - Health: `curl -s http://127.0.0.1:8004/health/ready` (database included; the OIDC provider is not a readiness dependency).
 - End every session immediately: `rm -r /var/lib/wtk-cocinaris/session-keys && systemctl restart wtk-cocinaris`.
 - Third-party content: `index.html` must not load external scripts, styles or fonts. A CDN in front of the host may inject its own analytics script (for example Cloudflare Web Analytics). Disable that in the CDN when user-session privacy requires it.
+
+## Storage guidance flag (PLAN-0062)
+
+`Planning__StorageGuidance__Enabled` in `api.env` defaults to `false`. Set it to `true` only after the owner approves `docs/domain/storage-guidance-review.md` in writing, then restart the service. Setting it back to `false` removes the advice at once and changes no stored data. Lots already frozen stay frozen.

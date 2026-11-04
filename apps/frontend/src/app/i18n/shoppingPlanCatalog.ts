@@ -2,6 +2,58 @@ import type { ProductionLocale } from "./productionCatalog";
 
 /** Text of shopping plans (PLAN-0062). */
 const ptBR: Record<string, string> = {
+  "page.title.arrival": "Cheguei do mercado",
+  "arrival.title": "Cheguei do mercado",
+  "arrival.subtitle":
+    "Veja onde guardar cada coisa. É uma orientação: você pode mudar o lugar.",
+  "arrival.amounts": "Quanto veio?",
+  "arrival.amounts.hint": "Se veio mais ou menos que o previsto, corrija aqui.",
+  "arrival.amount": "{{item}} ({{unit}})",
+  "arrival.rememberPackage": "Esse é o tamanho do pacote",
+  "arrival.note": "Para: {{dish}}",
+  "arrival.useFirst": "Use primeiro: não dura até o dia do prato",
+  "arrival.label": "Etiqueta: {{item}} · {{amount}} · {{date}}",
+  "arrival.place": "Onde guardar",
+  "arrival.containers": "Separe {{count}} potes ou sacos",
+  "arrival.ahead": "Dá para adiantar agora",
+  "arrival.ahead.portion":
+    "Divida o que vai ao freezer antes de guardar: cada porção descongela sozinha.",
+  "arrival.advisory":
+    "É uma orientação, não uma garantia. Confira sempre o alimento.",
+  "arrival.partial":
+    "{{recorded}} itens guardados, {{failed}} não. Tente de novo: nada será contado duas vezes.",
+  "arrival.save": "Guardar tudo",
+  "arrival.error":
+    "Não consegui salvar. Tente de novo: nada será contado duas vezes.",
+  "arrival.loadError": "Não consegui abrir. Tente de novo.",
+  "arrival.empty":
+    "Não há nada para guardar. Marque na lista o que você comprou.",
+  "arrival.toList": "Voltar à lista",
+  "arrival.done.title": "Tudo guardado",
+  "arrival.done.body": "{{count}} itens foram para a despensa.",
+  "arrival.done.menu": "Ver meu plano",
+  "arrival.done.pantry": "Ver despensa",
+  "shopping.arrival": "Cheguei do mercado",
+  "shopping.split": "Separar por lugar",
+  "shopping.place": "Comprar em",
+  "shopping.place.market": "Mercado",
+  "shopping.place.street_market": "Feira",
+  "shopping.place.butcher": "Açougue",
+  "shopping.place.bakery": "Padaria",
+  "shopping.portions": "Dividir em {{count}} porções",
+  "shopping.later.title": "Comprar depois",
+  "shopping.later.back": "Voltar para a lista",
+  "shopping.notFound": "Não achei este item",
+  "shopping.notFound.affects": "Afeta: {{dishes}}",
+  "shopping.notFound.swap": "Comprei outro no lugar",
+  "shopping.notFound.swapSave": "Trocar",
+  "shopping.notFound.swapHint":
+    'A receita não muda. Ao cozinhar, use "Mudou alguma coisa?".',
+  "shopping.notFound.later": "Comprar depois",
+  "shopping.notFound.dish": "Trocar o prato",
+  "shopping.notFound.blocked":
+    "Esse alimento conflita com uma restrição do seu perfil.",
+  "shopping.notFound.instead": "No lugar de {{item}}.",
   "page.title.shoppingPlan": "Planejar compras",
   "quick.planShopping": "Planejar compras",
   "quick.planShoppingShort": "Compras",
@@ -131,6 +183,58 @@ const ptBR: Record<string, string> = {
 };
 
 const en: Record<string, string> = {
+  "page.title.arrival": "Back from the market",
+  "arrival.title": "Back from the market",
+  "arrival.subtitle":
+    "See where each thing goes. It is guidance: you can change the place.",
+  "arrival.amounts": "How much came?",
+  "arrival.amounts.hint":
+    "If it was more or less than expected, correct it here.",
+  "arrival.amount": "{{item}} ({{unit}})",
+  "arrival.rememberPackage": "This is the package size",
+  "arrival.note": "For: {{dish}}",
+  "arrival.useFirst": "Use first: it won't keep until the dish's day",
+  "arrival.label": "Label: {{item}} · {{amount}} · {{date}}",
+  "arrival.place": "Where to store",
+  "arrival.containers": "Set aside {{count}} containers or bags",
+  "arrival.ahead": "You can get ahead now",
+  "arrival.ahead.portion":
+    "Divide what goes to the freezer before storing it: each portion thaws on its own.",
+  "arrival.advisory":
+    "This is guidance, not a guarantee. Always check the food.",
+  "arrival.partial":
+    "{{recorded}} items stored, {{failed}} not. Try again: nothing will count twice.",
+  "arrival.save": "Store everything",
+  "arrival.error": "I couldn't save. Try again: nothing will count twice.",
+  "arrival.loadError": "I couldn't open this. Try again.",
+  "arrival.empty":
+    "There is nothing to store. Check off on the list what you bought.",
+  "arrival.toList": "Back to the list",
+  "arrival.done.title": "All stored",
+  "arrival.done.body": "{{count}} items went to the pantry.",
+  "arrival.done.menu": "See my plan",
+  "arrival.done.pantry": "See pantry",
+  "shopping.arrival": "Back from the market",
+  "shopping.split": "Split by place",
+  "shopping.place": "Buy at",
+  "shopping.place.market": "Supermarket",
+  "shopping.place.street_market": "Street market",
+  "shopping.place.butcher": "Butcher",
+  "shopping.place.bakery": "Bakery",
+  "shopping.portions": "Divide into {{count}} portions",
+  "shopping.later.title": "Buy later",
+  "shopping.later.back": "Back to the list",
+  "shopping.notFound": "I couldn't find this",
+  "shopping.notFound.affects": "Affects: {{dishes}}",
+  "shopping.notFound.swap": "I bought something else instead",
+  "shopping.notFound.swapSave": "Swap",
+  "shopping.notFound.swapHint":
+    'The recipe does not change. When cooking, use "Did anything change?".',
+  "shopping.notFound.later": "Buy later",
+  "shopping.notFound.dish": "Change the dish",
+  "shopping.notFound.blocked":
+    "This food conflicts with a restriction in your profile.",
+  "shopping.notFound.instead": "Instead of {{item}}.",
   "page.title.shoppingPlan": "Plan shopping",
   "quick.planShopping": "Plan shopping",
   "quick.planShoppingShort": "Shopping",
@@ -258,6 +362,58 @@ const en: Record<string, string> = {
 };
 
 const es: Record<string, string> = {
+  "page.title.arrival": "Volví del mercado",
+  "arrival.title": "Volví del mercado",
+  "arrival.subtitle":
+    "Mira dónde guardar cada cosa. Es una orientación: puedes cambiar el lugar.",
+  "arrival.amounts": "¿Cuánto vino?",
+  "arrival.amounts.hint": "Si vino más o menos de lo previsto, corrígelo aquí.",
+  "arrival.amount": "{{item}} ({{unit}})",
+  "arrival.rememberPackage": "Este es el tamaño del paquete",
+  "arrival.note": "Para: {{dish}}",
+  "arrival.useFirst": "Úsalo primero: no dura hasta el día del plato",
+  "arrival.label": "Etiqueta: {{item}} · {{amount}} · {{date}}",
+  "arrival.place": "Dónde guardar",
+  "arrival.containers": "Separa {{count}} envases o bolsas",
+  "arrival.ahead": "Puedes adelantar ahora",
+  "arrival.ahead.portion":
+    "Divide lo que va al congelador antes de guardarlo: cada porción se descongela sola.",
+  "arrival.advisory":
+    "Es una orientación, no una garantía. Revisa siempre el alimento.",
+  "arrival.partial":
+    "{{recorded}} artículos guardados, {{failed}} no. Inténtalo de nuevo: nada se contará dos veces.",
+  "arrival.save": "Guardar todo",
+  "arrival.error":
+    "No pude guardar. Inténtalo de nuevo: nada se contará dos veces.",
+  "arrival.loadError": "No pude abrir. Inténtalo de nuevo.",
+  "arrival.empty":
+    "No hay nada que guardar. Marca en la lista lo que compraste.",
+  "arrival.toList": "Volver a la lista",
+  "arrival.done.title": "Todo guardado",
+  "arrival.done.body": "{{count}} artículos fueron a la despensa.",
+  "arrival.done.menu": "Ver mi plan",
+  "arrival.done.pantry": "Ver despensa",
+  "shopping.arrival": "Volví del mercado",
+  "shopping.split": "Separar por lugar",
+  "shopping.place": "Comprar en",
+  "shopping.place.market": "Supermercado",
+  "shopping.place.street_market": "Feria",
+  "shopping.place.butcher": "Carnicería",
+  "shopping.place.bakery": "Panadería",
+  "shopping.portions": "Dividir en {{count}} porciones",
+  "shopping.later.title": "Comprar después",
+  "shopping.later.back": "Volver a la lista",
+  "shopping.notFound": "No encontré este artículo",
+  "shopping.notFound.affects": "Afecta: {{dishes}}",
+  "shopping.notFound.swap": "Compré otro en su lugar",
+  "shopping.notFound.swapSave": "Cambiar",
+  "shopping.notFound.swapHint":
+    'La receta no cambia. Al cocinar, usa "¿Cambió algo?".',
+  "shopping.notFound.later": "Comprar después",
+  "shopping.notFound.dish": "Cambiar el plato",
+  "shopping.notFound.blocked":
+    "Este alimento entra en conflicto con una restricción de tu perfil.",
+  "shopping.notFound.instead": "En lugar de {{item}}.",
   "page.title.shoppingPlan": "Planificar compras",
   "quick.planShopping": "Planificar compras",
   "quick.planShoppingShort": "Compras",

@@ -82,11 +82,14 @@ public sealed partial class RecipeExecutionApiTests
         Assert.Equal("Freezer", plan.GetProperty("lines")[0].GetProperty("portions")[0].GetProperty("location").GetString());
         Assert.Equal(1, plan.GetProperty("containerCount").GetInt32());
 
-        var body = new { lines = new[]
+        var body = new
+        {
+            lines = new[]
         {
             new { itemKey = line.GetProperty("itemKey").GetString()!, displayName = "Peito de frango", unit = "Gram", portions = new[] { new { location = "Refrigerator", quantity = 100m, count = 1 } } },
             new { itemKey = "bad|Gram", displayName = new string('x', 500), unit = "Gram", portions = new[] { new { location = "Pantry", quantity = 100m, count = 1 } } }
-        } };
+        }
+        };
         var recorded = await JsonOf(await PostAsync(client, csrf, $"/api/v1/planning/menus/{menuId}/arrival", body, Guid.NewGuid()));
         Assert.Equal(1, recorded.GetProperty("recorded").GetInt32());
         Assert.Equal("bad|Gram", recorded.GetProperty("failed")[0].GetProperty("itemKey").GetString());

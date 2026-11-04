@@ -24,6 +24,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FeatureUnavailable } from "@/components/runtime/FeatureUnavailable";
 import type { ShoppingItem, ShoppingList } from "@/contracts/planning";
+import { RecipeApiError } from "@/contracts/recipes";
 import { useInventoryRepository } from "@/features/inventory/InventoryProvider";
 import { formatLocaleDecimal, parseLocaleDecimal } from "@/lib/localeDecimal";
 import { formatMenuDay, localIsoDate } from "./planningDates";
@@ -33,6 +34,8 @@ import { usePlanningRepository } from "./PlanningProvider";
 /** Lines still to buy, grouped by store section; the rest keep their own blocks below. */
 const TO_BUY = ["required", "assumed", "optional"] as const;
 const OWNED = ["runs_out", "available"] as const;
+/** Places a person may buy at, in the order of a typical trip (PLAN-0062). */
+const PLACES = ["street_market", "butcher", "bakery", "market"] as const;
 /** Store sections in the order of a typical shopping trip (PLAN-0037 Phase 3). */
 const STORE_SECTIONS = [
   "produce",
@@ -102,6 +105,10 @@ export function ShoppingPage({
     etag: string;
   } | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
+  const [byPlace, setByPlace] = useState(false);
+  const [portionsByKey, setPortionsByKey] = useState<Record<string, number>>(
+    {},
+  );
   const [copied, setCopied] = useState(false);
   const inventoryRepo = useInventoryRepository();
 
@@ -111,6 +118,29 @@ export function ShoppingPage({
       (value) => !controller.signal.aborted && setList(value),
       () => !controller.signal.aborted && setFailed(true),
     );
+    return () => controller.abort();
+  }, [repo, menuId, reload]);
+
+  // The short hint on a line ("dividir em N porções"); the detail waits for the arrival screen.
+  useEffect(() => {
+    if (!repo.getArrival) return;
+    const controller = new AbortController();
+    repo
+      .getArrival(menuId, localIsoDate(), controller.signal, { all: true })
+      .then(
+        (plan) => {
+          if (controller.signal.aborted) return;
+          setPortionsByKey(
+            Object.fromEntries(
+              plan.lines.map((line) => [
+                line.itemKey,
+                line.portions.reduce((sum, portion) => sum + portion.count, 0),
+              ]),
+            ),
+          );
+        },
+        () => undefined,
+      );
     return () => controller.abort();
   }, [repo, menuId, reload]);
 
@@ -166,8 +196,11 @@ export function ShoppingPage({
   };
 
   const shareText = () =>
-    buildShoppingListText(list?.items ?? [], t, (value) =>
-      formatLocaleDecimal(value, locale),
+    buildShoppingListText(
+      list?.items ?? [],
+      t,
+      (value) => formatLocaleDecimal(value, locale),
+      byPlace,
     );
 
   const share = async () => {
@@ -208,6 +241,34 @@ export function ShoppingPage({
     );
   }
   if (!list) return <p role="status">{t("planning.loading")}</p>;
+
+  const pending = list.items.filter(
+    (item) =>
+      (TO_BUY as readonly string[]).includes(item.category) && !item.later,
+  );
+  const laterItems = list.items.filter(
+    (item) =>
+      (TO_BUY as readonly string[]).includes(item.category) && item.later,
+  );
+
+  const bringBack = async (item: ShoppingItem) => {
+    if (!session.csrfToken || !repo.setLineMark) return;
+    try {
+      await repo.setLineMark(
+        menuId,
+        {
+          itemKey: item.markKey ?? item.itemKey,
+          state: null,
+          substituteName: item.substituteFor ? item.displayName : null,
+          place: null,
+        },
+        { csrfToken: session.csrfToken },
+      );
+      refresh();
+    } catch {
+      setError("planning.error.save");
+    }
+  };
 
   return (
     <div data-testid="shopping-page" className="space-y-6">
@@ -271,6 +332,26 @@ export function ShoppingPage({
           ) : null}
         </div>
       ) : null}
+      {list.mealCount > 0 && repo.setLineMark ? (
+        <label className="flex min-h-11 items-center gap-3 text-sm font-medium">
+          <input
+            type="checkbox"
+            className="h-5 w-5 accent-primary"
+            data-testid="shopping-split"
+            checked={byPlace}
+            onChange={(event) => setByPlace(event.target.checked)}
+          />
+          {t("shopping.split")}
+        </label>
+      ) : null}
+      {repo.getArrival &&
+      list.items.some((item) => item.checked && item.toBuyQuantity > 0) ? (
+        <Button asChild className="w-full" data-testid="shopping-arrival">
+          <Link to={`/app/cardapio/${menuId}/chegada`}>
+            {t("shopping.arrival")}
+          </Link>
+        </Button>
+      ) : null}
       {undoHave ? (
         <div
           role="status"
@@ -311,21 +392,25 @@ export function ShoppingPage({
         </p>
       ) : (
         [
-          ...STORE_SECTIONS.map((section) => ({
-            id: `section-${section}`,
-            title: t(`shopping.section.${section}`),
-            items: list.items
-              .filter(
-                (item) =>
-                  (TO_BUY as readonly string[]).includes(item.category) &&
-                  (item.storeSection ?? "other") === section,
-              )
-              .sort(
-                (a, b) =>
-                  TO_BUY.indexOf(a.category as (typeof TO_BUY)[number]) -
-                  TO_BUY.indexOf(b.category as (typeof TO_BUY)[number]),
-              ),
-          })),
+          ...(byPlace
+            ? PLACES.map((place) => ({
+                id: `place-${place}`,
+                title: t(`shopping.place.${place}`),
+                items: pending.filter(
+                  (item) => (item.place ?? "market") === place,
+                ),
+              }))
+            : STORE_SECTIONS.map((section) => ({
+                id: `section-${section}`,
+                title: t(`shopping.section.${section}`),
+                items: pending
+                  .filter((item) => (item.storeSection ?? "other") === section)
+                  .sort(
+                    (a, b) =>
+                      TO_BUY.indexOf(a.category as (typeof TO_BUY)[number]) -
+                      TO_BUY.indexOf(b.category as (typeof TO_BUY)[number]),
+                  ),
+              }))),
         ].map(({ id, title, items }) => {
           if (items.length === 0) return null;
           const Icon = SECTION_ICON[id.replace("section-", "")] ?? Package;
@@ -354,6 +439,10 @@ export function ShoppingPage({
                     onToggle={() => void toggle(item)}
                     onPurchased={(bought) => purchased(item, bought)}
                     onPackageChanged={refresh}
+                    portions={portionsByKey[item.itemKey] ?? 1}
+                    showPlace={byPlace}
+                    menuId={menuId}
+                    onChanged={refresh}
                     onAlreadyHave={(lot) => {
                       setUndoHave({ name: item.displayName, ...lot });
                       setImpact(null);
@@ -366,6 +455,39 @@ export function ShoppingPage({
           );
         })
       )}
+      {laterItems.length > 0 ? (
+        <section
+          aria-labelledby="shopping-later"
+          data-testid="shopping-later"
+          className="space-y-2"
+        >
+          <h2
+            id="shopping-later"
+            className="text-sm font-semibold text-muted-foreground"
+          >
+            {t("shopping.later.title")}
+          </h2>
+          <ul className="surface divide-y divide-border overflow-hidden">
+            {laterItems.map((item) => (
+              <li
+                key={item.itemKey}
+                className="flex items-center justify-between gap-3 px-4 py-3"
+              >
+                <span className="min-w-0 font-medium">{item.displayName}</span>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  data-testid="shopping-later-back"
+                  onClick={() => void bringBack(item)}
+                >
+                  {t("shopping.later.back")}
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
       {/* What the pantry covers is reference, not a task: it stays one tap away (PLAN-0058). */}
       {list.mealCount > 0 &&
       list.items.some((item) =>
@@ -599,6 +721,10 @@ function ShoppingRow({
   onPurchased,
   onPackageChanged,
   onAlreadyHave,
+  portions = 1,
+  showPlace = false,
+  menuId,
+  onChanged,
 }: {
   item: ShoppingItem;
   onToggle: () => void;
@@ -606,6 +732,13 @@ function ShoppingRow({
   onPackageChanged: () => void;
   /** Present for lines to buy: records the item as approximately at home, then offers undo. */
   onAlreadyHave?: (lot: { lotId: string; etag: string }) => void;
+  /** Portions the arrival advisor would make; above one, the line shows a short hint. */
+  portions?: number;
+  /** Whether to offer moving the line to another place. */
+  showPlace?: boolean;
+  menuId?: string;
+  /** The line's mark changed; the list must reload. */
+  onChanged?: () => void;
 }) {
   const { t, locale } = useProductionI18n();
   const { session } = useSession();
@@ -671,6 +804,45 @@ function ShoppingRow({
 
   // The person says they have it, not how much, so the amount is an estimate of what the plan
   // needs. The pantry shows it as approximate, and it covers the line like any other stock.
+  const [notFoundOpen, setNotFoundOpen] = useState(false);
+  const [substitute, setSubstitute] = useState("");
+  const [markError, setMarkError] = useState<string | null>(null);
+
+  const saveMark = async (change: {
+    state?: "later" | null;
+    substituteName?: string | null;
+    place?: string | null;
+  }) => {
+    if (!session.csrfToken || !planning.setLineMark || !menuId) return;
+    setMarkError(null);
+    try {
+      await planning.setLineMark(
+        menuId,
+        {
+          itemKey: item.markKey ?? item.itemKey,
+          state: change.state ?? (item.later ? "later" : null),
+          substituteName:
+            change.substituteName === undefined
+              ? item.substituteFor
+                ? item.displayName
+                : null
+              : change.substituteName,
+          place:
+            change.place === undefined ? (item.place ?? null) : change.place,
+        },
+        { csrfToken: session.csrfToken },
+      );
+      setNotFoundOpen(false);
+      onChanged?.();
+    } catch (err) {
+      setMarkError(
+        err instanceof RecipeApiError && err.code === "restriction_blocked"
+          ? "shopping.notFound.blocked"
+          : "planning.error.save",
+      );
+    }
+  };
+
   const alreadyHave = async () => {
     if (!session.csrfToken || saving) return;
     setSaving(true);
@@ -773,6 +945,30 @@ function ShoppingRow({
               })}
             </p>
           ) : null}
+          {item.substituteFor ? (
+            <p
+              className="text-xs text-muted-foreground"
+              data-testid="shopping-item-substitute"
+            >
+              {t("shopping.notFound.instead", { item: item.substituteFor })}{" "}
+              <button
+                type="button"
+                className="min-h-6 underline underline-offset-4"
+                data-testid="shopping-substitute-undo"
+                onClick={() => void saveMark({ substituteName: null })}
+              >
+                {t("shopping.have.undo")}
+              </button>
+            </p>
+          ) : null}
+          {toBuy && portions > 1 ? (
+            <p
+              className="text-xs font-medium"
+              data-testid="shopping-item-portions"
+            >
+              {t("shopping.portions", { count: portions })}
+            </p>
+          ) : null}
           <p className="text-xs text-muted-foreground">
             {item.uses
               .map(
@@ -812,6 +1008,100 @@ function ShoppingRow({
           </Button>
         ) : null}
       </div>
+      {toBuy && planning.setLineMark && menuId ? (
+        <button
+          type="button"
+          className="ml-9 min-h-6 text-xs underline underline-offset-4"
+          data-testid="shopping-not-found"
+          aria-expanded={notFoundOpen}
+          onClick={() => setNotFoundOpen((value) => !value)}
+        >
+          {t("shopping.notFound")}
+        </button>
+      ) : null}
+      {notFoundOpen ? (
+        <div
+          className="space-y-3 rounded-xl bg-secondary/50 p-3"
+          data-testid="shopping-not-found-sheet"
+        >
+          <p className="text-sm">
+            {t("shopping.notFound.affects", {
+              dishes: item.uses.map((use) => use.recipeName).join(", "),
+            })}
+          </p>
+          <form
+            className="flex flex-wrap items-end gap-2"
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (substitute.trim()) {
+                void saveMark({ substituteName: substitute.trim() });
+              }
+            }}
+          >
+            <label className="min-w-40 flex-1 space-y-1 text-xs text-muted-foreground">
+              {t("shopping.notFound.swap")}
+              <Input
+                maxLength={120}
+                data-testid="shopping-substitute"
+                value={substitute}
+                onChange={(event) => setSubstitute(event.target.value)}
+              />
+            </label>
+            <Button
+              type="submit"
+              size="sm"
+              variant="secondary"
+              data-testid="shopping-substitute-save"
+            >
+              {t("shopping.notFound.swapSave")}
+            </Button>
+          </form>
+          <p className="text-xs text-muted-foreground">
+            {t("shopping.notFound.swapHint")}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              data-testid="shopping-later-save"
+              onClick={() => void saveMark({ state: "later" })}
+            >
+              {t("shopping.notFound.later")}
+            </Button>
+            <Button asChild size="sm" variant="ghost">
+              <Link
+                to={`/app/cardapio/${menuId}`}
+                data-testid="shopping-swap-dish"
+              >
+                {t("shopping.notFound.dish")}
+              </Link>
+            </Button>
+          </div>
+          {markError ? (
+            <p role="alert" className="text-xs text-destructive">
+              {t(markError)}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+      {toBuy && showPlace && planning.setLineMark && menuId ? (
+        <label className="ml-9 flex items-center gap-2 text-xs text-muted-foreground">
+          {t("shopping.place")}
+          <select
+            className="h-9 rounded-lg border border-input bg-background px-2 text-sm text-foreground"
+            data-testid="shopping-place"
+            value={item.place ?? "market"}
+            onChange={(event) => void saveMark({ place: event.target.value })}
+          >
+            {PLACES.map((place) => (
+              <option key={place} value={place}>
+                {t(`shopping.place.${place}`)}
+              </option>
+            ))}
+          </select>
+        </label>
+      ) : null}
       {/* The package size is offered where it matters: when buying, or to change a known size
           (review M7). */}
       {toBuy &&

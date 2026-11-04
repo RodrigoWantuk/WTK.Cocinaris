@@ -40,6 +40,9 @@ public sealed class PostgreSqlInventoryLotWriteStore(ApplicationDbContext databa
         try
         {
             await database.SaveChangesAsync(cancellationToken);
+            // One request may create a lot and then change it (arrival freezes what it stores), and a
+            // mutation attaches its own copy, which would collide with the one tracked here.
+            database.ChangeTracker.Clear();
             return InventoryWriteOutcome.Saved;
         }
         catch (DbUpdateException exception) when (IsIdempotencyKeyConflict(exception))
