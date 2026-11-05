@@ -10,6 +10,10 @@ cocinaris.example.com {
 		# OIDC provider origin because sign-in submits a form that redirects there.
 		# Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self' https://<oidc-provider>"
 	}
+	# A CDN caches .js files by extension. The worker must always be revalidated, or a deploy or a
+	# rollback's removal worker (ADR-0012) reaches browsers only when the CDN copy expires.
+	@worker path /sw.js
+	header @worker Cache-Control "no-cache"
 	@backend path /api/* /signin-oidc /signout-callback-oidc /health/*
 	handle @backend {
 		reverse_proxy 127.0.0.1:8004
