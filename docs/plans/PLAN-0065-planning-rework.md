@@ -466,7 +466,7 @@ Prices and budgets, curated pack sizes, loose list items (a decision of PLAN-006
 - **Changes:**
   - **Backend:** `MealFit` with `Catalog/meal-fit-rules.json`, `DishSimilarity`, `planDeck.mealGuide`, the taste rule, one retry when fewer than 3 dishes survive, `POST /{id}/reopen`, deletion of earlier unseen AI and library dishes after an answer, 12 batches and 120 cards, order numbers that survive deletions, and migration `RaiseShoppingPlanBatchLimit`.
   - **Frontend:** `PlanExpansionRunner` (one queue for the app), the new list line, the menu with planned dishes first and empty days folded, the confirmation when meals are missing, "Escolher mais pratos" through `reopen`, "Voltar" from a draft's list, 44 px small buttons and chips on phones, and plurals.
-  - **Tooling:** `scripts/e2e/mobile-audit.mjs`. `planning-journey.mjs` was stale since an earlier list redesign, and its selectors were repaired.
+  - **Tooling:** `scripts/e2e/mobile-audit.mjs`. `planning-journey.mjs` was stale since an earlier list redesign. Its menu and list selectors were repaired, and it still stops later, on the cooking screen, which this slice did not touch.
 - **Deviations from this plan:**
   - **No mass per serving in `MealFit`.** The real session disproved it; see "Meal compatibility".
   - **Width rule instead of `pointer: coarse`.** The media query did not apply in the audit's browser, so small buttons are `h-11 md:h-9`. It also covers real browsers that misreport the pointer, and small buttons grow on narrow desktop windows.
@@ -474,7 +474,7 @@ Prices and budgets, curated pack sizes, loose list items (a decision of PLAN-006
   - **Saved recipes survive an answer;** only AI and library dishes are deleted, because the person's own recipes must not vanish.
   - **A batch asked for with typed words skips `MealFit`,** as a requested dish does.
 - **Defect the tests caught:** the database limited batches to 5 by a check constraint, so raising only the code would have failed with a 500 on the sixth. The migration fixes it.
-- **Validation performed:** see the pull request for the gate summary. `mobile-audit.mjs` on the proxy replica: 48 screens at 320, 360, and 390 px, 0 problems. `shopping-plan-journey`: 19 checks. `planning-entry-journey`: 16. `offline-list-journey`: 25. `session-route-journey`: 15. List and menu screenshots read at 360 px. Rules tested against the names of the real session, including all 4 dishes the owner accepted.
+- **Validation performed:** Local gates `backend,contracts,frontend,secrets` on `b5eaf62`: all 32 steps passed, with 14 architecture, 482 unit, 247 integration, and 633 frontend tests. The next commit changes only this plan. `mobile-audit.mjs` on the proxy replica: 48 screens at 320, 360, and 390 px, 0 problems. `shopping-plan-journey`: 19 checks. `planning-entry-journey`: 16. `offline-list-journey`: 25. `session-route-journey`: 15. `planning-journey`: 5 checks through menu, list, and purchase, then it stops at a stale cooking selector, so the rest did not run. List and menu screenshots read at 360 px. Rules tested against the names of the real session, including all 4 dishes the owner accepted.
 - **Not run:**
   - **WebKit.** It installed but does not start here: the host lacks system libraries such as GTK 4 and GStreamer, and installing system packages was not asked for. The audit runs it only with `COCINARIS_AUDIT_WEBKIT=1`. B11 stays unverified.
   - **The real model.** How well it follows `mealGuide` and the taste rule is unknown, and G1-B and G5-A have not run.
