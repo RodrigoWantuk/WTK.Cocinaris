@@ -179,6 +179,34 @@ public sealed class ShoppingPlanCardRecord
     public DateTimeOffset? DecidedAt { get; set; }
 }
 
+/// <summary>A browser subscribed to plan notifications (ADR-0013).</summary>
+public sealed class PushSubscriptionRecord
+{
+    /// <summary>Gets or sets the identifier.</summary>
+    public Guid Id { get; set; }
+    /// <summary>Gets or sets the authoritative owner identifier.</summary>
+    public Guid OwnerUserId { get; set; }
+    /// <summary>Gets or sets the push service address. Personal data; never logged.</summary>
+    public required string Endpoint { get; set; }
+    /// <summary>Gets or sets the browser's public key.</summary>
+    public required string P256dh { get; set; }
+    /// <summary>Gets or sets the browser's secret.</summary>
+    public required string Auth { get; set; }
+    /// <summary>Gets or sets when it was subscribed.</summary>
+    public DateTimeOffset CreatedAt { get; set; }
+    /// <summary>Gets or sets when a push service last accepted a message.</summary>
+    public DateTimeOffset? LastSuccessAt { get; set; }
+}
+
+/// <summary>The last day an owner was notified, so a restart never sends twice (ADR-0013).</summary>
+public sealed class PushDeliveryDayRecord
+{
+    /// <summary>Gets or sets the owner.</summary>
+    public Guid OwnerUserId { get; set; }
+    /// <summary>Gets or sets the owner's local day.</summary>
+    public DateOnly LastSentOn { get; set; }
+}
+
 /// <summary>What the owner said about a shopping line while shopping (PLAN-0062). The line itself is always derived.</summary>
 public sealed class ShoppingLineMarkRecord
 {

@@ -1,4 +1,5 @@
 import { SessionRouteLink } from "@/features/shopping-plan/SessionRouteLink";
+import { PushOptIn } from "@/features/notifications/PushOptIn";
 import {
   CalendarDays,
   ChevronLeft,
@@ -220,6 +221,8 @@ export function MenuPage() {
           </Button>
         ) : null}
       </div>
+
+      {menu.status === "accepted" ? <PushOptIn variant="prompt" /> : null}
       {actionError ? (
         <p role="alert" className="text-sm text-destructive">
           {t(actionError)}

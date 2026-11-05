@@ -21,6 +21,13 @@ public static class PlanningServiceCollectionExtensions
         services.AddScoped<ShoppingPlanRouteService>();
         services.AddScoped<ShoppingPlanApiService>();
         services.AddScoped<ShoppingArrivalService>();
+        services.AddOptions<WebPushOptions>().BindConfiguration("Planning:WebPush");
+        services.AddHttpClient(WebPushSender.HttpClientName, client => client.Timeout = TimeSpan.FromSeconds(15))
+            .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { AllowAutoRedirect = false });
+        services.AddSingleton<IWebPushSender, WebPushSender>();
+        services.AddScoped<IPushSubscriptionStore, PostgreSqlPushSubscriptionStore>();
+        services.AddScoped<PushSubscriptionService>();
+        services.AddScoped<PlanReminderPushService>();
         return services;
     }
 }

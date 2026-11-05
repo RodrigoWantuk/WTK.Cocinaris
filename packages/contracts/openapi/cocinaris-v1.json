@@ -3363,6 +3363,75 @@
         ],
         "type": "object"
       },
+      "PushStatusView": {
+        "description": "Whether push can be offered.",
+        "properties": {
+          "available": {
+            "description": "True when the server has valid keys.",
+            "type": "boolean"
+          },
+          "publicKey": {
+            "description": "Public key the browser subscribes with, when available.",
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "required": [
+          "available",
+          "publicKey"
+        ],
+        "type": "object"
+      },
+      "PushSubscriptionRemovalRequest": {
+        "description": "Body for forgetting this browser's subscription.",
+        "properties": {
+          "endpoint": {
+            "description": "Push service address.",
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "required": [
+          "endpoint"
+        ],
+        "type": "object"
+      },
+      "PushSubscriptionRequest": {
+        "description": "Body for saving this browser's subscription.",
+        "properties": {
+          "auth": {
+            "description": "Browser's secret, base64url.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "endpoint": {
+            "description": "Push service address.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "p256dh": {
+            "description": "Browser's public key, base64url.",
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "required": [
+          "endpoint",
+          "p256dh",
+          "auth"
+        ],
+        "type": "object"
+      },
       "QuantityRequest": {
         "description": "Represents exactly one inventory quantity mode supplied by an API client.",
         "oneOf": [
@@ -10185,6 +10254,326 @@
           }
         ],
         "summary": "GET /api/v1/inventory/receipt-parse/availability",
+        "tags": [
+          "Cocinaris.Api"
+        ]
+      }
+    },
+    "/api/v1/notifications/push": {
+      "get": {
+        "operationId": "getApiV1NotificationsPush",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PushStatusView"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "authenticationFailure": {
+                    "summary": "The backend-managed session is absent or invalid.",
+                    "value": {
+                      "detail": "Authentication is required.",
+                      "errorCode": "authentication_required",
+                      "status": 401,
+                      "title": "Unauthorized",
+                      "traceId": "00-00000000000000000000000000000000-0000000000000000-00",
+                      "type": "about:blank"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authentication is required."
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "unexpectedFailure": {
+                    "summary": "An unexpected error was safely redacted.",
+                    "value": {
+                      "detail": "An unexpected error occurred.",
+                      "errorCode": "unexpected_error",
+                      "status": 500,
+                      "title": "Internal Server Error",
+                      "traceId": "00-00000000000000000000000000000000-0000000000000000-00",
+                      "type": "about:blank"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An unexpected server error occurred."
+          }
+        },
+        "security": [
+          {
+            "cocinarisSession": []
+          }
+        ],
+        "summary": "GET /api/v1/notifications/push",
+        "tags": [
+          "Cocinaris.Api"
+        ]
+      }
+    },
+    "/api/v1/notifications/push/subscription": {
+      "put": {
+        "operationId": "putApiV1NotificationsPushSubscription",
+        "parameters": [
+          {
+            "description": "Required CSRF token issued by GET /api/v1/session.",
+            "in": "header",
+            "name": "X-CSRF-TOKEN",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PushSubscriptionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "authenticationFailure": {
+                    "summary": "The backend-managed session is absent or invalid.",
+                    "value": {
+                      "detail": "Authentication is required.",
+                      "errorCode": "authentication_required",
+                      "status": 401,
+                      "title": "Unauthorized",
+                      "traceId": "00-00000000000000000000000000000000-0000000000000000-00",
+                      "type": "about:blank"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authentication is required."
+          },
+          "415": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "unsupportedMediaType": {
+                    "summary": "The request content type is unsupported.",
+                    "value": {
+                      "detail": "The request content type is not supported.",
+                      "errorCode": "unsupported_media_type",
+                      "status": 415,
+                      "title": "Unsupported Media Type",
+                      "traceId": "00-00000000000000000000000000000000-0000000000000000-00",
+                      "type": "about:blank"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request content type is not supported."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "unexpectedFailure": {
+                    "summary": "An unexpected error was safely redacted.",
+                    "value": {
+                      "detail": "An unexpected error occurred.",
+                      "errorCode": "unexpected_error",
+                      "status": 500,
+                      "title": "Internal Server Error",
+                      "traceId": "00-00000000000000000000000000000000-0000000000000000-00",
+                      "type": "about:blank"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An unexpected server error occurred."
+          }
+        },
+        "security": [
+          {
+            "cocinarisSession": []
+          }
+        ],
+        "summary": "PUT /api/v1/notifications/push/subscription",
+        "tags": [
+          "Cocinaris.Api"
+        ]
+      }
+    },
+    "/api/v1/notifications/push/subscription/removal": {
+      "post": {
+        "operationId": "postApiV1NotificationsPushSubscriptionRemoval",
+        "parameters": [
+          {
+            "description": "Required CSRF token issued by GET /api/v1/session.",
+            "in": "header",
+            "name": "X-CSRF-TOKEN",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PushSubscriptionRemovalRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "authenticationFailure": {
+                    "summary": "The backend-managed session is absent or invalid.",
+                    "value": {
+                      "detail": "Authentication is required.",
+                      "errorCode": "authentication_required",
+                      "status": 401,
+                      "title": "Unauthorized",
+                      "traceId": "00-00000000000000000000000000000000-0000000000000000-00",
+                      "type": "about:blank"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authentication is required."
+          },
+          "415": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "unsupportedMediaType": {
+                    "summary": "The request content type is unsupported.",
+                    "value": {
+                      "detail": "The request content type is not supported.",
+                      "errorCode": "unsupported_media_type",
+                      "status": 415,
+                      "title": "Unsupported Media Type",
+                      "traceId": "00-00000000000000000000000000000000-0000000000000000-00",
+                      "type": "about:blank"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request content type is not supported."
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "unexpectedFailure": {
+                    "summary": "An unexpected error was safely redacted.",
+                    "value": {
+                      "detail": "An unexpected error occurred.",
+                      "errorCode": "unexpected_error",
+                      "status": 500,
+                      "title": "Internal Server Error",
+                      "traceId": "00-00000000000000000000000000000000-0000000000000000-00",
+                      "type": "about:blank"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An unexpected server error occurred."
+          }
+        },
+        "security": [
+          {
+            "cocinarisSession": []
+          }
+        ],
+        "summary": "POST /api/v1/notifications/push/subscription/removal",
         "tags": [
           "Cocinaris.Api"
         ]

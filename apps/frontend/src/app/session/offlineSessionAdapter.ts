@@ -6,15 +6,20 @@ import type { SessionAdapter } from "./types";
  * remembered from a real sign-in, becomes `offline`. A 401 stays signed out and closes the offline
  * shell. The session resolves only after the store handled a change of owner, so a new owner can
  * never see the previous owner's data, not even briefly.
+ *
+ * @param beforeLogout Runs before a logout with the last CSRF token, while the session still exists. It must not throw.
  */
 export function withOfflineSession(
   inner: SessionAdapter,
   store: OfflineListStore,
+  beforeLogout?: (csrfToken: string | null) => Promise<void>,
 ): SessionAdapter {
+  let csrfToken: string | null = null;
   return {
     ...inner,
     async getSession() {
       const next = await inner.getSession();
+      csrfToken = next.csrfToken ?? null;
       if (next.status === "authenticated" && next.internalUserId) {
         await store.rememberOwner(
           next.internalUserId,
@@ -37,6 +42,9 @@ export function withOfflineSession(
     },
     // The inner adapter's own `this.getSession` must keep calling itself, not this wrapper.
     beginLogin: (returnUrl) => inner.beginLogin(returnUrl),
-    logout: () => inner.logout(),
+    logout: async () => {
+      await beforeLogout?.(csrfToken);
+      await inner.logout();
+    },
   };
 }

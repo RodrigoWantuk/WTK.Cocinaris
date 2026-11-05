@@ -279,6 +279,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/notifications/push": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** GET /api/v1/notifications/push */
+        get: operations["getApiV1NotificationsPush"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/notifications/push/subscription": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** PUT /api/v1/notifications/push/subscription */
+        put: operations["putApiV1NotificationsPushSubscription"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/notifications/push/subscription/removal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** POST /api/v1/notifications/push/subscription/removal */
+        post: operations["postApiV1NotificationsPushSubscriptionRemoval"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/planning/menus": {
         parameters: {
             query?: never;
@@ -2473,6 +2524,27 @@ export interface components {
             expectedRevisionNumber: number | string;
             /** @description What to change, at most 300 characters. Untrusted text, sent to the model only as data. */
             instruction: null | string;
+        };
+        /** @description Whether push can be offered. */
+        PushStatusView: {
+            /** @description True when the server has valid keys. */
+            available: boolean;
+            /** @description Public key the browser subscribes with, when available. */
+            publicKey: null | string;
+        };
+        /** @description Body for forgetting this browser's subscription. */
+        PushSubscriptionRemovalRequest: {
+            /** @description Push service address. */
+            endpoint: null | string;
+        };
+        /** @description Body for saving this browser's subscription. */
+        PushSubscriptionRequest: {
+            /** @description Browser's secret, base64url. */
+            auth: null | string;
+            /** @description Push service address. */
+            endpoint: null | string;
+            /** @description Browser's public key, base64url. */
+            p256dh: null | string;
         };
         /** @description Represents exactly one inventory quantity mode supplied by an API client. */
         QuantityRequest: {
@@ -5234,6 +5306,175 @@ export interface operations {
             };
             /** @description Authentication is required. */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    getApiV1NotificationsPush: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PushStatusView"];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    putApiV1NotificationsPushSubscription: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Required CSRF token issued by GET /api/v1/session. */
+                "X-CSRF-TOKEN": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PushSubscriptionRequest"];
+            };
+        };
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description The request content type is not supported. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    postApiV1NotificationsPushSubscriptionRemoval: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Required CSRF token issued by GET /api/v1/session. */
+                "X-CSRF-TOKEN": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PushSubscriptionRemovalRequest"];
+            };
+        };
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description The request content type is not supported. */
+            415: {
                 headers: {
                     [name: string]: unknown;
                 };

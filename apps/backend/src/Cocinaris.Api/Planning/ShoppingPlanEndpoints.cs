@@ -99,7 +99,7 @@ public static class ShoppingPlanEndpoints
         return group;
     }
 
-    private static async ValueTask<object?> ValidateCsrfAsync(EndpointFilterInvocationContext context, EndpointFilterDelegate next)
+    internal static async ValueTask<object?> ValidateCsrfAsync(EndpointFilterInvocationContext context, EndpointFilterDelegate next)
     {
         var method = context.HttpContext.Request.Method;
         if (HttpMethods.IsPost(method) || HttpMethods.IsPut(method))

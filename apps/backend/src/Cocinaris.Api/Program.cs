@@ -65,6 +65,7 @@ builder.Services.AddScoped<InventoryAutoRemovalService>();
 if (!builder.Environment.IsEnvironment("Testing"))
 {
     builder.Services.AddHostedService<InventoryAutoRemovalWorker>();
+    builder.Services.AddHostedService<Cocinaris.Api.Planning.PlanReminderPushWorker>();
 }
 builder.Services.AddScoped<IInventoryLotWriteStore, PostgreSqlInventoryLotWriteStore>();
 builder.Services.AddScoped<IInventoryPreparationStore, PostgreSqlInventoryPreparationStore>();
@@ -268,6 +269,7 @@ api.MapGroup("/profile").RequireAuthorization().MapProfileEndpoints();
 api.MapGroup("/recipes").RequireAuthorization().MapRecipeEndpoints();
 api.MapGroup("/planning").RequireAuthorization().MapPlanningEndpoints();
 api.MapGroup("/planning/shopping-plans").RequireAuthorization().MapShoppingPlanEndpoints();
+api.MapGroup("/notifications/push").RequireAuthorization().MapPushNotificationEndpoints();
 app.Run();
 
 /// <summary>API entry point; partial so the integration-test host can reach it.</summary>

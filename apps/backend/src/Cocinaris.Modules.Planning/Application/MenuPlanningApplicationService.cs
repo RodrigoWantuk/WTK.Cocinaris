@@ -547,7 +547,7 @@ public sealed class MenuPlanningApplicationService(
     /// Pre-meal readiness checks for the dated meals of menus in use between
     /// <paramref name="from"/> and the following <paramref name="days"/> − 1 days (PLAN-0029
     /// Phase 4): what to buy, what to thaw, and reserved lots whose date falls before the meal.
-    /// Read-only and recomputed on every read; reminders are shown in the app only.
+    /// Read-only and recomputed on every read.
     /// </summary>
     /// <param name="from">The owner's current day; the server does not know the owner's time zone.</param>
     /// <param name="days">Days to check, 1 to 7; 2 (today and tomorrow) when omitted.</param>
@@ -560,22 +560,33 @@ public sealed class MenuPlanningApplicationService(
         }
 
         var user = await currentUser.GetCurrentAsync(cancellationToken);
-        var start = from ?? ConservativeToday();
-        var span = days ?? 2;
+        return RecipeApplicationResult<PreparationView>.Succeeded(await GetPreparationForOwnerAsync(user.Id, from ?? ConservativeToday(), days ?? 2, cancellationToken));
+    }
+
+    /// <summary>
+    /// The same reminders for an explicit owner, for work with no signed-in user (ADR-0013). The
+    /// caller is responsible for having that owner id from its own authorized source.
+    /// </summary>
+    /// <param name="ownerUserId">Owner.</param>
+    /// <param name="start">The owner's current day.</param>
+    /// <param name="span">Days to check, 1 to 7.</param>
+    /// <param name="cancellationToken">Cancellation.</param>
+    public async Task<PreparationView> GetPreparationForOwnerAsync(Guid ownerUserId, DateOnly start, int span, CancellationToken cancellationToken)
+    {
         var end = start.AddDays(span);
-        var lots = await inventory.ListActiveAsync(user.Id, MaxPantryLots, cancellationToken);
-        var projected = await ProjectAsync(user.Id, start, lots, simulateDraft: null, excludePlanId: null, cancellationToken);
+        var lots = await inventory.ListActiveAsync(ownerUserId, MaxPantryLots, cancellationToken);
+        var projected = await ProjectAsync(ownerUserId, start, lots, simulateDraft: null, excludePlanId: null, cancellationToken);
         var meals = projected.Meals
             .Where(item => item.View.PlannedDate is { } date && date >= start && date < end)
             .Select(item => new ReminderMeal(item.PlanId, item.View.EntryId, item.View.RecipeName, item.View.PlannedDate!.Value, item.View.MealType))
             .ToList();
         // What a base will make is not something to buy before the meal that uses it.
         var made = projected.Meals.Select(item => item.View.ProducesName).OfType<string>().ToList();
-        var keys = await matching.KeysAsync(user.Id, made.Concat(projected.Projection.Meals.Values.SelectMany(meal => meal.Missing.Select(item => item.Name))), cancellationToken);
+        var keys = await matching.KeysAsync(ownerUserId, made.Concat(projected.Projection.Meals.Values.SelectMany(meal => meal.Missing.Select(item => item.Name))), cancellationToken);
         var fromPrep = made.Select(keys.Key).ToHashSet(StringComparer.Ordinal);
         var reminders = PreparationReminders.Build(meals, projected.Projection, lots, start).Where(item => item.Kind != "buy" || !fromPrep.Contains(keys.Key(item.ItemName))).ToList();
-        reminders.AddRange(await ReadyPortionsAsync(user.Id, start, lots, cancellationToken));
-        return RecipeApplicationResult<PreparationView>.Succeeded(new PreparationView(start, span, reminders));
+        reminders.AddRange(await ReadyPortionsAsync(ownerUserId, start, lots, cancellationToken));
+        return new PreparationView(start, span, reminders);
     }
 
     private async Task<IReadOnlyList<PreparationReminderView>> ReadyPortionsAsync(Guid ownerUserId, DateOnly today, IReadOnlyList<InventoryLotReadModel> lots, CancellationToken cancellationToken)

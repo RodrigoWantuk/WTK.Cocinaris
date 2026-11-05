@@ -1051,6 +1051,60 @@ namespace Cocinaris.Infrastructure.Persistence.Migrations
                     b.ToTable("ordered_code_entries", "profiles");
                 });
 
+            modelBuilder.Entity("Cocinaris.Infrastructure.Persistence.PushDeliveryDayRecord", b =>
+                {
+                    b.Property<Guid>("OwnerUserId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateOnly>("LastSentOn")
+                        .HasColumnType("date");
+
+                    b.HasKey("OwnerUserId");
+
+                    b.ToTable("push_delivery_days", "planning");
+                });
+
+            modelBuilder.Entity("Cocinaris.Infrastructure.Persistence.PushSubscriptionRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Auth")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Endpoint")
+                        .IsRequired()
+                        .HasMaxLength(2048)
+                        .HasColumnType("character varying(2048)");
+
+                    b.Property<DateTimeOffset?>("LastSuccessAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("OwnerUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("P256dh")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Endpoint")
+                        .IsUnique();
+
+                    b.HasIndex("OwnerUserId");
+
+                    b.ToTable("push_subscriptions", "planning");
+                });
+
             modelBuilder.Entity("Cocinaris.Infrastructure.Persistence.RecipeExecutionRecord", b =>
                 {
                     b.Property<Guid>("Id")
