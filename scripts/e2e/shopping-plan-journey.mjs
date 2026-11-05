@@ -4,7 +4,7 @@
  * The replica has no AI provider, so this also proves the plan works on saved recipes alone (gate
  * G1-E). It seeds two recipes, then in the browser: answers the setup, accepts cards (one with
  * "yields 2 meals"), reviews, marks "I have it" on the list, accepts the plan, leaves a line for
- * later, splits the list by place, records the arrival, and checks "Hoje". It prints how long the first card took (gate G1-C). Names are unique per run.
+ * later, splits the list by place, records the arrival, checks "Hoje", names the plan, and repeats it. It prints how long the first card took (gate G1-C). Names are unique per run.
  *
  * Usage: COCINARIS_SMOKE_PASSWORD_A=<development-fixture-password> \
  *          node scripts/e2e/shopping-plan-journey.mjs [username]
@@ -147,6 +147,21 @@ try {
   const entries = await page.evaluate(async (date) => (await fetch(`/api/v1/planning/today?date=${date}`, { credentials: "include" })).json(), day);
   const planned = entries.filter((item) => item.menuId === menuId).length;
   check("Hoje shows this plan without every flexible meal", planned >= 1 && planned <= 2, `${planned} meals`);
+
+  // Repeat: name the finished plan, then start again with its dishes already on the new draft.
+  await page.goto(`${BASE}/app/compras/planejar`, { waitUntil: "networkidle" });
+  const recent = page.getByTestId("plan-recent-row").first();
+  await recent.getByTestId("plan-recent-name-edit").click();
+  await recent.getByTestId("plan-recent-name-input").fill(`Semana E2E ${run}`);
+  await recent.getByTestId("plan-recent-name-save").click();
+  await page.getByTestId("plan-recent-row").filter({ hasText: `Semana E2E ${run}` }).waitFor({ timeout: 10000 });
+  check("a finished plan can be named", true);
+  await page.getByTestId("plan-recent-row").filter({ hasText: `Semana E2E ${run}` }).getByTestId("plan-repeat").click();
+  await page.waitForURL(/\/app\/compras\/planejar\/[^/]+/, { timeout: 15000 });
+  await page.waitForURL(/\/revisar$/, { timeout: 15000 });
+  await page.getByTestId("plan-review-entry").first().waitFor({ timeout: 15000 });
+  check("repeating brings the dishes back", (await page.getByTestId("plan-review-entry").count()) === 2);
+  check("the repeated plan is on a new menu", !page.url().includes(menuId));
 } catch (error) {
   check("journey", false, `${error.message.split("\n")[0]} (at ${new URL(page.url()).pathname})`);
   if (process.env.COCINARIS_E2E_SCREENSHOT) await page.screenshot({ path: process.env.COCINARIS_E2E_SCREENSHOT, fullPage: true });

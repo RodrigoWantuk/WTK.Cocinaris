@@ -860,6 +860,14 @@
               "string"
             ]
           },
+          "fromMenuId": {
+            "description": "Menu of an accepted plan to repeat. That plan's answers then replace all of these except Today, and the new plan starts today.",
+            "format": "uuid",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
           "mealTypes": {
             "description": "Meals to plan.",
             "items": {
@@ -5902,6 +5910,55 @@
         ],
         "type": "object"
       },
+      "ShoppingPlanRecentView": {
+        "description": "An accepted plan that can be repeated.",
+        "properties": {
+          "dishes": {
+            "description": "Dishes whose recipe still exists.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "endDate": {
+            "description": "Last day of the menu.",
+            "format": "date",
+            "type": "string"
+          },
+          "mealsTotal": {
+            "description": "Meals the plan covered.",
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ]
+          },
+          "menuId": {
+            "description": "Its menu, which the person may name to find it again.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "name": {
+            "description": "The menu's name; empty until the person gives one.",
+            "type": "string"
+          },
+          "startDate": {
+            "description": "First day of the menu.",
+            "format": "date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "menuId",
+          "name",
+          "startDate",
+          "endDate",
+          "mealsTotal",
+          "dishes"
+        ],
+        "type": "object"
+      },
       "ShoppingPlanReplacementRequest": {
         "description": "Body for replacing a meal.",
         "properties": {
@@ -6084,6 +6141,13 @@
               "string"
             ]
           },
+          "recent": {
+            "description": "The newest accepted plans that still have a dish, at most five.",
+            "items": {
+              "$ref": "#/components/schemas/ShoppingPlanRecentView"
+            },
+            "type": "array"
+          },
           "restrictions": {
             "description": "Confirmed restrictions, excluding plain preferences.",
             "items": {
@@ -6105,7 +6169,8 @@
           "restrictions",
           "unverifiableRestrictions",
           "hasFreezer",
-          "current"
+          "current",
+          "recent"
         ],
         "type": "object"
       },

@@ -17,6 +17,7 @@ import { resolveLabel } from "@/features/profile/catalog/profileCatalog";
 import type { PreferenceCategory } from "@/contracts/profile";
 import { restrictionLabel } from "./restrictionLabel";
 import { useShoppingPlanRepository } from "./ShoppingPlanProvider";
+import { ShoppingPlanRecentList } from "./ShoppingPlanRecent";
 
 const MEALS = ["lunch", "dinner", "snack", "breakfast"] as const;
 const MAX_DAYS = 14;
@@ -178,8 +179,9 @@ export function ShoppingPlanSetupPage() {
     if (value === "tomorrow") setPrepDate(addDays(today, 1));
   };
 
-  const begin = async () => {
-    if (!session.csrfToken || saving || tooMany || meals.length === 0) return;
+  const begin = async (fromMenuId: string | null = null) => {
+    if (!session.csrfToken || saving) return;
+    if (!fromMenuId && (tooMany || meals.length === 0)) return;
     setSaving(true);
     setError(null);
     const daily = style === "daily";
@@ -196,6 +198,7 @@ export function ShoppingPlanSetupPage() {
           prepMinutes: daily ? null : Number(prepMinutes),
           anchorIngredient: anchor.trim() || null,
           people,
+          fromMenuId,
         },
         {
           csrfToken: session.csrfToken,
@@ -301,14 +304,7 @@ export function ShoppingPlanSetupPage() {
 
   const dayChoice = customDays ? "other" : String(days);
   return (
-    <form
-      data-testid="plan-setup"
-      className="space-y-6"
-      onSubmit={(event) => {
-        event.preventDefault();
-        void begin();
-      }}
-    >
+    <div className="space-y-6">
       <header>
         <h1 className="font-display text-3xl">{t("shoppingPlan.title")}</h1>
         <p className="mt-1 text-muted-foreground">
@@ -316,237 +312,262 @@ export function ShoppingPlanSetupPage() {
         </p>
       </header>
 
-      <ChoiceChips
-        label={t("shoppingPlan.days")}
-        testId="plan-days"
-        value={dayChoice}
-        options={[
-          { value: "3", label: "3" },
-          { value: "5", label: "5" },
-          { value: "7", label: "7" },
-          { value: "other", label: t("shoppingPlan.days.other") },
-        ]}
-        onChange={(value) => {
-          setCustomDays(value === "other");
-          if (value !== "other") setDays(Number(value));
+      {/* The list has its own form for names, and forms cannot nest. */}
+      {start.recent.length > 0 ? (
+        <ShoppingPlanRecentList
+          plans={start.recent}
+          csrfToken={session.csrfToken}
+          busy={saving}
+          onRepeat={(menuId) => void begin(menuId)}
+        />
+      ) : null}
+      <form
+        data-testid="plan-setup"
+        className="space-y-6"
+        onSubmit={(event) => {
+          event.preventDefault();
+          void begin();
         }}
-      />
-      {customDays ? (
-        <Stepper
-          label={t("shoppingPlan.days.count")}
-          testId="plan-days-count"
-          value={days}
-          min={1}
-          max={MAX_DAYS}
-          onChange={setDays}
-        />
-      ) : null}
-
-      <div className="space-y-1.5">
-        <p className="text-sm font-medium">{t("shoppingPlan.meals")}</p>
-        <div
-          role="group"
-          aria-label={t("shoppingPlan.meals")}
-          className="flex flex-wrap gap-2"
-        >
-          {MEALS.map((meal) => {
-            const chosen = meals.includes(meal);
-            return (
-              <Button
-                key={meal}
-                type="button"
-                size="sm"
-                variant={chosen ? "default" : "secondary"}
-                aria-pressed={chosen}
-                data-testid={`plan-meal-${meal}`}
-                onClick={() =>
-                  setMeals((current) =>
-                    chosen
-                      ? current.filter((item) => item !== meal)
-                      : [...current, meal],
-                  )
-                }
-              >
-                {t(`shoppingPlan.meal.${meal}`)}
-              </Button>
-            );
-          })}
-        </div>
-        {meals.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            {t("shoppingPlan.meals.none")}
-          </p>
-        ) : null}
-      </div>
-
-      {total > 1 ? (
-        <Stepper
-          label={t("shoppingPlan.mealsOut")}
-          testId="plan-meals-out"
-          value={mealsOut}
-          min={0}
-          max={total - 1}
-          onChange={setMealsOut}
-        />
-      ) : null}
-      <p
-        role="status"
-        data-testid="plan-meal-total"
-        className={`text-sm ${tooMany ? "text-destructive" : "text-muted-foreground"}`}
       >
-        {tooMany
-          ? t("shoppingPlan.meals.tooMany", { max: MAX_MEALS })
-          : t("shoppingPlan.meals.total", { count: Math.max(0, mealsToPlan) })}
-      </p>
-
-      <ChoiceChips
-        label={t("shoppingPlan.style")}
-        testId="plan-style"
-        value={style}
-        options={[
-          { value: "once", label: t("shoppingPlan.style.once") },
-          { value: "mix", label: t("shoppingPlan.style.mix") },
-          { value: "daily", label: t("shoppingPlan.style.daily") },
-        ]}
-        onChange={setStyle}
-      />
-      <ChoiceChips
-        label={t("shoppingPlan.priority")}
-        testId="plan-priority"
-        value={priority}
-        options={[
-          { value: "waste", label: t("shoppingPlan.priority.waste") },
-          { value: "short", label: t("shoppingPlan.priority.short") },
-          { value: "save", label: t("shoppingPlan.priority.save") },
-          { value: "time", label: t("shoppingPlan.priority.time") },
-        ]}
-        onChange={setPriority}
-      />
-
-      {style !== "daily" ? (
-        <>
-          <ChoiceChips
-            label={t("shoppingPlan.prepDay")}
-            testId="plan-prep-day"
-            value={prepDay}
-            options={[
-              { value: "today", label: t("shoppingPlan.prepDay.today") },
-              { value: "tomorrow", label: t("shoppingPlan.prepDay.tomorrow") },
-              { value: "other", label: t("shoppingPlan.prepDay.other") },
-            ]}
-            onChange={chooseDay}
-          />
-          {prepDay === "other" ? (
-            <label className="block space-y-1 text-sm font-medium">
-              {t("shoppingPlan.prepDay.date")}
-              <Input
-                type="date"
-                data-testid="plan-prep-date"
-                value={prepDate}
-                min={today}
-                max={addDays(today, MAX_PREP_DAYS)}
-                onChange={(event) => setPrepDate(event.target.value)}
-              />
-              <span className="block text-xs font-normal text-muted-foreground">
-                {formatMenuDay(prepDate, locale)}
-              </span>
-            </label>
-          ) : null}
-          <ChoiceChips
-            label={t("shoppingPlan.prepTime")}
-            testId="plan-prep-time"
-            value={prepMinutes}
-            options={[
-              { value: "60", label: t("shoppingPlan.prepTime.60") },
-              { value: "120", label: t("shoppingPlan.prepTime.120") },
-              { value: "240", label: t("shoppingPlan.prepTime.240") },
-            ]}
-            onChange={setPrepMinutes}
-          />
-        </>
-      ) : null}
-
-      {anchorOpen ? (
-        <label className="block space-y-1 text-sm font-medium">
-          {t("shoppingPlan.anchor")}
-          <Input
-            data-testid="plan-anchor"
-            maxLength={60}
-            list="plan-anchor-options"
-            placeholder={t("shoppingPlan.anchor.example")}
-            value={anchor}
-            onChange={(event) => setAnchor(event.target.value)}
-          />
-          <datalist id="plan-anchor-options">
-            {suggestions.map((name) => (
-              <option key={name} value={name} />
-            ))}
-          </datalist>
-        </label>
-      ) : (
-        <button
-          type="button"
-          data-testid="plan-anchor-open"
-          className="min-h-11 text-sm font-medium text-primary underline-offset-4 hover:underline"
-          onClick={() => setAnchorOpen(true)}
-        >
-          {t("shoppingPlan.anchor")}
-        </button>
-      )}
-
-      <div className="surface space-y-3 p-4">
-        <Stepper
-          label={t("shoppingPlan.people")}
-          testId="plan-people"
-          value={people}
-          min={1}
-          max={MAX_PEOPLE}
-          onChange={setPeople}
+        <ChoiceChips
+          label={t("shoppingPlan.days")}
+          testId="plan-days"
+          value={dayChoice}
+          options={[
+            { value: "3", label: "3" },
+            { value: "5", label: "5" },
+            { value: "7", label: "7" },
+            { value: "other", label: t("shoppingPlan.days.other") },
+          ]}
+          onChange={(value) => {
+            setCustomDays(value === "other");
+            if (value !== "other") setDays(Number(value));
+          }}
         />
-        <p
-          className="text-sm text-muted-foreground"
-          data-testid="plan-restrictions"
-        >
-          {restrictionsText || t("shoppingPlan.restrictions.none")}{" "}
-          <Link
-            to="/app/perfil"
-            className="font-medium text-primary underline-offset-4 hover:underline"
-          >
-            {t("shoppingPlan.restrictions.change")}
-          </Link>
-        </p>
-        {start.restrictions.length > 0 ? (
-          <p className="text-xs text-muted-foreground">
-            {t("shoppingPlan.restrictions.labels")}
-          </p>
+        {customDays ? (
+          <Stepper
+            label={t("shoppingPlan.days.count")}
+            testId="plan-days-count"
+            value={days}
+            min={1}
+            max={MAX_DAYS}
+            onChange={setDays}
+          />
         ) : null}
-        {start.unverifiableRestrictions.map((code) => (
-          <p
-            key={code}
-            data-testid="plan-unverifiable"
-            className="text-sm text-warning-foreground"
+
+        <div className="space-y-1.5">
+          <p className="text-sm font-medium">{t("shoppingPlan.meals")}</p>
+          <div
+            role="group"
+            aria-label={t("shoppingPlan.meals")}
+            className="flex flex-wrap gap-2"
           >
-            {t("shoppingPlan.restrictions.unverifiable", {
-              restriction: restrictionLabel(locale, code),
+            {MEALS.map((meal) => {
+              const chosen = meals.includes(meal);
+              return (
+                <Button
+                  key={meal}
+                  type="button"
+                  size="sm"
+                  variant={chosen ? "default" : "secondary"}
+                  aria-pressed={chosen}
+                  data-testid={`plan-meal-${meal}`}
+                  onClick={() =>
+                    setMeals((current) =>
+                      chosen
+                        ? current.filter((item) => item !== meal)
+                        : [...current, meal],
+                    )
+                  }
+                >
+                  {t(`shoppingPlan.meal.${meal}`)}
+                </Button>
+              );
             })}
-          </p>
-        ))}
-      </div>
+          </div>
+          {meals.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              {t("shoppingPlan.meals.none")}
+            </p>
+          ) : null}
+        </div>
 
-      {error ? (
-        <p role="alert" className="text-sm text-destructive">
-          {t(error)}
+        {total > 1 ? (
+          <Stepper
+            label={t("shoppingPlan.mealsOut")}
+            testId="plan-meals-out"
+            value={mealsOut}
+            min={0}
+            max={total - 1}
+            onChange={setMealsOut}
+          />
+        ) : null}
+        <p
+          role="status"
+          data-testid="plan-meal-total"
+          className={`text-sm ${tooMany ? "text-destructive" : "text-muted-foreground"}`}
+        >
+          {tooMany
+            ? t("shoppingPlan.meals.tooMany", { max: MAX_MEALS })
+            : t("shoppingPlan.meals.total", {
+                count: Math.max(0, mealsToPlan),
+              })}
         </p>
-      ) : null}
-      <Button
-        type="submit"
-        size="lg"
-        className="w-full"
-        data-testid="plan-begin"
-        disabled={saving || tooMany || meals.length === 0 || !session.csrfToken}
-      >
-        {saving ? t("planning.saving") : t("shoppingPlan.begin")}
-      </Button>
-    </form>
+
+        <ChoiceChips
+          label={t("shoppingPlan.style")}
+          testId="plan-style"
+          value={style}
+          options={[
+            { value: "once", label: t("shoppingPlan.style.once") },
+            { value: "mix", label: t("shoppingPlan.style.mix") },
+            { value: "daily", label: t("shoppingPlan.style.daily") },
+          ]}
+          onChange={setStyle}
+        />
+        <ChoiceChips
+          label={t("shoppingPlan.priority")}
+          testId="plan-priority"
+          value={priority}
+          options={[
+            { value: "waste", label: t("shoppingPlan.priority.waste") },
+            { value: "short", label: t("shoppingPlan.priority.short") },
+            { value: "save", label: t("shoppingPlan.priority.save") },
+            { value: "time", label: t("shoppingPlan.priority.time") },
+          ]}
+          onChange={setPriority}
+        />
+
+        {style !== "daily" ? (
+          <>
+            <ChoiceChips
+              label={t("shoppingPlan.prepDay")}
+              testId="plan-prep-day"
+              value={prepDay}
+              options={[
+                { value: "today", label: t("shoppingPlan.prepDay.today") },
+                {
+                  value: "tomorrow",
+                  label: t("shoppingPlan.prepDay.tomorrow"),
+                },
+                { value: "other", label: t("shoppingPlan.prepDay.other") },
+              ]}
+              onChange={chooseDay}
+            />
+            {prepDay === "other" ? (
+              <label className="block space-y-1 text-sm font-medium">
+                {t("shoppingPlan.prepDay.date")}
+                <Input
+                  type="date"
+                  data-testid="plan-prep-date"
+                  value={prepDate}
+                  min={today}
+                  max={addDays(today, MAX_PREP_DAYS)}
+                  onChange={(event) => setPrepDate(event.target.value)}
+                />
+                <span className="block text-xs font-normal text-muted-foreground">
+                  {formatMenuDay(prepDate, locale)}
+                </span>
+              </label>
+            ) : null}
+            <ChoiceChips
+              label={t("shoppingPlan.prepTime")}
+              testId="plan-prep-time"
+              value={prepMinutes}
+              options={[
+                { value: "60", label: t("shoppingPlan.prepTime.60") },
+                { value: "120", label: t("shoppingPlan.prepTime.120") },
+                { value: "240", label: t("shoppingPlan.prepTime.240") },
+              ]}
+              onChange={setPrepMinutes}
+            />
+          </>
+        ) : null}
+
+        {anchorOpen ? (
+          <label className="block space-y-1 text-sm font-medium">
+            {t("shoppingPlan.anchor")}
+            <Input
+              data-testid="plan-anchor"
+              maxLength={60}
+              list="plan-anchor-options"
+              placeholder={t("shoppingPlan.anchor.example")}
+              value={anchor}
+              onChange={(event) => setAnchor(event.target.value)}
+            />
+            <datalist id="plan-anchor-options">
+              {suggestions.map((name) => (
+                <option key={name} value={name} />
+              ))}
+            </datalist>
+          </label>
+        ) : (
+          <button
+            type="button"
+            data-testid="plan-anchor-open"
+            className="min-h-11 text-sm font-medium text-primary underline-offset-4 hover:underline"
+            onClick={() => setAnchorOpen(true)}
+          >
+            {t("shoppingPlan.anchor")}
+          </button>
+        )}
+
+        <div className="surface space-y-3 p-4">
+          <Stepper
+            label={t("shoppingPlan.people")}
+            testId="plan-people"
+            value={people}
+            min={1}
+            max={MAX_PEOPLE}
+            onChange={setPeople}
+          />
+          <p
+            className="text-sm text-muted-foreground"
+            data-testid="plan-restrictions"
+          >
+            {restrictionsText || t("shoppingPlan.restrictions.none")}{" "}
+            <Link
+              to="/app/perfil"
+              className="font-medium text-primary underline-offset-4 hover:underline"
+            >
+              {t("shoppingPlan.restrictions.change")}
+            </Link>
+          </p>
+          {start.restrictions.length > 0 ? (
+            <p className="text-xs text-muted-foreground">
+              {t("shoppingPlan.restrictions.labels")}
+            </p>
+          ) : null}
+          {start.unverifiableRestrictions.map((code) => (
+            <p
+              key={code}
+              data-testid="plan-unverifiable"
+              className="text-sm text-warning-foreground"
+            >
+              {t("shoppingPlan.restrictions.unverifiable", {
+                restriction: restrictionLabel(locale, code),
+              })}
+            </p>
+          ))}
+        </div>
+
+        {error ? (
+          <p role="alert" className="text-sm text-destructive">
+            {t(error)}
+          </p>
+        ) : null}
+        <Button
+          type="submit"
+          size="lg"
+          className="w-full"
+          data-testid="plan-begin"
+          disabled={
+            saving || tooMany || meals.length === 0 || !session.csrfToken
+          }
+        >
+          {saving ? t("planning.saving") : t("shoppingPlan.begin")}
+        </Button>
+      </form>
+    </div>
   );
 }

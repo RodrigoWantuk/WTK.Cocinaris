@@ -20,6 +20,18 @@ export interface ShoppingPlanSetup {
   people: number;
 }
 
+/** An accepted plan that can be repeated. */
+export interface ShoppingPlanRecent {
+  menuId: string;
+  /** The menu's name; empty until the person gives one. */
+  name: string;
+  startDate: string;
+  endDate: string;
+  mealsTotal: number;
+  /** Dishes whose recipe still exists. */
+  dishes: string[];
+}
+
 /** Defaults for the setup screen. */
 export interface ShoppingPlanStart {
   lastSetup: ShoppingPlanSetup | null;
@@ -29,6 +41,8 @@ export interface ShoppingPlanStart {
   unverifiableRestrictions: string[];
   hasFreezer: boolean;
   current: { sessionId: string; menuId: string; status: string } | null;
+  /** The newest accepted plans, at most five. */
+  recent: ShoppingPlanRecent[];
 }
 
 /** A card to decide on. `newItemCount` is an estimate until the recipe is expanded. */
@@ -115,6 +129,8 @@ export interface ShoppingPlanRepository {
   create(
     input: Omit<ShoppingPlanSetup, "anchorIngredient"> & {
       anchorIngredient: string | null;
+      /** An accepted plan to repeat: its answers then replace these, except `today`. */
+      fromMenuId?: string | null;
     },
     options: Mutation & { idempotencyKey: string },
   ): Promise<ShoppingPlan>;

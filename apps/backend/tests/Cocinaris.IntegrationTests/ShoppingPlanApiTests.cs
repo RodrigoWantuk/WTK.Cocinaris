@@ -217,6 +217,78 @@ public sealed partial class RecipeExecutionApiTests
         Assert.Equal(HttpStatusCode.BadRequest, (await PostAsync(client, csrf, Plans, new { today, days = 99, mealTypes = new[] { "dinner" }, cookingStyle = "daily", priority = "short" }, Guid.NewGuid())).StatusCode);
     }
 
+    [Fact]
+    public async Task AFinishedPlanCanBeRepeatedWithoutDeletedOrNowRestrictedDishes()
+    {
+        var provider = new FakeAiProvider(useProtocolDefaultsWhenUnscripted: false);
+        await using var host = _factory.WithWebHostBuilder(builder => builder.ConfigureTestServices(services => services.AddSingleton<IAiProvider>(provider)));
+        using var client = PlanClient(host, "plan-repeat");
+        var csrf = await CsrfAsync(client);
+        var firstDay = new DateOnly(2026, 11, 4);
+        var body = new { today = firstDay, days = 7, mealTypes = new[] { "dinner" }, mealsOut = 0, cookingStyle = "mix", priority = "short", prepDate = firstDay, prepMinutes = 120, people = 2 };
+        await CreateRecipeAsync(client, csrf, "Arroz", ("Arroz", 200m, "g"));
+        await CreateRecipeAsync(client, csrf, "Feijao", ("Feijao", 200m, "g"));
+        var deleted = await CreateRecipeAsync(client, csrf, "Sopa", ("Cenoura", 200m, "g"));
+        await CreateRecipeAsync(client, csrf, "Frango assado", ("Frango", 200m, "g"));
+        await CreateRecipeAsync(client, csrf, "Lentilha", ("Lentilha", 200m, "g"));
+
+        var plan = await JsonOf(await PostAsync(client, csrf, Plans, body, Guid.NewGuid()));
+        var sessionId = plan.GetProperty("sessionId").GetGuid();
+        var firstMenu = plan.GetProperty("menuId").GetGuid();
+        var cards = plan.GetProperty("queue").EnumerateArray().ToDictionary(card => card.GetProperty("name").GetString()!, card => card.GetProperty("cardId").GetGuid());
+        string Decide(string name) => $"{Plans}/{sessionId}/cards/{cards[name]}/decision";
+        await PostAsync(client, csrf, Decide("Arroz"), new { decision = "accept", mode = "yield", repeats = 2 });
+        await PostAsync(client, csrf, Decide("Feijao"), new { decision = "accept", mode = "again", repeats = 2 });
+        await PostAsync(client, csrf, Decide("Sopa"), new { decision = "accept" });
+        await PostAsync(client, csrf, Decide("Frango assado"), new { decision = "accept" });
+
+        // Not accepted yet: nothing to repeat, and an open plan's menu cannot be repeated.
+        Assert.Empty((await client.GetFromJsonAsync<JsonElement>($"{Plans}/start")).GetProperty("recent").EnumerateArray());
+        Assert.Equal(HttpStatusCode.NotFound, (await PostAsync(client, csrf, Plans, new { today = firstDay, fromMenuId = firstMenu }, Guid.NewGuid())).StatusCode);
+        Assert.True((await PostAsync(client, csrf, $"{Plans}/{sessionId}/acceptance", new { })).IsSuccessStatusCode);
+
+        var recent = (await client.GetFromJsonAsync<JsonElement>($"{Plans}/start")).GetProperty("recent").EnumerateArray().Single();
+        Assert.Equal(firstMenu, recent.GetProperty("menuId").GetGuid());
+        Assert.Equal(4, recent.GetProperty("dishes").GetArrayLength());
+
+        Assert.Equal(HttpStatusCode.OK, (await PostAsync(client, csrf, $"/api/v1/recipes/{deleted}/archive", new { archived = true })).StatusCode);
+        await SetVegetarianAsync(client, csrf);
+
+        // Another owner cannot repeat this plan or learn that it exists.
+        using var stranger = PlanClient(host, "plan-repeat-stranger");
+        var strangerCsrf = await CsrfAsync(stranger);
+        Assert.Equal(HttpStatusCode.NotFound, (await PostAsync(stranger, strangerCsrf, Plans, new { today = firstDay, fromMenuId = firstMenu }, Guid.NewGuid())).StatusCode);
+
+        // A week later: the same answers and the new period. The deleted dish and the one that now
+        // conflicts with a restriction are gone, and no AI was needed.
+        var later = firstDay.AddDays(7);
+        var key = Guid.NewGuid();
+        var created = await PostAsync(client, csrf, Plans, new { today = later, fromMenuId = firstMenu }, key);
+        Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+        var again = await JsonOf(created);
+        var newMenu = again.GetProperty("menuId").GetGuid();
+        Assert.NotEqual(firstMenu, newMenu);
+        Assert.Equal(later, again.GetProperty("setup").GetProperty("prepDate").Deserialize<DateOnly>());
+        Assert.Equal(7, again.GetProperty("setup").GetProperty("days").GetInt32());
+        var accepted = again.GetProperty("accepted").EnumerateArray().ToDictionary(card => card.GetProperty("name").GetString()!);
+        Assert.Equal(["Arroz", "Feijao"], accepted.Keys.Order());
+        Assert.Equal(("yield", 2), (accepted["Arroz"].GetProperty("mode").GetString(), accepted["Arroz"].GetProperty("repeats").GetInt32()));
+        Assert.Equal(("again", 2), (accepted["Feijao"].GetProperty("mode").GetString(), accepted["Feijao"].GetProperty("repeats").GetInt32()));
+        Assert.Equal(4, again.GetProperty("progress").GetProperty("mealsFilled").GetInt32());
+        Assert.Equal(["Lentilha"], again.GetProperty("queue").EnumerateArray().Select(card => card.GetProperty("name").GetString()!));
+
+        // Still a draft that reserves nothing, with the meals in the new period.
+        var menu = await client.GetFromJsonAsync<JsonElement>($"/api/v1/planning/menus/{newMenu}");
+        Assert.Equal("draft", menu.GetProperty("status").GetString());
+        var entries = menu.GetProperty("entries").EnumerateArray().ToList();
+        Assert.Equal(3, entries.Count);
+        Assert.Contains(entries, entry => entry.GetProperty("mealsCovered").GetInt32() == 2 && entry.GetProperty("servings").GetInt32() == 4 && entry.GetProperty("plannedDate").Deserialize<DateOnly>() == later);
+
+        // A retry finds the same plan and adds no meal.
+        Assert.Equal(again.GetProperty("sessionId").GetGuid(), (await JsonOf(await PostAsync(client, csrf, Plans, new { today = later, fromMenuId = firstMenu }, key))).GetProperty("sessionId").GetGuid());
+        Assert.Equal(3, (await client.GetFromJsonAsync<JsonElement>($"/api/v1/planning/menus/{newMenu}")).GetProperty("entries").GetArrayLength());
+    }
+
     private static async Task SetVegetarianAsync(HttpClient client, string csrf)
     {
         using var bootstrap = new HttpRequestMessage(HttpMethod.Patch, "/api/v1/profile") { Content = JsonContent.Create(new { displayName = new { action = "confirm", value = "Alex", durability = "durable" } }) };

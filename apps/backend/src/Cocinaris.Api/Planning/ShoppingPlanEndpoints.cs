@@ -114,7 +114,7 @@ public sealed class ShoppingPlanApiService(ShoppingPlanApplicationService applic
 
     /// <summary>Creates a plan; requires an Idempotency-Key.</summary>
     public async Task<IResult> CreateAsync(CreateShoppingPlanRequest body, HttpRequest request, CancellationToken cancellationToken) =>
-        ToResult(await application.CreateAsync(new CreateShoppingPlanCommand(Key(request), request.HttpContext.TraceIdentifier, Language(request), body.Today, body.Days, body.MealTypes, body.MealsOut, body.CookingStyle, body.Priority, body.PrepDate, body.PrepMinutes, body.AnchorIngredient, body.People), cancellationToken), request.HttpContext.TraceIdentifier);
+        ToResult(await application.CreateAsync(new CreateShoppingPlanCommand(Key(request), request.HttpContext.TraceIdentifier, Language(request), body.Today, body.Days, body.MealTypes, body.MealsOut, body.CookingStyle, body.Priority, body.PrepDate, body.PrepMinutes, body.AnchorIngredient, body.People, body.FromMenuId), cancellationToken), request.HttpContext.TraceIdentifier);
 
     /// <summary>Gets one plan.</summary>
     public async Task<IResult> GetAsync(Guid sessionId, HttpContext context, CancellationToken cancellationToken) =>
@@ -207,7 +207,8 @@ public sealed class ShoppingPlanApiService(ShoppingPlanApplicationService applic
 /// <param name="PrepMinutes">Session length: 60, 120, or 240; ignored for <c>daily</c>.</param>
 /// <param name="AnchorIngredient">Optional typed ingredient, at most 60 characters.</param>
 /// <param name="People">People for this plan, 1 to 12; the profile's default when null. It never updates the profile.</param>
-public sealed record CreateShoppingPlanRequest(DateOnly? Today, int Days, IReadOnlyList<string>? MealTypes, int MealsOut, string? CookingStyle, string? Priority, DateOnly? PrepDate, int? PrepMinutes, string? AnchorIngredient, int? People);
+/// <param name="FromMenuId">Menu of an accepted plan to repeat. That plan's answers then replace all of these except <paramref name="Today"/>, and the new plan starts today.</param>
+public sealed record CreateShoppingPlanRequest(DateOnly? Today, int Days, IReadOnlyList<string>? MealTypes, int MealsOut, string? CookingStyle, string? Priority, DateOnly? PrepDate, int? PrepMinutes, string? AnchorIngredient, int? People, Guid? FromMenuId = null);
 
 /// <summary>Body for asking for more cards.</summary>
 /// <param name="DishFamilies">Up to three family codes.</param>
