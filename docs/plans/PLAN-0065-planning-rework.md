@@ -1,13 +1,13 @@
 # PLAN-0065: Planning Rework ("Montar o cardápio")
 
-- **Status:** In Progress; Slice 0 merged (#95); D1 and D2 confirmed by the owner on 2026-11-05; Slice 1 in a draft PR
+- **Status:** In Progress; Slices 0 and 1 merged (#95, #96); D1 and D2 confirmed by the owner on 2026-11-05; Slice 2 in a draft PR
 - **Type:** Implementation
 - **Priority:** High (owner request)
 - **Owner:** Claude Code
 - **Created:** 2026-11-05
 - **Last updated:** 2026-11-05
 - **Branch:** Plan publication `agent/plan-0065-planning-rework`; each slice uses the branch named in its section
-- **Pull request:** #94 (plan publication, merged); #95 (Slice 0, merged); Slice 1 draft PR
+- **Pull request:** #94 (plan publication, merged); #95 (Slice 0, merged); #96 (Slice 1, merged); Slice 2 draft PR
 - **Related issues:** None
 - **Related ADRs:** ADR-0009, ADR-0012, ADR-0013
 - **Dependencies:** PLAN-0062, PLAN-0063, PLAN-0064 (all merged). This plan replaces the deck and review screens of PLAN-0062 Slice 1 and the panel of PLAN-0064.
@@ -332,13 +332,13 @@ Branch: `agent/plan-0065-s1-engine`. Backend only, and the current screens keep 
 
 Branch: `agent/plan-0065-s2-board`.
 
-- [ ] First screen with the counters; recent plans in a disclosure.
-- [ ] `ShoppingPlanBoardPage`, with groups from the server and the fixed bar.
-- [ ] `MealOptionsSheet`: text box, saved matches, "Pedir à IA", switches, filter, six options, "Ver outras", "Ver ingredientes", undo.
-- [ ] Hidden tab bar while building; "Sair (fica salvo)".
-- [ ] Redirect `/revisar` to the board. Remove the deck, the review, the panel, and their copy. Update hub links.
-- [ ] Copy without "plano", in three languages.
-- [ ] Accessibility: rows are buttons named with meal and dish; `role="status"` for progress; focus returns to the row when the sheet closes; switches are real switches with `role="switch"`.
+- [x] First screen with the counters; recent plans in a disclosure.
+- [x] `ShoppingPlanBoardPage`, with groups from the server and the fixed bar.
+- [x] `MealOptionsSheet`: text box, saved matches, "Pedir à IA", switches, filter, six options, "Ver outras", "Ver ingredientes", undo.
+- [x] Hidden tab bar while building; "Sair (fica salvo)".
+- [x] Redirect `/revisar` to the board. Remove the deck, the review, the panel, and their screens. Update hub links. Unused copy keys go in Slice 5 with the rest of the dead code.
+- [x] Copy without "plano" on the building screens, in three languages.
+- [x] Accessibility: rows are buttons named with meal and dish; `role="status"` for progress; focus returns to the row when the sheet closes; switches are real switches with `role="switch"`.
 
 **Hazards:**
 
@@ -429,15 +429,15 @@ Prices and budgets, curated pack sizes, loose list items (a decision of PLAN-006
 
 ## Execution state
 
-- **Current run delivery target:** Slice 1, the engine.
-- **Current checkpoint:** Slice 1 implemented on `agent/plan-0065-s1-engine`, in a draft pull request.
-- **Last completed step:** Engine, tests, contracts, documents, and the live evaluation script; see the Slice 1 log entry.
-- **Exact next action:** The owner reviews and merges the Slice 1 pull request and, with the provider key, runs `PLAN0065_LIVE_EVAL=1` (gate S1-AI). Slice 2 then starts from fresh `origin/main` on `agent/plan-0065-s2-board`.
-- **Blockers:** None for Slice 2. S1-AI needs the provider key, so the owner runs it.
-- **Partially modified areas:** None. The current screens do not use the new fields yet; Slice 2 does.
-- **Documentation delivered:** This plan and registry row; planning domain document, product spec, AI protocol, and privacy document.
-- **Validation performed:** See the Slice 1 entry in the progress log.
-- **Known failures or limitations:** See the Slice 1 entry. The real model has not seen the new prompt fields.
+- **Current run delivery target:** Slice 2, the first screen, the board, and the options sheet.
+- **Current checkpoint:** Slice 2 implemented on `agent/plan-0065-s2-board`, in a draft pull request.
+- **Last completed step:** Screens, tests, browser journeys, mobile audit, and documents; see the Slice 2 log entry.
+- **Exact next action:** The owner reviews and merges the Slice 2 pull request, asks for a deploy, and answers on a phone: "Consigo pedir o que eu quero, e só lanches?" Slice 3 then starts from fresh `origin/main` on `agent/plan-0065-s3-dish-actions`.
+- **Blockers:** None for Slice 3. S1-AI still needs the provider key. The WebKit and real iPhone check of the sheet with the keyboard needs the owner's phone.
+- **Partially modified areas:** None. Old batch fields and unused copy keys stay until Slice 5.
+- **Documentation delivered:** This plan and registry row; product spec flow and planning domain document.
+- **Validation performed:** See the Slice 2 entry in the progress log.
+- **Known failures or limitations:** See the Slice 2 entry.
 - **Working tree state:** Clean after this commit.
 
 ## Progress log
@@ -505,6 +505,25 @@ Prices and budgets, curated pack sizes, loose list items (a decision of PLAN-006
 - **Defects caught:** a new plan's switches were not written on creation, so the first batch still sent the pantry; the store now writes them. The first gate run (`78451e2`) failed `frontend-typecheck` because `replaceOffers` had a default and became required in the contract; it is now optional (`bool?`, false when absent). Every other step of that run passed: 14 architecture, 487 unit, 263 integration, and 633 frontend tests.
 - **Validation performed:** Unit `ShoppingPlanTests` (63) and the planning integration tests (34, of which 16 are new) pass, and the 18 affected ones again after the contract fix. OpenAPI exported, client regenerated and mirrored, drift check passed, frontend typecheck passed, lint with the same 9 warnings as `main`. The live evaluation script builds. One more local gate run on the pull request head; results are in the pull request.
 - **Not run:** the live evaluation (needs the provider key); browser journeys, because no screen changed.
+- **Next action:** See "Exact next action".
+
+### 2026-11-05 — Claude Code (Slice 2)
+
+- **Run delivery target:** Slice 2, after the owner merged #96.
+- **Changes:**
+  - **First screen.** Days (3, 5, 7, 14, other), start (today, tomorrow, or a chip for one of the next days, never a date field), four counters, people, and "Montar cardápio (N)". Untouched counters follow the days. Nothing about cooking. "Repetir um cardápio" folded underneath. It fits 360 × 740 above the tab bar.
+  - **Board.** Groups from the server, chosen dishes with time, coverage, an optional day tag, and preparation state; one "Escolher … · faltam N" row per meal type; a fixed bar with progress, "O que comprar", and "Usar este cardápio" (confirmation when meals are missing, disabled while recipes are prepared). A chosen dish opens "Ver receita", "Tentar de novo", and "Remover". The tab bar hides on phones while building.
+  - **Options sheet.** Text box with the person's recipes matching as they type (loaded once per visit) and "Pedir à IA"; the two switches, debounced 600 ms, then one replacing request; the goal filter; six options with ingredients, "Quero parecido", and "Não sugerir isso"; "Já neste cardápio"; "Ver outras"; skeleton rows while waiting; undo for 5 seconds; it closes when the meal type is complete. Requests run one at a time through `useMealBatches`, and a result belongs to its meal type. One automatic request when a type has fewer than six options, at most two per visit.
+  - **Backend.** `POST /{id}/recipes/{recipeId}/choice` chooses a saved recipe for any meal, with the restriction guard; the accepted view adds `plannedDate` and `totalMinutes`.
+  - **Removed.** `ShoppingPlanDeckPage`, `ShoppingPlanReviewPage`, their tests, and `more-options-journey.mjs`. `/revisar` redirects to the board.
+  - **Tooling.** New `planning-board-journey.mjs`; `shopping-plan-journey.mjs` and `mobile-audit.mjs` walk the board and sheets.
+- **Deviations from this plan:**
+  - **Radix Dialog instead of `vaul`.** A drag drawer fights the on-screen keyboard on iOS, the hazard this slice names; a dialog styled as a bottom sheet keeps focus trap, Escape, and focus return without gestures.
+  - **Choosing a saved recipe needed a route,** because the sheet finds recipes saved for other meals, which have no card.
+  - **"Completar" and the actions sheet's day, yield, and portions** stay in Slice 3 as planned; Slice 2's dish sheet has only what the old review had (see the recipe, retry, remove).
+  - **Copy keys of the removed screens** are left for Slice 5's dead-code pass, so this diff stays reviewable.
+- **Validation performed:** Frontend typecheck, lint, format, and the shopping plan, planning, and app suites (91 tests in the two feature folders). Backend: the new route's integration test and the affected ones. OpenAPI and client regenerated, drift check passed. Proxy replica at 360 px: `planning-board-journey` 18 of 18 (7 snacks with no dates in 11 taps on the board, typed search, undo, 3 lunches and 2 dinners, AI failure, keyboard only, en and es); `shopping-plan-journey` 19 of 19; `planning-entry-journey` 16 of 16; `session-route-journey` passed; `mobile-audit` 57 screens at 320, 360, and 390 px with 0 problems, including the open sheet, typed text, details, and confirmation. Local gates run on the pull request head; results are in the pull request.
+- **Not run:** WebKit and a real iPhone with the keyboard (WebKit does not start on this host), the real model, a screen reader.
 - **Next action:** See "Exact next action".
 
 ## Completion and handoff checklist

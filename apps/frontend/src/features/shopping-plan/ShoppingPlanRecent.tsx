@@ -18,12 +18,15 @@ export function ShoppingPlanRecentList({
   csrfToken,
   busy,
   onRepeat,
+  hideTitle = false,
 }: {
   plans: RecentPlan[];
   csrfToken: string | null | undefined;
   busy: boolean;
   /** Starts a new plan from this menu. */
   onRepeat: (menuId: string) => void;
+  /** Keeps the title for assistive technology only, when a disclosure already shows it. */
+  hideTitle?: boolean;
 }) {
   const { t } = useProductionI18n();
   return (
@@ -32,7 +35,10 @@ export function ShoppingPlanRecentList({
       data-testid="plan-recent"
       className="space-y-2"
     >
-      <h2 id="plan-recent-title" className="text-sm font-medium">
+      <h2
+        id="plan-recent-title"
+        className={hideTitle ? "sr-only" : "text-sm font-medium"}
+      >
         {t("shoppingPlan.recent.title")}
       </h2>
       <ul className="surface divide-y divide-border overflow-hidden">

@@ -4,28 +4,52 @@ import { useProductionI18n } from "@/app/i18n/ProductionI18nProvider";
 import { useSession } from "@/app/session/SessionProvider";
 import { ChoiceChips } from "@/components/choice/ChoiceChips";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { RecipeApiError } from "@/contracts/recipes";
-import type { ShoppingPlanStart } from "@/contracts/shoppingPlan";
-import { useInventoryRepository } from "@/features/inventory/InventoryProvider";
+import {
+  MEAL_ORDER,
+  type MealCounts,
+  type MealType,
+  type ShoppingPlanSetup,
+  type ShoppingPlanStart,
+} from "@/contracts/shoppingPlan";
 import {
   addDays,
   formatMenuDay,
   localIsoDate,
 } from "@/features/planning/planningDates";
-import { resolveLabel } from "@/features/profile/catalog/profileCatalog";
-import type { PreferenceCategory } from "@/contracts/profile";
 import { restrictionLabel } from "./restrictionLabel";
 import { useShoppingPlanRepository } from "./ShoppingPlanProvider";
 import { ShoppingPlanRecentList } from "./ShoppingPlanRecent";
 
-const MEALS = ["lunch", "dinner", "snack", "breakfast"] as const;
+const DAY_CHOICES = [3, 5, 7, 14];
 const MAX_DAYS = 14;
 const MAX_MEALS = 40;
 const MAX_PEOPLE = 12;
-const MAX_PREP_DAYS = 7;
-/** A labeled number control with large targets, usable by keyboard and screen readers. */
-function Stepper({
+/** How far ahead a menu can start; the server enforces the same limit. */
+const MAX_START_AHEAD = 7;
+
+const zero = (): MealCounts => ({
+  breakfast: 0,
+  lunch: 0,
+  dinner: 0,
+  snack: 0,
+});
+
+/** The last menu's counts, or its days for each meal type when it was made before counts existed. */
+function countsOf(setup: ShoppingPlanSetup): MealCounts {
+  const counts = zero();
+  if (setup.mealCounts) {
+    for (const meal of MEAL_ORDER) counts[meal] = setup.mealCounts[meal] ?? 0;
+    return counts;
+  }
+  for (const meal of setup.mealTypes) {
+    if (meal in counts) counts[meal as MealType] = setup.days;
+  }
+  return counts;
+}
+
+/** A labeled number control with 44 px targets, usable by keyboard and screen readers. */
+function Counter({
   label,
   value,
   min,
@@ -42,11 +66,12 @@ function Stepper({
 }) {
   const { t } = useProductionI18n();
   return (
-    <div className="flex items-center gap-3">
-      <span className="min-w-0 flex-1 text-sm font-medium">{label}</span>
+    <div className="flex min-h-11 items-center gap-3">
+      <span className="min-w-0 flex-1 text-[15px] font-medium">{label}</span>
       <Button
         type="button"
         variant="secondary"
+        className="h-11 w-11 p-0 text-lg"
         aria-label={t("shoppingPlan.stepper.less", { label })}
         data-testid={`${testId}-less`}
         disabled={value <= min}
@@ -54,16 +79,17 @@ function Stepper({
       >
         −
       </Button>
-      <span
-        role="status"
+      <output
         data-testid={testId}
-        className="tabular w-8 text-center font-semibold"
+        aria-label={`${label}: ${value}`}
+        className="tabular w-8 text-center text-lg font-semibold"
       >
         {value}
-      </span>
+      </output>
       <Button
         type="button"
         variant="secondary"
+        className="h-11 w-11 p-0 text-lg"
         aria-label={t("shoppingPlan.stepper.more", { label })}
         data-testid={`${testId}-more`}
         disabled={value >= max}
@@ -76,34 +102,30 @@ function Stepper({
 }
 
 /**
- * The setup screen of a shopping plan (PLAN-0062): one screen, no steps, with the last answers
- * already chosen, so returning people can often just tap "Começar". Answers belong to this plan and
- * never change the profile; restrictions are shown here and changed only in the profile.
+ * The first screen of a new menu (PLAN-0065): the period, when it starts, and how many of each meal,
+ * independent of the days, so seven snacks within fourteen days is a valid menu. Nothing about
+ * cooking is asked here. The last answers come preselected; a counter not yet touched follows the
+ * days. Answers belong to this menu and never change the profile.
  */
 export function ShoppingPlanSetupPage() {
   const repo = useShoppingPlanRepository();
-  const inventory = useInventoryRepository();
   const { t, locale } = useProductionI18n();
   const { session } = useSession();
   const navigate = useNavigate();
   const today = localIsoDate();
   const [start, setStart] = useState<ShoppingPlanStart | null>(null);
   const [failed, setFailed] = useState(false);
-  const [days, setDays] = useState(5);
+  const [days, setDays] = useState(7);
   const [customDays, setCustomDays] = useState(false);
-  const [meals, setMeals] = useState<string[]>(["lunch", "dinner"]);
-  const [mealsOut, setMealsOut] = useState(0);
-  const [style, setStyle] = useState("mix");
-  const [priority, setPriority] = useState("waste");
-  const [prepDay, setPrepDay] = useState<"today" | "tomorrow" | "other">(
-    "today",
-  );
-  const [prepDate, setPrepDate] = useState(today);
-  const [prepMinutes, setPrepMinutes] = useState("120");
-  const [anchor, setAnchor] = useState("");
-  const [anchorOpen, setAnchorOpen] = useState(false);
-  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [startDate, setStartDate] = useState(today);
+  const [startChoice, setStartChoice] = useState<
+    "today" | "tomorrow" | "other"
+  >("today");
+  const [counts, setCounts] = useState<MealCounts>({ ...zero(), dinner: 7 });
+  // Counters the person changed stop following the days.
+  const [touched, setTouched] = useState<Set<MealType>>(new Set());
   const [people, setPeople] = useState(2);
+  const [peopleOpen, setPeopleOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
@@ -119,11 +141,17 @@ export function ShoppingPlanSetupPage() {
         const last = value.lastSetup;
         if (last) {
           setDays(last.days);
-          setCustomDays(![3, 5, 7].includes(last.days));
-          setMeals(last.mealTypes);
-          setStyle(last.cookingStyle);
-          setPriority(last.priority);
-          if (last.prepMinutes) setPrepMinutes(String(last.prepMinutes));
+          setCustomDays(!DAY_CHOICES.includes(last.days));
+          const lastCounts = countsOf(last);
+          if (Object.values(lastCounts).some((count) => count > 0)) {
+            setCounts(lastCounts);
+            // A counter that equals the days was most likely following them.
+            setTouched(
+              new Set(
+                MEAL_ORDER.filter((meal) => lastCounts[meal] !== last.days),
+              ),
+            );
+          }
         }
       },
       () => !controller.signal.aborted && setFailed(true),
@@ -131,73 +159,53 @@ export function ShoppingPlanSetupPage() {
     return () => controller.abort();
   }, [repo]);
 
-  useEffect(() => {
-    const text = anchor.trim();
-    if (text.length < 2 || !inventory.suggestNames) {
-      setSuggestions([]);
-      return;
-    }
-    const controller = new AbortController();
-    const timer = globalThis.setTimeout(() => {
-      inventory
-        .suggestNames?.(text, { language: locale, signal: controller.signal })
-        .then(
-          (items) =>
-            !controller.signal.aborted &&
-            setSuggestions(items.map((item) => item.name).slice(0, 6)),
-          () => undefined,
-        );
-    }, 250);
-    return () => {
-      globalThis.clearTimeout(timer);
-      controller.abort();
-    };
-  }, [anchor, inventory, locale]);
-
-  const total = days * meals.length;
-  const mealsToPlan = total - mealsOut;
-  const tooMany = mealsToPlan > MAX_MEALS;
-
-  // Fewer days or meals can leave more meals out than the plan has.
-  useEffect(() => {
-    if (total > 0 && mealsOut > total - 1) setMealsOut(total - 1);
-  }, [total, mealsOut]);
-
-  const restrictionsText = useMemo(
-    () =>
-      (start?.restrictions ?? [])
-        .map((item) =>
-          resolveLabel(locale, item.category as PreferenceCategory, item.code),
-        )
-        .join(" · "),
-    [start, locale],
-  );
-
-  const chooseDay = (value: "today" | "tomorrow" | "other") => {
-    setPrepDay(value);
-    if (value === "today") setPrepDate(today);
-    if (value === "tomorrow") setPrepDate(addDays(today, 1));
+  const changeDays = (next: number) => {
+    setDays(next);
+    setCounts((current) => {
+      const updated = { ...current };
+      for (const meal of MEAL_ORDER) {
+        if (!touched.has(meal) && current[meal] > 0) updated[meal] = next;
+      }
+      return updated;
+    });
   };
+
+  const changeCount = (meal: MealType, next: number) => {
+    setTouched((current) => new Set(current).add(meal));
+    setCounts((current) => ({ ...current, [meal]: next }));
+  };
+
+  const total = MEAL_ORDER.reduce((sum, meal) => sum + counts[meal], 0);
+  const tooMany = total > MAX_MEALS;
+
+  const chooseStart = (value: "today" | "tomorrow" | "other") => {
+    setStartChoice(value);
+    if (value === "today") setStartDate(today);
+    if (value === "tomorrow") setStartDate(addDays(today, 1));
+    if (value === "other" && startDate <= addDays(today, 1))
+      setStartDate(addDays(today, 2));
+  };
+  const laterDays = useMemo(
+    () =>
+      Array.from({ length: MAX_START_AHEAD - 1 }, (_, index) =>
+        addDays(today, index + 2),
+      ),
+    [today],
+  );
 
   const begin = async (fromMenuId: string | null = null) => {
     if (!session.csrfToken || saving) return;
-    if (!fromMenuId && (tooMany || meals.length === 0)) return;
+    if (!fromMenuId && (tooMany || total === 0)) return;
     setSaving(true);
     setError(null);
-    const daily = style === "daily";
     try {
       const plan = await repo.create(
         {
           today,
           days,
-          mealTypes: meals,
-          mealsOut,
-          cookingStyle: style,
-          priority,
-          prepDate: daily ? null : prepDate,
-          prepMinutes: daily ? null : Number(prepMinutes),
-          anchorIngredient: anchor.trim() || null,
           people,
+          mealCounts: counts,
+          startDate,
           fromMenuId,
         },
         {
@@ -211,7 +219,7 @@ export function ShoppingPlanSetupPage() {
       keyRef.current = crypto.randomUUID();
       setError(
         err instanceof RecipeApiError && err.code === "plan_in_progress"
-          ? "shoppingPlan.setup.inProgress"
+          ? "menuBuild.inProgress"
           : "shoppingPlan.error.save",
       );
     } finally {
@@ -239,7 +247,7 @@ export function ShoppingPlanSetupPage() {
   if (failed) {
     return (
       <p role="alert" className="text-muted-foreground">
-        {t("shoppingPlan.error.load")}
+        {t("menuBuild.error.load")}
       </p>
     );
   }
@@ -248,10 +256,8 @@ export function ShoppingPlanSetupPage() {
   if (start.current) {
     return (
       <div data-testid="plan-setup-current" className="space-y-4">
-        <h1 className="font-display text-3xl">{t("shoppingPlan.title")}</h1>
-        <p className="text-muted-foreground">
-          {t("shoppingPlan.current.body")}
-        </p>
+        <h1 className="font-display text-3xl">{t("menuBuild.title")}</h1>
+        <p className="text-muted-foreground">{t("menuBuild.current.body")}</p>
         {error ? (
           <p role="alert" className="text-sm text-destructive">
             {t(error)}
@@ -259,15 +265,15 @@ export function ShoppingPlanSetupPage() {
         ) : null}
         <Button asChild size="lg" className="w-full">
           <Link
-            to={`/app/compras/planejar/${start.current.sessionId}${start.current.status === "reviewing" ? "/revisar" : ""}`}
+            to={`/app/compras/planejar/${start.current.sessionId}`}
             data-testid="plan-continue"
           >
-            {t("shoppingPlan.current.continue")}
+            {t("menuBuild.current.continue")}
           </Link>
         </Button>
         {confirmDiscard ? (
           <div className="surface space-y-3 p-4">
-            <p className="text-sm">{t("shoppingPlan.current.confirm")}</p>
+            <p className="text-sm">{t("menuBuild.current.confirm")}</p>
             <div className="flex gap-2">
               <Button
                 type="button"
@@ -276,7 +282,7 @@ export function ShoppingPlanSetupPage() {
                 disabled={saving}
                 onClick={() => void discard()}
               >
-                {t("shoppingPlan.current.discard")}
+                {t("menuBuild.current.discard")}
               </Button>
               <Button
                 type="button"
@@ -295,7 +301,7 @@ export function ShoppingPlanSetupPage() {
             data-testid="plan-discard"
             onClick={() => setConfirmDiscard(true)}
           >
-            {t("shoppingPlan.current.discard")}
+            {t("menuBuild.current.discard")}
           </Button>
         )}
       </div>
@@ -304,245 +310,136 @@ export function ShoppingPlanSetupPage() {
 
   const dayChoice = customDays ? "other" : String(days);
   return (
-    <div className="space-y-6">
-      <header>
-        <h1 className="font-display text-3xl">{t("shoppingPlan.title")}</h1>
-        <p className="mt-1 text-muted-foreground">
-          {t("shoppingPlan.subtitle")}
-        </p>
-      </header>
+    <div className="space-y-4">
+      <h1 className="font-display text-3xl">{t("menuBuild.title")}</h1>
 
-      {/* The list has its own form for names, and forms cannot nest. */}
-      {start.recent.length > 0 ? (
-        <ShoppingPlanRecentList
-          plans={start.recent}
-          csrfToken={session.csrfToken}
-          busy={saving}
-          onRepeat={(menuId) => void begin(menuId)}
-        />
-      ) : null}
       <form
         data-testid="plan-setup"
-        className="space-y-6"
+        className="space-y-4"
         onSubmit={(event) => {
           event.preventDefault();
           void begin();
         }}
       >
         <ChoiceChips
-          label={t("shoppingPlan.days")}
+          label={t("menuBuild.days")}
           testId="plan-days"
           value={dayChoice}
           options={[
-            { value: "3", label: "3" },
-            { value: "5", label: "5" },
-            { value: "7", label: "7" },
-            { value: "other", label: t("shoppingPlan.days.other") },
+            ...DAY_CHOICES.map((value) => ({
+              value: String(value),
+              label: String(value),
+            })),
+            { value: "other", label: t("menuBuild.days.other") },
           ]}
           onChange={(value) => {
             setCustomDays(value === "other");
-            if (value !== "other") setDays(Number(value));
+            if (value !== "other") changeDays(Number(value));
           }}
         />
         {customDays ? (
-          <Stepper
-            label={t("shoppingPlan.days.count")}
+          <Counter
+            label={t("menuBuild.days.count")}
             testId="plan-days-count"
             value={days}
             min={1}
             max={MAX_DAYS}
-            onChange={setDays}
+            onChange={changeDays}
           />
         ) : null}
 
-        <div className="space-y-1.5">
-          <p className="text-sm font-medium">{t("shoppingPlan.meals")}</p>
-          <div
-            role="group"
-            aria-label={t("shoppingPlan.meals")}
-            className="flex flex-wrap gap-2"
-          >
-            {MEALS.map((meal) => {
-              const chosen = meals.includes(meal);
-              return (
-                <Button
-                  key={meal}
-                  type="button"
-                  size="sm"
-                  variant={chosen ? "default" : "secondary"}
-                  aria-pressed={chosen}
-                  data-testid={`plan-meal-${meal}`}
-                  onClick={() =>
-                    setMeals((current) =>
-                      chosen
-                        ? current.filter((item) => item !== meal)
-                        : [...current, meal],
-                    )
-                  }
-                >
-                  {t(`shoppingPlan.meal.${meal}`)}
-                </Button>
-              );
-            })}
-          </div>
-          {meals.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              {t("shoppingPlan.meals.none")}
+        <ChoiceChips
+          label={t("menuBuild.start")}
+          testId="plan-start"
+          value={startChoice}
+          options={[
+            { value: "today", label: t("menuBuild.start.today") },
+            { value: "tomorrow", label: t("menuBuild.start.tomorrow") },
+            { value: "other", label: t("menuBuild.start.other") },
+          ]}
+          onChange={chooseStart}
+        />
+        {startChoice === "other" ? (
+          <ChoiceChips
+            label={t("menuBuild.start.which")}
+            hideLabel
+            testId="plan-start-day"
+            value={startDate}
+            options={laterDays.map((day) => ({
+              value: day,
+              label: formatMenuDay(day, locale),
+            }))}
+            onChange={setStartDate}
+          />
+        ) : null}
+
+        <fieldset className="space-y-1">
+          {/* The total sits in the legend's row, so the screen fits a phone without scrolling. */}
+          <legend className="flex w-full items-baseline justify-between gap-2 pb-1 text-sm font-medium">
+            {t("menuBuild.meals")}
+            <span
+              aria-live="polite"
+              data-testid="plan-meal-total"
+              className={`font-normal ${tooMany ? "text-destructive" : "text-muted-foreground"}`}
+            >
+              {t(
+                total === 1
+                  ? "menuBuild.meals.total.one"
+                  : "menuBuild.meals.total",
+                { count: total, days },
+              )}
+            </span>
+          </legend>
+          {MEAL_ORDER.map((meal) => (
+            <Counter
+              key={meal}
+              label={t(`shoppingPlan.meal.${meal}`)}
+              testId={`plan-count-${meal}`}
+              value={counts[meal]}
+              min={0}
+              max={MAX_MEALS}
+              onChange={(next) => changeCount(meal, next)}
+            />
+          ))}
+          {tooMany ? (
+            <p role="alert" className="pt-1 text-sm text-destructive">
+              {t("menuBuild.meals.tooMany", { max: MAX_MEALS })}
             </p>
           ) : null}
-        </div>
+        </fieldset>
 
-        {total > 1 ? (
-          <Stepper
-            label={t("shoppingPlan.mealsOut")}
-            testId="plan-meals-out"
-            value={mealsOut}
-            min={0}
-            max={total - 1}
-            onChange={setMealsOut}
-          />
-        ) : null}
-        <p
-          role="status"
-          data-testid="plan-meal-total"
-          className={`text-sm ${tooMany ? "text-destructive" : "text-muted-foreground"}`}
-        >
-          {tooMany
-            ? t("shoppingPlan.meals.tooMany", { max: MAX_MEALS })
-            : t("shoppingPlan.meals.total", {
-                count: Math.max(0, mealsToPlan),
+        <div className="space-y-2 text-sm">
+          <p className="flex flex-wrap items-center gap-x-2">
+            <span data-testid="plan-people-line">
+              {t(people === 1 ? "menuBuild.people.one" : "menuBuild.people", {
+                count: people,
               })}
-        </p>
-
-        <ChoiceChips
-          label={t("shoppingPlan.style")}
-          testId="plan-style"
-          value={style}
-          options={[
-            { value: "once", label: t("shoppingPlan.style.once") },
-            { value: "mix", label: t("shoppingPlan.style.mix") },
-            { value: "daily", label: t("shoppingPlan.style.daily") },
-          ]}
-          onChange={setStyle}
-        />
-        <ChoiceChips
-          label={t("shoppingPlan.priority")}
-          testId="plan-priority"
-          value={priority}
-          options={[
-            { value: "waste", label: t("shoppingPlan.priority.waste") },
-            { value: "short", label: t("shoppingPlan.priority.short") },
-            { value: "save", label: t("shoppingPlan.priority.save") },
-            { value: "time", label: t("shoppingPlan.priority.time") },
-          ]}
-          onChange={setPriority}
-        />
-
-        {style !== "daily" ? (
-          <>
-            <ChoiceChips
-              label={t("shoppingPlan.prepDay")}
-              testId="plan-prep-day"
-              value={prepDay}
-              options={[
-                { value: "today", label: t("shoppingPlan.prepDay.today") },
-                {
-                  value: "tomorrow",
-                  label: t("shoppingPlan.prepDay.tomorrow"),
-                },
-                { value: "other", label: t("shoppingPlan.prepDay.other") },
-              ]}
-              onChange={chooseDay}
-            />
-            {prepDay === "other" ? (
-              <label className="block space-y-1 text-sm font-medium">
-                {t("shoppingPlan.prepDay.date")}
-                <Input
-                  type="date"
-                  data-testid="plan-prep-date"
-                  value={prepDate}
-                  min={today}
-                  max={addDays(today, MAX_PREP_DAYS)}
-                  onChange={(event) => setPrepDate(event.target.value)}
-                />
-                <span className="block text-xs font-normal text-muted-foreground">
-                  {formatMenuDay(prepDate, locale)}
-                </span>
-              </label>
-            ) : null}
-            <ChoiceChips
-              label={t("shoppingPlan.prepTime")}
-              testId="plan-prep-time"
-              value={prepMinutes}
-              options={[
-                { value: "60", label: t("shoppingPlan.prepTime.60") },
-                { value: "120", label: t("shoppingPlan.prepTime.120") },
-                { value: "240", label: t("shoppingPlan.prepTime.240") },
-              ]}
-              onChange={setPrepMinutes}
-            />
-          </>
-        ) : null}
-
-        {anchorOpen ? (
-          <label className="block space-y-1 text-sm font-medium">
-            {t("shoppingPlan.anchor")}
-            <Input
-              data-testid="plan-anchor"
-              maxLength={60}
-              list="plan-anchor-options"
-              placeholder={t("shoppingPlan.anchor.example")}
-              value={anchor}
-              onChange={(event) => setAnchor(event.target.value)}
-            />
-            <datalist id="plan-anchor-options">
-              {suggestions.map((name) => (
-                <option key={name} value={name} />
-              ))}
-            </datalist>
-          </label>
-        ) : (
-          <button
-            type="button"
-            data-testid="plan-anchor-open"
-            className="min-h-11 text-sm font-medium text-primary underline-offset-4 hover:underline"
-            onClick={() => setAnchorOpen(true)}
-          >
-            {t("shoppingPlan.anchor")}
-          </button>
-        )}
-
-        <div className="surface space-y-3 p-4">
-          <Stepper
-            label={t("shoppingPlan.people")}
-            testId="plan-people"
-            value={people}
-            min={1}
-            max={MAX_PEOPLE}
-            onChange={setPeople}
-          />
-          <p
-            className="text-sm text-muted-foreground"
-            data-testid="plan-restrictions"
-          >
-            {restrictionsText || t("shoppingPlan.restrictions.none")}{" "}
-            <Link
-              to="/app/perfil"
-              className="font-medium text-primary underline-offset-4 hover:underline"
+            </span>
+            <button
+              type="button"
+              data-testid="plan-people-change"
+              aria-expanded={peopleOpen}
+              className="min-h-11 font-medium text-primary underline-offset-4 hover:underline"
+              onClick={() => setPeopleOpen((value) => !value)}
             >
-              {t("shoppingPlan.restrictions.change")}
-            </Link>
+              {t("menuBuild.people.change")}
+            </button>
           </p>
-          {start.restrictions.length > 0 ? (
-            <p className="text-xs text-muted-foreground">
-              {t("shoppingPlan.restrictions.labels")}
-            </p>
+          {peopleOpen ? (
+            <Counter
+              label={t("menuBuild.people.label")}
+              testId="plan-people"
+              value={people}
+              min={1}
+              max={MAX_PEOPLE}
+              onChange={setPeople}
+            />
           ) : null}
           {start.unverifiableRestrictions.map((code) => (
             <p
               key={code}
               data-testid="plan-unverifiable"
-              className="text-sm text-warning-foreground"
+              className="text-warning-foreground"
             >
               {t("shoppingPlan.restrictions.unverifiable", {
                 restriction: restrictionLabel(locale, code),
@@ -561,13 +458,29 @@ export function ShoppingPlanSetupPage() {
           size="lg"
           className="w-full"
           data-testid="plan-begin"
-          disabled={
-            saving || tooMany || meals.length === 0 || !session.csrfToken
-          }
+          disabled={saving || tooMany || total === 0 || !session.csrfToken}
         >
-          {saving ? t("planning.saving") : t("shoppingPlan.begin")}
+          {saving
+            ? t("planning.saving")
+            : t("menuBuild.begin", { count: total })}
         </Button>
       </form>
+
+      {/* The list has its own form for names, and forms cannot nest. */}
+      {start.recent.length > 0 ? (
+        <details data-testid="plan-recent-disclosure">
+          <summary className="flex min-h-11 cursor-pointer items-center text-sm font-medium">
+            {t("menuBuild.recent")}
+          </summary>
+          <ShoppingPlanRecentList
+            plans={start.recent}
+            csrfToken={session.csrfToken}
+            busy={saving}
+            hideTitle
+            onRepeat={(menuId) => void begin(menuId)}
+          />
+        </details>
+      ) : null}
     </div>
   );
 }

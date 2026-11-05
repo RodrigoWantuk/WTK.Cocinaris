@@ -3,6 +3,33 @@
  * (`@/contracts/recipes`), which shares the recipe boundary's Problem Details mapping.
  */
 
+/** The four meal types, in the order screens show them. */
+export const MEAL_ORDER = ["breakfast", "lunch", "dinner", "snack"] as const;
+
+/** One of {@link MEAL_ORDER}. */
+export type MealType = (typeof MEAL_ORDER)[number];
+
+/** How many of each meal a menu wants, independent of its days (PLAN-0065). */
+export type MealCounts = Record<MealType, number>;
+
+/** The switches above the options. They belong to one menu and never update the profile. */
+export interface ShoppingPlanPreferences {
+  /** Whether profile tastes reach the AI. Restrictions and dislikes always do. */
+  usePreferences: boolean;
+  /** Whether to build on the pantry and the dishes already chosen. */
+  usePantry: boolean;
+  goal: "quick" | "short" | "save" | null;
+}
+
+/** One meal type of a menu, with what is wanted, chosen, and offered (at most six, best first). */
+export interface ShoppingPlanMealGroup {
+  mealType: string;
+  wanted: number;
+  filled: number;
+  /** Empty once nothing is missing. */
+  options: ShoppingPlanCard[];
+}
+
 /** Setup answers. They belong to one plan and never update the profile. */
 export interface ShoppingPlanSetup {
   /** The browser's local day (`YYYY-MM-DD`); the server does not know the owner's time zone. */
@@ -18,6 +45,23 @@ export interface ShoppingPlanSetup {
   prepMinutes: number | null;
   anchorIngredient: string | null;
   people: number;
+  /** How many of each meal; null on menus made before PLAN-0065. */
+  mealCounts?: Partial<Record<string, number>> | null;
+  /** First and last day of the period (`YYYY-MM-DD`). */
+  startDate?: string;
+  endDate?: string;
+}
+
+/** What a new menu is made from: the period, the people, and how many of each meal. */
+export interface CreateShoppingPlanInput {
+  today: string;
+  days: number;
+  people: number;
+  mealCounts?: MealCounts | null;
+  /** First day of the period; today when null. */
+  startDate?: string | null;
+  /** An accepted menu to repeat: its answers then replace these, except `today`. */
+  fromMenuId?: string | null;
 }
 
 /** An accepted plan that can be repeated. */
@@ -43,6 +87,8 @@ export interface ShoppingPlanStart {
   current: { sessionId: string; menuId: string; status: string } | null;
   /** The newest accepted plans, at most five. */
   recent: ShoppingPlanRecent[];
+  /** The last menu's switches, as defaults; null before the first. */
+  lastPreferences?: ShoppingPlanPreferences | null;
 }
 
 /** A card to decide on. `newItemCount` is an estimate until the recipe is expanded. */
@@ -77,6 +123,8 @@ export interface ShoppingPlanCard {
     outputUnit: string;
     usedBy: string[];
   } | null;
+  /** What the person typed, when this card answers a specific request. */
+  requestText?: string | null;
 }
 
 /** An accepted card. */
@@ -94,6 +142,9 @@ export interface ShoppingPlanAccepted {
   guardIngredient: string | null;
   /** Whether it is a base, which fills no meal. */
   isComponent?: boolean;
+  /** The day it was given, if any; most dishes have none. */
+  plannedDate?: string | null;
+  totalMinutes?: number;
 }
 
 /** The state every plan route returns. */
@@ -116,6 +167,9 @@ export interface ShoppingPlan {
   offerMoreOptions: boolean;
   exhausted: boolean;
   canUndo: boolean;
+  /** Each meal type with a count above zero, in meal order (PLAN-0065). */
+  groups: ShoppingPlanMealGroup[];
+  preferences: ShoppingPlanPreferences;
 }
 
 /** One dish of a preparation session. */
@@ -189,6 +243,14 @@ export interface ShoppingPlanBatchOptions {
   referenceCardId?: string | null;
   /** At most 40 characters. */
   hint?: string | null;
+  /** One meal type to ask for (PLAN-0065); the fields above are then ignored by the server. */
+  mealType?: string | null;
+  /** A specific dish in the person's words, at most 120 characters; for this request only. */
+  request?: string | null;
+  /** A dish of this menu to stay close to. */
+  likeCardId?: string | null;
+  /** Whether earlier unseen dishes of this meal give way, as when a switch changes. */
+  replaceOffers?: boolean;
 }
 
 interface Mutation {
@@ -205,14 +267,29 @@ export interface ShoppingPlanRepository {
     sessionId: string,
     options: { csrfToken: string },
   ): Promise<ShoppingPlan>;
-  /** Creates a plan; a retry with the same key returns the same plan. */
+  /** Creates a menu; a retry with the same key returns the same one. */
   create(
-    input: Omit<ShoppingPlanSetup, "anchorIngredient"> & {
-      anchorIngredient: string | null;
-      /** An accepted plan to repeat: its answers then replace these, except `today`. */
-      fromMenuId?: string | null;
-    },
+    input: CreateShoppingPlanInput,
     options: Mutation & { idempotencyKey: string },
+  ): Promise<ShoppingPlan>;
+  /** Chooses one of the person's saved recipes for a meal; restrictions still apply. */
+  chooseRecipe(
+    sessionId: string,
+    recipeId: string,
+    mealType: string,
+    options: Mutation,
+  ): Promise<ShoppingPlan>;
+  /** Sets the switches; the server re-ranks the options. */
+  setPreferences(
+    sessionId: string,
+    preferences: ShoppingPlanPreferences,
+    options: Mutation,
+  ): Promise<ShoppingPlan>;
+  /** Changes how many of each meal; never below what is chosen (`meal_count_below_chosen`). */
+  setMealCounts(
+    sessionId: string,
+    counts: MealCounts,
+    options: Mutation,
   ): Promise<ShoppingPlan>;
   get(sessionId: string, signal?: AbortSignal): Promise<ShoppingPlan>;
   /** Asks for more AI cards; a retry with the same key spends no second batch. */
@@ -228,6 +305,9 @@ export interface ShoppingPlanRepository {
       decision: "accept" | "reject";
       mode?: "yield" | "again" | null;
       repeats?: number | null;
+      /** The meal it fills; the card's own when absent. */
+      mealType?: string | null;
+      plannedDate?: string | null;
     },
     options: Mutation,
   ): Promise<ShoppingPlan>;

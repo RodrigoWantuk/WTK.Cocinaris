@@ -2,8 +2,8 @@
 /**
  * Signed-in shopping plan journey against the proxy replica (scripts/e2e/proxy-replica.sh), PLAN-0062.
  * The replica has no AI provider, so this also proves the plan works on saved recipes alone (gate
- * G1-E). It seeds two recipes, then in the browser: answers the setup, accepts cards (one with
- * "yields 2 meals"), reviews, marks "I have it" on the list, accepts the plan, leaves a line for
+ * G1-E). It seeds two recipes, then in the browser: answers the first screen, chooses two dishes on the
+ * board (one set to yield 2 meals), marks "I have it" on the list, uses the menu, leaves a line for
  * later, splits the list by place, records the arrival, checks "Hoje", cooks a dish that yields two meals, eats the stored portion, names the plan, and repeats it. It prints how long the first card took (gate G1-C). Names are unique per run.
  *
  * Usage: COCINARIS_SMOKE_PASSWORD_A=<development-fixture-password> \
@@ -70,40 +70,50 @@ try {
 
   await page.goto(`${BASE}/app/compras/planejar`, { waitUntil: "networkidle" });
   await page.getByTestId("plan-setup").waitFor({ timeout: 15000 });
-  for (const meal of ["lunch", "snack", "breakfast"]) {
-    const chip = page.getByTestId(`plan-meal-${meal}`);
-    if ((await chip.getAttribute("aria-pressed")) === "true") await chip.click();
-  }
-  const dinner = page.getByTestId("plan-meal-dinner");
-  if ((await dinner.getAttribute("aria-pressed")) !== "true") await dinner.click();
   await page.getByTestId("plan-days-3").click();
-  await page.getByTestId("plan-style-mix").click();
+  for (const [meal, count] of Object.entries({ breakfast: 0, lunch: 0, dinner: 3, snack: 0 })) {
+    const value = page.getByTestId(`plan-count-${meal}`);
+    while (Number(await value.textContent()) > count) await page.getByTestId(`plan-count-${meal}-less`).click();
+    while (Number(await value.textContent()) < count) await page.getByTestId(`plan-count-${meal}-more`).click();
+  }
   const hScroll = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
-  check("setup has no horizontal scroll at phone width", !hScroll);
-  check("setup shows 3 meals", (await page.getByTestId("plan-meal-total").textContent()).includes("3"));
+  check("first screen has no horizontal scroll at phone width", !hScroll);
+  check("first screen counts 3 meals", (await page.getByTestId("plan-begin").textContent()).includes("(3)"));
 
   const began = Date.now();
   await page.getByTestId("plan-begin").click();
-  await page.getByTestId("plan-card").waitFor({ timeout: 15000 });
+  await page.getByTestId("board-choose-dinner").waitFor({ timeout: 15000 });
+  await page.getByTestId("board-choose-dinner").click();
+  await page.getByTestId("meal-option").first().waitFor({ timeout: 15000 });
   const firstCardMs = Date.now() - began;
-  check("first card under 1 s when instant cards exist (G1-C)", firstCardMs < 1000, `${firstCardMs} ms`);
-  check("the card shows its new items", (await page.getByTestId("plan-card-new-items").textContent()).length > 0);
+  check("first options under 1 s when saved recipes exist (G1-C)", firstCardMs < 1000, `${firstCardMs} ms`);
+  check("an option shows its new items", (await page.getByTestId("meal-option").first().textContent()).includes("item"));
+  await page.getByTestId("meal-option-choose").first().click();
+  await page.getByTestId("board-undo").waitFor({ timeout: 10000 });
+  await page.getByTestId("meal-option-choose").first().click();
+  await page.waitForFunction(() => document.querySelector('[data-testid="meal-sheet"] h2')?.textContent?.includes("falta 1"), null, { timeout: 15000 });
+  await page.keyboard.press("Escape");
+  // "Rende mais" has its screen in PLAN-0065 Slice 3; its route already exists.
+  const sessionId = page.url().split("/").pop();
+  await page.evaluate(async (id) => {
+    const session = await (await fetch("/api/v1/session", { credentials: "include" })).json();
+    const plan = await (await fetch(`/api/v1/planning/shopping-plans/${id}`, { credentials: "include" })).json();
+    await fetch(`/api/v1/planning/shopping-plans/${id}/cards/${plan.accepted[0].cardId}/yield`, {
+      method: "PUT",
+      credentials: "include",
+      headers: { "Content-Type": "application/json", "X-CSRF-TOKEN": session.csrfToken },
+      body: JSON.stringify({ meals: 2 }),
+    });
+  }, sessionId);
+  await page.reload({ waitUntil: "networkidle" });
+  await page.waitForFunction(() => document.querySelector('[data-testid="board-progress"]')?.textContent?.startsWith("3 de 3"), null, { timeout: 15000 });
+  check("the board lists two dishes for three meals", (await page.getByTestId("board-dish").count()) === 2);
 
-  await page.getByTestId("plan-yes-twice").click();
-  await page.getByTestId("plan-repeat-yield").check();
-  await page.getByTestId("plan-repeat-confirm").click();
-  await page.waitForFunction(() => document.querySelector('[data-testid="plan-progress"]')?.textContent?.includes("3 de 3"), null, { timeout: 15000 });
-  await page.getByTestId("plan-yes").click();
-  await page.waitForURL(/\/revisar$/, { timeout: 15000 });
-  await page.getByTestId("plan-review-entry").first().waitFor({ timeout: 15000 });
-  check("review lists two dishes", (await page.getByTestId("plan-review-entry").count()) === 2);
-
-  const review = page.url();
-  await page.getByTestId("plan-see-list").click();
+  await page.getByTestId("board-list").click();
   await page.getByTestId("shopping-page").waitFor({ timeout: 15000 });
   const line = page.getByTestId("shopping-item").filter({ hasText: lentil }).first();
   if ((await line.count()) === 0) {
-    check("the list has the plan's ingredient", (await page.getByTestId("shopping-item").count()) > 0);
+    check("the list has the menu's ingredient", (await page.getByTestId("shopping-item").count()) > 0);
   }
   const lines = await page.getByTestId("shopping-item-more").count();
   check("lines can be marked as already at home", lines > 0, `${lines} lines`);
@@ -116,13 +126,9 @@ try {
   check("undo puts the line back", true);
 
   await page.getByTestId("shopping-back").click();
-  await page.getByTestId("plan-review").waitFor({ timeout: 10000 });
-  check("from a draft's list, back returns to the review", true);
-  await page.goto(review, { waitUntil: "networkidle" });
-  await page.getByTestId("plan-use").click();
-  // A plan with meals still open asks first.
-  await page.getByTestId("plan-use-anyway").or(page.getByTestId("menu-page")).first().waitFor({ timeout: 15000 });
-  if (await page.getByTestId("plan-use-anyway").count()) await page.getByTestId("plan-use-anyway").click();
+  await page.getByTestId("plan-board").waitFor({ timeout: 10000 });
+  check("from a draft's list, back returns to the board", true);
+  await page.getByTestId("board-use").click();
   await page.getByTestId("menu-page").waitFor({ timeout: 15000 });
   await page.getByText("Em uso", { exact: true }).waitFor({ timeout: 10000 });
 
@@ -187,6 +193,8 @@ try {
 
   // Repeat: name the finished plan, then start again with its dishes already on the new draft.
   await page.goto(`${BASE}/app/compras/planejar`, { waitUntil: "networkidle" });
+  // Menus to repeat sit in a disclosure under the first screen (PLAN-0065).
+  await page.getByTestId("plan-recent-disclosure").locator("summary").click();
   const recent = page.getByTestId("plan-recent-row").first();
   await recent.getByTestId("plan-recent-name-edit").click();
   await recent.getByTestId("plan-recent-name-input").fill(`Semana E2E ${run}`);
@@ -195,9 +203,8 @@ try {
   check("a finished plan can be named", true);
   await page.getByTestId("plan-recent-row").filter({ hasText: `Semana E2E ${run}` }).getByTestId("plan-repeat").click();
   await page.waitForURL(/\/app\/compras\/planejar\/[^/]+/, { timeout: 15000 });
-  await page.waitForURL(/\/revisar$/, { timeout: 15000 });
-  await page.getByTestId("plan-review-entry").first().waitFor({ timeout: 15000 });
-  check("repeating brings the dishes back", (await page.getByTestId("plan-review-entry").count()) === 2);
+  await page.getByTestId("board-dish").first().waitFor({ timeout: 15000 });
+  check("repeating brings the dishes back", (await page.getByTestId("board-dish").count()) === 2);
   check("the repeated plan is on a new menu", !page.url().includes(menuId));
 } catch (error) {
   check("journey", false, `${error.message.split("\n")[0]} (at ${new URL(page.url()).pathname})`);

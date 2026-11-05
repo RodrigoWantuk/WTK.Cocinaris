@@ -351,6 +351,8 @@ export type RecipeApiErrorCode =
   | "restriction_blocked"
   | "expansions_pending"
   | "no_more_options"
+  | "request_blocked"
+  | "meal_count_below_chosen"
   | "unavailable"
   | "cancelled"
   | "unexpected";

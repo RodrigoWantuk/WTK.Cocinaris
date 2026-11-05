@@ -212,7 +212,9 @@ public sealed record ShoppingPlanCardView(Guid CardId, string Source, string Nam
 /// <param name="GuardCode">Restriction that could not be verified, if any.</param>
 /// <param name="GuardIngredient">Ingredient that could not be verified, if any.</param>
 /// <param name="IsComponent">Whether it is a base, which fills no meal.</param>
-public sealed record ShoppingPlanAcceptedView(Guid CardId, string Name, string MealType, int Repeats, string? Mode, string ExpansionState, string? FailureCode, Guid? RecipeId, string? GuardCode, string? GuardIngredient, bool IsComponent = false);
+/// <param name="PlannedDate">The day the person gave it, if any.</param>
+/// <param name="TotalMinutes">Total time of the dish.</param>
+public sealed record ShoppingPlanAcceptedView(Guid CardId, string Name, string MealType, int Repeats, string? Mode, string ExpansionState, string? FailureCode, Guid? RecipeId, string? GuardCode, string? GuardIngredient, bool IsComponent = false, DateOnly? PlannedDate = null, int TotalMinutes = 0);
 
 /// <summary>The state every plan route returns.</summary>
 /// <param name="SessionId">Plan.</param>
@@ -750,6 +752,71 @@ public sealed class ShoppingPlanApplicationService(
 
     private async Task<bool> DayIsInPeriodAsync(Guid ownerUserId, ShoppingPlanSession session, DateOnly day, CancellationToken cancellationToken) =>
         await menus.FindAsync(ownerUserId, session.MenuPlanId, cancellationToken) is { } plan && plan.Contains(day);
+
+    /// <summary>
+    /// Chooses one of the person's saved recipes for a meal, found by typing its name (PLAN-0065). The
+    /// recipe joins the plan as a saved card whatever meal types it was saved with: it is the person's
+    /// own, so no meal rule applies. Restrictions still do.
+    /// </summary>
+    /// <param name="sessionId">Plan.</param>
+    /// <param name="recipeId">An active recipe of the owner.</param>
+    /// <param name="mealType">The meal it fills.</param>
+    /// <param name="cancellationToken">Cancellation.</param>
+    public async Task<RecipeApplicationResult<ShoppingPlanView>> ChooseRecipeAsync(Guid sessionId, Guid recipeId, string? mealType, CancellationToken cancellationToken)
+    {
+        var user = await currentUser.GetCurrentAsync(cancellationToken);
+        var session = await store.FindAsync(user.Id, sessionId, cancellationToken);
+        if (session is null)
+        {
+            return NotFound<ShoppingPlanView>();
+        }
+
+        if (!IsOpen(session))
+        {
+            return NotOpen<ShoppingPlanView>();
+        }
+
+        if (mealType is null || !session.Setup.MealTypes.Contains(mealType))
+        {
+            return Failure<ShoppingPlanView>("validation_failed", "This meal is not part of the plan.", "mealType");
+        }
+
+        var cards = await store.ListCardsAsync(user.Id, session.Id, cancellationToken);
+        // An offer of the same recipe for this meal is the same dish: choose it rather than add a copy.
+        var offered = cards.FirstOrDefault(card => card.RecipeId == recipeId && card.State == ShoppingPlanCardState.Unseen && ShoppingPlanSetup.GroupOf(card.Snapshot.MealType) == ShoppingPlanSetup.GroupOf(mealType));
+        if (offered is null)
+        {
+            // Another owner's recipe is not in this list, so it is simply not found.
+            var detail = (await recipes.ListActiveAsync(user.Id, MaxActiveRecipes, cancellationToken)).FirstOrDefault(item => item.RecipeId == recipeId);
+            if (detail is null)
+            {
+                return NotFound<ShoppingPlanView>();
+            }
+
+            var ingredients = RecipeIngredientReader.Read(detail.NormalizedRecipeJson).ToList();
+            var keys = await matching.KeysAsync(user.Id, ingredients.Select(item => item.Name).ToList(), cancellationToken);
+            var guard = RestrictionGuard.Default.Check(ingredients.Select(item => item.Name), keys, Restrictions(await profiles.FindAsync(user.Id, cancellationToken)));
+            if (!CountGuard(guard))
+            {
+                return RecipeApplicationResult<ShoppingPlanView>.Failure("request_blocked", "This dish conflicts with a restriction.", new Dictionary<string, string[]> { ["restriction"] = guard.Code is { } code ? [code] : [] });
+            }
+
+            offered = new ShoppingPlanCard
+            {
+                Id = Guid.NewGuid(),
+                SessionId = session.Id,
+                OwnerUserId = user.Id,
+                Source = ShoppingPlanCardSource.Saved,
+                RecipeId = recipeId,
+                ExpansionKey = Guid.NewGuid(),
+                FirstSeenOrder = NextOrder(cards),
+                Snapshot = SavedSnapshot(detail, mealType, ingredients, guard)
+            };
+            await store.AddCardsAsync([offered], cancellationToken);
+        }
+
+        return await DecideAsync(sessionId, offered.Id, "accept", null, 1, mealType, null, cancellationToken);
+    }
 
     /// <summary>Sets the switches above the options. The answers belong to this plan and never reach the profile.</summary>
     /// <param name="sessionId">Plan.</param>
@@ -1946,7 +2013,7 @@ public sealed class ShoppingPlanApplicationService(
             setup,
             new ShoppingPlanProgressView(setup.TotalMeals, filled, projection.ListItemCount, ShoppingPlanRanker.SessionMinutesUsed(loaded.Context.Accepted), setup.PrepMinutes),
             queue,
-            acceptedCards.Select(card => new ShoppingPlanAcceptedView(card.Id, card.Snapshot.Name, card.Snapshot.MealType, card.Repeats, card.AcceptMode, card.ExpansionState.ToString().ToLowerInvariant(), card.Snapshot.FailureCode, card.RecipeId, card.Snapshot.GuardCode, card.Snapshot.GuardIngredient, card.Snapshot.Component is not null)).ToList(),
+            acceptedCards.Select(card => new ShoppingPlanAcceptedView(card.Id, card.Snapshot.Name, card.Snapshot.MealType, card.Repeats, card.AcceptMode, card.ExpansionState.ToString().ToLowerInvariant(), card.Snapshot.FailureCode, card.RecipeId, card.Snapshot.GuardCode, card.Snapshot.GuardIngredient, card.Snapshot.Component is not null, card.Snapshot.PlannedDate, card.Snapshot.TotalMinutes)).ToList(),
             canAskBatch && eligible.Count < LowQueue,
             session.ConsecutiveRejections >= MoreOptionsAfterRejections,
             open && eligible.Count == 0 && !canAskBatch && filled < setup.TotalMeals,

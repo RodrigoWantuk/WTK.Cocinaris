@@ -108,8 +108,8 @@ function renderRoute(
                   element={<ShoppingPlanRoutePage />}
                 />
                 <Route
-                  path="/app/compras/planejar/:sessionId/revisar"
-                  element={<p>revisão</p>}
+                  path="/app/compras/planejar/:sessionId"
+                  element={<p>quadro</p>}
                 />
                 <Route
                   path="/app/receitas/cozinhar/:executionId"
@@ -309,7 +309,7 @@ describe("ShoppingPlanRoutePage", () => {
     ).toContain("Nenhum prato");
   });
 
-  it("sends a plan not yet accepted back to the review", async () => {
+  it("sends a menu not yet accepted back to its board", async () => {
     const repo = repository(ROUTE, {
       getRoute: vi.fn(async () => {
         throw new RecipeApiError("domain_rule_violated", "x", 422);
@@ -317,7 +317,7 @@ describe("ShoppingPlanRoutePage", () => {
     });
     renderRoute(repo);
 
-    await screen.findByText("revisão");
+    await screen.findByText("quadro");
   });
 });
 

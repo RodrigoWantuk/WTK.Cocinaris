@@ -38,9 +38,8 @@ import {
 import { MenuPage } from "@/features/planning/MenuPage";
 import { ArrivalPage } from "@/features/planning/ArrivalPage";
 import { ShoppingPage } from "@/features/planning/ShoppingPage";
-import { ShoppingPlanDeckPage } from "@/features/shopping-plan/ShoppingPlanDeckPage";
+import { ShoppingPlanBoardPage } from "@/features/shopping-plan/ShoppingPlanBoardPage";
 import { ShoppingPlanProvider } from "@/features/shopping-plan/ShoppingPlanProvider";
-import { ShoppingPlanReviewPage } from "@/features/shopping-plan/ShoppingPlanReviewPage";
 import { ShoppingPlanRoutePage } from "@/features/shopping-plan/ShoppingPlanRoutePage";
 import { ShoppingPlanSetupPage } from "@/features/shopping-plan/ShoppingPlanSetupPage";
 import { RecipesListPage } from "@/features/recipes/RecipesListPage";
@@ -462,11 +461,12 @@ function createProductionRouter() {
         { path: "compras/planejar", element: <ShoppingPlanSetupPage /> },
         {
           path: "compras/planejar/:sessionId",
-          element: <ShoppingPlanDeckPage />,
+          element: <ShoppingPlanBoardPage />,
         },
         {
+          // The review became the board (PLAN-0065); old links and bookmarks land there.
           path: "compras/planejar/:sessionId/revisar",
-          element: <ShoppingPlanReviewPage />,
+          element: <Navigate to=".." relative="path" replace />,
         },
         {
           path: "compras/planejar/:sessionId/preparo",

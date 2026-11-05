@@ -1,6 +1,8 @@
 import { createCocinarisClient, type components } from "@cocinaris/api-client";
 import type {
   ShoppingPlan,
+  ShoppingPlanCard,
+  ShoppingPlanPreferences,
   ShoppingPlanRepository,
   ShoppingPlanRoute,
   ShoppingPlanSetup,
@@ -81,6 +83,66 @@ function mapSetup(dto: SetupDto): ShoppingPlanSetup {
     prepMinutes: optionalNumber(dto.prepMinutes),
     anchorIngredient: text(dto.anchorIngredient),
     people: num(dto.people),
+    mealCounts: dto.mealCounts
+      ? Object.fromEntries(
+          Object.entries(dto.mealCounts).map(([key, value]) => [
+            key,
+            num(value as number),
+          ]),
+        )
+      : null,
+    startDate: text(dto.startDate) ?? undefined,
+    endDate: text(dto.endDate) ?? undefined,
+  };
+}
+
+function mapPreferences(
+  dto: components["schemas"]["ShoppingPlanPreferencesView"] | null | undefined,
+): ShoppingPlanPreferences | null {
+  if (!dto) return null;
+  const goal = text(dto.goal);
+  return {
+    usePreferences: dto.usePreferences !== false,
+    usePantry: dto.usePantry === true,
+    goal: goal === "quick" || goal === "short" || goal === "save" ? goal : null,
+  };
+}
+
+function mapCard(
+  card: components["schemas"]["ShoppingPlanCardView"],
+): ShoppingPlanCard {
+  return {
+    cardId: String(card.cardId),
+    source: String(card.source),
+    name: String(card.name),
+    summary: String(card.summary ?? ""),
+    mealType: String(card.mealType),
+    servings: num(card.servings),
+    totalMinutes: num(card.totalMinutes),
+    activeMinutes: num(card.activeMinutes),
+    newItemCount: num(card.newItemCount),
+    reusedNames: (card.reusedNames ?? []).map(String),
+    reasonCode: text(card.reasonCode),
+    reasonIngredient: text(card.reasonIngredient),
+    overBudget: card.overBudget === true,
+    guardCode: text(card.guardCode),
+    guardIngredient: text(card.guardIngredient),
+    leadIngredient: text(card.leadIngredient),
+    requestText: text(card.requestText),
+    component: card.component
+      ? {
+          outputName: String(card.component.outputName),
+          outputQuantity: num(card.component.outputQuantity),
+          outputUnit: String(card.component.outputUnit),
+          usedBy: (card.component.usedBy ?? []).map(String),
+        }
+      : null,
+    ingredients: (card.ingredients ?? []).map((item) => ({
+      name: String(item.name),
+      quantity: num(item.quantity),
+      unit: String(item.unit),
+      optional: item.optional === true,
+    })),
   };
 }
 
@@ -109,6 +171,7 @@ function mapStart(dto: StartDto): ShoppingPlanStart {
       mealsTotal: num(item.mealsTotal),
       dishes: (item.dishes ?? []).map(String),
     })),
+    lastPreferences: mapPreferences(dto.lastPreferences),
   };
 }
 
@@ -125,38 +188,7 @@ function mapPlan(dto: PlanDto): ShoppingPlan {
       sessionMinutesUsed: num(dto.progress.sessionMinutesUsed),
       sessionMinutesBudget: optionalNumber(dto.progress.sessionMinutesBudget),
     },
-    queue: (dto.queue ?? []).map((card) => ({
-      cardId: String(card.cardId),
-      source: String(card.source),
-      name: String(card.name),
-      summary: String(card.summary ?? ""),
-      mealType: String(card.mealType),
-      servings: num(card.servings),
-      totalMinutes: num(card.totalMinutes),
-      activeMinutes: num(card.activeMinutes),
-      newItemCount: num(card.newItemCount),
-      reusedNames: (card.reusedNames ?? []).map(String),
-      reasonCode: text(card.reasonCode),
-      reasonIngredient: text(card.reasonIngredient),
-      overBudget: card.overBudget === true,
-      guardCode: text(card.guardCode),
-      guardIngredient: text(card.guardIngredient),
-      leadIngredient: text(card.leadIngredient),
-      component: card.component
-        ? {
-            outputName: String(card.component.outputName),
-            outputQuantity: num(card.component.outputQuantity),
-            outputUnit: String(card.component.outputUnit),
-            usedBy: (card.component.usedBy ?? []).map(String),
-          }
-        : null,
-      ingredients: (card.ingredients ?? []).map((item) => ({
-        name: String(item.name),
-        quantity: num(item.quantity),
-        unit: String(item.unit),
-        optional: item.optional === true,
-      })),
-    })),
+    queue: (dto.queue ?? []).map(mapCard),
     accepted: (dto.accepted ?? []).map((card) => ({
       cardId: String(card.cardId),
       name: String(card.name),
@@ -169,11 +201,24 @@ function mapPlan(dto: PlanDto): ShoppingPlan {
       guardCode: text(card.guardCode),
       guardIngredient: text(card.guardIngredient),
       isComponent: card.isComponent === true,
+      plannedDate: text(card.plannedDate),
+      totalMinutes: optionalNumber(card.totalMinutes) ?? 0,
     })),
     needsBatch: dto.needsBatch === true,
     offerMoreOptions: dto.offerMoreOptions === true,
     exhausted: dto.exhausted === true,
     canUndo: dto.canUndo === true,
+    groups: (dto.groups ?? []).map((group) => ({
+      mealType: String(group.mealType),
+      wanted: num(group.wanted),
+      filled: num(group.filled),
+      options: (group.options ?? []).map(mapCard),
+    })),
+    preferences: mapPreferences(dto.preferences) ?? {
+      usePreferences: true,
+      usePantry: false,
+      goal: null,
+    },
   };
 }
 
@@ -234,7 +279,22 @@ export function createLiveShoppingPlanRepository(options?: {
               },
             },
             headers: headers(language),
-            body: input,
+            // Menus by counts (PLAN-0065) leave the older setup fields to the server's defaults.
+            body: {
+              today: input.today,
+              days: input.days,
+              people: input.people,
+              mealCounts: input.mealCounts ?? null,
+              startDate: input.startDate ?? null,
+              fromMenuId: input.fromMenuId ?? null,
+              mealTypes: null,
+              mealsOut: 0,
+              cookingStyle: null,
+              priority: null,
+              prepDate: null,
+              prepMinutes: null,
+              anchorIngredient: null,
+            },
             signal,
             ...include,
           }),
@@ -276,6 +336,10 @@ export function createLiveShoppingPlanRepository(options?: {
               similarity: input.similarity ?? null,
               referenceCardId: input.referenceCardId ?? null,
               hint: input.hint ?? null,
+              mealType: input.mealType ?? null,
+              request: input.request ?? null,
+              likeCardId: input.likeCardId ?? null,
+              replaceOffers: input.replaceOffers ?? null,
             },
             signal,
             ...include,
@@ -297,6 +361,8 @@ export function createLiveShoppingPlanRepository(options?: {
                 decision: input.decision,
                 mode: input.mode ?? null,
                 repeats: input.repeats ?? null,
+                mealType: input.mealType ?? null,
+                plannedDate: input.plannedDate ?? null,
               },
               signal,
               ...include,
@@ -463,6 +529,60 @@ export function createLiveShoppingPlanRepository(options?: {
           ),
         "Unable to save the preparation session.",
         () => undefined,
+      ),
+    chooseRecipe: (sessionId, recipeId, mealType, { csrfToken, signal }) =>
+      run(
+        () =>
+          client.POST(
+            "/api/v1/planning/shopping-plans/{sessionId}/recipes/{recipeId}/choice",
+            {
+              params: {
+                path: { sessionId, recipeId },
+                header: { "X-CSRF-TOKEN": csrfToken },
+              },
+              body: { mealType },
+              signal,
+              ...include,
+            },
+          ),
+        "Unable to choose the recipe.",
+        mapPlan,
+      ),
+    setPreferences: (sessionId, preferences, { csrfToken, signal }) =>
+      run(
+        () =>
+          client.PUT(
+            "/api/v1/planning/shopping-plans/{sessionId}/preferences",
+            {
+              params: {
+                path: { sessionId },
+                header: { "X-CSRF-TOKEN": csrfToken },
+              },
+              body: preferences,
+              signal,
+              ...include,
+            },
+          ),
+        "Unable to save the choices.",
+        mapPlan,
+      ),
+    setMealCounts: (sessionId, counts, { csrfToken, signal }) =>
+      run(
+        () =>
+          client.PUT(
+            "/api/v1/planning/shopping-plans/{sessionId}/meal-counts",
+            {
+              params: {
+                path: { sessionId },
+                header: { "X-CSRF-TOKEN": csrfToken },
+              },
+              body: counts,
+              signal,
+              ...include,
+            },
+          ),
+        "Unable to change the meals.",
+        mapPlan,
       ),
     reopen: (sessionId, { csrfToken }) =>
       run(
