@@ -53,6 +53,15 @@ The owner's decisions and the full specification of later slices are in PLAN-006
 | Part of "Guardar tudo" fails | The screen says how many; trying again never counts anything twice |
 | Nothing to store | Explains and links back to the list |
 
+## Repeat or name a plan
+
+The setup screen lists the last accepted plans (at most five) with their dishes.
+
+- **"Repetir"** starts a new draft with that plan's answers. Its dishes are already chosen, cooked the same way ("rende" or "fazer de novo"). The new plan starts today; a date can change on the review screen. If meals are still open, the cards continue from there; if not, the review opens.
+- **What may be left out.** A dish whose recipe was archived, a dish that now conflicts with a restriction, a skipped meal, and a meal type outside the plan's answers. Nothing says which dish was left out; fewer meals are filled. Restrictions are always checked again.
+- **"Dar nome"** names the plan's menu, so it is easy to find. Finished plans stay available with or without a name.
+- **The old plan does not change,** and nothing reserves the pantry until the new plan is accepted.
+
 ## Offline list
 
 A market often has no signal, so the list keeps working without it ([ADR-0012](../architecture/decisions/0012-offline-shopping-list.md)).
@@ -66,4 +75,4 @@ A market often has no signal, so the list keeps working without it ([ADR-0012](.
 
 ## Not yet (PLAN-0062 later slices)
 
-Cook-by limits and warnings, repeat or save a plan, reusable components, frozen whole dishes, the timed session route, and push notifications. Shelf-life dates and freezing advice need the owner-reviewed storage table.
+Cook-by limits and warnings (blocked until the owner reviews the storage table), reusable components, frozen whole dishes, the timed session route, and push notifications. Shelf-life dates and freezing advice need the owner-reviewed storage table.

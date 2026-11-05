@@ -2,6 +2,13 @@ import type { ProductionLocale } from "./productionCatalog";
 
 /** Text of shopping plans (PLAN-0062). */
 const ptBR: Record<string, string> = {
+  "shoppingPlan.recent.title": "Repetir um plano",
+  "shoppingPlan.recent.meals": "{{count}} refeições · {{dishes}}",
+  "shoppingPlan.recent.repeat": "Repetir",
+  "shoppingPlan.recent.nameAction": "Dar nome",
+  "shoppingPlan.recent.rename": "Mudar nome",
+  "shoppingPlan.recent.nameLabel": "Nome do plano",
+  "shoppingPlan.recent.nameSave": "Salvar",
   "offline.banner": "Sem internet. Suas marcações serão enviadas depois.",
   "offline.needsInternet":
     "Sem internet, dá para marcar os itens e deixar para comprar depois. Comprei, Já tenho e Cheguei do mercado precisam de internet.",
@@ -197,6 +204,13 @@ const ptBR: Record<string, string> = {
 };
 
 const en: Record<string, string> = {
+  "shoppingPlan.recent.title": "Repeat a plan",
+  "shoppingPlan.recent.meals": "{{count}} meals · {{dishes}}",
+  "shoppingPlan.recent.repeat": "Repeat",
+  "shoppingPlan.recent.nameAction": "Name it",
+  "shoppingPlan.recent.rename": "Rename",
+  "shoppingPlan.recent.nameLabel": "Plan name",
+  "shoppingPlan.recent.nameSave": "Save",
   "offline.banner": "No internet. Your marks will be sent later.",
   "offline.needsInternet":
     "With no internet, you can check items and leave them for later. Bought it, I have it, and Back from the market need internet.",
@@ -389,6 +403,13 @@ const en: Record<string, string> = {
 };
 
 const es: Record<string, string> = {
+  "shoppingPlan.recent.title": "Repetir un plan",
+  "shoppingPlan.recent.meals": "{{count}} comidas · {{dishes}}",
+  "shoppingPlan.recent.repeat": "Repetir",
+  "shoppingPlan.recent.nameAction": "Ponerle nombre",
+  "shoppingPlan.recent.rename": "Cambiar nombre",
+  "shoppingPlan.recent.nameLabel": "Nombre del plan",
+  "shoppingPlan.recent.nameSave": "Guardar",
   "offline.banner": "Sin internet. Tus marcas se enviarán después.",
   "offline.needsInternet":
     "Sin internet, puedes marcar los productos y dejarlos para después. Lo compré, Ya lo tengo y Volví del mercado necesitan internet.",

@@ -49,6 +49,14 @@ function mapStart(dto: StartDto): ShoppingPlanStart {
           status: String(dto.current.status),
         }
       : null,
+    recent: (dto.recent ?? []).map((item) => ({
+      menuId: String(item.menuId),
+      name: String(item.name ?? ""),
+      startDate: String(item.startDate),
+      endDate: String(item.endDate),
+      mealsTotal: num(item.mealsTotal),
+      dishes: (item.dishes ?? []).map(String),
+    })),
   };
 }
 

@@ -1726,6 +1726,11 @@ export interface components {
              * @description Days covered, 1 to 14.
              */
             days: number | string;
+            /**
+             * Format: uuid
+             * @description Menu of an accepted plan to repeat. That plan's answers then replace all of these except Today, and the new plan starts today.
+             */
+            fromMenuId?: null | string;
             /** @description Meals to plan. */
             mealTypes: null | string[];
             /**
@@ -3307,6 +3312,33 @@ export interface components {
             /** @description `dislike`, `too_much_work`, or `tired_of`. */
             reason: null | string;
         };
+        /** @description An accepted plan that can be repeated. */
+        ShoppingPlanRecentView: {
+            /** @description Dishes whose recipe still exists. */
+            dishes: string[];
+            /**
+             * Format: date
+             * @description Last day of the menu.
+             */
+            endDate: string;
+            /**
+             * Format: int32
+             * @description Meals the plan covered.
+             */
+            mealsTotal: number | string;
+            /**
+             * Format: uuid
+             * @description Its menu, which the person may name to find it again.
+             */
+            menuId: string;
+            /** @description The menu's name; empty until the person gives one. */
+            name: string;
+            /**
+             * Format: date
+             * @description First day of the menu.
+             */
+            startDate: string;
+        };
         /** @description Body for replacing a meal. */
         ShoppingPlanReplacementRequest: {
             /**
@@ -3390,6 +3422,8 @@ export interface components {
              * @description The profile's default people.
              */
             people: number | string;
+            /** @description The newest accepted plans that still have a dish, at most five. */
+            recent: components["schemas"]["ShoppingPlanRecentView"][];
             /** @description Confirmed restrictions, excluding plain preferences. */
             restrictions: components["schemas"]["ShoppingPlanRestrictionView"][];
             /** @description Codes the guard cannot check, which the screen must say. */

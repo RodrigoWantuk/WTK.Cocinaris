@@ -96,6 +96,7 @@ const START: ShoppingPlanStart = {
   unverifiableRestrictions: ["keto"],
   hasFreezer: true,
   current: null,
+  recent: [],
 };
 
 function repository(
@@ -120,12 +121,16 @@ function repository(
   };
 }
 
-function renderAt(repo: ShoppingPlanRepository, path: string) {
+function renderAt(
+  repo: ShoppingPlanRepository,
+  path: string,
+  planning = createUnavailablePlanningRepository(),
+) {
   return render(
     <ProductionI18nProvider initialLocale="pt-BR">
       <SessionProvider adapter={createSessionAdapter()}>
         <InventoryProvider repository={createMockInventoryRepo()}>
-          <PlanningProvider repository={createUnavailablePlanningRepository()}>
+          <PlanningProvider repository={planning}>
             <ShoppingPlanProvider repository={repo}>
               <MemoryRouter initialEntries={[path]}>
                 <Routes>
@@ -217,6 +222,91 @@ describe("shopping plan setup (PLAN-0062)", () => {
       "/app/compras/planejar/s9/revisar",
     );
     expect(screen.queryByTestId("plan-begin")).toBeNull();
+  });
+
+  const RECENT = {
+    menuId: "old",
+    name: "",
+    startDate: "2026-10-01",
+    endDate: "2026-10-05",
+    mealsTotal: 5,
+    dishes: ["Sopa", "Arroz"],
+  };
+
+  it("repeats a finished plan from its menu and opens the deck", async () => {
+    const user = userEvent.setup();
+    const create = vi.fn(async () => plan());
+    renderAt(
+      repository({
+        getStart: vi.fn(async () => ({ ...START, recent: [RECENT] })),
+        create,
+      }),
+      "/app/compras/planejar",
+    );
+
+    expect(await screen.findByTestId("plan-recent-name")).toHaveTextContent(
+      "Sopa, Arroz",
+    );
+    await user.click(screen.getByTestId("plan-repeat"));
+    await screen.findByTestId("plan-card");
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({ fromMenuId: "old" }),
+      expect.objectContaining({ idempotencyKey: expect.any(String) }),
+    );
+  });
+
+  it("starts from the answers, not from a plan, with the main button", async () => {
+    const user = userEvent.setup();
+    const create = vi.fn(async () => plan());
+    renderAt(
+      repository({
+        getStart: vi.fn(async () => ({ ...START, recent: [RECENT] })),
+        create,
+      }),
+      "/app/compras/planejar",
+    );
+
+    await user.click(await screen.findByTestId("plan-begin"));
+    await screen.findByTestId("plan-card");
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({ fromMenuId: null }),
+      expect.anything(),
+    );
+  });
+
+  it("names a finished plan through its menu, and says when that fails", async () => {
+    const user = userEvent.setup();
+    const create = vi.fn(async () => plan());
+    const changeMenu = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("down"))
+      .mockResolvedValue({ name: "Semana boa" });
+    renderAt(
+      repository({
+        getStart: vi.fn(async () => ({ ...START, recent: [RECENT] })),
+        create,
+      }),
+      "/app/compras/planejar",
+      { ...createUnavailablePlanningRepository(), changeMenu },
+    );
+
+    await user.click(await screen.findByTestId("plan-recent-name-edit"));
+    await user.type(screen.getByTestId("plan-recent-name-input"), "Semana boa");
+    await user.click(screen.getByTestId("plan-recent-name-save"));
+    await screen.findByRole("alert");
+    expect(create).not.toHaveBeenCalled();
+
+    await user.click(screen.getByTestId("plan-recent-name-save"));
+    await waitFor(() =>
+      expect(screen.getByTestId("plan-recent-name")).toHaveTextContent(
+        "Semana boa",
+      ),
+    );
+    expect(changeMenu).toHaveBeenLastCalledWith(
+      "old",
+      { name: "Semana boa", startDate: "2026-10-01", endDate: "2026-10-05" },
+      expect.anything(),
+    );
   });
 });
 

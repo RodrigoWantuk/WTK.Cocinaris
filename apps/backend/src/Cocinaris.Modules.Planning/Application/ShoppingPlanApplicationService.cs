@@ -28,6 +28,12 @@ public interface IShoppingPlanStore
     /// <summary>Finds the latest plan, to reuse its answers as defaults.</summary>
     Task<ShoppingPlanSession?> FindLatestAsync(Guid ownerUserId, CancellationToken cancellationToken);
 
+    /// <summary>Lists the newest accepted plans, to offer repeating them.</summary>
+    Task<IReadOnlyList<ShoppingPlanSession>> ListFinishedAsync(Guid ownerUserId, int limit, CancellationToken cancellationToken);
+
+    /// <summary>Finds the accepted plan that filled a menu, if any.</summary>
+    Task<ShoppingPlanSession?> FindFinishedByMenuAsync(Guid ownerUserId, Guid menuPlanId, CancellationToken cancellationToken);
+
     /// <summary>Adds a plan. Returns false, persisting nothing, when its key was used or another plan is in progress.</summary>
     Task<bool> TryAddAsync(ShoppingPlanSession session, CancellationToken cancellationToken);
 
@@ -76,7 +82,8 @@ public interface IShoppingPlanStore
 /// <param name="PrepMinutes">Session length; ignored for <c>daily</c>.</param>
 /// <param name="AnchorIngredient">Optional typed ingredient; untrusted.</param>
 /// <param name="People">People to feed; the profile's default when null.</param>
-public sealed record CreateShoppingPlanCommand(Guid? IdempotencyKey, string CorrelationId, string? RequestLanguage, DateOnly? Today, int Days, IReadOnlyList<string>? MealTypes, int MealsOut, string? CookingStyle, string? Priority, DateOnly? PrepDate, int? PrepMinutes, string? AnchorIngredient, int? People);
+/// <param name="FromMenuId">Menu of an accepted plan to repeat. Its answers then replace these, except <paramref name="Today"/>.</param>
+public sealed record CreateShoppingPlanCommand(Guid? IdempotencyKey, string CorrelationId, string? RequestLanguage, DateOnly? Today, int Days, IReadOnlyList<string>? MealTypes, int MealsOut, string? CookingStyle, string? Priority, DateOnly? PrepDate, int? PrepMinutes, string? AnchorIngredient, int? People, Guid? FromMenuId = null);
 
 /// <summary>A restriction the setup screen shows.</summary>
 /// <param name="Code">Stable code.</param>
@@ -89,6 +96,15 @@ public sealed record ShoppingPlanRestrictionView(string Code, string Category);
 /// <param name="Status"><c>building</c> or <c>reviewing</c>.</param>
 public sealed record ShoppingPlanCurrentView(Guid SessionId, Guid MenuId, string Status);
 
+/// <summary>An accepted plan that can be repeated.</summary>
+/// <param name="MenuId">Its menu, which the person may name to find it again.</param>
+/// <param name="Name">The menu's name; empty until the person gives one.</param>
+/// <param name="StartDate">First day of the menu.</param>
+/// <param name="EndDate">Last day of the menu.</param>
+/// <param name="MealsTotal">Meals the plan covered.</param>
+/// <param name="Dishes">Dishes whose recipe still exists.</param>
+public sealed record ShoppingPlanRecentView(Guid MenuId, string Name, DateOnly StartDate, DateOnly EndDate, int MealsTotal, IReadOnlyList<string> Dishes);
+
 /// <summary>Defaults for the setup screen.</summary>
 /// <param name="LastSetup">Answers of the latest plan, if any.</param>
 /// <param name="People">The profile's default people.</param>
@@ -96,7 +112,8 @@ public sealed record ShoppingPlanCurrentView(Guid SessionId, Guid MenuId, string
 /// <param name="UnverifiableRestrictions">Codes the guard cannot check, which the screen must say.</param>
 /// <param name="HasFreezer">Whether the profile lists a freezer.</param>
 /// <param name="Current">The plan in progress, if any.</param>
-public sealed record ShoppingPlanStartView(ShoppingPlanSetup? LastSetup, int People, IReadOnlyList<ShoppingPlanRestrictionView> Restrictions, IReadOnlyList<string> UnverifiableRestrictions, bool HasFreezer, ShoppingPlanCurrentView? Current);
+/// <param name="Recent">The newest accepted plans that still have a dish, at most five.</param>
+public sealed record ShoppingPlanStartView(ShoppingPlanSetup? LastSetup, int People, IReadOnlyList<ShoppingPlanRestrictionView> Restrictions, IReadOnlyList<string> UnverifiableRestrictions, bool HasFreezer, ShoppingPlanCurrentView? Current, IReadOnlyList<ShoppingPlanRecentView> Recent);
 
 /// <summary>How far the plan has come.</summary>
 /// <param name="MealsTotal">Meals to fill.</param>
@@ -190,6 +207,8 @@ public sealed class ShoppingPlanApplicationService(
     private const int MaxRepeats = 4;
     private const int MaxEntryServings = 24;
     private const int AbandonedRetentionDays = 30;
+    private const int MaxRecentPlans = 5;
+    private const int MaxActiveRecipes = 200;
     private static readonly IReadOnlySet<string> MealTypes = MenuEntry.MealTypes;
     private static readonly HashSet<string> CostlyCategories = new(StringComparer.Ordinal) { "meat", "poultry", "fish", "seafood", "nut" };
     private static readonly HashSet<string> RejectReasons = new(StringComparer.Ordinal) { "dislike", "too_much_work", "tired_of" };
@@ -217,7 +236,34 @@ public sealed class ShoppingPlanApplicationService(
             restrictions.Where(item => item.Category != nameof(PreferenceCategory.Dislike)).Select(item => new ShoppingPlanRestrictionView(item.Code, item.Category)).ToList(),
             RestrictionGuard.Default.UnverifiableCodes(restrictions),
             profile?.Equipment.Any(item => !item.IsRemoved && item.StableCode.Value == "freezer") == true,
-            current is null ? null : new ShoppingPlanCurrentView(current.Id, current.MenuPlanId, Name(current.Status))));
+            current is null ? null : new ShoppingPlanCurrentView(current.Id, current.MenuPlanId, Name(current.Status)),
+            await ListRecentAsync(user.Id, cancellationToken)));
+    }
+
+    private async Task<IReadOnlyList<ShoppingPlanRecentView>> ListRecentAsync(Guid ownerUserId, CancellationToken cancellationToken)
+    {
+        var finished = await store.ListFinishedAsync(ownerUserId, MaxRecentPlans, cancellationToken);
+        if (finished.Count == 0)
+        {
+            return [];
+        }
+
+        var active = (await recipes.ListActiveAsync(ownerUserId, MaxActiveRecipes, cancellationToken)).ToDictionary(item => item.RecipeId);
+        var entries = await menus.ListEntriesAsync(ownerUserId, finished.Select(item => item.MenuPlanId).ToList(), cancellationToken);
+        var recent = new List<ShoppingPlanRecentView>();
+        foreach (var session in finished)
+        {
+            var dishes = entries.Where(item => item.MenuPlanId == session.MenuPlanId && item.Status != MenuEntryStatus.Skipped && active.ContainsKey(item.RecipeId))
+                .Select(item => active[item.RecipeId].Name)
+                .Distinct(StringComparer.Ordinal)
+                .ToList();
+            if (dishes.Count > 0 && await menus.FindAsync(ownerUserId, session.MenuPlanId, cancellationToken) is { } menu)
+            {
+                recent.Add(new ShoppingPlanRecentView(menu.Id, menu.Name, menu.StartDate, menu.EndDate, session.Setup.TotalMeals, dishes));
+            }
+        }
+
+        return recent;
     }
 
     /// <summary>Creates the draft menu and the plan, then adds the cards that need no AI.</summary>
@@ -234,6 +280,20 @@ public sealed class ShoppingPlanApplicationService(
         if (await store.FindByCreationKeyAsync(user.Id, key, cancellationToken) is { } replay)
         {
             return await ResultAsync(user.Id, replay, cancellationToken);
+        }
+
+        ShoppingPlanSession? source = null;
+        if (command.FromMenuId is { } fromMenuId)
+        {
+            source = await store.FindFinishedByMenuAsync(user.Id, fromMenuId, cancellationToken);
+            if (source is null)
+            {
+                return NotFound<ShoppingPlanView>();
+            }
+
+            // The answers come from the plan being repeated. Its dates have passed, so the new plan starts today.
+            var old = source.Setup;
+            command = command with { Days = old.Days, MealTypes = old.MealTypes, MealsOut = old.MealsOut, CookingStyle = old.CookingStyle, Priority = old.Priority, PrepDate = null, PrepMinutes = old.PrepMinutes, AnchorIngredient = old.AnchorIngredient, People = old.People };
         }
 
         var profile = await profiles.FindAsync(user.Id, cancellationToken);
@@ -285,7 +345,8 @@ public sealed class ShoppingPlanApplicationService(
         }
 
         Started.Add(1);
-        await AddInstantCardsAsync(user.Id, session, profile, command.RequestLanguage, cancellationToken);
+        var repeated = source is null ? [] : await AddRepeatedCardsAsync(user.Id, session, source.MenuPlanId, profile, cancellationToken);
+        await AddInstantCardsAsync(user.Id, session, repeated, profile, command.RequestLanguage, cancellationToken);
         return await ResultAsync(user.Id, session, cancellationToken, RecipeApplicationSuccess.Created);
     }
 
@@ -832,12 +893,97 @@ public sealed class ShoppingPlanApplicationService(
         return new ShoppingPlanSetup(today, command.Days, meals, command.MealsOut, style, priority, prepDate, prepMinutes, RecipePlanDeckService.CleanAnchor(command.AnchorIngredient), people);
     }
 
-    private async Task AddInstantCardsAsync(Guid ownerUserId, ShoppingPlanSession session, ProfileReadModel? profile, string? language, CancellationToken cancellationToken)
+    /// <summary>
+    /// Repeats a plan's dishes as accepted cards, with their meals on the new draft menu. It reads the
+    /// old menu rather than the old cards, because the person may have changed the menu after accepting
+    /// it. Deleted recipes are left out, and the guard runs again, because restrictions may have changed.
+    /// </summary>
+    private async Task<IReadOnlyList<ShoppingPlanCard>> AddRepeatedCardsAsync(Guid ownerUserId, ShoppingPlanSession session, Guid sourceMenuId, ProfileReadModel? profile, CancellationToken cancellationToken)
+    {
+        var setup = session.Setup;
+        var active = (await recipes.ListActiveAsync(ownerUserId, MaxActiveRecipes, cancellationToken)).ToDictionary(item => item.RecipeId);
+        var entries = (await menus.ListEntriesAsync(ownerUserId, [sourceMenuId], cancellationToken))
+            .Where(item => item.Status != MenuEntryStatus.Skipped && active.ContainsKey(item.RecipeId) && item.MealType is not null && setup.MealTypes.Contains(item.MealType))
+            .OrderBy(item => item.SuggestedOrder ?? int.MaxValue)
+            .ThenBy(item => item.CreatedAt)
+            .ToList();
+        var ingredients = entries.Select(item => item.RecipeId).Distinct().ToDictionary(id => id, id => RecipeIngredientReader.Read(active[id].NormalizedRecipeJson).ToList());
+        var keys = await matching.KeysAsync(ownerUserId, ingredients.Values.SelectMany(items => items.Select(item => item.Name)), cancellationToken);
+        var restrictions = Restrictions(profile);
+        var needs = new Dictionary<string, int>(setup.MealNeeds(), StringComparer.Ordinal);
+        var now = timeProvider.GetUtcNow();
+        var cards = new List<ShoppingPlanCard>();
+        var repeatedDishes = entries.Where(item => item.MealsCovered == 1).GroupBy(item => (item.RecipeId, item.MealType!))
+            .Select(group => (Entry: group.First(), Mode: group.Count() > 1 ? "again" : null, Meals: group.Count()));
+        var yieldingDishes = entries.Where(item => item.MealsCovered > 1).Select(item => (Entry: item, Mode: (string?)"yield", Meals: item.MealsCovered));
+        foreach (var (entry, mode, meals) in yieldingDishes.Concat(repeatedDishes).OrderBy(item => entries.IndexOf(item.Entry)))
+        {
+            var detail = active[entry.RecipeId];
+            var guard = RestrictionGuard.Default.Check(ingredients[entry.RecipeId].Select(item => item.Name), keys, restrictions);
+            if (!CountGuard(guard))
+            {
+                continue;
+            }
+
+            // The old menu may hold more than the plan's answers allow, after later edits by hand.
+            var group = ShoppingPlanSetup.GroupOf(entry.MealType!);
+            var count = Math.Min(Math.Min(meals, MaxRepeats), needs.GetValueOrDefault(group));
+            if (mode == "yield")
+            {
+                count = Math.Min(count, MaxEntryServings / setup.People);
+            }
+
+            if (count < 1)
+            {
+                continue;
+            }
+
+            needs[group] -= count;
+            cards.Add(new ShoppingPlanCard
+            {
+                Id = Guid.NewGuid(),
+                SessionId = session.Id,
+                OwnerUserId = ownerUserId,
+                Source = ShoppingPlanCardSource.Saved,
+                RecipeId = entry.RecipeId,
+                ExpansionKey = Guid.NewGuid(),
+                FirstSeenOrder = cards.Count,
+                Snapshot = SavedSnapshot(detail, entry.MealType!, ingredients[entry.RecipeId], guard),
+                State = ShoppingPlanCardState.Accepted,
+                AcceptMode = count > 1 ? mode : null,
+                Repeats = count,
+                ExpansionState = ShoppingPlanExpansionState.Ready,
+                // Ranking reads accepted cards in decision order, so each needs its own instant.
+                DecidedAt = now.AddMilliseconds(cards.Count)
+            });
+        }
+
+        if (cards.Count > 0)
+        {
+            await store.AddCardsAsync(cards, cancellationToken);
+            foreach (var card in cards)
+            {
+                await CreateEntriesAsync(ownerUserId, session, card, card.RecipeId!.Value, cancellationToken);
+            }
+        }
+
+        return cards;
+    }
+
+    private static ShoppingPlanCardSnapshot SavedSnapshot(RecipeDetail detail, string meal, IReadOnlyList<RecipeIngredient> ingredients, RestrictionGuardResult guard)
+    {
+        var (activeMinutes, total) = Minutes(detail.NormalizedRecipeJson);
+        var id = detail.RecipeId.ToString("n");
+        return new ShoppingPlanCardSnapshot(detail.Name, string.Empty, meal, id, id, [], detail.Servings, activeMinutes, total, "medium", ingredients.Select(ToCardIngredient).ToList(), Unverified(guard)?.Code, Unverified(guard)?.Ingredient);
+    }
+
+    private async Task AddInstantCardsAsync(Guid ownerUserId, ShoppingPlanSession session, IReadOnlyList<ShoppingPlanCard> repeated, ProfileReadModel? profile, string? language, CancellationToken cancellationToken)
     {
         var restrictions = Restrictions(profile);
-        var active = (await recipes.ListActiveAsync(ownerUserId, 200, cancellationToken)).ToDictionary(item => item.RecipeId);
+        var active = (await recipes.ListActiveAsync(ownerUserId, MaxActiveRecipes, cancellationToken)).ToDictionary(item => item.RecipeId);
+        var chosen = repeated.Select(card => card.RecipeId).ToHashSet();
         var items = (await library.ListAsync(ownerUserId, new RecipeLibraryQuery(false, false, null), cancellationToken))
-            .Where(item => active.ContainsKey(item.RecipeId))
+            .Where(item => active.ContainsKey(item.RecipeId) && !chosen.Contains(item.RecipeId))
             .OrderByDescending(item => item.IsFavorite)
             .ThenByDescending(item => item.LastCookedAt)
             .ToList();
@@ -865,7 +1011,6 @@ public sealed class ShoppingPlanApplicationService(
                 continue;
             }
 
-            var (activeMinutes, total) = Minutes(detail.NormalizedRecipeJson);
             cards.Add(new ShoppingPlanCard
             {
                 Id = Guid.NewGuid(),
@@ -874,8 +1019,8 @@ public sealed class ShoppingPlanApplicationService(
                 Source = ShoppingPlanCardSource.Saved,
                 RecipeId = item.RecipeId,
                 ExpansionKey = Guid.NewGuid(),
-                FirstSeenOrder = cards.Count,
-                Snapshot = new ShoppingPlanCardSnapshot(detail.Name, string.Empty, meal, item.RecipeId.ToString("n"), item.RecipeId.ToString("n"), [], detail.Servings, activeMinutes, total, "medium", ingredients.Select(ToCardIngredient).ToList(), Unverified(guard)?.Code, Unverified(guard)?.Ingredient)
+                FirstSeenOrder = repeated.Count + cards.Count,
+                Snapshot = SavedSnapshot(detail, meal, ingredients, guard)
             });
         }
 

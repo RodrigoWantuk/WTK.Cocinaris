@@ -41,6 +41,24 @@ public sealed class PostgreSqlShoppingPlanStore(ApplicationDbContext database) :
     }
 
     /// <inheritdoc />
+    public async Task<IReadOnlyList<ShoppingPlanSession>> ListFinishedAsync(Guid ownerUserId, int limit, CancellationToken cancellationToken)
+    {
+        var records = await database.ShoppingPlanSessions.AsNoTracking()
+            .Where(item => item.OwnerUserId == ownerUserId && item.Status == nameof(ShoppingPlanStatus.Finished))
+            .OrderByDescending(item => item.UpdatedAt)
+            .Take(limit)
+            .ToListAsync(cancellationToken);
+        return records.Select(ToDomain).ToList();
+    }
+
+    /// <inheritdoc />
+    public async Task<ShoppingPlanSession?> FindFinishedByMenuAsync(Guid ownerUserId, Guid menuPlanId, CancellationToken cancellationToken)
+    {
+        var record = await database.ShoppingPlanSessions.AsNoTracking().SingleOrDefaultAsync(item => item.OwnerUserId == ownerUserId && item.MenuPlanId == menuPlanId && item.Status == nameof(ShoppingPlanStatus.Finished), cancellationToken);
+        return record is null ? null : ToDomain(record);
+    }
+
+    /// <inheritdoc />
     public async Task<bool> TryAddAsync(ShoppingPlanSession session, CancellationToken cancellationToken)
     {
         database.ShoppingPlanSessions.Add(ToRecord(session));

@@ -737,15 +737,15 @@ Migrations are additive, and rollback means deploying the earlier code with unus
 
 ## Execution state
 
-- **Current run delivery target:** Slice 3, offline list.
-- **Current checkpoint:** Slice 3 implemented on `agent/plan-0062-s3-offline-list`, in a draft pull request.
-- **Last completed step:** Offline browser journey on the proxy replica, and a one-off check of worker update and removal.
-- **Exact next action:** The owner reviews the pull request and merges it. Slice 4 (limits, warnings, and repeat) then starts from fresh `origin/main` on `agent/plan-0062-s4-limits-and-repeat`. Without G2-A it ships repeat only and records the limits work as blocked.
-- **Blockers:** G2-A before storage guidance is enabled and before Slice 4 limits. G1-B (live AI evaluation) needs the provider key. Deploying `main` was refused by this agent's permission classifier, so the owner must run it. The browser smoke matrix fails the same way on unmodified `main` on this host, so G3's gate run cannot pass here yet.
-- **Partially modified areas:** None.
-- **Documentation delivered:** ADR-0012, and updates to the product, planning, privacy, testing, and runbook documents.
-- **Validation performed:** See the Slice 3 entry in the progress log.
-- **Known failures or limitations:** See the Slice 3 entry. Earlier limits stand: storage values are not checked against primary sources, G1-A has no separate owner comment, and per-stage equipment conflicts are not detected (Slice 6).
+- **Current run delivery target:** Slice 4, repeat only, because G2-A has not been approved.
+- **Current checkpoint:** Repeat and naming implemented on `agent/plan-0062-s4-limits-and-repeat`, in a draft pull request. Limits and warnings are blocked.
+- **Last completed step:** Browser journey on the proxy replica through repeating a named plan.
+- **Exact next action:** The owner reviews the pull request and merges it. Then, from fresh `origin/main`, start Slice 5 on `agent/plan-0062-s5-components`. Its gate G5-A needs a live evaluation with the provider key. When the owner approves `docs/domain/storage-guidance-review.md`, deliver the rest of Slice 4 (cook-by limits, the `cook_by` reminder, "Congelar hoje", "Trocar de prato" on accepted menus, "Deixar como está") in its own pull request.
+- **Blockers:** G2-A for the Slice 4 limits and warnings and for enabling storage guidance. G1-B and G5-A need the provider key. Deploying `main` was refused by this agent's permission classifier, so the owner must run it. The browser smoke matrix fails on unmodified `main` on this host, and full local gates have not run.
+- **Partially modified areas:** Slice 4 is partial by design: see "Exact next action".
+- **Documentation delivered:** Updates to the product and planning documents.
+- **Validation performed:** See the Slice 4 entry in the progress log.
+- **Known failures or limitations:** See the Slice 4 entry. Earlier limits stand: storage values are not checked against primary sources, G1-A has no separate owner comment, and per-stage equipment conflicts are not detected (Slice 6).
 - **Working tree state:** Clean after this commit.
 
 ## Progress log
@@ -843,6 +843,28 @@ Migrations are additive, and rollback means deploying the earlier code with unus
   - `deploy-linux-host.sh --rollback` itself was not run; only the script it installs was exercised.
 - **Correction:** The first Slice 3 commit deleted `browser-smoke-report.schema.example.json` by mistake, through a cleanup of smoke output. The next commit restores it unchanged.
 - **Result:** Ready for owner review.
+- **Next action:** See `Exact next action`.
+
+### 2026-11-05 — Claude Code (Slice 4, repeat only)
+
+- **Run delivery target:** Slice 4. This plan ships repeat only while G2-A is open, and the owner has not approved the storage table. Owner merged #86 before this run ("merge feito, continue").
+- **Checkpoint:** A finished plan can be named and repeated.
+- **Changes included in the commit:** `POST /shopping-plans` accepts `fromMenuId`; `GET /start` returns `recent`; `ShoppingPlanRecentList` on the setup screen; store queries for finished plans; regenerated OpenAPI and client. No migration.
+- **Documentation and code-documentation delivered:** `guided-shopping-planning.md`, `planning-and-shopping.md`, XML docs, TSDoc.
+- **Defect found and fixed before commit:** The list first rendered inside the setup form, so saving a name submitted the outer form and started a plan. A frontend test caught it. The list now sits outside, and the test asserts no plan is created.
+- **Deviations from this plan, keeping the outcome:**
+  - The repeated plan reads the old menu's entries, not its cards, because the menu can change after acceptance.
+  - `RestrictionGuard` runs again and meal needs cap the copies, which the plan did not list. Invariant 2 requires the first.
+  - The new plan always starts today. The old preparation date has passed, and the review screen can set another.
+  - Nothing names a dish left out; the person sees fewer meals filled.
+- **Validation performed:**
+  - Backend: the four shopping plan integration tests passed, including the new one (archived and newly restricted dishes left out, another owner gets 404, an open plan cannot be repeated, retry adds no meal, draft stays a draft). OpenAPI exported and client regenerated; drift check passed.
+  - Backend format reported nothing on the changed files; shopping plan unit tests 58/58.
+  - Frontend: typecheck, lint, and format clean; full suite 558/558; production build passed.
+  - Browser journey on the proxy replica at 390 px: passed, now through naming and repeating.
+- **Host incident:** The host killed the development Keycloak container for lack of memory (OOM, exit 137) while this run was building and testing, which failed two journey attempts. I restarted that container; the journey then passed. The production service was not touched.
+- **Not run:** Full local gates and the smoke matrix (it fails on unmodified `main` here). The full integration suite. Keyboard only and 320 px by hand.
+- **Result:** Ready for owner review. Slice 4 limits and warnings are not delivered.
 - **Next action:** See `Exact next action`.
 
 ## Completion and handoff checklist
