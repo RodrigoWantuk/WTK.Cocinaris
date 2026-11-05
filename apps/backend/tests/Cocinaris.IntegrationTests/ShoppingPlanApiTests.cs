@@ -437,6 +437,80 @@ public sealed partial class RecipeExecutionApiTests
         Assert.Single(await Ready());
     }
 
+    [Fact]
+    public async Task ThePreparationRouteExistsOnlyAfterAcceptanceAndResumesWhereItStopped()
+    {
+        var (host, _) = PlanHost();
+        await using var _host = host;
+        using var client = PlanClient(host, "plan-route");
+        var csrf = await CsrfAsync(client);
+        var today = new DateOnly(2026, 11, 4);
+        await CreateRecipeAsync(client, csrf, "Feijão da rota", ("Feijão", 200m, "g"));
+        await CreateRecipeAsync(client, csrf, "Arroz da rota", ("Arroz", 200m, "g"));
+        var plan = await JsonOf(await PostAsync(client, csrf, Plans, PlanBody(today, "mix"), Guid.NewGuid()));
+        var sessionId = plan.GetProperty("sessionId").GetGuid();
+        var menuId = plan.GetProperty("menuId").GetGuid();
+        var route = $"{Plans}/{sessionId}/route";
+        foreach (var card in plan.GetProperty("queue").EnumerateArray().Select(item => item.GetProperty("cardId").GetGuid()).ToList())
+        {
+            await PostAsync(client, csrf, $"{Plans}/{sessionId}/cards/{card}/decision", new { decision = "accept", mode = "yield", repeats = 2 });
+        }
+
+        // A draft reserves nothing, so it cannot be cooked yet.
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, (await client.GetAsync(route)).StatusCode);
+        Assert.Equal(JsonValueKind.Null, (await client.GetFromJsonAsync<JsonElement>($"{Plans}/route-link?menuId={menuId}")).GetProperty("sessionId").ValueKind);
+        await PostAsync(client, csrf, $"{Plans}/{sessionId}/acceptance", new { });
+
+        var view = await client.GetFromJsonAsync<JsonElement>(route);
+        Assert.Equal(2, view.GetProperty("recipes").GetArrayLength());
+        Assert.Equal(120, view.GetProperty("budgetMinutes").GetInt32());
+        var tasks = view.GetProperty("tasks").EnumerateArray().ToList();
+        Assert.NotEmpty(tasks);
+        Assert.Equal(tasks.Max(task => task.GetProperty("endMinute").GetInt32()), view.GetProperty("totalMinutes").GetInt32());
+        Assert.Empty(view.GetProperty("progress").GetProperty("done").EnumerateArray());
+        Assert.Equal(sessionId, (await client.GetFromJsonAsync<JsonElement>($"{Plans}/route-link?menuId={menuId}")).GetProperty("sessionId").GetGuid());
+        Assert.Equal(sessionId, (await client.GetFromJsonAsync<JsonElement>($"{Plans}/route-link?date=2026-11-04")).GetProperty("sessionId").GetGuid());
+        Assert.Equal(JsonValueKind.Null, (await client.GetFromJsonAsync<JsonElement>($"{Plans}/route-link?date=2026-11-05")).GetProperty("sessionId").ValueKind);
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.GetAsync($"{Plans}/route-link")).StatusCode);
+
+        async Task<HttpResponseMessage> SaveAsync(HttpClient caller, string token, object body)
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Put, $"{route}/progress") { Content = JsonContent.Create(body) };
+            request.Headers.Add("X-CSRF-TOKEN", token);
+            return await caller.SendAsync(request);
+        }
+
+        // Progress survives a reload, and a key no longer on the route is dropped.
+        var first = tasks[0].GetProperty("taskKey").GetString()!;
+        var endsAt = new DateTimeOffset(2026, 11, 4, 12, 0, 0, TimeSpan.Zero);
+        var saved = await SaveAsync(client, csrf, new { done = new[] { first, "gone:x" }, skipped = Array.Empty<string>(), timers = new[] { new { taskKey = first, endsAt } } });
+        Assert.Equal(HttpStatusCode.OK, saved.StatusCode);
+        var progress = (await client.GetFromJsonAsync<JsonElement>(route)).GetProperty("progress");
+        Assert.Equal([first], progress.GetProperty("done").EnumerateArray().Select(item => item.GetString()));
+        Assert.Equal(endsAt, progress.GetProperty("timers")[0].GetProperty("endsAt").GetDateTimeOffset());
+        Assert.Equal(HttpStatusCode.BadRequest, (await SaveAsync(client, csrf, new { done = new[] { first } })).StatusCode);
+
+        // Another owner sees nothing and changes nothing.
+        using var other = PlanClient(host, "plan-route-other");
+        var otherCsrf = await CsrfAsync(other);
+        Assert.Equal(HttpStatusCode.NotFound, (await other.GetAsync(route)).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await SaveAsync(other, otherCsrf, new { done = Array.Empty<string>(), skipped = Array.Empty<string>(), timers = Array.Empty<object>() })).StatusCode);
+        Assert.Equal(JsonValueKind.Null, (await other.GetFromJsonAsync<JsonElement>($"{Plans}/route-link?menuId={menuId}")).GetProperty("sessionId").ValueKind);
+
+        // Cooking a dish marks its tasks done; when all are cooked, nothing is left to open.
+        foreach (var recipe in view.GetProperty("recipes").EnumerateArray())
+        {
+            var execution = await JsonOf(await PostAsync(client, csrf, $"/api/v1/recipes/{recipe.GetProperty("recipeId").GetGuid()}/executions", new { servings = recipe.GetProperty("servings").GetInt32(), menuEntryId = recipe.GetProperty("entryId").GetGuid() }));
+            var completed = await PostAsync(client, csrf, $"/api/v1/recipes/executions/{execution.GetProperty("executionId").GetGuid()}/completion", new { consumptions = Array.Empty<object>() }, Guid.NewGuid());
+            Assert.True(completed.IsSuccessStatusCode, await completed.Content.ReadAsStringAsync());
+        }
+
+        view = await client.GetFromJsonAsync<JsonElement>(route);
+        Assert.All(view.GetProperty("recipes").EnumerateArray(), recipe => Assert.Equal("cooked", recipe.GetProperty("status").GetString()));
+        Assert.Equal(tasks.Count, view.GetProperty("progress").GetProperty("done").GetArrayLength());
+        Assert.Equal(JsonValueKind.Null, (await client.GetFromJsonAsync<JsonElement>($"{Plans}/route-link?menuId={menuId}")).GetProperty("sessionId").ValueKind);
+    }
+
     private static async Task SetVegetarianAsync(HttpClient client, string csrf)
     {
         using var bootstrap = new HttpRequestMessage(HttpMethod.Patch, "/api/v1/profile") { Content = JsonContent.Create(new { displayName = new { action = "confirm", value = "Alex", durability = "durable" } }) };

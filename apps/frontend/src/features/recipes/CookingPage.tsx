@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import { useProductionI18n } from "@/app/i18n/ProductionI18nProvider";
 import { useSession } from "@/app/session/SessionProvider";
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,7 @@ import {
 import { useRecipeRepository } from "./RecipeProvider";
 
 const STORAGE_PREFIX = "cocinaris.cooking.";
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 /** Most portions one cooking stores; the backend enforces the same limit. */
 const MAX_OUTPUTS = 4;
 const OUTPUT_UNIT_KEYS: Record<string, string> = {
@@ -104,19 +105,32 @@ interface ReviewLine {
  * the full checklist view. The proposal is only a starting point: nothing is deducted until the
  * cook confirms, and the backend commits the consumption, the leftovers, and the completion
  * together. The screen is kept awake during preparation and the steps.
+ *
+ * A preparation session (PLAN-0062 Slice 6) opens this page with `?rota=<plan>&concluir=1`: the work
+ * was done on the route, so it starts at the finish screen and leads back to the route.
  */
 export function CookingPage() {
   const { executionId = "" } = useParams<{ executionId: string }>();
   const repo = useRecipeRepository();
   const { session } = useSession();
   const { t, locale } = useProductionI18n();
+  const [search] = useSearchParams();
+  // Part of a link, so it is checked before being put in another one.
+  const routeParam = search.get("rota");
+  const routeSession = routeParam && UUID.test(routeParam) ? routeParam : null;
   const [execution, setExecution] = useState<RecipeExecution | null>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "error">(
     "loading",
   );
   const [mode, setMode] = useState<
     "prep" | "step" | "overview" | "finish" | "review"
-  >(() => (readStep(executionId) >= 0 ? "step" : "prep"));
+  >(() =>
+    routeSession && search.get("concluir") === "1"
+      ? "finish"
+      : readStep(executionId) >= 0
+        ? "step"
+        : "prep",
+  );
   const [step, setStep] = useState(() => Math.max(0, readStep(executionId)));
   const [checked, setChecked] = useState<Set<string>>(() =>
     readChecked(executionId),
@@ -441,7 +455,17 @@ export function CookingPage() {
           </div>
         ) : null}
         <div className="flex flex-wrap gap-2">
-          <Button asChild>
+          {routeSession ? (
+            <Button asChild>
+              <Link
+                to={`/app/compras/planejar/${routeSession}/preparo`}
+                data-testid="cooking-back-to-route"
+              >
+                {t("shoppingPlan.route.back")}
+              </Link>
+            </Button>
+          ) : null}
+          <Button asChild variant={routeSession ? "secondary" : "default"}>
             <Link to="/app/despensa" data-testid="cooking-done-pantry">
               {t("cooking.done.pantry")}
             </Link>
@@ -632,6 +656,15 @@ export function CookingPage() {
   if (mode === "finish") {
     return (
       <div data-testid="cooking-guided" className="space-y-6">
+        {routeSession ? (
+          <Link
+            to={`/app/compras/planejar/${routeSession}/preparo`}
+            data-testid="cooking-leave-to-route"
+            className="inline-flex text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+          >
+            {t("shoppingPlan.route.back")}
+          </Link>
+        ) : null}
         <p className="text-sm text-muted-foreground">{execution.recipeName}</p>
         <FinishScreen
           usedNames={lines

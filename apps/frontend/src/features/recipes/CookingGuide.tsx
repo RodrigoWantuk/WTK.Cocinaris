@@ -45,7 +45,7 @@ export function useWakeLock(active: boolean) {
 }
 
 /** Short beep and vibration when a timer ends; both are best effort. */
-function alertTimerDone() {
+export function alertTimerDone() {
   try {
     navigator.vibrate?.([300, 150, 300]);
   } catch {
@@ -69,7 +69,8 @@ function alertTimerDone() {
   }
 }
 
-function formatClock(totalSeconds: number) {
+/** Minutes and seconds of a countdown. */
+export function formatClock(totalSeconds: number) {
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
   return `${minutes}:${String(seconds).padStart(2, "0")}`;

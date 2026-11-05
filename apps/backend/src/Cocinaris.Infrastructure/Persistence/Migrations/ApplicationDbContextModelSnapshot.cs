@@ -1810,6 +1810,9 @@ namespace Cocinaris.Infrastructure.Persistence.Migrations
                     b.Property<bool>("PrivateDirection")
                         .HasColumnType("boolean");
 
+                    b.Property<string>("RouteProgressJson")
+                        .HasColumnType("jsonb");
+
                     b.Property<string>("SetupJson")
                         .IsRequired()
                         .HasColumnType("jsonb");

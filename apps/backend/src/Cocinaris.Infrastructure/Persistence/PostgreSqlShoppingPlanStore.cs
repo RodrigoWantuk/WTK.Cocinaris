@@ -78,15 +78,19 @@ public sealed class PostgreSqlShoppingPlanStore(ApplicationDbContext database) :
     }
 
     /// <inheritdoc />
-    public async Task SaveAsync(ShoppingPlanSession session, CancellationToken cancellationToken) =>
+    public async Task SaveAsync(ShoppingPlanSession session, CancellationToken cancellationToken)
+    {
+        var routeProgress = session.RouteProgress is null ? null : JsonSerializer.Serialize(session.RouteProgress, SerializerOptions);
         // Batch fields change only through their atomic methods, so a save cannot overwrite a batch taken meanwhile.
         await database.ShoppingPlanSessions.Where(item => item.OwnerUserId == session.OwnerUserId && item.Id == session.Id).ExecuteUpdateAsync(
             update => update
                 .SetProperty(item => item.Status, session.Status.ToString())
                 .SetProperty(item => item.ConsecutiveRejections, session.ConsecutiveRejections)
                 .SetProperty(item => item.LastDecidedCardId, session.LastDecidedCardId)
+                .SetProperty(item => item.RouteProgressJson, routeProgress)
                 .SetProperty(item => item.UpdatedAt, session.UpdatedAt),
             cancellationToken);
+    }
 
     /// <inheritdoc />
     public async Task<bool> TryTakeBatchAsync(Guid ownerUserId, Guid sessionId, Guid key, CancellationToken cancellationToken) =>
@@ -174,6 +178,7 @@ public sealed class PostgreSqlShoppingPlanStore(ApplicationDbContext database) :
         ConsecutiveRejections = record.ConsecutiveRejections,
         LastDecidedCardId = record.LastDecidedCardId,
         PrivateDirection = record.PrivateDirection,
+        RouteProgress = record.RouteProgressJson is null ? null : JsonSerializer.Deserialize<ShoppingPlanRouteProgress>(record.RouteProgressJson, SerializerOptions),
         CreatedAt = record.CreatedAt,
         UpdatedAt = record.UpdatedAt
     };

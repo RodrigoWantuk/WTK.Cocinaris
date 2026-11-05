@@ -2,6 +2,38 @@ import type { ProductionLocale } from "./productionCatalog";
 
 /** Text of shopping plans (PLAN-0062). */
 const ptBR: Record<string, string> = {
+  "shoppingPlan.route.title": "Roteiro do preparo",
+  "shoppingPlan.route.summary": "{{dishes}} pratos · cerca de {{minutes}} min",
+  "shoppingPlan.route.overBudget":
+    "Leva cerca de {{minutes}} min, mais que os {{budget}} min que você separou. Dá para pular tarefas ou fazer o resto outro dia.",
+  "shoppingPlan.route.atMinute": "{{minute}} min",
+  "shoppingPlan.route.equipment":
+    "Confira se dá para usar as bocas e o forno ao mesmo tempo.",
+  "shoppingPlan.route.start": "Começar",
+  "shoppingPlan.route.open": "Começar o preparo",
+  "shoppingPlan.route.back": "Voltar ao preparo",
+  "shoppingPlan.route.position": "Tarefa {{n}} de {{total}}",
+  "shoppingPlan.route.done": "Pronto, próxima",
+  "shoppingPlan.route.leaveRunning": "Deixar {{minutes}} min e seguir",
+  "shoppingPlan.route.skip": "Pular",
+  "shoppingPlan.route.meanwhile": "Enquanto isso: {{task}} ({{dish}})",
+  "shoppingPlan.route.afterThis": "Depois: {{task}} ({{dish}})",
+  "shoppingPlan.route.waiting": "Antes desta, espere terminar: {{tasks}}",
+  "shoppingPlan.route.running": "Em andamento",
+  "shoppingPlan.route.timerDone": "{{task}}: tempo acabou",
+  "shoppingPlan.route.timerOk": "Pronto",
+  "shoppingPlan.route.ingredients": "Ingredientes de {{dish}}",
+  "shoppingPlan.route.saveFailed":
+    "Não consegui salvar seu progresso. Vou tentar de novo no próximo passo.",
+  "shoppingPlan.route.startFailed": "Não consegui iniciar {{dish}}.",
+  "shoppingPlan.route.finishTitle": "Agora, conclua cada prato",
+  "shoppingPlan.route.finishDish": "Concluir {{dish}}",
+  "shoppingPlan.route.dishDone": "Concluído",
+  "shoppingPlan.route.dishPending": "Falta concluir",
+  "shoppingPlan.route.allDone": "Preparo concluído",
+  "shoppingPlan.route.empty":
+    "Nenhum prato deste plano está marcado para o dia do preparo. Dá para escolher a data no cardápio.",
+  "shoppingPlan.route.toMenu": "Ver cardápio",
   "shoppingPlan.card.base": "Base sugerida: {{name}}, {{amount}}.",
   "shoppingPlan.card.baseFor": "Serve para: {{dishes}}.",
   "shoppingPlan.card.baseNo":
@@ -224,6 +256,38 @@ const ptBR: Record<string, string> = {
 };
 
 const en: Record<string, string> = {
+  "shoppingPlan.route.title": "Prep route",
+  "shoppingPlan.route.summary": "{{dishes}} dishes · about {{minutes}} min",
+  "shoppingPlan.route.overBudget":
+    "It takes about {{minutes}} min, more than the {{budget}} min you set aside. You can skip tasks or do the rest another day.",
+  "shoppingPlan.route.atMinute": "{{minute}} min",
+  "shoppingPlan.route.equipment":
+    "Check that you can use the burners and the oven at the same time.",
+  "shoppingPlan.route.start": "Start",
+  "shoppingPlan.route.open": "Start prepping",
+  "shoppingPlan.route.back": "Back to prep",
+  "shoppingPlan.route.position": "Task {{n}} of {{total}}",
+  "shoppingPlan.route.done": "Done, next",
+  "shoppingPlan.route.leaveRunning": "Leave for {{minutes}} min and move on",
+  "shoppingPlan.route.skip": "Skip",
+  "shoppingPlan.route.meanwhile": "Meanwhile: {{task}} ({{dish}})",
+  "shoppingPlan.route.afterThis": "Next: {{task}} ({{dish}})",
+  "shoppingPlan.route.waiting": "Before this one, wait for: {{tasks}}",
+  "shoppingPlan.route.running": "Running",
+  "shoppingPlan.route.timerDone": "{{task}}: time is up",
+  "shoppingPlan.route.timerOk": "Done",
+  "shoppingPlan.route.ingredients": "Ingredients for {{dish}}",
+  "shoppingPlan.route.saveFailed":
+    "I couldn't save your progress. I'll try again on the next step.",
+  "shoppingPlan.route.startFailed": "I couldn't start {{dish}}.",
+  "shoppingPlan.route.finishTitle": "Now finish each dish",
+  "shoppingPlan.route.finishDish": "Finish {{dish}}",
+  "shoppingPlan.route.dishDone": "Finished",
+  "shoppingPlan.route.dishPending": "Still to finish",
+  "shoppingPlan.route.allDone": "Prep finished",
+  "shoppingPlan.route.empty":
+    "No dish in this plan is set for the prep day. You can choose the date on the menu.",
+  "shoppingPlan.route.toMenu": "See menu",
   "shoppingPlan.card.base": "Suggested base: {{name}}, {{amount}}.",
   "shoppingPlan.card.baseFor": "Goes into: {{dishes}}.",
   "shoppingPlan.card.baseNo":
@@ -443,6 +507,39 @@ const en: Record<string, string> = {
 };
 
 const es: Record<string, string> = {
+  "shoppingPlan.route.title": "Ruta de preparación",
+  "shoppingPlan.route.summary": "{{dishes}} platos · unos {{minutes}} min",
+  "shoppingPlan.route.overBudget":
+    "Lleva unos {{minutes}} min, más que los {{budget}} min que reservaste. Puedes saltar tareas o hacer el resto otro día.",
+  "shoppingPlan.route.atMinute": "{{minute}} min",
+  "shoppingPlan.route.equipment":
+    "Comprueba que puedes usar los fuegos y el horno a la vez.",
+  "shoppingPlan.route.start": "Empezar",
+  "shoppingPlan.route.open": "Empezar la preparación",
+  "shoppingPlan.route.back": "Volver a la preparación",
+  "shoppingPlan.route.position": "Tarea {{n}} de {{total}}",
+  "shoppingPlan.route.done": "Listo, siguiente",
+  "shoppingPlan.route.leaveRunning": "Dejar {{minutes}} min y seguir",
+  "shoppingPlan.route.skip": "Saltar",
+  "shoppingPlan.route.meanwhile": "Mientras tanto: {{task}} ({{dish}})",
+  "shoppingPlan.route.afterThis": "Después: {{task}} ({{dish}})",
+  "shoppingPlan.route.waiting":
+    "Antes de esta, espera a que termine: {{tasks}}",
+  "shoppingPlan.route.running": "En curso",
+  "shoppingPlan.route.timerDone": "{{task}}: se acabó el tiempo",
+  "shoppingPlan.route.timerOk": "Listo",
+  "shoppingPlan.route.ingredients": "Ingredientes de {{dish}}",
+  "shoppingPlan.route.saveFailed":
+    "No pude guardar tu progreso. Lo intentaré de nuevo en el siguiente paso.",
+  "shoppingPlan.route.startFailed": "No pude iniciar {{dish}}.",
+  "shoppingPlan.route.finishTitle": "Ahora, termina cada plato",
+  "shoppingPlan.route.finishDish": "Terminar {{dish}}",
+  "shoppingPlan.route.dishDone": "Terminado",
+  "shoppingPlan.route.dishPending": "Falta terminar",
+  "shoppingPlan.route.allDone": "Preparación terminada",
+  "shoppingPlan.route.empty":
+    "Ningún plato de este plan está marcado para el día de preparación. Puedes elegir la fecha en el menú.",
+  "shoppingPlan.route.toMenu": "Ver menú",
   "shoppingPlan.card.base": "Base sugerida: {{name}}, {{amount}}.",
   "shoppingPlan.card.baseFor": "Sirve para: {{dishes}}.",
   "shoppingPlan.card.baseNo":

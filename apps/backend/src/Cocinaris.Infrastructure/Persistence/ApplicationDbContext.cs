@@ -513,6 +513,7 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             entity.HasAlternateKey(x => new { x.Id, x.OwnerUserId });
             entity.Property(x => x.Status).HasMaxLength(20).IsRequired();
             entity.Property(x => x.SetupJson).HasColumnType("jsonb").IsRequired();
+            entity.Property(x => x.RouteProgressJson).HasColumnType("jsonb");
             entity.HasOne<MenuPlanRecord>().WithMany().HasForeignKey(x => new { x.MenuPlanId, x.OwnerUserId }).HasPrincipalKey(x => new { x.Id, x.OwnerUserId }).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne<InternalUser>().WithMany().HasForeignKey(x => x.OwnerUserId).OnDelete(DeleteBehavior.Restrict);
             entity.HasIndex(x => x.MenuPlanId).IsUnique();

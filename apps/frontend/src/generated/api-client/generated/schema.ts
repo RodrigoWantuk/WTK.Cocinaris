@@ -556,6 +556,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/planning/shopping-plans/route-link": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** GET /api/v1/planning/shopping-plans/route-link */
+        get: operations["getApiV1PlanningShopping-plansRoute-link"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/planning/shopping-plans/start": {
         parameters: {
             query?: never;
@@ -737,6 +754,40 @@ export interface paths {
         put?: never;
         /** POST /api/v1/planning/shopping-plans/{sessionId}/review */
         post: operations["postApiV1PlanningShopping-plansSessionIdReview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/planning/shopping-plans/{sessionId}/route": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** GET /api/v1/planning/shopping-plans/{sessionId}/route */
+        get: operations["getApiV1PlanningShopping-plansSessionIdRoute"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/planning/shopping-plans/{sessionId}/route/progress": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** PUT /api/v1/planning/shopping-plans/{sessionId}/route/progress */
+        put: operations["putApiV1PlanningShopping-plansSessionIdRouteProgress"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -3432,6 +3483,161 @@ export interface components {
             category: string;
             /** @description Stable code. */
             code: string;
+        };
+        /** @description One ingredient of a dish in the session, already for the portions being cooked. */
+        ShoppingPlanRouteIngredientView: {
+            /** @description Name. */
+            name: string;
+            /** @description Whether the dish works without it. */
+            optional: boolean;
+            /**
+             * Format: double
+             * @description Quantity.
+             */
+            quantity: number | string;
+            /** @description `g`, `ml`, or `unit`. */
+            unit: string;
+        };
+        /** @description Where a preparation session can be opened from. */
+        ShoppingPlanRouteLinkView: {
+            /**
+             * Format: uuid
+             * @description The plan whose session is still to finish; null when there is none.
+             */
+            sessionId: null | string;
+        };
+        /** @description How far a preparation session has come (PLAN-0062 Slice 6). It holds identifiers and times, no food text. */
+        ShoppingPlanRouteProgress: {
+            /** @description Tasks whose hands-on part is finished. */
+            done: string[];
+            /** @description Tasks the person chose not to do. */
+            skipped: string[];
+            /** @description Background waits still shown. */
+            timers: components["schemas"]["ShoppingPlanRouteTimer"][];
+        };
+        /** @description One dish in the session. */
+        ShoppingPlanRouteRecipeView: {
+            /**
+             * Format: uuid
+             * @description Menu entry.
+             */
+            entryId: string;
+            /**
+             * Format: uuid
+             * @description Its latest cooking session, if any.
+             */
+            executionId: null | string;
+            /** @description Ingredients, scaled. */
+            ingredients: components["schemas"]["ShoppingPlanRouteIngredientView"][];
+            /** @description Whether it is a base. */
+            isComponent: boolean;
+            /** @description Name. */
+            name: string;
+            /** @description What a base makes. */
+            producesName: null | string;
+            /**
+             * Format: uuid
+             * @description Recipe.
+             */
+            recipeId: string;
+            /**
+             * Format: int32
+             * @description Portions.
+             */
+            servings: number | string;
+            /** @description `planned`, `cooking`, or `cooked`. */
+            status: string;
+        };
+        /** @description One task on the route. */
+        ShoppingPlanRouteTaskView: {
+            /**
+             * Format: int32
+             * @description When the cook is free.
+             */
+            activeEndMinute: number | string;
+            /**
+             * Format: int32
+             * @description Hands-on minutes.
+             */
+            activeMinutes: number | string;
+            /** @description Tasks that must finish first. */
+            dependsOn: string[];
+            /**
+             * Format: int32
+             * @description When it has finished.
+             */
+            endMinute: number | string;
+            /**
+             * Format: uuid
+             * @description Dish it belongs to.
+             */
+            entryId: string;
+            /** @description Instructions. */
+            instructions: string;
+            /** @description `preparation` or `stage`. */
+            kind: string;
+            /** @description Name. */
+            name: string;
+            /**
+             * Format: int32
+             * @description Minutes it runs alone.
+             */
+            passiveMinutes: number | string;
+            /** @description How to tell it is done. */
+            sensoryCues: string[];
+            /**
+             * Format: int32
+             * @description Start, from the beginning of the session.
+             */
+            startMinute: number | string;
+            /** @description Task. */
+            taskKey: string;
+        };
+        /** @description A background wait on a preparation session. */
+        ShoppingPlanRouteTimer: {
+            /**
+             * Format: date-time
+             * @description When it ends. It is a target time, so it stays right after a reload.
+             */
+            endsAt: string;
+            /** @description Task whose passive part is running. */
+            taskKey: string;
+        };
+        /** @description A preparation session's route. */
+        ShoppingPlanRouteView: {
+            /**
+             * Format: int32
+             * @description Time the person set aside, if any.
+             */
+            budgetMinutes: null | number | string;
+            /**
+             * Format: uuid
+             * @description Its menu.
+             */
+            menuId: string;
+            /** @description Whether the route takes longer than that. */
+            overBudget: boolean;
+            /**
+             * Format: date
+             * @description Session day.
+             */
+            prepDate: null | string;
+            /** @description What was done. Tasks of a dish already cooked always count as done. */
+            progress: components["schemas"]["ShoppingPlanRouteProgress"];
+            /** @description Dishes, bases first. */
+            recipes: components["schemas"]["ShoppingPlanRouteRecipeView"][];
+            /**
+             * Format: uuid
+             * @description Plan.
+             */
+            sessionId: string;
+            /** @description Tasks, in the order the cook starts them. */
+            tasks: components["schemas"]["ShoppingPlanRouteTaskView"][];
+            /**
+             * Format: int32
+             * @description When the last task finishes.
+             */
+            totalMinutes: number | string;
         };
         /** @description The answers of a shopping plan's setup screen (PLAN-0062). They belong to this plan and never
          *     update the profile; the next plan reuses them only as defaults. */
@@ -6453,6 +6659,56 @@ export interface operations {
             };
         };
     };
+    "getApiV1PlanningShopping-plansRoute-link": {
+        parameters: {
+            query?: {
+                menuId?: string;
+                date?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShoppingPlanRouteLinkView"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
     "getApiV1PlanningShopping-plansStart": {
         parameters: {
             query?: never;
@@ -7237,6 +7493,147 @@ export interface operations {
             };
             /** @description Not Found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    "getApiV1PlanningShopping-plansSessionIdRoute": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                sessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShoppingPlanRouteView"];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    "putApiV1PlanningShopping-plansSessionIdRouteProgress": {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Required CSRF token issued by GET /api/v1/session. */
+                "X-CSRF-TOKEN": string;
+            };
+            path: {
+                sessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ShoppingPlanRouteProgress"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShoppingPlanRouteView"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description The request content type is not supported. */
+            415: {
                 headers: {
                     [name: string]: unknown;
                 };

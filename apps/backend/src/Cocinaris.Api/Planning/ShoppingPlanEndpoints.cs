@@ -2,6 +2,7 @@ using System.Diagnostics;
 using Cocinaris.Api.Observability;
 using Cocinaris.Api.Services;
 using Cocinaris.Modules.Planning.Application;
+using Cocinaris.Modules.Planning.Domain;
 using Cocinaris.Modules.Recipes.Application;
 using Microsoft.AspNetCore.Antiforgery;
 
@@ -82,6 +83,19 @@ public static class ShoppingPlanEndpoints
             .Produces<ShoppingPlanView>()
             .ProducesProblem(404)
             .ProducesProblem(422);
+        group.MapGet("/route-link", (ShoppingPlanApiService service, Guid? menuId, DateOnly? date, HttpContext context, CancellationToken cancellationToken) => service.FindRouteLinkAsync(menuId, date, context, cancellationToken))
+            .Produces<ShoppingPlanRouteLinkView>()
+            .ProducesProblem(400);
+        group.MapGet("/{sessionId:guid}/route", (ShoppingPlanApiService service, Guid sessionId, HttpContext context, CancellationToken cancellationToken) => service.GetRouteAsync(sessionId, context, cancellationToken))
+            .Produces<ShoppingPlanRouteView>()
+            .ProducesProblem(404)
+            .ProducesProblem(422);
+        group.MapPut("/{sessionId:guid}/route/progress", (ShoppingPlanApiService service, Guid sessionId, ShoppingPlanRouteProgress body, HttpContext context, CancellationToken cancellationToken) => service.SaveRouteProgressAsync(sessionId, body, context, cancellationToken))
+            .RequireRateLimiting("shopping-plan-decision")
+            .Produces<ShoppingPlanRouteView>()
+            .ProducesProblem(400)
+            .ProducesProblem(404)
+            .ProducesProblem(422);
         return group;
     }
 
@@ -106,7 +120,7 @@ public static class ShoppingPlanEndpoints
 }
 
 /// <summary>HTTP adapter for shopping plans.</summary>
-public sealed class ShoppingPlanApiService(ShoppingPlanApplicationService application)
+public sealed class ShoppingPlanApiService(ShoppingPlanApplicationService application, ShoppingPlanRouteService routes)
 {
     /// <summary>Gets the setup screen's defaults.</summary>
     public async Task<IResult> GetStartAsync(HttpContext context, CancellationToken cancellationToken) =>
@@ -159,6 +173,20 @@ public sealed class ShoppingPlanApiService(ShoppingPlanApplicationService applic
     /// <summary>Discards the plan.</summary>
     public async Task<IResult> AbandonAsync(Guid sessionId, HttpContext context, CancellationToken cancellationToken) =>
         ToResult(await application.AbandonAsync(sessionId, cancellationToken), context.TraceIdentifier);
+
+    /// <summary>Finds a preparation session still to finish, for one menu or for one day.</summary>
+    public async Task<IResult> FindRouteLinkAsync(Guid? menuId, DateOnly? date, HttpContext context, CancellationToken cancellationToken) =>
+        menuId is null && date is null
+            ? ApiProblem.Create(context, StatusCodes.Status400BadRequest, "validation_failed", "Send a menu or a day.")
+            : ToResult(await routes.FindLinkAsync(menuId, date, cancellationToken), context.TraceIdentifier);
+
+    /// <summary>Gets a preparation session's route.</summary>
+    public async Task<IResult> GetRouteAsync(Guid sessionId, HttpContext context, CancellationToken cancellationToken) =>
+        ToResult(await routes.GetAsync(sessionId, cancellationToken), context.TraceIdentifier);
+
+    /// <summary>Replaces a preparation session's progress.</summary>
+    public async Task<IResult> SaveRouteProgressAsync(Guid sessionId, ShoppingPlanRouteProgress body, HttpContext context, CancellationToken cancellationToken) =>
+        ToResult(await routes.SaveProgressAsync(sessionId, body, cancellationToken), context.TraceIdentifier);
 
     private static Guid? Key(HttpRequest request) =>
         request.Headers.TryGetValue("Idempotency-Key", out var values) && Guid.TryParse(values.ToString(), out var parsed) ? parsed : null;

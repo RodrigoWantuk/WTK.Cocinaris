@@ -59,6 +59,19 @@ A shopping plan fills a draft menu through dish cards ([product behavior](../pro
 - **Recording.** One lot per portion, each with a key derived from the request key, item key, and position. A freezer portion is created in the refrigerator and then frozen, so it is `Frozen` with `FrozenAt`. This is not one transaction: the result lists `recorded` and `failed`, and a retry with the same key replays what was done. Reservations are derived, so new lots are reserved on the next read.
 - **At most** 120 lots per request.
 
+## Preparation session (PLAN-0062 Slice 6)
+
+`PrepRouteScheduler` is pure and deterministic. It serves one cook: hands-on parts never overlap, and passive parts run in the background. Among the ready tasks it takes the one with the longest remaining chain; ties follow recipe order and then task order.
+
+`PrepRouteBuilder` reads tasks from the revision each entry cooks:
+
+- A stage waits for its stated `dependsOn` and `dependencies`. A later stage that states none follows the previous one, because an empty list often means the writer left it out. So only stated dependencies create parallel work.
+- The first stages wait for the recipe's preparations. A preparation's `minimumLeadMinutes` counts as waiting.
+- A dish's first stages wait for all tasks of a base it uses, matched through `IngredientMatchKeys`.
+- Circular dependencies, which model output can contain, fall back to the recipes one after another and raise the metric `cocinaris.shopping_plan.route_cycle_fallback`.
+
+Routes: `GET /shopping-plans/{id}/route` (422 before acceptance, because a draft reserves nothing), `PUT /shopping-plans/{id}/route/progress` (the whole state, so a retry is harmless, and keys no longer on the route are dropped), and `GET /shopping-plans/route-link?menuId=|date=`. Progress is stored in `shopping_plan_sessions.RouteProgressJson`. Tasks of a cooked dish always read as done.
+
 ## Planning states
 
 - **Simulation:** calculates possibilities and shopping impact without persistent reservations, tasks, or active-plan mutation.

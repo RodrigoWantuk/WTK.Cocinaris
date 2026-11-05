@@ -6208,6 +6208,353 @@
         ],
         "type": "object"
       },
+      "ShoppingPlanRouteIngredientView": {
+        "description": "One ingredient of a dish in the session, already for the portions being cooked.",
+        "properties": {
+          "name": {
+            "description": "Name.",
+            "type": "string"
+          },
+          "optional": {
+            "description": "Whether the dish works without it.",
+            "type": "boolean"
+          },
+          "quantity": {
+            "description": "Quantity.",
+            "format": "double",
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ]
+          },
+          "unit": {
+            "description": "`g`, `ml`, or `unit`.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "quantity",
+          "unit",
+          "optional"
+        ],
+        "type": "object"
+      },
+      "ShoppingPlanRouteLinkView": {
+        "description": "Where a preparation session can be opened from.",
+        "properties": {
+          "sessionId": {
+            "description": "The plan whose session is still to finish; null when there is none.",
+            "format": "uuid",
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "required": [
+          "sessionId"
+        ],
+        "type": "object"
+      },
+      "ShoppingPlanRouteProgress": {
+        "description": "How far a preparation session has come (PLAN-0062 Slice 6). It holds identifiers and times, no food text.",
+        "properties": {
+          "done": {
+            "description": "Tasks whose hands-on part is finished.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "skipped": {
+            "description": "Tasks the person chose not to do.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "timers": {
+            "description": "Background waits still shown.",
+            "items": {
+              "$ref": "#/components/schemas/ShoppingPlanRouteTimer"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "done",
+          "skipped",
+          "timers"
+        ],
+        "type": "object"
+      },
+      "ShoppingPlanRouteRecipeView": {
+        "description": "One dish in the session.",
+        "properties": {
+          "entryId": {
+            "description": "Menu entry.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "executionId": {
+            "description": "Its latest cooking session, if any.",
+            "format": "uuid",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "ingredients": {
+            "description": "Ingredients, scaled.",
+            "items": {
+              "$ref": "#/components/schemas/ShoppingPlanRouteIngredientView"
+            },
+            "type": "array"
+          },
+          "isComponent": {
+            "description": "Whether it is a base.",
+            "type": "boolean"
+          },
+          "name": {
+            "description": "Name.",
+            "type": "string"
+          },
+          "producesName": {
+            "description": "What a base makes.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "recipeId": {
+            "description": "Recipe.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "servings": {
+            "description": "Portions.",
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ]
+          },
+          "status": {
+            "description": "`planned`, `cooking`, or `cooked`.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "entryId",
+          "recipeId",
+          "name",
+          "servings",
+          "isComponent",
+          "producesName",
+          "status",
+          "executionId",
+          "ingredients"
+        ],
+        "type": "object"
+      },
+      "ShoppingPlanRouteTaskView": {
+        "description": "One task on the route.",
+        "properties": {
+          "activeEndMinute": {
+            "description": "When the cook is free.",
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ]
+          },
+          "activeMinutes": {
+            "description": "Hands-on minutes.",
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ]
+          },
+          "dependsOn": {
+            "description": "Tasks that must finish first.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "endMinute": {
+            "description": "When it has finished.",
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ]
+          },
+          "entryId": {
+            "description": "Dish it belongs to.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "instructions": {
+            "description": "Instructions.",
+            "type": "string"
+          },
+          "kind": {
+            "description": "`preparation` or `stage`.",
+            "type": "string"
+          },
+          "name": {
+            "description": "Name.",
+            "type": "string"
+          },
+          "passiveMinutes": {
+            "description": "Minutes it runs alone.",
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ]
+          },
+          "sensoryCues": {
+            "description": "How to tell it is done.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "startMinute": {
+            "description": "Start, from the beginning of the session.",
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ]
+          },
+          "taskKey": {
+            "description": "Task.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "taskKey",
+          "entryId",
+          "kind",
+          "name",
+          "instructions",
+          "sensoryCues",
+          "activeMinutes",
+          "passiveMinutes",
+          "startMinute",
+          "activeEndMinute",
+          "endMinute",
+          "dependsOn"
+        ],
+        "type": "object"
+      },
+      "ShoppingPlanRouteTimer": {
+        "description": "A background wait on a preparation session.",
+        "properties": {
+          "endsAt": {
+            "description": "When it ends. It is a target time, so it stays right after a reload.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "taskKey": {
+            "description": "Task whose passive part is running.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "taskKey",
+          "endsAt"
+        ],
+        "type": "object"
+      },
+      "ShoppingPlanRouteView": {
+        "description": "A preparation session's route.",
+        "properties": {
+          "budgetMinutes": {
+            "description": "Time the person set aside, if any.",
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ]
+          },
+          "menuId": {
+            "description": "Its menu.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "overBudget": {
+            "description": "Whether the route takes longer than that.",
+            "type": "boolean"
+          },
+          "prepDate": {
+            "description": "Session day.",
+            "format": "date",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "progress": {
+            "$ref": "#/components/schemas/ShoppingPlanRouteProgress",
+            "description": "What was done. Tasks of a dish already cooked always count as done."
+          },
+          "recipes": {
+            "description": "Dishes, bases first.",
+            "items": {
+              "$ref": "#/components/schemas/ShoppingPlanRouteRecipeView"
+            },
+            "type": "array"
+          },
+          "sessionId": {
+            "description": "Plan.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "tasks": {
+            "description": "Tasks, in the order the cook starts them.",
+            "items": {
+              "$ref": "#/components/schemas/ShoppingPlanRouteTaskView"
+            },
+            "type": "array"
+          },
+          "totalMinutes": {
+            "description": "When the last task finishes.",
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ]
+          }
+        },
+        "required": [
+          "sessionId",
+          "menuId",
+          "prepDate",
+          "totalMinutes",
+          "budgetMinutes",
+          "overBudget",
+          "recipes",
+          "tasks",
+          "progress"
+        ],
+        "type": "object"
+      },
       "ShoppingPlanSetup": {
         "description": "The answers of a shopping plan's setup screen (PLAN-0062). They belong to this plan and never\nupdate the profile; the next plan reuses them only as defaults.",
         "properties": {
@@ -12549,6 +12896,106 @@
         ]
       }
     },
+    "/api/v1/planning/shopping-plans/route-link": {
+      "get": {
+        "operationId": "getApiV1PlanningShopping-plansRoute-link",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "menuId",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "date",
+            "schema": {
+              "format": "date",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShoppingPlanRouteLinkView"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "authenticationFailure": {
+                    "summary": "The backend-managed session is absent or invalid.",
+                    "value": {
+                      "detail": "Authentication is required.",
+                      "errorCode": "authentication_required",
+                      "status": 401,
+                      "title": "Unauthorized",
+                      "traceId": "00-00000000000000000000000000000000-0000000000000000-00",
+                      "type": "about:blank"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authentication is required."
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "unexpectedFailure": {
+                    "summary": "An unexpected error was safely redacted.",
+                    "value": {
+                      "detail": "An unexpected error occurred.",
+                      "errorCode": "unexpected_error",
+                      "status": 500,
+                      "title": "Internal Server Error",
+                      "traceId": "00-00000000000000000000000000000000-0000000000000000-00",
+                      "type": "about:blank"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An unexpected server error occurred."
+          }
+        },
+        "security": [
+          {
+            "cocinarisSession": []
+          }
+        ],
+        "summary": "GET /api/v1/planning/shopping-plans/route-link",
+        "tags": [
+          "Cocinaris.Api"
+        ]
+      }
+    },
     "/api/v1/planning/shopping-plans/start": {
       "get": {
         "operationId": "getApiV1PlanningShopping-plansStart",
@@ -14031,6 +14478,264 @@
           }
         ],
         "summary": "POST /api/v1/planning/shopping-plans/{sessionId}/review",
+        "tags": [
+          "Cocinaris.Api"
+        ]
+      }
+    },
+    "/api/v1/planning/shopping-plans/{sessionId}/route": {
+      "get": {
+        "operationId": "getApiV1PlanningShopping-plansSessionIdRoute",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sessionId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShoppingPlanRouteView"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "authenticationFailure": {
+                    "summary": "The backend-managed session is absent or invalid.",
+                    "value": {
+                      "detail": "Authentication is required.",
+                      "errorCode": "authentication_required",
+                      "status": 401,
+                      "title": "Unauthorized",
+                      "traceId": "00-00000000000000000000000000000000-0000000000000000-00",
+                      "type": "about:blank"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authentication is required."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "unexpectedFailure": {
+                    "summary": "An unexpected error was safely redacted.",
+                    "value": {
+                      "detail": "An unexpected error occurred.",
+                      "errorCode": "unexpected_error",
+                      "status": 500,
+                      "title": "Internal Server Error",
+                      "traceId": "00-00000000000000000000000000000000-0000000000000000-00",
+                      "type": "about:blank"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An unexpected server error occurred."
+          }
+        },
+        "security": [
+          {
+            "cocinarisSession": []
+          }
+        ],
+        "summary": "GET /api/v1/planning/shopping-plans/{sessionId}/route",
+        "tags": [
+          "Cocinaris.Api"
+        ]
+      }
+    },
+    "/api/v1/planning/shopping-plans/{sessionId}/route/progress": {
+      "put": {
+        "operationId": "putApiV1PlanningShopping-plansSessionIdRouteProgress",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sessionId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Required CSRF token issued by GET /api/v1/session.",
+            "in": "header",
+            "name": "X-CSRF-TOKEN",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ShoppingPlanRouteProgress"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShoppingPlanRouteView"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "authenticationFailure": {
+                    "summary": "The backend-managed session is absent or invalid.",
+                    "value": {
+                      "detail": "Authentication is required.",
+                      "errorCode": "authentication_required",
+                      "status": 401,
+                      "title": "Unauthorized",
+                      "traceId": "00-00000000000000000000000000000000-0000000000000000-00",
+                      "type": "about:blank"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authentication is required."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "415": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "unsupportedMediaType": {
+                    "summary": "The request content type is unsupported.",
+                    "value": {
+                      "detail": "The request content type is not supported.",
+                      "errorCode": "unsupported_media_type",
+                      "status": 415,
+                      "title": "Unsupported Media Type",
+                      "traceId": "00-00000000000000000000000000000000-0000000000000000-00",
+                      "type": "about:blank"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request content type is not supported."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "unexpectedFailure": {
+                    "summary": "An unexpected error was safely redacted.",
+                    "value": {
+                      "detail": "An unexpected error occurred.",
+                      "errorCode": "unexpected_error",
+                      "status": 500,
+                      "title": "Internal Server Error",
+                      "traceId": "00-00000000000000000000000000000000-0000000000000000-00",
+                      "type": "about:blank"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An unexpected server error occurred."
+          }
+        },
+        "security": [
+          {
+            "cocinarisSession": []
+          }
+        ],
+        "summary": "PUT /api/v1/planning/shopping-plans/{sessionId}/route/progress",
         "tags": [
           "Cocinaris.Api"
         ]

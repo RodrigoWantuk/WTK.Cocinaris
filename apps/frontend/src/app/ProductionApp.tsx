@@ -41,6 +41,7 @@ import { ShoppingPage } from "@/features/planning/ShoppingPage";
 import { ShoppingPlanDeckPage } from "@/features/shopping-plan/ShoppingPlanDeckPage";
 import { ShoppingPlanProvider } from "@/features/shopping-plan/ShoppingPlanProvider";
 import { ShoppingPlanReviewPage } from "@/features/shopping-plan/ShoppingPlanReviewPage";
+import { ShoppingPlanRoutePage } from "@/features/shopping-plan/ShoppingPlanRoutePage";
 import { ShoppingPlanSetupPage } from "@/features/shopping-plan/ShoppingPlanSetupPage";
 import { RecipesListPage } from "@/features/recipes/RecipesListPage";
 import { CookPickerPage } from "@/features/recipes/CookPickerPage";
@@ -466,6 +467,10 @@ function createProductionRouter() {
         {
           path: "compras/planejar/:sessionId/revisar",
           element: <ShoppingPlanReviewPage />,
+        },
+        {
+          path: "compras/planejar/:sessionId/preparo",
+          element: <ShoppingPlanRoutePage />,
         },
         { path: "cardapio", element: <MenusPage /> },
         { path: "cardapio/:menuId", element: <MenuPage /> },
