@@ -79,6 +79,10 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
 
     /// <summary>Gets what owners said about shopping lines (PLAN-0062).</summary>
     public DbSet<ShoppingLineMarkRecord> ShoppingLineMarks => Set<ShoppingLineMarkRecord>();
+    /// <summary>Gets the browsers subscribed to plan notifications.</summary>
+    public DbSet<PushSubscriptionRecord> PushSubscriptions => Set<PushSubscriptionRecord>();
+    /// <summary>Gets the last day each owner was notified.</summary>
+    public DbSet<PushDeliveryDayRecord> PushDeliveryDays => Set<PushDeliveryDayRecord>();
 
     /// <summary>Gets shopping plans (PLAN-0062).</summary>
     public DbSet<ShoppingPlanSessionRecord> ShoppingPlanSessions => Set<ShoppingPlanSessionRecord>();
@@ -485,6 +489,23 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             entity.HasOne<InternalUser>().WithMany().HasForeignKey(x => x.OwnerUserId).OnDelete(DeleteBehavior.Restrict);
             entity.HasIndex(x => new { x.OwnerUserId, x.CreationKey }).IsUnique();
             entity.HasIndex(x => new { x.OwnerUserId, x.Status, x.StartDate });
+        });
+
+        modelBuilder.Entity<PushSubscriptionRecord>(entity =>
+        {
+            entity.ToTable("push_subscriptions", "planning");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Endpoint).HasMaxLength(2048);
+            entity.Property(x => x.P256dh).HasMaxLength(128);
+            entity.Property(x => x.Auth).HasMaxLength(128);
+            entity.HasIndex(x => x.Endpoint).IsUnique();
+            entity.HasIndex(x => x.OwnerUserId);
+        });
+
+        modelBuilder.Entity<PushDeliveryDayRecord>(entity =>
+        {
+            entity.ToTable("push_delivery_days", "planning");
+            entity.HasKey(x => x.OwnerUserId);
         });
 
         modelBuilder.Entity<ShoppingLineMarkRecord>(entity =>

@@ -25,7 +25,9 @@ done
 REPO_ROOT="$(git -C "$(dirname "$0")" rev-parse --show-toplevel)"
 SHA="$(git -C "$REPO_ROOT" rev-parse --verify "$REF^{commit}")" || exit 2
 OUT="$REPO_ROOT/artifacts/local-gates/$SHA"
-WORKTREE="$(mktemp -d /tmp/cocinaris-gates.XXXXXX)"
+# Build on disk, not in /tmp: on the owner host /tmp is a 2 GB RAM-backed tmpfs, and the frontend
+# steps fail there with ENOSPC once the backend build has filled it (same limit as the deploy script).
+WORKTREE="$(mktemp -d "${COCINARIS_GATES_BUILD_ROOT:-/var/tmp}/cocinaris-gates.XXXXXX")"
 export PATH="${COCINARIS_DOTNET_DIR:-/opt/dotnet}:${COCINARIS_NODE_DIR:-/opt/node24}/bin:$PATH"
 export DOTNET_ROOT="${COCINARIS_DOTNET_DIR:-/opt/dotnet}"
 export DOTNET_CLI_TELEMETRY_OPTOUT=1

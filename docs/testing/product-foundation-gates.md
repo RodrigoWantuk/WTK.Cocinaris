@@ -64,6 +64,7 @@ Shopping plans (PLAN-0062) also require:
 - the flow finishes with saved recipes when AI is off;
 - offline, the saved list opens and only marks work, and marks reach the server once, in order, when the connection returns;
 - no API response reaches cache storage, logout erases the device, and a second owner sees nothing of the first (`scripts/e2e/offline-list-journey.mjs`);
+- notifications are opt-in, name no food or restriction, reach an owner at most once a day, call only known push services, and stay with their owner (ADR-0013);
 - the preparation route is deterministic, hands-on parts never overlap, it opens only after acceptance, it resumes after a reload, and it changes the pantry only through the dishes' own finish screens (`scripts/e2e/session-route-journey.mjs`).
 
 ## Recipe and cooking invariants

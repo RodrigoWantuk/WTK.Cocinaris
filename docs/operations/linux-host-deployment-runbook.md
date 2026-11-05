@@ -164,3 +164,20 @@ The production build publishes `sw.js`, which precaches application files only. 
 ## Storage guidance flag (PLAN-0062)
 
 `Planning__StorageGuidance__Enabled` in `api.env` defaults to `false`. Set it to `true` only after the owner approves `docs/domain/storage-guidance-review.md` in writing, then restart the service. Setting it back to `false` removes the advice at once and changes no stored data. Lots already frozen stay frozen.
+
+## Plan notifications (PLAN-0062, [ADR-0013](../architecture/decisions/0013-web-push-plan-reminders.md))
+
+Off until keys exist. To turn them on:
+
+1. Run `node scripts/ops/generate-vapid-keys.mjs` on the host. It prints three lines and stores nothing.
+2. Add them to `/etc/wtk-cocinaris/api.env`, with a real contact in `Planning__WebPush__Subject`. Keep the private key out of the repository, tickets, and chats.
+3. Restart with `sudo systemctl restart wtk-cocinaris`. The option then appears on the profile page and on accepted menus.
+
+Operation:
+
+- **Sending.** The job runs at the top of each hour and handles owners for whom it is 09:00 to 09:59 in the profile's time zone. An owner without a time zone gets nothing. If the service is down for that whole hour, that day's notification is not sent later.
+- **Log.** `journalctl -u wtk-cocinaris` shows failures by exception type only, never addresses or keys. Web push settings that are not valid log one warning, and the feature stays off.
+- **Metric.** `cocinaris.push.sent`, with `outcome` = `Delivered`, `Gone`, or `Failed`.
+- **Turning it off.** Remove the three lines and restart. Nothing is sent and the option disappears. Subscriptions stay in `planning.push_subscriptions`, and work again when the same keys return.
+- **Replacing the keys** ends every subscription with the push services, so people must turn notifications on again. Delete the old rows with `DELETE FROM planning.push_subscriptions`.
+- **Rollback to a release without notifications:** remove the keys first. Subscribed browsers may otherwise show their own generic message for a message with no handler.

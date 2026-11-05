@@ -29,6 +29,7 @@ Do not rewrite accepted history. Add a note or superseding ADR.
 | [0010](0010-ingredient-identity-catalog-embeddings-pgvector.md) | Ingredient identity: curated catalog, exact-text embedding cache, OpenRouter Qwen3 Embedding, pgvector | Accepted |
 | [0011](0011-shared-recipe-idea-library.md) | Shared recipe-idea library: reuse generic AI recipes across people without AI calls | Accepted |
 | [0012](0012-offline-shopping-list.md) | Offline shopping list: precache-only service worker and owner-scoped IndexedDB | Accepted |
+| [0013](0013-web-push-plan-reminders.md) | Web push for plan reminders: opt-in, one generic notification a day | Accepted |
 
 ## Future decision backlog
 

@@ -102,6 +102,8 @@ function offlineShell(): PluginOption {
       skipWaiting: true,
       clientsClaim: true,
       runtimeCaching: [],
+      // Plan notifications (ADR-0013): generateSW stays, and this adds only the push handlers.
+      importScripts: ["push-sw.js"],
     },
   });
 }

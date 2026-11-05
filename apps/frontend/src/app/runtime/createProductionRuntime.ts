@@ -1,3 +1,5 @@
+import { createLivePushRepository } from "@/adapters/live/livePushRepository";
+import { removePushBeforeLogout } from "@/features/notifications/pushBrowser";
 import { UnavailablePreparationRouteRepository } from "@/adapters/live/unavailablePreparationRouteRepository";
 import { createUnavailableContextualHomeAdapter } from "@/adapters/live/unavailableContextualHomeAdapter";
 import { createLiveInventoryRepository } from "@/adapters/live/liveInventoryRepository";
@@ -20,6 +22,7 @@ import type { FrontendRuntime } from "./types";
  */
 export function createProductionRuntime(): FrontendRuntime {
   const offlineListStore = createOfflineListStore(createIdbBackend());
+  const pushRepository = createLivePushRepository();
   return {
     mode: "production",
     sessionAdapter: withOfflineSession(
@@ -27,6 +30,10 @@ export function createProductionRuntime(): FrontendRuntime {
         onSignedOut: () => offlineListStore.clearAll(),
       }),
       offlineListStore,
+      (csrfToken) =>
+        removePushBeforeLogout(async (endpoint) => {
+          if (csrfToken) await pushRepository.unsubscribe(endpoint, csrfToken);
+        }),
     ),
     offlineListStore,
     inventoryRepository: createLiveInventoryRepository(),

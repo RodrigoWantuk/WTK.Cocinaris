@@ -1,3 +1,4 @@
+import { PushOptIn } from "@/features/notifications/PushOptIn";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useProfileWorkspace } from "./ProfileProvider";
@@ -331,6 +332,8 @@ export function ProfileOverviewPage() {
           );
         })}
       </nav>
+
+      <PushOptIn variant="settings" />
     </div>
   );
 }

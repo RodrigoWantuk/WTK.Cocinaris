@@ -96,6 +96,15 @@ After a plan is accepted, the dishes set for its preparation day merge into one 
 - **Resuming.** Progress and timers live on the server. A timer is a target time, so it stays right after a reload. Its alarm sounds only while the page is open.
 - **The order does not adapt.** The route is computed from the recipes' times. If the person runs late, the order stays and the countdowns stay true.
 
+## Notifications ("Avisos do plano", Slice 7)
+
+- A person turns them on from the profile page, or from the invitation on an accepted menu. The browser asks for permission only after that tap, and "Agora não" is remembered on that browser.
+- At most one a day, between 09:00 and 09:59 in the profile's time zone, and only when something to buy or thaw is due that day. Without a time zone, none arrive, and the option says so.
+- The text is always the same: "Você tem algo do seu plano para resolver hoje". It never names food, and it opens "Hoje".
+- On iPhone, they arrive only with the app installed on the home screen, and the profile page says so.
+- A logout turns them off on that browser. The option is hidden when the server has no keys or the browser cannot receive them.
+- Each browser subscribes separately. A notification missed because the service was down is not sent later in the day.
+
 ## Not yet (PLAN-0062 later slices)
 
-Cook-by limits and warnings (blocked until the owner reviews the storage table), and push notifications. Shelf-life dates and freezing advice need the owner-reviewed storage table.
+Cook-by limits and warnings (blocked until the owner reviews the storage table). Shelf-life dates and freezing advice need the owner-reviewed storage table.

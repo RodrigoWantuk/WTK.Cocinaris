@@ -737,15 +737,15 @@ Migrations are additive, and rollback means deploying the earlier code with unus
 
 ## Execution state
 
-- **Current run delivery target:** Slice 6, timed session route.
-- **Current checkpoint:** Slice 6 implemented on `agent/plan-0062-s6-session-route`, in a draft pull request. The G6 phone check has not run.
-- **Last completed step:** Browser journey on the proxy replica through a route with two recipes, a reload, and finishing both dishes.
-- **Exact next action:** The owner reviews and merges the pull request. Slice 7 (web push) then starts from fresh `origin/main` on `agent/plan-0062-s7-web-push`, writing ADR-0013 first. When the owner approves `docs/domain/storage-guidance-review.md`, deliver the rest of Slice 4 in its own pull request.
-- **Blockers:** The G6 phone check with wake lock needs the owner's phone. G5-A and G1-B need the provider key. G2-A for the Slice 4 limits and for storage guidance. Deploying `main` was refused by this agent's permission classifier, so the owner must run it. The browser smoke matrix fails on unmodified `main` on this host, and full local gates have not run.
+- **Current run delivery target:** Slice 7, web push.
+- **Current checkpoint:** Slice 7 implemented on `agent/plan-0062-s7-web-push`, in a draft pull request. No notification has reached a real phone.
+- **Last completed step:** Worker check and signed-in journey on the proxy replica with disposable keys; see the Slice 7 log entry.
+- **Exact next action:** The owner merges #90 and this pull request, deploys, adds keys with `scripts/ops/generate-vapid-keys.mjs`, turns notifications on from a real installed phone, and confirms one arrives at 09:00. All seven slices are then delivered except the Slice 4 limits, which wait for G2-A.
+- **Blockers:** G7 and G6 need the owner's phone. G5-A and G1-B need the provider key. G1-A has no owner comment. G2-A for the Slice 4 limits and for storage guidance. The browser smoke matrix does not finish on this host.
 - **Partially modified areas:** Slice 4 limits and warnings are not delivered.
-- **Documentation delivered:** Product, planning, recipes, closed-loop, privacy, and gates documents; PLAN-0044 registry row.
-- **Validation performed:** See the Slice 6 entry in the progress log.
-- **Known failures or limitations:** See the Slice 6 entry. Earlier limits stand: storage values are not checked against primary sources, and G1-A has no separate owner comment.
+- **Documentation delivered:** ADR-0013 and its index row; runbook, `api.env.example`, privacy, product spec, planning, and gates documents; PLAN-0048 registry row; this plan.
+- **Validation performed:** See the Slice 7 entry in the progress log.
+- **Known failures or limitations:** See the Slice 7 entry. Earlier limits stand: storage values are not checked against primary sources, and G1-A has no separate owner comment.
 - **Working tree state:** Clean after this commit.
 
 ## Progress log
@@ -930,6 +930,40 @@ Migrations are additive, and rollback means deploying the earlier code with unus
   - Skipping every task of a dish still leaves its finish step.
 - **Next action:** See `Exact next action`.
 - **Blockers or handoff notes:** See `Blockers`. The development database has this migration; production gets it on deploy. Dev Keycloak and the replica are stopped.
+
+### 2026-11-05 — Claude Code (Slice 7)
+
+- **Run delivery target:** Slice 7, opt-in web push, from fresh `origin/main` after the owner asked to continue. PR #90 is still open, so its gate script and encoding fixes are repeated here unchanged to keep this branch's gates honest; they merge cleanly in either order.
+- **Checkpoint:** Implemented and validated up to the point a real push service and phone are needed.
+- **Changes:**
+  - Backend: `PlanReminderPush.cs` (rules, schedule, services, ports), `WebPushSender`, `PlanReminderPushWorker`, `PushNotificationEndpoints`, `PostgreSqlPushSubscriptionStore`, additive migration `AddPushSubscriptions`, `Lib.Net.Http.WebPush` 3.3.1, and `GetPreparationForOwnerAsync` so the same reminders work with no signed-in user.
+  - Frontend: `public/push-sw.js` imported by the generated worker, `features/notifications`, the option on the profile page, the invitation on accepted menus, logout cleanup, and catalogs.
+  - Tooling: `scripts/ops/generate-vapid-keys.mjs`, `scripts/e2e/push-worker-check.mjs`, `scripts/e2e/push-opt-in-journey.mjs`.
+  - OpenAPI and generated client.
+- **Deviations from the plan:**
+  - **Sentence in the worker, not the backend.** The server sends a closed type and language, which keeps invariant 11.
+  - **Closed list of push hosts, not in the plan.** The endpoint is an address the server calls, so this prevents server-side request forgery. A browser using another push service cannot subscribe and sees "Não consegui alterar os avisos".
+  - **Logout ends the subscription, not in the plan.** The person turns notifications on again after signing back in, and a shared device stays clean.
+  - **`cook_by` is accepted and never occurs yet,** because that kind waits for G2-A. Today only `buy` and `thaw` trigger a notification.
+  - **Claim before sending,** so a crash loses that day's notification rather than risking a second one.
+  - **Invitation placement:** on the accepted menu page, at any time until answered, rather than only after the first plan.
+- **Validation performed:**
+  - Backend unit: 39 new tests passed. Integration: 8 new tests covering isolation, CSRF, validation, cap, one per day, restart, no time zone, nothing due, a failing owner, concurrent claims, and the real sender's encryption, VAPID header, and 404/410/500 handling against a local handler.
+  - Frontend: full suite 594 of 594, typecheck, lint, and format.
+  - `push-worker-check.mjs`: 6 of 6, in a real browser with the production build. The push reached the worker through the debugging protocol, and calls to `showNotification` were recorded inside it.
+  - `push-opt-in-journey.mjs` on the proxy replica with disposable keys: 10 of 10, including 320 px and removal on logout. The browser's permission and push service are stand-ins here.
+  - Vulnerable package listing for the API: none. OpenAPI regenerated and client drift passed.
+  - Full gate result: recorded in the pull request.
+- **Not run:**
+  - **G7: a real notification on a real phone.** Nothing here has spoken to a real push service, and the production site has no keys. This remains the main risk of the slice, including iPhone.
+  - The notification's actual display and click on a device. `headless_shell` listed no notifications, and the click handler has only a unit test.
+  - Invitation on an accepted menu in a browser (unit tests only). Screen reader and 200% zoom.
+- **Limitations:**
+  - A person without a time zone in the profile gets nothing, and only a line on the option explains it.
+  - The 09:00 hour is fixed. A service outage during it loses that day.
+  - On the very first page load the worker may not be registered yet, so the option appears only after the next navigation.
+  - The session can expire without a logout, and then the subscription stays until another owner takes it or the push service removes it. The message names nothing about the person.
+- **Next action:** See "Exact next action".
 
 ## Completion and handoff checklist
 

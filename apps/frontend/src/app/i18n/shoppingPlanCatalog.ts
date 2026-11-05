@@ -2,6 +2,20 @@ import type { ProductionLocale } from "./productionCatalog";
 
 /** Text of shopping plans (PLAN-0062). */
 const ptBR: Record<string, string> = {
+  "push.title": "Avisos do plano",
+  "push.explain":
+    "Um aviso por dia, às 9h, quando houver algo do seu plano para resolver. O aviso não diz o que é: só pede para abrir o Cocinaris.",
+  "push.iphone":
+    "No iPhone, os avisos só chegam com o app instalado na tela de início.",
+  "push.needsZone":
+    "Os avisos usam o fuso horário do seu perfil. Sem ele, nenhum aviso chega.",
+  "push.denied":
+    "Os avisos estão bloqueados neste navegador. Para receber, libere nas configurações do site.",
+  "push.on": "Avisos ligados neste aparelho.",
+  "push.failed": "Não consegui alterar os avisos. Tente de novo.",
+  "push.turnOn": "Ligar avisos",
+  "push.turnOff": "Desligar avisos",
+  "push.notNow": "Agora não",
   "shoppingPlan.route.title": "Roteiro do preparo",
   "shoppingPlan.route.summary": "{{dishes}} pratos · cerca de {{minutes}} min",
   "shoppingPlan.route.overBudget":
@@ -256,6 +270,20 @@ const ptBR: Record<string, string> = {
 };
 
 const en: Record<string, string> = {
+  "push.title": "Plan reminders",
+  "push.explain":
+    "One reminder a day, at 9 AM, when something in your plan needs attention. It does not say what: it only asks you to open Cocinaris.",
+  "push.iphone":
+    "On iPhone, reminders arrive only with the app installed on the home screen.",
+  "push.needsZone":
+    "Reminders use the time zone in your profile. Without one, none arrive.",
+  "push.denied":
+    "Reminders are blocked in this browser. To get them, allow them in the site settings.",
+  "push.on": "Reminders are on for this device.",
+  "push.failed": "I could not change the reminders. Try again.",
+  "push.turnOn": "Turn on reminders",
+  "push.turnOff": "Turn off reminders",
+  "push.notNow": "Not now",
   "shoppingPlan.route.title": "Prep route",
   "shoppingPlan.route.summary": "{{dishes}} dishes · about {{minutes}} min",
   "shoppingPlan.route.overBudget":
@@ -507,6 +535,20 @@ const en: Record<string, string> = {
 };
 
 const es: Record<string, string> = {
+  "push.title": "Avisos del plan",
+  "push.explain":
+    "Un aviso al día, a las 9, cuando haya algo de tu plan por resolver. El aviso no dice qué es: solo pide abrir Cocinaris.",
+  "push.iphone":
+    "En iPhone, los avisos solo llegan con la app instalada en la pantalla de inicio.",
+  "push.needsZone":
+    "Los avisos usan la zona horaria de tu perfil. Sin ella, no llega ninguno.",
+  "push.denied":
+    "Los avisos están bloqueados en este navegador. Para recibirlos, permítelos en la configuración del sitio.",
+  "push.on": "Avisos activados en este dispositivo.",
+  "push.failed": "No pude cambiar los avisos. Inténtalo de nuevo.",
+  "push.turnOn": "Activar avisos",
+  "push.turnOff": "Desactivar avisos",
+  "push.notNow": "Ahora no",
   "shoppingPlan.route.title": "Ruta de preparación",
   "shoppingPlan.route.summary": "{{dishes}} platos · unos {{minutes}} min",
   "shoppingPlan.route.overBudget":
