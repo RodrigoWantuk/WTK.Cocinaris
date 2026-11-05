@@ -176,7 +176,8 @@ try {
   const line = (name) => synced.items.find((item) => item.displayName === name);
   check("the check mark reached the server", line(kept)?.checked === true);
   check("the 'buy later' mark reached the server", line(later)?.later === true);
-  await page.reload({ waitUntil: "networkidle" });
+  // The tab opens the planning page when online, so the list is opened by its own address.
+  await page.goto(listUrl, { waitUntil: "networkidle" });
   check("online again, purchases work", await row(kept).getByTestId("shopping-item-buy").isEnabled());
   check("no mark is left waiting", !(await page.getByTestId("offline-conflicts").count()));
 

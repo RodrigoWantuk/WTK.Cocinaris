@@ -54,7 +54,7 @@ The user may mix fixed dates with unscheduled options. Simulation and draft mode
 ### Without knowing what to cook (PLAN-0062)
 
 ```text
-Open "Planejar compras"
+Open "Planejar", then "Começar um plano"
 → answer one setup screen
 → accept or refuse dish cards, watching "+N itens novos"
 → review the dishes in the suggested order

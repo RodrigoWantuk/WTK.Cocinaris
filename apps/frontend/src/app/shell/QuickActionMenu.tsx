@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState } from "react";
-import { ChefHat, Refrigerator, ShoppingBag, Sparkles, X } from "lucide-react";
+import { CalendarDays, ChefHat, Refrigerator, Sparkles, X } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { useProductionI18n } from "@/app/i18n/ProductionI18nProvider";
 
@@ -13,10 +13,11 @@ const ACTIONS = [
     testId: "quick-action-pantry",
   },
   {
-    to: "/app/compras/planejar",
+    // The same page as the tab: one name, one place, which then leads with the next step.
+    to: "/app/compras",
     labelKey: "quick.planShopping",
     shortKey: "quick.planShoppingShort",
-    icon: ShoppingBag,
+    icon: CalendarDays,
     testId: "quick-action-plan-shopping",
   },
   {
@@ -37,7 +38,7 @@ const ARC_POSITIONS = [
 
 /**
  * The central main button and its half-moon menu (PLAN-0059). Tapping the accent button opens three
- * round actions on an arc just above it, "Adicionar à despensa", "Planejar compras", and "Cozinhar",
+ * round actions on an arc just above it, "Adicionar à despensa", "Planejar", and "Cozinhar",
  * over a dimmed page; from `md` up, the same choices open as a small panel under the header button.
  *
  * Disclosure pattern: the trigger has `aria-expanded` and `aria-controls`; opening moves focus to

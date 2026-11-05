@@ -19,7 +19,7 @@ import {
   createSessionAdapter,
 } from "@/features/inventory/testUtils";
 import { PlanningProvider } from "../PlanningProvider";
-import { ShoppingHubPage } from "../ShoppingHubPage";
+import { PlanningHubPage } from "../PlanningHubPage";
 import { ShoppingPage } from "../ShoppingPage";
 import {
   createMemoryBackend,
@@ -103,7 +103,7 @@ function renderList(
                       />
                       <Route
                         path="/app/compras"
-                        element={<ShoppingHubPage />}
+                        element={<PlanningHubPage />}
                       />
                       <Route path="/app/hoje" element={<p>hoje</p>} />
                     </Routes>

@@ -69,15 +69,15 @@ export function MenusPage() {
 
   return (
     <div data-testid="menus-page" className="space-y-8">
+      <div>
+        <h1 className="font-display text-3xl">{t("planning.title")}</h1>
+        <p className="mt-1 text-muted-foreground">{t("planning.subtitle")}</p>
+      </div>
       <Button asChild variant="secondary" className="w-full">
         <Link to="/app/compras/planejar" data-testid="menus-plan-purchases">
           {t("shoppingPlan.entry")}
         </Link>
       </Button>
-      <div>
-        <h1 className="font-display text-3xl">{t("planning.title")}</h1>
-        <p className="mt-1 text-muted-foreground">{t("planning.subtitle")}</p>
-      </div>
 
       {/* Creating is the less frequent task: it opens by itself only when there is no menu yet. */}
       <details

@@ -99,9 +99,9 @@ The success green and the emerald accent are different hues and roles. Success a
 
 ## Shell and navigation
 
-- **Phones:** a bottom bar within thumb reach holds Início, Despensa, the round "+" (add to the pantry), Receitas, and Compras.
+- **Phones:** a bottom bar within thumb reach holds Início, Despensa, the round "+" (add to the pantry), Receitas, and Planejar.
 - **From `md` up:** the same element sits inline in the header, and "+" becomes an "Adicionar" button.
-- **The menu lives inside Hoje.** Menu pages light up Hoje, and a menu's shopping list lights up Compras.
+- **One way into planning (PLAN-0063).** The "Planejar" tab, the "Planejar" action on the main button, and the home tile all open one page, which leads with the next step. Menus, what to buy, and the market arrival all light up "Planejar". The word "lista de compras" is not used as a label, because it suggests a place to register loose items.
 - **The account menu** (the avatar at the top right) holds Perfil, the interface language, the theme, and Sair. Without a display name, the avatar shows a person icon, never "?".
 - **Rules:** `app/shell/AppNavigation.tsx`, `app/shell/AccountMenu.tsx`, and `app/ProductionApp.tsx`. The header must not create a containing block (no backdrop filter or transform), or the fixed bottom bar would attach to it.
 

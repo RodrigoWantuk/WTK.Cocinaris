@@ -1,4 +1,4 @@
-# Guided Shopping Planning ("Planejar compras")
+# Guided Shopping Planning ("Planejar")
 
 - **Status:** Slices 1 and 2 of 7 implemented; later stages are specified in [PLAN-0062](../plans/PLAN-0062-guided-shopping-planning.md)
 - **Last updated:** 2026-11-04
@@ -8,6 +8,10 @@
 Help someone going to the market who does not know what to cook. One setup screen and dish cards produce a shopping list net of the pantry. This is a guided entry into the existing menu draft, list, pantry, and cooking flows, not a parallel planner.
 
 The owner's decisions and the full specification of later slices are in PLAN-0062.
+
+## The way in (PLAN-0063)
+
+The "Planejar" tab, the "Planejar" action on the main button, and the "Planejar" tile on the home page all open one page, "Planejamento" (`/app/compras`). It shows the current menu and leads with the next step: start a plan, continue one, what to buy, "Cheguei do mercado", "Começar o preparo", or the menu. The list is called "O que comprar". Loading this page or the home page keeps the current list on the device, so it opens at the market without ever having been opened.
 
 ## The flow today
 
@@ -77,7 +81,7 @@ For plans that cook ahead, a card may suggest a base after a dish that uses it i
 
 A market often has no signal, so the list keeps working without it ([ADR-0012](../architecture/decisions/0012-offline-shopping-list.md)).
 
-- **What opens.** The application, and the last lists opened on this device (at most five menus). Other screens say "Precisa de internet" and link to the list. The list shows when it was saved.
+- **What opens.** The application, and the last lists opened or loaded on this device (at most five menus); the planning and home pages load the current one. Other screens say "Precisa de internet" and link to the list. The list shows when it was saved.
 - **What works.** Checking a line, and "Comprar depois" and back. Marks reach the server by themselves when the connection returns, oldest first.
 - **What does not.** "Comprei", "Já tenho", "Cheguei do mercado", substitutes, places, and package sizes need the server, so they are disabled and the screen says so.
 - **Banner.** "Sem internet. Suas marcações serão enviadas depois."

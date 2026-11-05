@@ -1,4 +1,4 @@
-import { BookOpen, Home, Plus, Refrigerator, ShoppingBag } from "lucide-react";
+import { BookOpen, CalendarDays, Home, Plus, Refrigerator } from "lucide-react";
 import { QuickActionMenu } from "./QuickActionMenu";
 import { Link, useLocation } from "react-router-dom";
 import { useProductionI18n } from "@/app/i18n/ProductionI18nProvider";
@@ -25,25 +25,27 @@ const ITEMS = [
   },
   {
     to: "/app/compras",
-    key: "shopping",
-    testId: "production-nav-compras",
-    icon: ShoppingBag,
+    key: "plan",
+    testId: "production-nav-planejar",
+    icon: CalendarDays,
   },
 ] as const;
 
 type ItemKey = (typeof ITEMS)[number]["key"];
 
 /**
- * Which tab a path belongs to. The menu lives inside "Hoje" (PLAN-0054 direction 2), so menu
- * pages light up "Hoje", except a menu's shopping list, which belongs to "Compras".
+ * Which tab a path belongs to. Everything about a plan belongs to "Planejar" (PLAN-0063): the guided
+ * flow, menus, what to buy, and the market arrival.
  */
 export function activeTabFor(pathname: string): ItemKey | null {
   if (pathname === "/app/despensa/novo" || pathname.startsWith("/app/cozinhar"))
     return "add";
-  if (pathname.startsWith("/app/compras") || /\/compras$/.test(pathname))
-    return "shopping";
-  if (pathname.startsWith("/app/hoje") || pathname.startsWith("/app/cardapio"))
-    return "home";
+  if (
+    pathname.startsWith("/app/compras") ||
+    pathname.startsWith("/app/cardapio")
+  )
+    return "plan";
+  if (pathname.startsWith("/app/hoje")) return "home";
   if (pathname.startsWith("/app/despensa")) return "inventory";
   if (pathname.startsWith("/app/receitas")) return "recipes";
   return null;
@@ -67,7 +69,7 @@ export function AppNavigation() {
     inventory: t("inventory.title"),
     add: t("nav.add"),
     recipes: t("nav.recipes"),
-    shopping: t("nav.shopping"),
+    plan: t("nav.plan"),
   };
 
   return (

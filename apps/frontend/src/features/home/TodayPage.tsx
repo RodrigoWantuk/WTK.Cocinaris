@@ -1,3 +1,4 @@
+import { usePlanningOverview } from "@/features/planning/planningOverview";
 import { SessionRouteLink } from "@/features/shopping-plan/SessionRouteLink";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link, useNavigate } from "react-router-dom";
@@ -11,7 +12,6 @@ import {
   Clock,
   Plus,
   Refrigerator,
-  ShoppingBasket,
   ShoppingCart,
   Snowflake,
   Sparkles,
@@ -121,7 +121,7 @@ function WelcomeCard() {
       detail: t("today.welcome.step2Detail"),
     },
     {
-      to: "/app/cardapio",
+      to: "/app/compras",
       icon: CalendarDays,
       title: t("today.welcome.step3"),
       detail: t("today.welcome.step3Detail"),
@@ -176,6 +176,21 @@ function WelcomeCard() {
  */
 function QuickActions() {
   const { t } = useProductionI18n();
+  const planning = usePlanningOverview();
+  // The tile only hints at the next step; on any failure it keeps inviting to plan.
+  const step = planning.status === "ready" ? planning.overview.step : null;
+  const planDetail =
+    step?.kind === "buy"
+      ? t("today.quick.planBuy", { count: step.count })
+      : step?.kind === "resume"
+        ? t("shoppingPlan.current.continue")
+        : step?.kind === "arrival"
+          ? t("shopping.arrival")
+          : step?.kind === "prepare"
+            ? t("shoppingPlan.route.open")
+            : step?.kind === "view" || step?.kind === "draft"
+              ? t("today.quick.planMenu")
+              : t("today.quick.planDetail");
   const tiles = [
     {
       to: "/app/despensa/novo",
@@ -185,18 +200,11 @@ function QuickActions() {
       testId: "today-add-item",
     },
     {
-      to: "/app/cardapio",
-      icon: CalendarDays,
-      title: t("today.quick.menu"),
-      detail: t("today.quick.menuDetail"),
-      testId: "today-quick-menu",
-    },
-    {
       to: "/app/compras",
-      icon: ShoppingBasket,
-      title: t("today.prep.shopping"),
-      detail: t("today.quick.shoppingDetail"),
-      testId: "today-quick-shopping",
+      icon: CalendarDays,
+      title: t("today.quick.plan"),
+      detail: planDetail,
+      testId: "today-quick-plan",
     },
   ];
   const tile =
@@ -204,12 +212,12 @@ function QuickActions() {
   return (
     <nav
       aria-label={t("today.quick.label")}
-      className="grid grid-cols-3 gap-3 sm:grid-cols-4"
+      className="grid grid-cols-2 gap-3 sm:grid-cols-4"
     >
       <Link
         to="/app/receitas/gerar"
         data-testid="today-generate"
-        className={`${tile} col-span-3 bg-primary text-primary-foreground hover:bg-primary/90 sm:col-span-1`}
+        className={`${tile} col-span-2 bg-primary text-primary-foreground hover:bg-primary/90 sm:col-span-1`}
       >
         <Sparkles aria-hidden="true" className="h-6 w-6" />
         <span>
@@ -233,7 +241,7 @@ function QuickActions() {
             <span className="block text-sm font-semibold leading-tight">
               {title}
             </span>
-            <span className="hidden text-sm text-muted-foreground sm:block">
+            <span className="block text-sm text-muted-foreground">
               {detail}
             </span>
           </span>
