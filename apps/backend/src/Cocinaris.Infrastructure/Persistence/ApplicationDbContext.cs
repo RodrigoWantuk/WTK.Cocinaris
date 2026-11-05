@@ -77,6 +77,9 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
     /// <summary>Gets menu entries.</summary>
     public DbSet<MenuEntryRecord> MenuEntries => Set<MenuEntryRecord>();
 
+    /// <summary>Gets what owners said about shopping lines (PLAN-0062).</summary>
+    public DbSet<ShoppingLineMarkRecord> ShoppingLineMarks => Set<ShoppingLineMarkRecord>();
+
     /// <summary>Gets shopping plans (PLAN-0062).</summary>
     public DbSet<ShoppingPlanSessionRecord> ShoppingPlanSessions => Set<ShoppingPlanSessionRecord>();
 
@@ -482,6 +485,21 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             entity.HasOne<InternalUser>().WithMany().HasForeignKey(x => x.OwnerUserId).OnDelete(DeleteBehavior.Restrict);
             entity.HasIndex(x => new { x.OwnerUserId, x.CreationKey }).IsUnique();
             entity.HasIndex(x => new { x.OwnerUserId, x.Status, x.StartDate });
+        });
+
+        modelBuilder.Entity<ShoppingLineMarkRecord>(entity =>
+        {
+            entity.ToTable("shopping_line_marks", "planning", table =>
+            {
+                table.HasCheckConstraint("ck_shopping_line_marks_state", "\"State\" IS NULL OR \"State\" = 'later'");
+                table.HasCheckConstraint("ck_shopping_line_marks_place", "\"Place\" IS NULL OR \"Place\" IN ('market', 'street_market', 'butcher', 'bakery')");
+            });
+            entity.HasKey(x => new { x.MenuPlanId, x.ItemKey });
+            entity.Property(x => x.ItemKey).HasMaxLength(200);
+            entity.Property(x => x.State).HasMaxLength(10);
+            entity.Property(x => x.SubstituteName).HasMaxLength(120);
+            entity.Property(x => x.Place).HasMaxLength(20);
+            entity.HasOne<MenuPlanRecord>().WithMany().HasForeignKey(x => new { x.MenuPlanId, x.OwnerUserId }).HasPrincipalKey(x => new { x.Id, x.OwnerUserId }).OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<ShoppingPlanSessionRecord>(entity =>

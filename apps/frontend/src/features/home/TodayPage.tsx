@@ -278,6 +278,9 @@ function PreparationSection({ items }: { items: PreparationReminder[] }) {
             date: formatMenuDay(item.useByDate ?? item.dueDate, locale),
           });
 
+  // Whoever has something to buy may have just come back from the market (PLAN-0062).
+  const buyMenu = items.find((item) => item.kind === "buy")?.menuId;
+
   return (
     <HomeSection
       id="today-preparation"
@@ -327,6 +330,15 @@ function PreparationSection({ items }: { items: PreparationReminder[] }) {
           );
         })}
       </ul>
+      {buyMenu ? (
+        <Link
+          to={`/app/cardapio/${buyMenu}/chegada`}
+          data-testid="today-arrival"
+          className="inline-flex min-h-11 items-center text-sm font-medium text-primary underline-offset-4 hover:underline"
+        >
+          {t("shopping.arrival")}
+        </Link>
+      ) : null}
     </HomeSection>
   );
 }

@@ -183,7 +183,8 @@ public sealed class InventoryLotApplicationWorkflow(
     IInventoryLotReadStore readStore,
     IInventoryLotWriteStore writeStore,
     TimeProvider timeProvider,
-    InventoryLotLifecycleUseCase lifecycleUseCase)
+    InventoryLotLifecycleUseCase lifecycleUseCase,
+    Ingredients.StorageGuidance? storageGuidance = null)
 {
     /// <summary>Lists active, depleted, or deleted lots owned by the current internal user.</summary>
     public async Task<InventoryApplicationResult<InventoryLotList>> ListAsync(ListInventoryLotsQuery query, CancellationToken cancellationToken)
@@ -416,7 +417,7 @@ public sealed class InventoryLotApplicationWorkflow(
         var lots = await readStore.ListActiveAsync(user.Id, InventoryAttentionCandidateLimit, cancellationToken);
         return lots
             .Select(ToView)
-            .Select(view => (Lot: view, Attention: InventoryAttentionAdvisor.Evaluate(ToAttentionFacts(view), today, timeZone)))
+            .Select(view => (Lot: view, Attention: InventoryAttentionAdvisor.Evaluate(ToAttentionFacts(view, storageGuidance), today, timeZone)))
             .Where(item => item.Attention.State != InventoryAttentionState.Normal)
             .OrderBy(item => item.Attention.State)
             .ThenBy(item => item.Attention.EstimatedUseBy ?? DateOnly.MaxValue)
@@ -432,9 +433,11 @@ public sealed class InventoryLotApplicationWorkflow(
     public const int InventoryAttentionResultLimit = 100;
 
     /// <summary>Projects a lot view onto the facts the attention advisor evaluates.</summary>
-    public static InventoryAttentionFacts ToAttentionFacts(InventoryLotView lot) =>
+    public static InventoryAttentionFacts ToAttentionFacts(InventoryLotView lot, Ingredients.StorageGuidance? guidance = null) =>
         new(lot.PrintedExpirationDate, lot.Lifecycle?.PreparedShelfLifeDate, lot.StorageLocation, lot.PackageState, lot.Lifecycle?.State ?? "AsAcquired", lot.Lifecycle?.FrozenAt, lot.Lifecycle?.ThawStartedAt, lot.Lifecycle?.ThawedAt,
-            Ingredients.IngredientCatalog.Default.KeepsWhenOpened(lot.ProductName));
+            Ingredients.IngredientCatalog.Default.KeepsWhenOpened(lot.ProductName),
+            lot.CreatedAt,
+            guidance?.RuleForName(lot.ProductName)?.FridgeDays);
 
     /// <summary>Lists immutable transaction history for one owner-scoped lot.</summary>
     public async Task<InventoryApplicationResult<IReadOnlyList<InventoryHistoryEntry>>> HistoryAsync(Guid lotId, CancellationToken cancellationToken)

@@ -168,3 +168,22 @@ public sealed class ShoppingPlanCardRecord
     /// <summary>Gets or sets the UTC decision instant.</summary>
     public DateTimeOffset? DecidedAt { get; set; }
 }
+
+/// <summary>What the owner said about a shopping line while shopping (PLAN-0062). The line itself is always derived.</summary>
+public sealed class ShoppingLineMarkRecord
+{
+    /// <summary>Gets or sets the plan.</summary>
+    public Guid MenuPlanId { get; set; }
+    /// <summary>Gets or sets the line's original key.</summary>
+    public required string ItemKey { get; set; }
+    /// <summary>Gets or sets the authoritative owner identifier.</summary>
+    public Guid OwnerUserId { get; set; }
+    /// <summary>Gets or sets <c>later</c>, or null.</summary>
+    public string? State { get; set; }
+    /// <summary>Gets or sets the product bought instead, if any.</summary>
+    public string? SubstituteName { get; set; }
+    /// <summary>Gets or sets the place code, if the owner moved the line.</summary>
+    public string? Place { get; set; }
+    /// <summary>Gets or sets the UTC instant of the last change.</summary>
+    public DateTimeOffset UpdatedAt { get; set; }
+}

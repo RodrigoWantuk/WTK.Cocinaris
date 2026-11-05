@@ -176,7 +176,7 @@ PLAN-0062 stores, per owner, the setup answers of each plan, and dish cards that
 - **Retention.** Unseen and rejected cards are deleted when the plan is accepted, and all cards when it is discarded. Abandoned plans older than 30 days are deleted when the owner starts a new plan; there is no background job yet.
 - **Typed ingredient.** It is untrusted text, limited to 60 characters, kept in the plan's setup, and never logged. A plan with one never feeds the shared idea library.
 - **Metrics.** They hold counts and closed codes, never dish or ingredient names.
-- **Rights.** Export and deletion must include `planning.shopping_plan_sessions` and `planning.shopping_plan_cards` when the privacy center (PLAN-0049) is delivered.
+- **Rights.** Export and deletion must include `planning.shopping_plan_sessions`, `planning.shopping_plan_cards`, and `planning.shopping_line_marks` when the privacy center (PLAN-0049) is delivered. A mark may hold a typed substitute name, which is untrusted, limited to 120 characters, and never logged.
 
 ## Shared recipe ideas
 

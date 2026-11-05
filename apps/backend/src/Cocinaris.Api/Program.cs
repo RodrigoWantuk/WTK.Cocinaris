@@ -72,6 +72,8 @@ builder.Services.AddSingleton<IInventoryHttpTokenService, DataProtectionInventor
 builder.Services.AddSingleton<InventoryMetrics>();
 var securityMetrics = new SecurityMetrics();
 builder.Services.AddSingleton(securityMetrics);
+// Off until the owner approves the storage table (PLAN-0062 gate G2-A).
+builder.Services.AddSingleton(Cocinaris.Modules.Ingredients.StorageGuidance.Create(builder.Configuration.GetSection("Planning:StorageGuidance").Get<Cocinaris.Modules.Ingredients.StorageGuidanceOptions>() ?? new()));
 builder.Services.AddScoped<InventoryLotApplicationWorkflow>();
 builder.Services.AddScoped<ICreateInventoryLotUseCase, CreateInventoryLotHandler>();
 builder.Services.AddScoped<IListInventoryLotsUseCase, ListInventoryLotsHandler>();

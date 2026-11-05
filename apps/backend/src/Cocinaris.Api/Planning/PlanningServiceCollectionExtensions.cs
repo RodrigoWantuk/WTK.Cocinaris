@@ -18,6 +18,7 @@ public static class PlanningServiceCollectionExtensions
         services.AddScoped<IShoppingPlanStore, PostgreSqlShoppingPlanStore>();
         services.AddScoped<ShoppingPlanApplicationService>();
         services.AddScoped<ShoppingPlanApiService>();
+        services.AddScoped<ShoppingArrivalService>();
         return services;
     }
 }

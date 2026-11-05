@@ -65,6 +65,26 @@ public static class PlanningEndpoints
             .Produces<ShoppingCheckRequest>()
             .ProducesProblem(400)
             .ProducesProblem(404);
+        group.MapPut("/menus/{menuId:guid}/shopping/marks", (PlanningApiService service, Guid menuId, ShoppingMarkRequest body, HttpContext context, CancellationToken cancellationToken) => service.SetMarkAsync(menuId, body, context, cancellationToken))
+            .RequireRateLimiting("mutation")
+            .Produces<ShoppingMarkRequest>()
+            .ProducesProblem(400)
+            .ProducesProblem(404)
+            .ProducesProblem(422);
+        group.MapGet("/menus/{menuId:guid}/arrival", (PlanningApiService service, Guid menuId, DateOnly? from, bool? all, HttpContext context, CancellationToken cancellationToken) => service.GetArrivalAsync(menuId, from, all == true, context, cancellationToken))
+            .Produces<ArrivalPlanView>()
+            .ProducesProblem(400)
+            .ProducesProblem(404);
+        group.MapPost("/menus/{menuId:guid}/arrival/preview", (PlanningApiService service, Guid menuId, ArrivalPreviewRequest body, HttpContext context, CancellationToken cancellationToken) => service.PreviewArrivalAsync(menuId, body, context, cancellationToken))
+            .RequireRateLimiting("shopping-plan-decision")
+            .Produces<ArrivalPlanView>()
+            .ProducesProblem(400)
+            .ProducesProblem(404);
+        group.MapPost("/menus/{menuId:guid}/arrival", (PlanningApiService service, Guid menuId, ArrivalRecordRequest body, HttpRequest request, CancellationToken cancellationToken) => service.RecordArrivalAsync(menuId, body, request, cancellationToken))
+            .RequireRateLimiting("mutation")
+            .Produces<ArrivalResultView>()
+            .ProducesProblem(400)
+            .ProducesProblem(404);
         group.MapGet("/reservations", (PlanningApiService service, DateOnly? from, HttpContext context, CancellationToken cancellationToken) => service.GetReservationsAsync(from, context, cancellationToken))
             .Produces<ReservationsResponse>();
         group.MapPut("/protections/{lotId:guid}", (PlanningApiService service, Guid lotId, LotProtectionRequest body, HttpContext context, CancellationToken cancellationToken) => service.ProtectAsync(lotId, body, context, cancellationToken))
@@ -109,8 +129,32 @@ public static class PlanningEndpoints
 }
 
 /// <summary>HTTP adapter for the menu planning application service.</summary>
-public sealed class PlanningApiService(MenuPlanningApplicationService application)
+public sealed class PlanningApiService(MenuPlanningApplicationService application, ShoppingArrivalService arrival)
 {
+    /// <summary>Records what the person said about a shopping line.</summary>
+    public async Task<IResult> SetMarkAsync(Guid menuId, ShoppingMarkRequest body, HttpContext context, CancellationToken cancellationToken) =>
+        ToResult(await application.SetLineMarkAsync(menuId, body.ItemKey, body.State, body.SubstituteName, body.Place, cancellationToken), context.TraceIdentifier, _ => body);
+
+    /// <summary>Proposes where a purchase goes.</summary>
+    public async Task<IResult> GetArrivalAsync(Guid menuId, DateOnly? from, bool all, HttpContext context, CancellationToken cancellationToken) =>
+        ToResult(await arrival.ProposeAsync(menuId, from, null, cancellationToken, all), context.TraceIdentifier, view => view);
+
+    /// <summary>Recomputes the proposal for corrected quantities. It changes nothing.</summary>
+    public async Task<IResult> PreviewArrivalAsync(Guid menuId, ArrivalPreviewRequest body, HttpContext context, CancellationToken cancellationToken) =>
+        ToResult(await arrival.ProposeAsync(menuId, body.From, body.Quantities, cancellationToken), context.TraceIdentifier, view => view);
+
+    /// <summary>Records the purchase in the pantry; requires an Idempotency-Key.</summary>
+    public async Task<IResult> RecordArrivalAsync(Guid menuId, ArrivalRecordRequest body, HttpRequest request, CancellationToken cancellationToken)
+    {
+        // Reading the menu first keeps another owner's identifier a 404.
+        if ((await application.GetAsync(menuId, cancellationToken)).Problem is { } problem)
+        {
+            return ToResult(RecipeApplicationResult<ArrivalResultView>.Failure(problem.ErrorCode, problem.Detail), request.HttpContext.TraceIdentifier, view => view);
+        }
+
+        return ToResult(await arrival.RecordAsync(IdempotencyKey(request), body.Lines, request.HttpContext.TraceIdentifier, cancellationToken), request.HttpContext.TraceIdentifier, view => view);
+    }
+
     /// <summary>Lists menus; archived menus only when asked for.</summary>
     public async Task<IResult> ListAsync(bool archived, HttpContext context, CancellationToken cancellationToken) =>
         ToResult(await application.ListAsync(archived, cancellationToken), context.TraceIdentifier, items => items!.Select(item => new MenuPlanSummaryResponse(item.PlanId, item.Name, item.StartDate, item.EndDate, item.Status, item.EntryCount, item.UpdatedAt)).ToList());
@@ -167,7 +211,11 @@ public sealed class PlanningApiService(MenuPlanningApplicationService applicatio
                 item.StoreSection,
                 item.PackageSize,
                 item.PackageCount,
-                item.ExpectedRemainder)).ToList()));
+                item.ExpectedRemainder,
+                item.MarkKey ?? item.ItemKey,
+                item.Later,
+                item.SubstituteFor,
+                item.Place)).ToList()));
 
     /// <summary>Records or forgets the package size of a shopping item.</summary>
     public async Task<IResult> SetPackageSizeAsync(PackageSizeRequest body, HttpContext context, CancellationToken cancellationToken) =>
@@ -243,7 +291,7 @@ public sealed class PlanningApiService(MenuPlanningApplicationService applicatio
     {
         "validation_failed" => StatusCodes.Status400BadRequest,
         "resource_not_found" => StatusCodes.Status404NotFound,
-        "domain_rule_violated" => StatusCodes.Status422UnprocessableEntity,
+        "domain_rule_violated" or "restriction_blocked" => StatusCodes.Status422UnprocessableEntity,
         _ => StatusCodes.Status409Conflict
     };
 }
@@ -340,7 +388,11 @@ public sealed record ShoppingListResponse(Guid MenuId, DateOnly From, int MealCo
 /// <param name="PackageSize">Package size the owner confirmed for this item, in <paramref name="Unit"/> (PLAN-0029 Phase 4); null when none was confirmed.</param>
 /// <param name="PackageCount">Whole packages that cover <paramref name="ToBuyQuantity"/>; null without a package size or with nothing to buy.</param>
 /// <param name="ExpectedRemainder">What those packages leave after the menu, in <paramref name="Unit"/>; null with <paramref name="PackageCount"/>.</param>
-public sealed record ShoppingItemResponse(string ItemKey, string DisplayName, string Unit, string Category, decimal RequiredQuantity, decimal AvailableQuantity, decimal ToBuyQuantity, bool Checked, IReadOnlyList<ShoppingUseResponse> Uses, bool AvailableIsEstimate, string StoreSection, decimal? PackageSize, int? PackageCount, decimal? ExpectedRemainder);
+/// <param name="MarkKey">Key to address this line's marks.</param>
+/// <param name="Later">Whether it was left for a later purchase.</param>
+/// <param name="SubstituteFor">The ingredient this line replaces, if any.</param>
+/// <param name="Place"><c>market</c>, <c>street_market</c>, <c>butcher</c>, or <c>bakery</c>.</param>
+public sealed record ShoppingItemResponse(string ItemKey, string DisplayName, string Unit, string Category, decimal RequiredQuantity, decimal AvailableQuantity, decimal ToBuyQuantity, bool Checked, IReadOnlyList<ShoppingUseResponse> Uses, bool AvailableIsEstimate, string StoreSection, decimal? PackageSize, int? PackageCount, decimal? ExpectedRemainder, string MarkKey, bool Later, string? SubstituteFor, string Place);
 
 /// <summary>One meal that needs a shopping line.</summary>
 /// <param name="EntryId">Menu entry.</param>
@@ -350,6 +402,22 @@ public sealed record ShoppingItemResponse(string ItemKey, string DisplayName, st
 /// <param name="Optional">Whether the recipe marks it optional.</param>
 /// <param name="MissingQuantity">What this meal still lacks after the pantry is allocated in plan order.</param>
 public sealed record ShoppingUseResponse(Guid EntryId, string RecipeName, DateOnly? PlannedDate, decimal Quantity, bool Optional, decimal MissingQuantity);
+
+/// <summary>Body (and response) for what the person said about a line; every field is replaced, and all empty removes the mark.</summary>
+/// <param name="ItemKey">The line's <c>markKey</c>.</param>
+/// <param name="State"><c>later</c>, or null.</param>
+/// <param name="SubstituteName">Product bought instead, at most 120 characters. Refused with <c>restriction_blocked</c> when it conflicts with the profile.</param>
+/// <param name="Place">Place code, or null for the section's default.</param>
+public sealed record ShoppingMarkRequest(string? ItemKey, string? State, string? SubstituteName, string? Place);
+
+/// <summary>Body for recomputing arrival.</summary>
+/// <param name="From">The owner's current day.</param>
+/// <param name="Quantities">Quantities the person corrected.</param>
+public sealed record ArrivalPreviewRequest(DateOnly? From, IReadOnlyList<ArrivalQuantity>? Quantities);
+
+/// <summary>Body for recording arrival.</summary>
+/// <param name="Lines">Lines to record, at most 120 portions in all.</param>
+public sealed record ArrivalRecordRequest(IReadOnlyList<ArrivalRecordLine>? Lines);
 
 /// <summary>Body (and response) for a shopping item's package size.</summary>
 /// <param name="ItemKey">Item key from the shopping list; its unit is the size's unit.</param>

@@ -15,6 +15,7 @@
   <ItemGroup>
     <EmbeddedResource Include="Catalog/ingredient-catalog.json" LogicalName="Cocinaris.Modules.Ingredients.ingredient-catalog.json" />
     <EmbeddedResource Include="Catalog/restriction-rules.json" LogicalName="Cocinaris.Modules.Ingredients.restriction-rules.json" />
+    <EmbeddedResource Include="Catalog/storage-guidance.json" LogicalName="Cocinaris.Modules.Ingredients.storage-guidance.json" />
   </ItemGroup>
 
 </Project>

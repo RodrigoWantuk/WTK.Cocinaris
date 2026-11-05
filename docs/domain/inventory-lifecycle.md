@@ -109,6 +109,7 @@ The backend computes attention at read time, in the calendar of the time zone sa
 | Prepared lot with a recorded shelf-life date | Prepared record | date classification |
 | Printed date | Printed date | date classification. An opened package whose result would be `normal` becomes `estimate uncertain`, because the date describes the sealed package, unless the food keeps once opened (next row). |
 | Opened, in the pantry, a dry food that keeps once opened | Curated rule | `normal` with reason `keeps_when_opened` (a close or passed printed date still wins) |
+| No date, in the refrigerator, as acquired, with a curated rule (only with `Planning:StorageGuidance:Enabled`, PLAN-0062) | Curated rule: recorded date + `fridgeDays` | date classification |
 | No date, opened | Unknown | `estimate uncertain` |
 | No date, sealed or unknown | Unknown | `normal` (pantry staples are not flagged) |
 

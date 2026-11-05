@@ -3,8 +3,8 @@
  * Signed-in shopping plan journey against the proxy replica (scripts/e2e/proxy-replica.sh), PLAN-0062.
  * The replica has no AI provider, so this also proves the plan works on saved recipes alone (gate
  * G1-E). It seeds two recipes, then in the browser: answers the setup, accepts cards (one with
- * "yields 2 meals"), reviews, marks "I have it" on the list, shares the text, accepts the plan, and
- * checks "Hoje". It prints how long the first card took (gate G1-C). Names are unique per run.
+ * "yields 2 meals"), reviews, marks "I have it" on the list, accepts the plan, leaves a line for
+ * later, splits the list by place, records the arrival, and checks "Hoje". It prints how long the first card took (gate G1-C). Names are unique per run.
  *
  * Usage: COCINARIS_SMOKE_PASSWORD_A=<development-fixture-password> \
  *          node scripts/e2e/shopping-plan-journey.mjs [username]
@@ -53,6 +53,15 @@ try {
         ingredients: [{ displayName: lentil, quantity: 200, unit: "g", optional: false }],
         stages: [{ name: "Cozinhar", instructions: "Cozinhe a lentilha.", activeMinutes: 10, passiveMinutes: 20 }],
       } });
+    }
+    // An earlier run's arrival stocks the pantry, which would leave this run's list with nothing to buy.
+    for (;;) {
+      const { items } = await (await fetch("/api/v1/inventory/lots?pageSize=50", { credentials: "include" })).json();
+      if (!items.length) break;
+      for (const lot of items) {
+        await fetch(`/api/v1/inventory/lots/${lot.lotId}`, { method: "DELETE", credentials: "include", headers: { "X-CSRF-TOKEN": session.csrfToken, "If-Match": `"${lot.version}"`.replaceAll('""', '"') } });
+      }
+      if (items.length < 50) break;
     }
     // A plan left by an earlier failed run would hide the setup screen.
     const start = await (await fetch("/api/v1/planning/shopping-plans/start", { credentials: "include" })).json();
@@ -110,9 +119,34 @@ try {
   await page.getByTestId("menu-page").waitFor({ timeout: 15000 });
   await page.getByText("Em uso", { exact: true }).waitFor({ timeout: 10000 });
 
+  const menuUrl = page.url();
+  await page.goto(`${menuUrl}/compras`, { waitUntil: "networkidle" });
+  await page.getByTestId("shopping-not-found").first().click();
+  await page.getByTestId("shopping-later-save").click();
+  await page.getByTestId("shopping-later").waitFor({ timeout: 10000 });
+  await page.getByTestId("shopping-later-back").first().click();
+  await page.getByTestId("shopping-later").waitFor({ state: "detached", timeout: 10000 });
+  check("a line can be left for later and brought back", true);
+  await page.getByTestId("shopping-split").check();
+  check("the list splits by place", (await page.getByTestId("shopping-place").count()) > 0);
+  await page.getByTestId("shopping-item-check").first().check();
+  await page.getByTestId("shopping-arrival").click();
+  await page.getByTestId("arrival-page").waitFor({ timeout: 15000 });
+  check("with the table off, arrival mentions no freezer", (await page.getByTestId("arrival-Freezer").count()) === 0);
+  await page.getByTestId("arrival-save").click();
+  await page.getByTestId("arrival-done").waitFor({ timeout: 20000 });
+  check("arrival records the purchase", (await page.getByTestId("arrival-done").textContent()).includes("despensa"));
+
   await page.goto(`${BASE}/app/hoje`, { waitUntil: "networkidle" });
-  const planned = await page.getByTestId("today-menu-entry").count();
-  check("Hoje does not list every flexible meal", planned >= 1 && planned <= 2, `${planned} meals`);
+  // The fixture user keeps plans from earlier runs, so only this run's menu is counted.
+  const menuId = menuUrl.split("/").pop();
+  const day = await page.evaluate(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  });
+  const entries = await page.evaluate(async (date) => (await fetch(`/api/v1/planning/today?date=${date}`, { credentials: "include" })).json(), day);
+  const planned = entries.filter((item) => item.menuId === menuId).length;
+  check("Hoje shows this plan without every flexible meal", planned >= 1 && planned <= 2, `${planned} meals`);
 } catch (error) {
   check("journey", false, `${error.message.split("\n")[0]} (at ${new URL(page.url()).pathname})`);
   if (process.env.COCINARIS_E2E_SCREENSHOT) await page.screenshot({ path: process.env.COCINARIS_E2E_SCREENSHOT, fullPage: true });

@@ -44,7 +44,9 @@ public sealed record InventoryAttentionFacts(
     DateTimeOffset? FrozenAt,
     DateTimeOffset? ThawStartedAt,
     DateTimeOffset? ThawedAt,
-    bool KeepsWhenOpened = false);
+    bool KeepsWhenOpened = false,
+    DateTimeOffset? CreatedAt = null,
+    int? CuratedFridgeDays = null);
 
 /// <summary>
 /// Advisory, explainable attention result. <see cref="Reasons"/> are stable codes that clients
@@ -123,6 +125,13 @@ public static class InventoryAttentionAdvisor
             return opened && !KeepsInPantry(facts) && result.State == InventoryAttentionState.Normal
                 ? result with { State = InventoryAttentionState.EstimateUncertain, Reasons = ["printed_date", "opened_after_printed_date"] }
                 : result;
+        }
+
+        // A refrigerated lot with no date of its own follows the curated table (PLAN-0062), which is
+        // weaker evidence than a printed date. It applies only once the owner enabled the table.
+        if (inRefrigerator && facts.CuratedFridgeDays is { } fridgeDays && facts.CreatedAt is { } created && facts.LifecycleState == "AsAcquired")
+        {
+            return Classify(ToDate(created).AddDays(fridgeDays), today, InventoryAttentionEvidence.CuratedRule, "curated_fridge_days");
         }
 
         // Owner report 2026-10-30: an opened bag of raw rice asked for attention forever. Dry,

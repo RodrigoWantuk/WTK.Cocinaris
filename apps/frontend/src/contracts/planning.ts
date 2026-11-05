@@ -135,6 +135,14 @@ export interface ShoppingItem {
   packageCount?: number | null;
   /** What those packages leave after the menu, in `unit`. */
   expectedRemainder?: number | null;
+  /** Key to address this line's marks: its key before any substitution (PLAN-0062). */
+  markKey?: string;
+  /** Whether the person left it for a later purchase. */
+  later?: boolean;
+  /** The ingredient this line replaces, if any. The recipe itself does not change. */
+  substituteFor?: string | null;
+  /** `market`, `street_market`, `butcher`, or `bakery`. */
+  place?: string;
   uses: Array<{
     entryId: string;
     recipeName: string;
@@ -173,6 +181,45 @@ export interface ShoppingList {
   from: string;
   mealCount: number;
   items: ShoppingItem[];
+}
+
+/** A part of a purchase to store together (PLAN-0062). */
+export interface ArrivalPortion {
+  /** `Pantry`, `Refrigerator`, or `Freezer`. */
+  location: string;
+  quantity: number;
+  count: number;
+  dish: string | null;
+  /** It will not keep until its meal and cannot be frozen. */
+  useFirst: boolean;
+}
+
+/** One purchased line and how to store it. */
+export interface ArrivalLine {
+  itemKey: string;
+  displayName: string;
+  unit: string;
+  storeSection: string;
+  checked: boolean;
+  boughtQuantity: number;
+  needsRealQuantity: boolean;
+  packageSize: number | null;
+  requiredQuantity: number;
+  portions: ArrivalPortion[];
+}
+
+/** What arrival proposes. Without `guidanceEnabled`, nothing mentions freezing or dates. */
+export interface ArrivalPlan {
+  menuId: string;
+  guidanceEnabled: boolean;
+  containerCount: number;
+  lines: ArrivalLine[];
+}
+
+/** Result of recording; lots that failed can be retried with the same key. */
+export interface ArrivalResult {
+  recorded: number;
+  failed: Array<{ itemKey: string; errorCode: string }>;
 }
 
 /** Fields of an entry; every change replaces all of them. */
@@ -264,6 +311,50 @@ export interface PlanningRepository {
     size: number | null,
     options: Mutation,
   ): Promise<void>;
+  /**
+   * Records what the person said about a line while shopping (PLAN-0062). Every field is replaced;
+   * all empty removes the mark. A substitute that conflicts with a restriction is refused.
+   */
+  setLineMark?(
+    menuId: string,
+    mark: {
+      itemKey: string;
+      state: "later" | null;
+      substituteName: string | null;
+      place: string | null;
+    },
+    options: Mutation,
+  ): Promise<void>;
+  /** Proposes where a purchase goes: checked lines, or all with `all`. */
+  getArrival?(
+    menuId: string,
+    from: string,
+    signal?: AbortSignal,
+    options?: { all?: boolean },
+  ): Promise<ArrivalPlan>;
+  /** Recomputes the proposal for corrected quantities. It changes nothing. */
+  previewArrival?(
+    menuId: string,
+    from: string,
+    quantities: Array<{ itemKey: string; boughtQuantity: number }>,
+    options: Mutation,
+  ): Promise<ArrivalPlan>;
+  /** Records the purchase; a retry with the same key never counts anything twice. */
+  recordArrival?(
+    menuId: string,
+    lines: Array<{
+      itemKey: string;
+      displayName: string;
+      unit: string;
+      portions: Array<{
+        location: string;
+        quantity: number;
+        count: number;
+        notes: string | null;
+      }>;
+    }>,
+    options: Mutation & { idempotencyKey: string },
+  ): Promise<ArrivalResult>;
   /**
    * Pre-meal reminders for the dated meals of menus in use, from `from` (the owner's current
    * day) for `days` days. Optional: without it "Hoje" shows no reminders.

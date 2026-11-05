@@ -198,6 +198,32 @@ public sealed class PostgreSqlMenuPlanStore(ApplicationDbContext database) : IMe
     public async Task RemovePackageSizeAsync(Guid ownerUserId, string itemKey, CancellationToken cancellationToken) =>
         await database.PackageSizes.Where(item => item.OwnerUserId == ownerUserId && item.ItemKey == itemKey).ExecuteDeleteAsync(cancellationToken);
 
+    /// <inheritdoc />
+    public async Task<IReadOnlyDictionary<string, ShoppingLineMark>> ListLineMarksAsync(Guid ownerUserId, Guid planId, CancellationToken cancellationToken)
+    {
+        var records = await database.ShoppingLineMarks.AsNoTracking().Where(item => item.OwnerUserId == ownerUserId && item.MenuPlanId == planId).ToListAsync(cancellationToken);
+        return records.ToDictionary(item => item.ItemKey, item => new ShoppingLineMark(item.ItemKey, item.State, item.SubstituteName, item.Place), StringComparer.Ordinal);
+    }
+
+    /// <inheritdoc />
+    public async Task SetLineMarkAsync(Guid ownerUserId, Guid planId, ShoppingLineMark mark, DateTimeOffset now, CancellationToken cancellationToken)
+    {
+        if (mark.State is null && mark.SubstituteName is null && mark.Place is null)
+        {
+            await database.ShoppingLineMarks.Where(item => item.OwnerUserId == ownerUserId && item.MenuPlanId == planId && item.ItemKey == mark.ItemKey).ExecuteDeleteAsync(cancellationToken);
+            return;
+        }
+
+        // Upsert keeps a repeated or concurrent request from failing on the primary key.
+        await database.Database.ExecuteSqlInterpolatedAsync(
+            $"""
+            INSERT INTO planning.shopping_line_marks ("MenuPlanId", "ItemKey", "OwnerUserId", "State", "SubstituteName", "Place", "UpdatedAt")
+            VALUES ({planId}, {mark.ItemKey}, {ownerUserId}, {mark.State}, {mark.SubstituteName}, {mark.Place}, {now})
+            ON CONFLICT ("MenuPlanId", "ItemKey") DO UPDATE SET "State" = EXCLUDED."State", "SubstituteName" = EXCLUDED."SubstituteName", "Place" = EXCLUDED."Place", "UpdatedAt" = EXCLUDED."UpdatedAt"
+            """,
+            cancellationToken);
+    }
+
     private async Task<bool> TrySaveAsync(CancellationToken cancellationToken)
     {
         try

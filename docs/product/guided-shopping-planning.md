@@ -1,6 +1,6 @@
 # Guided Shopping Planning ("Planejar compras")
 
-- **Status:** Slice 1 of 7 implemented; later stages are specified in [PLAN-0062](../plans/PLAN-0062-guided-shopping-planning.md)
+- **Status:** Slices 1 and 2 of 7 implemented; later stages are specified in [PLAN-0062](../plans/PLAN-0062-guided-shopping-planning.md)
 - **Last updated:** 2026-11-04
 
 ## Purpose
@@ -14,7 +14,8 @@ The owner's decisions and the full specification of later slices are in PLAN-006
 1. **Setup (`/app/compras/planejar`).** One screen with the last answers preselected: days, meals, meals eaten out, how to cook, what matters most, and, unless the person cooks a dish each day, when to prepare and for how long. An optional starting ingredient. People and restrictions come from the profile. People can change for this plan; restrictions change only in the profile.
 2. **Cards (`/app/compras/planejar/:sessionId`).** One dish at a time, with "+N itens novos" and what it reuses. "Sim", "Sim, 2 vezes", "Não" with an optional reason, "Desfazer", "Quero outras opções", and "Já está bom, ver a lista".
 3. **Review (`.../revisar`).** Dishes in a suggested order, what spoils first coming first. Any dish can be given a date, changed, swapped, or removed. "Usar este plano" accepts the menu.
-4. **List.** The existing list, with "Já tenho" on each line and "Compartilhar lista".
+4. **List.** The existing list, with "Já tenho" and "Não achei este item" on each line, "Compartilhar lista", and "Separar por lugar".
+5. **Arrival (`/app/cardapio/:menuId/chegada`).** "Cheguei do mercado": where each purchase goes and how to divide it, recorded with one confirmation.
 
 ## Rules
 
@@ -27,6 +28,12 @@ The owner's decisions and the full specification of later slices are in PLAN-006
 - **"Sim, 2 vezes"** asks how many meals (2 to 4) and how: "Rende para N refeições" (one cooking, double portions, one menu entry) or "Fazer de novo outro dia" (N entries). The first is preselected unless the person cooks a dish each day.
 - **"Já tenho"** records a pantry item with the amount the plan needs, marked approximate, with undo for 8 seconds.
 - **"Economizar"** favors usually cheaper ingredients and what is at home. It shows no prices.
+
+- **"Não achei este item"** names the affected dishes and offers: buy something else in its place (checked against restrictions; the recipe does not change, and "Mudou alguma coisa?" handles it while cooking), buy later (the line leaves the pending count), or change the dish, which opens the menu.
+- **"Separar por lugar"** groups by market, street market, butcher, or bakery. The default comes from the store section, and a line can be moved. The shared text follows it.
+- **Arrival uses the checked lines,** or all lines to buy when none is checked. It asks how much came only for perishable items with no confirmed package size. Any place can be changed.
+- **Storage advice is advisory and off by default.** With the flag off, a purchase stays whole and nothing mentions freezing or dates. See [`storage-guidance-review.md`](../domain/storage-guidance-review.md).
+- **A freezer needs no question.** Only an equipment list without a freezer rules freezing out; an empty list says nothing.
 
 ## States
 
@@ -42,7 +49,10 @@ The owner's decisions and the full specification of later slices are in PLAN-006
 | Undo after a recipe was created | The meals leave the menu; the recipe stays in the library |
 | Dish past the session's time | Stays, ranked low, labeled "Passa do seu tempo" |
 | Restriction that cannot be checked | The setup screen and each card say so |
+| Substitute conflicts with a restriction | Refused, with the reason |
+| Part of "Guardar tudo" fails | The screen says how many; trying again never counts anything twice |
+| Nothing to store | Explains and links back to the list |
 
 ## Not yet (PLAN-0062 later slices)
 
-Arrival and portioning, "Não achei este item", splitting by store, the offline list, cook-by limits and warnings, repeat or save a plan, reusable components, frozen whole dishes, the timed session route, and push notifications. Nothing here shows a shelf-life date yet: that needs the owner-reviewed storage table.
+The offline list, cook-by limits and warnings, repeat or save a plan, reusable components, frozen whole dishes, the timed session route, and push notifications. Shelf-life dates and freezing advice need the owner-reviewed storage table.

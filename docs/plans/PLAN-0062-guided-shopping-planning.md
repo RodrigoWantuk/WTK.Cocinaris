@@ -737,15 +737,15 @@ Migrations are additive, and rollback means deploying the earlier code with unus
 
 ## Execution state
 
-- **Current run delivery target:** Slice 1, from zero to list.
-- **Current checkpoint:** Slice 1 implemented on `agent/plan-0062-s1-plan-to-list`: backend, OpenAPI and client, frontend, documents, browser journey, and evaluation harness. Waiting on owner gates.
-- **Last completed step:** Browser journey on the proxy replica with AI off.
-- **Exact next action:** The owner reviews `docs/domain/restriction-rules-review.md` (G1-A) and runs the live evaluation with the provider key (G1-B, command in `scripts/ai/README.md`). An agent reruns `scripts/ci/run-local-gates.sh --ref <head>` (G1-G) and records the evaluation in `docs/evidence/plan-0062/`, and the owner merges. Slice 2 starts from fresh `main`.
-- **Blockers:** G1-A needs the owner's review. G1-B needs the provider key, which is not in this agent's environment and which agents must not read. Slice 4 limits need G2-A.
+- **Current run delivery target:** Slice 2, market and arrival.
+- **Current checkpoint:** Slice 2 implemented on `agent/plan-0062-s2-arrival`, in a draft pull request, with storage guidance off.
+- **Last completed step:** Browser journey on the proxy replica through arrival.
+- **Exact next action:** The owner reviews the pull request and merges it. Slice 3 (offline list) then starts from fresh `origin/main` on `agent/plan-0062-s3-offline-list`, with ADR-0012 first. The owner separately reviews `docs/domain/storage-guidance-review.md` (G2-A) whenever convenient; the slice does not wait for it.
+- **Blockers:** G2-A before storage guidance is enabled and before Slice 4 limits. G1-B (live AI evaluation) and G1-G and G2-F (full local gates) have not run: the first needs the provider key, and the host stopped the last gate run for low memory. Deploying `main` was refused by this agent's permission classifier, so the owner must run it.
 - **Partially modified areas:** None.
-- **Documentation delivered:** `docs/product/guided-shopping-planning.md`, `docs/domain/restriction-rules-review.md`, and updates to the planning, AI, privacy, journey, testing, and contract documents.
-- **Validation performed:** See the Slice 1 entry in the progress log and the pull request.
-- **Known failures or limitations:** G1-G incomplete: the host stopped the gate run for low memory; rerun it when the host has room. G1-B not run, so AI card quality, first-batch latency, and shared-ingredient rates are unmeasured against the real model. The offline, arrival, and cook-by behaviors belong to later slices. Per-stage equipment conflicts are not detected (Slice 6).
+- **Documentation delivered:** `docs/domain/storage-guidance-review.md`, and updates to the product, planning, inventory, privacy, and runbook documents.
+- **Validation performed:** See the Slice 2 entry in the progress log.
+- **Known failures or limitations:** Storage values were not checked against primary sources, because USDA pages refused automated fetches; the review document says which are unverified. G1-A: the owner merged #84 and said "PR aprovado, pode seguir", with no separate comment on the restriction table. Per-stage equipment conflicts are not detected (Slice 6).
 - **Working tree state:** Clean after this commit.
 
 ## Progress log
@@ -790,6 +790,28 @@ Migrations are additive, and rollback means deploying the earlier code with unus
   - Screens read at 360 px; keyboard and 200% zoom not checked by hand.
 - **Gate G1-G not complete:** `run-local-gates.sh` was stopped by the host when memory ran low, during the backend build. Restore, vulnerabilities, and format had passed. The full backend suite, migrations applied twice, OpenAPI drift, frontend gates, and the smoke matrix did not run on this head.
 - **Result:** Ready for owner review, not for merge until G1-A, G1-B, and G1-G.
+- **Next action:** See `Exact next action`.
+
+### 2026-11-04 — Claude Code (Slice 2)
+
+- **Run delivery target:** Slice 2.
+- **Checkpoint:** Slice 2 implemented, with guidance off.
+- **Changes included in the commits:** Storage table behind a flag; curated attention rule; line marks; arrival advisor, routes, and page; "Não achei", later block, and split by place on the list; portions hint; entry on "Hoje"; browser journey; documents.
+- **Defect found and fixed:** `SaveCreatedAsync` left the new lot tracked, so a freeze in the same request failed with an Entity Framework error surfaced as `domain_rule_violated`. HTTP callers never saw it, because each request has its own context. It now clears the tracker after saving.
+- **Deviations from this plan, keeping the outcome:**
+  - "Trocar prato" opens the menu instead of calling `POST /replacements`, because the list does not know the plan's session. Slice 4 extends replacement to accepted menus.
+  - The "Hoje" entry appears when a reminder says something is to buy, not when lines are checked, which would need a list request per menu on the home page.
+  - `GET arrival` takes `all=true`, so the list's portions hint does not vanish once a line is checked.
+  - Surplus portions are whole grams, with the last taking the rest, so the total is exact.
+  - An empty equipment list does not rule out a freezer; only a list without one does.
+- **Validation performed:**
+  - Backend: unit suite 350/350; architecture 14/14; integration filters for arrival, marks, guidance on, transitions, and purchase 10/10; format clean.
+  - Frontend: typecheck clean; lint and format clean; planning, shopping plan, and i18n tests 57/57.
+  - Contracts: recipe AI tests passed; OpenAPI exported and client regenerated.
+  - Browser journey on the proxy replica, flag off, at 390 px: all checks passed.
+  - The journey needed two fixes of its own: this run's menu is counted alone, and the fixture user's pantry is cleared first.
+- **Not run:** the full local gates (G2-F), because the host has too little free memory (about 700 MB at the last check, and the earlier run was stopped for this). The full integration suite did not run. Flag on is covered by one integration test, not by the browser.
+- **Result:** Ready for owner review. G2-A remains open.
 - **Next action:** See `Exact next action`.
 
 ## Completion and handoff checklist

@@ -2,6 +2,7 @@ using Cocinaris.Modules.Identity;
 using Cocinaris.Modules.Ingredients;
 using Cocinaris.Modules.Inventory.Application;
 using Cocinaris.Modules.Planning.Domain;
+using Cocinaris.Modules.Profiles.Application;
 using Cocinaris.Modules.Recipes.Application;
 using Cocinaris.Modules.Recipes.Domain;
 
@@ -72,6 +73,12 @@ public interface IMenuPlanStore
 
     /// <summary>Removes the package size of one item; removing an absent size is a no-op.</summary>
     Task RemovePackageSizeAsync(Guid ownerUserId, string itemKey, CancellationToken cancellationToken);
+
+    /// <summary>Lists what the owner said about a plan's lines, by the line's original key.</summary>
+    Task<IReadOnlyDictionary<string, ShoppingLineMark>> ListLineMarksAsync(Guid ownerUserId, Guid planId, CancellationToken cancellationToken);
+
+    /// <summary>Sets one line's mark, or removes it when it says nothing.</summary>
+    Task SetLineMarkAsync(Guid ownerUserId, Guid planId, ShoppingLineMark mark, DateTimeOffset now, CancellationToken cancellationToken);
 }
 
 /// <summary>Plan list row.</summary>
@@ -165,7 +172,8 @@ public sealed class MenuPlanningApplicationService(
     IRecipeExecutionStore executions,
     IInventoryLotReadStore inventory,
     IIngredientMatching matching,
-    TimeProvider timeProvider)
+    TimeProvider timeProvider,
+    IProfileReadStore profiles)
 {
     private const int MaxPantryLots = 500;
     private const int MaxItemKeyLength = PackageSize.MaxItemKeyLength;
@@ -404,8 +412,14 @@ public sealed class MenuPlanningApplicationService(
                 ? lot with { MeasuredValue = Math.Max(0, value - commitment.ProtectedQuantity - commitment.Reservations.Sum(item => item.Quantity)) }
                 : lot)
             .ToList();
-        var keys = await MatchKeysAsync(user.Id, lots, meals.Select(meal => meal.NormalizedRecipeJson), cancellationToken);
-        var items = ShoppingProjector.Build(meals, usable, await store.ListCheckedAsync(user.Id, plan.Id, cancellationToken), keys, await store.ListPackageSizesAsync(user.Id, cancellationToken));
+        var marks = await store.ListLineMarksAsync(user.Id, plan.Id, cancellationToken);
+        var keys = await matching.KeysAsync(
+            user.Id,
+            lots.Select(lot => lot.ProductName)
+                .Concat(meals.SelectMany(meal => RecipeIngredientReader.Read(meal.NormalizedRecipeJson).Select(ingredient => ingredient.Name)))
+                .Concat(marks.Values.Select(mark => mark.SubstituteName).OfType<string>()),
+            cancellationToken);
+        var items = ShoppingProjector.Build(meals, usable, await store.ListCheckedAsync(user.Id, plan.Id, cancellationToken), keys, await store.ListPackageSizesAsync(user.Id, cancellationToken), marks);
         return RecipeApplicationResult<ShoppingListView>.Succeeded(new ShoppingListView(plan.Id, start, meals.Count, items));
     }
 
@@ -426,6 +440,66 @@ public sealed class MenuPlanningApplicationService(
 
         await store.SetCheckedAsync(user.Id, plan.Id, itemKey, isChecked, timeProvider.GetUtcNow(), cancellationToken);
         return RecipeApplicationResult<bool>.Succeeded(isChecked);
+    }
+
+    /// <summary>
+    /// Records what the person said about a line while shopping (PLAN-0062): leave it for later, buy
+    /// something else, or buy it elsewhere. A substitute passes the restriction guard, because it is a
+    /// food the person may cook. Nothing here changes the recipe, the menu, or the pantry.
+    /// </summary>
+    /// <param name="planId">Plan.</param>
+    /// <param name="itemKey">The line's mark key.</param>
+    /// <param name="state"><c>later</c>, or null.</param>
+    /// <param name="substituteName">Product bought instead; untrusted and bounded.</param>
+    /// <param name="place">Place code, or null for the section's default.</param>
+    /// <param name="cancellationToken">Cancellation.</param>
+    public async Task<RecipeApplicationResult<bool>> SetLineMarkAsync(Guid planId, string? itemKey, string? state, string? substituteName, string? place, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(itemKey) || itemKey.Length > MaxItemKeyLength)
+        {
+            return Failure<bool>("validation_failed", "The item key is required and must be at most 200 characters.", "itemKey");
+        }
+
+        if (state is not (null or "later"))
+        {
+            return Failure<bool>("validation_failed", "The state must be later or empty.", "state");
+        }
+
+        if (place is not null && !ShoppingPlaces.All.Contains(place))
+        {
+            return Failure<bool>("validation_failed", "The place is not known.", "place");
+        }
+
+        var substitute = string.IsNullOrWhiteSpace(substituteName) ? null : substituteName.Trim();
+        if (substitute?.Length > 120)
+        {
+            return Failure<bool>("validation_failed", "The name must be at most 120 characters.", "substituteName");
+        }
+
+        var user = await currentUser.GetCurrentAsync(cancellationToken);
+        var plan = await store.FindAsync(user.Id, planId, cancellationToken);
+        if (plan is null)
+        {
+            return NotFound<bool>();
+        }
+
+        if (substitute is not null)
+        {
+            var profile = await profiles.FindAsync(user.Id, cancellationToken);
+            var restrictions = profile?.Preferences
+                .Where(item => item.Presence == Cocinaris.Modules.Profiles.Domain.ProfileFieldPresence.Confirmed && item.Category != Cocinaris.Modules.Profiles.Domain.PreferenceCategory.Preference)
+                .Select(item => new RestrictionCode(item.StableCode.Value, item.Category.ToString()))
+                .ToList() ?? [];
+            var keys = await matching.KeysAsync(user.Id, [substitute], cancellationToken);
+            var guard = RestrictionGuard.Default.Check([substitute], keys, restrictions);
+            if (guard.Status == RestrictionGuardStatus.Blocked)
+            {
+                return RecipeApplicationResult<bool>.Failure("restriction_blocked", "This food conflicts with a restriction in the profile.", new Dictionary<string, string[]> { ["restriction"] = [guard.Code ?? string.Empty] });
+            }
+        }
+
+        await store.SetLineMarkAsync(user.Id, plan.Id, new ShoppingLineMark(itemKey, state, substitute, place), timeProvider.GetUtcNow(), cancellationToken);
+        return RecipeApplicationResult<bool>.Succeeded(true);
     }
 
     /// <summary>

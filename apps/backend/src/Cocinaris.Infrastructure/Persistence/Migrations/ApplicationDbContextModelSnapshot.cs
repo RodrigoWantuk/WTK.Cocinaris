@@ -1638,6 +1638,45 @@ namespace Cocinaris.Infrastructure.Persistence.Migrations
                     b.ToTable("shopping_checks", "planning");
                 });
 
+            modelBuilder.Entity("Cocinaris.Infrastructure.Persistence.ShoppingLineMarkRecord", b =>
+                {
+                    b.Property<Guid>("MenuPlanId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ItemKey")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<Guid>("OwnerUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Place")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("State")
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
+                    b.Property<string>("SubstituteName")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("MenuPlanId", "ItemKey");
+
+                    b.HasIndex("MenuPlanId", "OwnerUserId");
+
+                    b.ToTable("shopping_line_marks", "planning", t =>
+                        {
+                            t.HasCheckConstraint("ck_shopping_line_marks_place", "\"Place\" IS NULL OR \"Place\" IN ('market', 'street_market', 'butcher', 'bakery')");
+
+                            t.HasCheckConstraint("ck_shopping_line_marks_state", "\"State\" IS NULL OR \"State\" = 'later'");
+                        });
+                });
+
             modelBuilder.Entity("Cocinaris.Infrastructure.Persistence.ShoppingPlanCardRecord", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2457,6 +2496,16 @@ namespace Cocinaris.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("Cocinaris.Infrastructure.Persistence.MenuPlanRecord", null)
+                        .WithMany()
+                        .HasForeignKey("MenuPlanId", "OwnerUserId")
+                        .HasPrincipalKey("Id", "OwnerUserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Cocinaris.Infrastructure.Persistence.ShoppingLineMarkRecord", b =>
+                {
                     b.HasOne("Cocinaris.Infrastructure.Persistence.MenuPlanRecord", null)
                         .WithMany()
                         .HasForeignKey("MenuPlanId", "OwnerUserId")

@@ -164,7 +164,8 @@ internal static class InventoryOpenApiTransformer
 
                 if (method == HttpMethod.Post
                     && (path.TrimEnd('/').Equals("/api/v1/planning/shopping-plans", StringComparison.Ordinal)
-                        || path.Equals("/api/v1/planning/shopping-plans/{sessionId}/batches", StringComparison.Ordinal)))
+                        || path.Equals("/api/v1/planning/shopping-plans/{sessionId}/batches", StringComparison.Ordinal)
+                        || path.Equals("/api/v1/planning/menus/{menuId}/arrival", StringComparison.Ordinal)))
                 {
                     operation.Parameters ??= [];
                     operation.Parameters.Add(Header("Idempotency-Key", "Required UUID key; a retry with the same key returns the plan without creating another or spending another batch."));
