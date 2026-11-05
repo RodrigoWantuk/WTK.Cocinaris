@@ -469,6 +469,163 @@ describe("shopping plan cards (PLAN-0062)", () => {
     expect(screen.getByTestId("plan-card-name")).toHaveTextContent("Prato a");
   });
 
+  describe("Quero outras opções (PLAN-0064)", () => {
+    const sentOptions = (addBatch: ReturnType<typeof vi.fn>) =>
+      (addBatch.mock.calls[0] as unknown[])[1];
+
+    async function openPanel(addBatch: ReturnType<typeof vi.fn>) {
+      const user = userEvent.setup();
+      renderAt(
+        repository({
+          get: vi.fn(async () => plan({ queue: [card("a")] })),
+          addBatch,
+        } as never),
+        "/app/compras/planejar/s1",
+      );
+      await user.click(await screen.findByTestId("plan-more"));
+      return user;
+    }
+
+    it("asks first, and sends nothing until the person confirms", async () => {
+      const addBatch = vi.fn(async () => plan({ queue: [card("b")] }));
+      const user = await openPanel(addBatch);
+
+      expect(screen.getByTestId("plan-more-pantry")).toBeInTheDocument();
+      expect(screen.getByTestId("plan-more-similarity")).toBeInTheDocument();
+      expect(screen.queryByTestId("plan-more-hint")).toBeNull();
+      expect(addBatch).not.toHaveBeenCalled();
+
+      await user.click(screen.getByTestId("plan-more-submit"));
+
+      await waitFor(() =>
+        expect(screen.getByTestId("plan-card-name")).toHaveTextContent(
+          "Prato b",
+        ),
+      );
+      expect(sentOptions(addBatch)).toEqual({
+        pantry: "free",
+        similarity: "different",
+        referenceCardId: card("a").cardId,
+        hint: null,
+      });
+    });
+
+    it("sends the answers and a hint limited to 40 characters", async () => {
+      const addBatch = vi.fn(async () => plan({ queue: [card("b")] }));
+      const user = await openPanel(addBatch);
+
+      await user.click(screen.getByTestId("plan-more-pantry-use"));
+      await user.click(screen.getByTestId("plan-more-similarity-similar"));
+      await user.click(screen.getByTestId("plan-more-hint-open"));
+      await user.type(
+        screen.getByTestId("plan-more-hint"),
+        "  a".padEnd(50, "x"),
+      );
+      expect(screen.getByTestId("plan-more-hint")).toHaveValue(
+        "  a".padEnd(40, "x"),
+      );
+      await user.click(screen.getByTestId("plan-more-submit"));
+
+      await waitFor(() => expect(addBatch).toHaveBeenCalledTimes(1));
+      expect(sentOptions(addBatch)).toEqual({
+        pantry: "use",
+        similarity: "similar",
+        referenceCardId: card("a").cardId,
+        hint: "a".padEnd(38, "x"),
+      });
+    });
+
+    it("does not compare when the person does not care", async () => {
+      const addBatch = vi.fn(async () => plan({ queue: [card("b")] }));
+      const user = await openPanel(addBatch);
+      await user.click(screen.getByTestId("plan-more-similarity-any"));
+      await user.click(screen.getByTestId("plan-more-submit"));
+      await waitFor(() => expect(addBatch).toHaveBeenCalledTimes(1));
+      expect(sentOptions(addBatch)).toMatchObject({
+        similarity: "any",
+        referenceCardId: null,
+      });
+    });
+
+    it("replaces the dish with a wait, so the click visibly did something", async () => {
+      let finish!: (value: unknown) => void;
+      const addBatch = vi.fn(
+        () => new Promise((resolve) => (finish = resolve)),
+      );
+      const user = await openPanel(addBatch);
+      await user.click(screen.getByTestId("plan-more-submit"));
+
+      expect(screen.queryByTestId("plan-card-name")).toBeNull();
+      expect(screen.getByText(/Procurando pratos/)).toBeInTheDocument();
+
+      finish(plan({ queue: [card("b")] }));
+      await waitFor(() =>
+        expect(screen.getByTestId("plan-card-name")).toHaveTextContent(
+          "Prato b",
+        ),
+      );
+    });
+
+    it("does not lose a request made during an automatic batch", async () => {
+      const calls: unknown[] = [];
+      let finishAutomatic!: (value: unknown) => void;
+      const addBatch = vi.fn((_id: string, options: unknown) => {
+        calls.push(options);
+        return calls.length === 1
+          ? new Promise((resolve) => (finishAutomatic = resolve))
+          : Promise.resolve(plan({ queue: [card("c")] }));
+      });
+      const user = userEvent.setup();
+      renderAt(
+        repository({
+          get: vi.fn(async () =>
+            plan({ needsBatch: true, queue: [card("a")] }),
+          ),
+          addBatch,
+        } as never),
+        "/app/compras/planejar/s1",
+      );
+      await user.click(await screen.findByTestId("plan-more"));
+      await user.click(screen.getByTestId("plan-more-submit"));
+      expect(addBatch).toHaveBeenCalledTimes(1);
+
+      finishAutomatic(plan({ needsBatch: false, queue: [card("b")] }));
+
+      await waitFor(() => expect(addBatch).toHaveBeenCalledTimes(2));
+      expect(calls[1]).toMatchObject({ pantry: "free" });
+      await waitFor(() =>
+        expect(screen.getByTestId("plan-card-name")).toHaveTextContent(
+          "Prato c",
+        ),
+      );
+    });
+
+    it("says so when there is nothing new, and brings the dish back", async () => {
+      const addBatch = vi.fn(async () => {
+        throw new RecipeApiError("no_more_options", "x", 422);
+      });
+      const user = await openPanel(addBatch);
+      await user.click(screen.getByTestId("plan-more-submit"));
+
+      expect(await screen.findByTestId("plan-ai-notice")).toHaveTextContent(
+        /outras opções novas/,
+      );
+      expect(screen.getByTestId("plan-card-name")).toHaveTextContent("Prato a");
+    });
+
+    it("keeps the filters, using the same answers", async () => {
+      const addBatch = vi.fn(async () => plan({ queue: [card("b")] }));
+      const user = await openPanel(addBatch);
+      await user.click(screen.getByTestId("plan-more-pantry-use"));
+      await user.click(screen.getByTestId("plan-more-pasta"));
+      await waitFor(() => expect(addBatch).toHaveBeenCalledTimes(1));
+      expect(sentOptions(addBatch)).toMatchObject({
+        dishFamilies: ["pasta"],
+        pantry: "use",
+      });
+    });
+  });
+
   it("shows why a card is flagged", async () => {
     const flagged = card("a", {
       overBudget: true,

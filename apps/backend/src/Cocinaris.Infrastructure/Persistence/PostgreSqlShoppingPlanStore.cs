@@ -81,6 +81,7 @@ public sealed class PostgreSqlShoppingPlanStore(ApplicationDbContext database) :
     public async Task SaveAsync(ShoppingPlanSession session, CancellationToken cancellationToken)
     {
         var routeProgress = session.RouteProgress is null ? null : JsonSerializer.Serialize(session.RouteProgress, SerializerOptions);
+        var deckPreference = session.DeckPreference is null ? null : JsonSerializer.Serialize(session.DeckPreference, SerializerOptions);
         // Batch fields change only through their atomic methods, so a save cannot overwrite a batch taken meanwhile.
         await database.ShoppingPlanSessions.Where(item => item.OwnerUserId == session.OwnerUserId && item.Id == session.Id).ExecuteUpdateAsync(
             update => update
@@ -88,6 +89,7 @@ public sealed class PostgreSqlShoppingPlanStore(ApplicationDbContext database) :
                 .SetProperty(item => item.ConsecutiveRejections, session.ConsecutiveRejections)
                 .SetProperty(item => item.LastDecidedCardId, session.LastDecidedCardId)
                 .SetProperty(item => item.RouteProgressJson, routeProgress)
+                .SetProperty(item => item.DeckPreferenceJson, deckPreference)
                 .SetProperty(item => item.UpdatedAt, session.UpdatedAt),
             cancellationToken);
     }
@@ -179,6 +181,7 @@ public sealed class PostgreSqlShoppingPlanStore(ApplicationDbContext database) :
         LastDecidedCardId = record.LastDecidedCardId,
         PrivateDirection = record.PrivateDirection,
         RouteProgress = record.RouteProgressJson is null ? null : JsonSerializer.Deserialize<ShoppingPlanRouteProgress>(record.RouteProgressJson, SerializerOptions),
+        DeckPreference = record.DeckPreferenceJson is null ? null : JsonSerializer.Deserialize<ShoppingPlanDeckPreference>(record.DeckPreferenceJson, SerializerOptions),
         CreatedAt = record.CreatedAt,
         UpdatedAt = record.UpdatedAt
     };

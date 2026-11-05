@@ -41,9 +41,16 @@ public sealed class RecipePlanDeckService(
     /// <summary>Longest typed anchor ingredient, in characters.</summary>
     public const int MaxAnchorLength = 60;
 
+    /// <summary>Longest hint kept from "Quero outras opções" (PLAN-0064).</summary>
+    public const int MaxHintLength = 40;
+
     /// <summary>Cleans a typed anchor ingredient, so the model and the stored session see the same text.</summary>
     /// <param name="text">Text the person typed.</param>
     public static string? CleanAnchor(string? text) => UntrustedText.Normalize(text, MaxAnchorLength);
+
+    /// <summary>Cleans a hint typed under "Quero outras opções"; null when nothing is left.</summary>
+    /// <param name="text">Typed text; untrusted.</param>
+    public static string? CleanHint(string? text) => UntrustedText.Normalize(text, MaxHintLength);
 
     /// <summary>Library ideas that fit the plan, without an AI call; empty when none fit.</summary>
     /// <param name="ownerUserId">Owner.</param>

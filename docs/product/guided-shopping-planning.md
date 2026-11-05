@@ -21,6 +21,19 @@ The "Planejar" tab, the "Planejar" action on the main button, and the "Planejar"
 4. **List.** The existing list, with "Já tenho" and "Não achei este item" on each line, "Compartilhar lista", and "Separar por lugar".
 5. **Arrival (`/app/cardapio/:menuId/chegada`).** "Cheguei do mercado": where each purchase goes and how to divide it, recorded with one confirmation.
 
+## "Quero outras opções" (PLAN-0064)
+
+The button opens quick questions, and nothing is sent until "Ver outras opções":
+
+- **O que usar?** "Pode ser qualquer coisa" (the default) or "Só o que tenho e já escolhi".
+- **Comparado com {dish}:** "Bem diferente" (the default), "Parecido", or "Tanto faz".
+- **Adicionar uma dica:** optional text of up to 40 characters, opened on request.
+- **Mais filtros:** family, cuisine, and time, using the same answers.
+
+While it searches, a wait takes the dish's place, and the dishes that answer come first. The answers keep applying to this plan and never change the profile or relax a restriction. If nothing new comes, the person is told and the previous dishes return.
+
+"Não" also has an effect without any answer: each refusal in a row reduces the weight of the pantry and the list by a third, and after three the model stops receiving them. Accepting a dish restores them.
+
 ## Rules
 
 - **Answers are the plan's.** They never update the profile. The next plan only reuses them as defaults.

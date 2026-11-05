@@ -192,3 +192,59 @@ public sealed class PlanComponentTests
         Assert.False(RecipeProtocolValidator.ValidatePlanDeck(DeckV2("[]").Replace("suggest_plan_deck.v2", "suggest_plan_deck.v1")).IsValid);
     }
 }
+
+/// <summary>PLAN-0064: how much the pantry counts follows what the person said and refused.</summary>
+public sealed class PlanPantryWeightTests
+{
+    private static RankCard Card(int order, string key, int active = 10) =>
+        new(Guid.NewGuid(), order, "format" + order, "technique" + order, null, active, active, [new RankIngredient(key, key, 100, true, false)]);
+
+    private static readonly RankCard Fresh = Card(0, "abobora|Gram");
+    private static readonly RankCard FromPantry = Card(1, "tomate|Gram");
+
+    private static IReadOnlyList<RankedCard> Rank(string priority, int weight, params RankCard[] cards) =>
+        ShoppingPlanRanker.Rank(cards, new RankContext(priority, [], [], new Dictionary<string, decimal> { ["tomate|Gram"] = 500 }, new HashSet<string> { "tomate|Gram" }, null, weight));
+
+    [Theory]
+    [InlineData(null, 0, 3)]
+    [InlineData(null, 1, 2)]
+    [InlineData(null, 2, 1)]
+    [InlineData(null, 3, 0)]
+    [InlineData(null, 9, 0)]
+    [InlineData("free", 0, 0)]
+    [InlineData("use", 9, 3)]
+    public void AClearAnswerWinsAndEachNoWeakensThePantry(string? pantry, int rejections, int expected) =>
+        Assert.Equal(expected, ShoppingPlanRanker.PantryWeight(pantry, rejections));
+
+    [Theory]
+    [InlineData("waste")]
+    [InlineData("short")]
+    [InlineData("save")]
+    [InlineData("time")]
+    public void WithFullWeightThePantryDishLeads(string priority) =>
+        Assert.Same(FromPantry, Rank(priority, ShoppingPlanRanker.FullPantryWeight, Fresh, FromPantry)[0].Card);
+
+    [Theory]
+    [InlineData("waste")]
+    [InlineData("short")]
+    [InlineData("save")]
+    [InlineData("time")]
+    public void WithoutWeightThePantryGivesNoAdvantage(string priority)
+    {
+        var ranked = Rank(priority, 0, Fresh, FromPantry);
+        Assert.Equal(ranked[0].Score, ranked[1].Score);
+        Assert.Same(Fresh, ranked[0].Card);
+    }
+
+    [Fact]
+    public void WithoutWeightTheTimeGoalStillCounts()
+    {
+        var slow = Card(0, "abobora|Gram", active: 60);
+        var quick = Card(1, "tomate|Gram", active: 5);
+        Assert.Same(quick, Rank("time", 0, slow, quick)[0].Card);
+    }
+
+    [Fact]
+    public void FullWeightKeepsTheOriginalScore() =>
+        Assert.Equal(100 - 0 + 5, Rank("short", ShoppingPlanRanker.FullPantryWeight, FromPantry)[0].Score);
+}

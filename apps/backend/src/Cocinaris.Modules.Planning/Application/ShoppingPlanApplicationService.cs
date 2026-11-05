@@ -68,6 +68,13 @@ public interface IShoppingPlanStore
     Task DeleteAbandonedBeforeAsync(Guid ownerUserId, DateTimeOffset cutoff, CancellationToken cancellationToken);
 }
 
+/// <summary>The answers under "Quero outras opções" (PLAN-0064).</summary>
+/// <param name="Pantry"><c>use</c>, <c>free</c>, or null.</param>
+/// <param name="Similarity"><c>any</c>, <c>similar</c>, <c>different</c>, or null.</param>
+/// <param name="ReferenceCardId">The card on screen, required to compare.</param>
+/// <param name="Hint">Optional typed hint, at most 40 characters; untrusted.</param>
+public sealed record ShoppingPlanDirection(string? Pantry, string? Similarity, Guid? ReferenceCardId, string? Hint);
+
 /// <summary>Creates a shopping plan from the setup screen.</summary>
 /// <param name="IdempotencyKey">Request key.</param>
 /// <param name="CorrelationId">Request correlation identifier.</param>
@@ -375,10 +382,11 @@ public sealed class ShoppingPlanApplicationService(
     /// <param name="dishFamilies">"More options" families; closed codes.</param>
     /// <param name="cuisine">"More options" cuisine; closed code.</param>
     /// <param name="time">"More options" time; closed code.</param>
+    /// <param name="direction">The answers under "Quero outras opções", if any. New dishes then come first.</param>
     /// <param name="correlationId">Request correlation identifier.</param>
     /// <param name="language">Interface language.</param>
     /// <param name="cancellationToken">Cancellation.</param>
-    public async Task<RecipeApplicationResult<ShoppingPlanView>> AddBatchAsync(Guid sessionId, Guid? key, IReadOnlyList<string>? dishFamilies, string? cuisine, string? time, string correlationId, string? language, CancellationToken cancellationToken)
+    public async Task<RecipeApplicationResult<ShoppingPlanView>> AddBatchAsync(Guid sessionId, Guid? key, IReadOnlyList<string>? dishFamilies, string? cuisine, string? time, ShoppingPlanDirection? direction, string correlationId, string? language, CancellationToken cancellationToken)
     {
         if (key is not Guid batchKey)
         {
@@ -406,12 +414,26 @@ public sealed class ShoppingPlanApplicationService(
         }
 
         var existing = await store.ListCardsAsync(user.Id, session.Id, cancellationToken);
+        var (preference, invalidDirection) = ReadDirection(direction, existing);
+        if (invalidDirection is not null)
+        {
+            return invalidDirection;
+        }
+
+        // Someone who asked for options must be told when there are none, never handed the same screen.
+        var asked = guidance is not null || preference is not null;
         if (existing.Count >= ShoppingPlanSession.MaxCards || !await store.TryTakeBatchAsync(user.Id, session.Id, batchKey, cancellationToken))
         {
-            return await ResultAsync(user.Id, session, cancellationToken);
+            return asked && session.LastBatchKey != batchKey ? NoMoreOptions() : await ResultAsync(user.Id, session, cancellationToken);
         }
 
         session.BatchCount++;
+        if (asked)
+        {
+            // Answers without direction, such as a chip, keep the earlier answers and still come first.
+            session.DeckPreference = preference ?? (session.DeckPreference ?? new ShoppingPlanDeckPreference(null, null, null, null, existing.Count)) with { FromOrder = existing.Count };
+        }
+
         var context = await LoadRankContextAsync(user.Id, session, existing, cancellationToken);
         var generated = await deck.GenerateBatchAsync(user.Id, BuildRequest(session, existing, context, guidance, language), correlationId, cancellationToken);
         if (generated.Problem is { } problem)
@@ -423,7 +445,55 @@ public sealed class ShoppingPlanApplicationService(
 
         Batches.Add(1, new KeyValuePair<string, object?>("source", "ai"), new KeyValuePair<string, object?>("outcome", "succeeded"));
         await AddCandidatesAsync(user.Id, session, existing, generated.Value!.Candidates, ShoppingPlanCardSource.Ai, await profiles.FindAsync(user.Id, cancellationToken), cancellationToken, generated.Value.Components);
+        if (asked)
+        {
+            session.UpdatedAt = timeProvider.GetUtcNow();
+            await store.SaveAsync(session, cancellationToken);
+            // Every new dish can repeat an old one or be blocked by a restriction.
+            if ((await store.ListCardsAsync(user.Id, session.Id, cancellationToken)).Count == existing.Count)
+            {
+                return NoMoreOptions();
+            }
+        }
+
         return await ResultAsync(user.Id, session, cancellationToken);
+    }
+
+    private static RecipeApplicationResult<ShoppingPlanView> NoMoreOptions() =>
+        Failure<ShoppingPlanView>("no_more_options", "No new dishes are available for this plan.");
+
+    // Reads "Quero outras opções". The hint is untrusted, is cleaned here, and is never logged.
+    private static (ShoppingPlanDeckPreference? Preference, RecipeApplicationResult<ShoppingPlanView>? Failure) ReadDirection(ShoppingPlanDirection? direction, IReadOnlyList<ShoppingPlanCard> cards)
+    {
+        if (direction is null || (direction.Pantry is null && direction.Similarity is null && string.IsNullOrWhiteSpace(direction.Hint)))
+        {
+            return (null, null);
+        }
+
+        if (direction.Pantry is not (null or "use" or "free"))
+        {
+            return (null, Failure<ShoppingPlanView>("validation_failed", "The pantry choice is not valid."));
+        }
+
+        if (direction.Similarity is not (null or "any" or "similar" or "different"))
+        {
+            return (null, Failure<ShoppingPlanView>("validation_failed", "The similarity choice is not valid."));
+        }
+
+        if (direction.Hint?.Trim().Length > ShoppingPlanDeckPreference.MaxHintLength)
+        {
+            return (null, Failure<ShoppingPlanView>("validation_failed", "The hint is too long."));
+        }
+
+        var compares = direction.Similarity is "similar" or "different";
+        // Only a card of this plan can be compared with, so another owner's dish name can never enter a prompt.
+        var reference = compares ? cards.FirstOrDefault(card => card.Id == direction.ReferenceCardId) : null;
+        if (compares && reference is null)
+        {
+            return (null, Failure<ShoppingPlanView>("validation_failed", "The dish to compare with is not part of this plan."));
+        }
+
+        return (new ShoppingPlanDeckPreference(direction.Pantry, compares ? direction.Similarity : null, reference?.Snapshot.Name, RecipePlanDeckService.CleanHint(direction.Hint), cards.Count), null);
     }
 
     /// <summary>Accepts or rejects a card. Repeating a decision is a no-op.</summary>
@@ -618,7 +688,8 @@ public sealed class ShoppingPlanApplicationService(
         if (card.RecipeId is null)
         {
             var candidate = JsonSerializer.Deserialize<SuggestCandidate>(card.CandidateJson, SerializerOptions)!;
-            var hint = session!.Setup.AnchorIngredient;
+            var anchor = session!.Setup.AnchorIngredient;
+            var hint = card.Snapshot.PrivateHint ?? anchor;
             var key = AttemptKey(card);
             var expanded = await deck.ExpandCardAsync(user.Id, candidate, key, hint, correlationId, language, cancellationToken);
             if (expanded.Problem?.ErrorCode == "precondition_failed")
@@ -1094,7 +1165,7 @@ public sealed class ShoppingPlanApplicationService(
                 FirstSeenOrder = existing.Count + cards.Count,
                 Snapshot = new ShoppingPlanCardSnapshot(
                     candidate.Name, candidate.Summary, candidate.TargetMealType, candidate.DishFormat, candidate.PrimaryTechnique, candidate.PrimaryIngredientRefs, candidate.Servings,
-                    candidate.Time.ActiveMinutes, candidate.Time.TotalMinutes, candidate.Difficulty, CardIngredients(candidate), Unverified(guard)?.Code, Unverified(guard)?.Ingredient)
+                    candidate.Time.ActiveMinutes, candidate.Time.TotalMinutes, candidate.Difficulty, CardIngredients(candidate), Unverified(guard)?.Code, Unverified(guard)?.Ingredient, PrivateHint: session.DeckPreference?.Hint)
             });
         }
 
@@ -1127,6 +1198,7 @@ public sealed class ShoppingPlanApplicationService(
                 Snapshot = new ShoppingPlanCardSnapshot(
                     candidate.Name, candidate.Summary, candidate.TargetMealType, candidate.DishFormat, candidate.PrimaryTechnique, candidate.PrimaryIngredientRefs, candidate.Servings,
                     candidate.Time.ActiveMinutes, candidate.Time.TotalMinutes, candidate.Difficulty, CardIngredients(candidate), Unverified(guard)?.Code, Unverified(guard)?.Ingredient,
+                    PrivateHint: session.DeckPreference?.Hint,
                     Component: new ShoppingPlanCardComponent(component.Output.Name, component.Output.Quantity, RecipeIngredientReader.ToLotUnit(component.Output.Unit), users.Select(user => user.Id).ToList(), users.Select(user => user.Name).ToList()))
             });
         }
@@ -1339,7 +1411,8 @@ public sealed class ShoppingPlanApplicationService(
         var rejected = cards.Where(card => card.State == ShoppingPlanCardState.Rejected)
             .Select(card => new RankRejected(ranked[card.Id], card.RejectReason, card.RejectIngredientKey))
             .ToList();
-        return new LoadedRank(new RankContext(session.Setup.Priority, accepted, rejected, free, attention, session.Setup.PrepMinutes), ranked, attention);
+        var pantryWeight = ShoppingPlanRanker.PantryWeight(session.DeckPreference?.Pantry, session.ConsecutiveRejections);
+        return new LoadedRank(new RankContext(session.Setup.Priority, accepted, rejected, free, attention, session.Setup.PrepMinutes, pantryWeight), ranked, attention);
     }
 
     // Advisory only: this orders cards and explains why. It is evaluated on the person's own day.
@@ -1386,7 +1459,11 @@ public sealed class ShoppingPlanApplicationService(
         var bases = cards.Where(card => card.State == ShoppingPlanCardState.Unseen && card.Snapshot.Component is { } component && component.UsedByCardIds.Any(acceptedIds.Contains)).ToHashSet();
         var byId = cards.ToDictionary(card => card.Id);
         // The base a chosen dish calls for comes next, whatever its score.
-        var ranked = ShoppingPlanRanker.Rank(eligible.Concat(bases).Select(card => loaded.ByCard[card.Id]), loaded.Context).OrderByDescending(item => bases.Contains(byId[item.Card.Id]));
+        // Then the dishes that answer the person's latest request, or asking would change nothing on screen.
+        var answerFrom = session.DeckPreference?.FromOrder ?? int.MaxValue;
+        var ranked = ShoppingPlanRanker.Rank(eligible.Concat(bases).Select(card => loaded.ByCard[card.Id]), loaded.Context)
+            .OrderByDescending(item => bases.Contains(byId[item.Card.Id]))
+            .ThenByDescending(item => item.Card.Order >= answerFrom);
         var queue = ranked.Take(QueueSize).Select(item => ToCardView(byId[item.Card.Id], item, loaded.AttentionKeys)).ToList();
         var projection = new ShoppingPlanProjection(loaded.Context.Accepted, loaded.Context.FreeStock);
         var open = IsOpen(session);
@@ -1449,6 +1526,7 @@ public sealed class ShoppingPlanApplicationService(
             .OfType<string>()
             .Distinct(StringComparer.Ordinal)
             .ToList();
+        var preference = session.DeckPreference;
         var minutesLeft = setup.PrepMinutes is { } minutes ? Math.Max(0, minutes - ShoppingPlanRanker.SessionMinutesUsed(loaded.Context.Accepted)) : (int?)null;
         var brief = new PlanDeckBrief(
             setup.Days,
@@ -1461,7 +1539,12 @@ public sealed class ShoppingPlanApplicationService(
             projection.ListNames.Distinct(StringComparer.Ordinal).ToList(),
             cards.Where(card => card.State == ShoppingPlanCardState.Rejected).Select(card => card.Snapshot.Name).ToList(),
             avoid,
-            setup.AnchorIngredient);
+            setup.AnchorIngredient,
+            // Without an answer, the model stops favoring the pantry when the ranking does.
+            preference?.Pantry ?? (loaded.Context.PantryWeight == 0 ? "free" : null),
+            preference?.Similarity,
+            preference?.ReferenceDish,
+            preference?.Hint);
         return new PlanDeckRequest(setup.People, brief, guidance, language);
     }
 

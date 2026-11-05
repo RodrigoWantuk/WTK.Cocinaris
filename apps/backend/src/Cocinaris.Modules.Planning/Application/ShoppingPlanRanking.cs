@@ -41,7 +41,8 @@ public sealed record RankRejected(RankCard Card, string? Reason, string? Ingredi
 /// <param name="FreeStock">Pantry stock no other plan counts on, by key.</param>
 /// <param name="AttentionKeys">Keys of lots needing attention soon.</param>
 /// <param name="SessionMinutes">Time for the session, if the plan has one.</param>
-public sealed record RankContext(string Priority, IReadOnlyList<RankAccepted> Accepted, IReadOnlyList<RankRejected> Rejected, IReadOnlyDictionary<string, decimal> FreeStock, IReadOnlySet<string> AttentionKeys, int? SessionMinutes);
+/// <param name="PantryWeight">How much the pantry and the list count, from 0 to <see cref="ShoppingPlanRanker.FullPantryWeight"/>.</param>
+public sealed record RankContext(string Priority, IReadOnlyList<RankAccepted> Accepted, IReadOnlyList<RankRejected> Rejected, IReadOnlyDictionary<string, decimal> FreeStock, IReadOnlySet<string> AttentionKeys, int? SessionMinutes, int PantryWeight = ShoppingPlanRanker.FullPantryWeight);
 
 /// <summary>How one card compares with the plan so far.</summary>
 /// <param name="Card">Card.</param>
@@ -116,6 +117,23 @@ public sealed class ShoppingPlanProjection
 /// </summary>
 public static class ShoppingPlanRanker
 {
+    /// <summary>Pantry and list reuse count in full.</summary>
+    public const int FullPantryWeight = 3;
+
+    /// <summary>
+    /// How much the pantry and the list count, from 0 to <see cref="FullPantryWeight"/>. A clear answer
+    /// wins. Otherwise each "Não" in a row weakens them, so refusing dishes built on the pantry changes
+    /// what comes next without the person having to explain.
+    /// </summary>
+    /// <param name="pantry">The person's answer: <c>use</c>, <c>free</c>, or null.</param>
+    /// <param name="consecutiveRejections">Refusals since the last accepted dish.</param>
+    public static int PantryWeight(string? pantry, int consecutiveRejections) => pantry switch
+    {
+        "free" => 0,
+        "use" => FullPantryWeight,
+        _ => Math.Max(0, FullPantryWeight - consecutiveRejections)
+    };
+
     /// <summary>Scores cards, highest first, ties by the order they joined the deck.</summary>
     /// <param name="unseen">Cards to rank.</param>
     /// <param name="context">Plan state.</param>
@@ -152,14 +170,16 @@ public static class ShoppingPlanRanker
         var attention = card.Ingredients.Count(ingredient => context.AttentionKeys.Contains(ingredient.Key));
         var newPerishable = newItems.Count(item => item.Perishable);
         var rescued = card.Ingredients.Count(item => item.Perishable && projection.Uses(item.Key) == 1);
-        var goal = context.Priority switch
+        // Everything here depends on the pantry and the list, except how long a dish takes.
+        var pantryGoal = context.Priority switch
         {
             "waste" => 40 * rescued - 30 * newPerishable - 5 * (newItems.Count - newPerishable) + 5 * reused.Count,
             "short" => -30 * newItems.Count + 5 * reused.Count,
             "save" => 10 * reused.Count - 10 * newItems.Count - 25 * newItems.Count(item => item.Costly),
-            "time" => -card.ActiveMinutes - (card.TotalMinutes - card.ActiveMinutes) / 4 - 2 * newItems.Count,
+            "time" => -2 * newItems.Count,
             _ => 0
         };
+        var minutesGoal = context.Priority == "time" ? -card.ActiveMinutes - (card.TotalMinutes - card.ActiveMinutes) / 4 : 0;
 
         var diversity = 0;
         if (context.Accepted.Any(item => item.Card.DishFormat == card.DishFormat))
@@ -191,7 +211,8 @@ public static class ShoppingPlanRanker
         }
 
         var overBudget = context.SessionMinutes is { } minutes && card.ActiveMinutes > minutes - SessionMinutesUsed(context.Accepted);
-        var score = 100 * attention + goal + diversity + feedback + (overBudget ? -200 : 0);
+        var pantry = (100 * attention + pantryGoal) * context.PantryWeight / FullPantryWeight;
+        var score = pantry + minutesGoal + diversity + feedback + (overBudget ? -200 : 0);
         return new RankedCard(card, score, newItems, reused, attention, overBudget);
     }
 }
