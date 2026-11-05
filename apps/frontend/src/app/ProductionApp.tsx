@@ -24,7 +24,7 @@ import { PantryListPage } from "@/features/inventory/PantryListPage";
 import { RecipeProvider } from "@/features/recipes/RecipeProvider";
 import { PlanningProvider } from "@/features/planning/PlanningProvider";
 import { MenusPage } from "@/features/planning/MenusPage";
-import { ShoppingHubPage } from "@/features/planning/ShoppingHubPage";
+import { PlanningHubPage } from "@/features/planning/PlanningHubPage";
 import { AccountMenu, LanguageChoice } from "@/app/shell/AccountMenu";
 import { AppNavigation } from "@/app/shell/AppNavigation";
 import {
@@ -170,7 +170,7 @@ export function pageTitleKeyFor(pathname: string): string {
   if (pathname === "/app/cozinhar") return "page.title.cook";
   if (pathname.startsWith("/app/compras/planejar"))
     return "page.title.shoppingPlan";
-  if (pathname === "/app/compras") return "page.title.shopping";
+  if (pathname === "/app/compras") return "page.title.planningHub";
   if (pathname === "/app/cardapio") return "page.title.planning";
   if (/^\/app\/cardapio\/[^/]+\/compras$/.test(pathname))
     return "page.title.shopping";
@@ -458,7 +458,7 @@ function createProductionRouter() {
           path: "receitas/:recipeId/revisar",
           element: <RecipeAiRevisionPage />,
         },
-        { path: "compras", element: <ShoppingHubPage /> },
+        { path: "compras", element: <PlanningHubPage /> },
         { path: "compras/planejar", element: <ShoppingPlanSetupPage /> },
         {
           path: "compras/planejar/:sessionId",

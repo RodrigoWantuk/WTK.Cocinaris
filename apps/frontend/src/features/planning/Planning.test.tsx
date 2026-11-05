@@ -545,7 +545,7 @@ describe("menu planning (PLAN-0029)", () => {
     ).toHaveAttribute("href", "/app/despensa/lot-9");
     expect(items[1]).toHaveTextContent("Buy Cebola (1 pcs)");
     expect(
-      within(items[1]!).getByRole("link", { name: /Shopping list/ }),
+      within(items[1]!).getByRole("link", { name: /What to buy/ }),
     ).toHaveAttribute("href", "/app/cardapio/menu-1/compras");
     expect(getPreparation).toHaveBeenCalledWith(
       localIsoDate(),

@@ -64,7 +64,7 @@ describe("home layout (PLAN-0058)", () => {
     expect(links.map((link) => link.getAttribute("href"))).toEqual([
       "/app/despensa/novo",
       "/app/receitas/gerar",
-      "/app/cardapio",
+      "/app/compras",
     ]);
     expect(screen.queryByTestId("today-recipes")).toBeNull();
     // The start tiles stay available; suggesting recipes is the main one.

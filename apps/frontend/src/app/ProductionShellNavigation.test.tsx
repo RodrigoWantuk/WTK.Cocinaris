@@ -1,3 +1,4 @@
+import { activeTabFor } from "@/app/shell/AppNavigation";
 import type { MockInstance } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -134,9 +135,25 @@ describe("Production shell and navigation (PLAN-0035)", () => {
     ["/app/receitas", "page.title.recipes"],
     ["/app/receitas/gerar", "page.title.recipeGenerate"],
     ["/app/receitas/abc", "page.title.recipeDetail"],
-    ["/app/compras", "page.title.shopping"],
+    ["/app/compras", "page.title.planningHub"],
     ["/app/nao-existe", "page.title.unavailable"],
   ])("maps %s to %s", (pathname, key) => {
     expect(pageTitleKeyFor(pathname)).toBe(key);
+  });
+});
+
+describe("activeTabFor (PLAN-0063)", () => {
+  it.each([
+    ["/app/compras", "plan"],
+    ["/app/compras/planejar/s1/preparo", "plan"],
+    ["/app/cardapio", "plan"],
+    ["/app/cardapio/m1", "plan"],
+    ["/app/cardapio/m1/compras", "plan"],
+    ["/app/cardapio/m1/chegada", "plan"],
+    ["/app/hoje", "home"],
+    ["/app/despensa/novo", "add"],
+    ["/app/receitas/r1", "recipes"],
+  ])("%s belongs to %s", (path, tab) => {
+    expect(activeTabFor(path)).toBe(tab);
   });
 });
