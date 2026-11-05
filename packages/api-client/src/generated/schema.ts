@@ -709,6 +709,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/planning/shopping-plans/{sessionId}/cards/{cardId}/day": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** PUT /api/v1/planning/shopping-plans/{sessionId}/cards/{cardId}/day */
+        put: operations["putApiV1PlanningShopping-plansSessionIdCardsCardIdDay"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/planning/shopping-plans/{sessionId}/cards/{cardId}/decision": {
         parameters: {
             query?: never;
@@ -771,6 +788,57 @@ export interface paths {
         put?: never;
         /** POST /api/v1/planning/shopping-plans/{sessionId}/cards/{cardId}/removal */
         post: operations["postApiV1PlanningShopping-plansSessionIdCardsCardIdRemoval"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/planning/shopping-plans/{sessionId}/cards/{cardId}/yield": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** PUT /api/v1/planning/shopping-plans/{sessionId}/cards/{cardId}/yield */
+        put: operations["putApiV1PlanningShopping-plansSessionIdCardsCardIdYield"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/planning/shopping-plans/{sessionId}/meal-counts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** PUT /api/v1/planning/shopping-plans/{sessionId}/meal-counts */
+        put: operations["putApiV1PlanningShopping-plansSessionIdMeal-counts"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/planning/shopping-plans/{sessionId}/preferences": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** PUT /api/v1/planning/shopping-plans/{sessionId}/preferences */
+        put: operations["putApiV1PlanningShopping-plansSessionIdPreferences"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1857,6 +1925,7 @@ export interface components {
              * @description Menu of an accepted plan to repeat. That plan's answers then replace all of these except Today, and the new plan starts today.
              */
             fromMenuId?: null | string;
+            mealCounts?: null | components["schemas"]["ShoppingPlanMealCountsRequest"];
             /** @description Meals to plan. */
             mealTypes: null | string[];
             /**
@@ -1881,6 +1950,11 @@ export interface components {
             prepMinutes: null | number | string;
             /** @description `waste`, `short`, `save`, or `time`. */
             priority: null | string;
+            /**
+             * Format: date
+             * @description First day of the period, when counts are given; today when null.
+             */
+            startDate?: null | string;
             /**
              * Format: date
              * @description The owner's local day.
@@ -3389,6 +3463,13 @@ export interface components {
             dishFamilies: null | string[];
             /** @description Optional typed hint, at most 40 characters; untrusted. */
             hint?: null | string;
+            /**
+             * Format: uuid
+             * @description A card to offer dishes close to.
+             */
+            likeCardId?: null | string;
+            /** @description One meal type to suggest for. When given, the next three fields apply and the four before them are ignored. */
+            mealType?: null | string;
             /** @description `use` to stick to the pantry and chosen dishes, or `free` to ignore them. */
             pantry?: null | string;
             /**
@@ -3396,10 +3477,25 @@ export interface components {
              * @description The card on screen; required to compare.
              */
             referenceCardId?: null | string;
+            /**
+             * @description Whether earlier unseen dishes of this meal give way.
+             * @default false
+             */
+            replaceOffers: boolean;
+            /** @description A specific dish in the person's words, at most 120 characters; untrusted. */
+            request?: null | string;
             /** @description `any`, `similar`, or `different`, compared with the card on screen. */
             similarity?: null | string;
             /** @description `quick` or `medium`. */
             time: null | string;
+        };
+        /** @description Body for the day of a chosen dish. */
+        ShoppingPlanCardDayRequest: {
+            /**
+             * Format: date
+             * @description A day inside the period, or null for no day.
+             */
+            plannedDate: null | string;
         };
         /** @description One ingredient on a card. */
         ShoppingPlanCardIngredientView: {
@@ -3451,6 +3547,8 @@ export interface components {
             reasonCode: null | string;
             /** @description Food behind `uses_attention_item`. */
             reasonIngredient: null | string;
+            /** @description What the person typed, when this card answers a specific request. */
+            requestText?: null | string;
             /** @description At most three ingredients already on the list or at home. */
             reusedNames: string[];
             /**
@@ -3467,6 +3565,14 @@ export interface components {
              * @description Total minutes.
              */
             totalMinutes: number | string;
+        };
+        /** @description Body for how many meals one cooking covers. */
+        ShoppingPlanCardYieldRequest: {
+            /**
+             * Format: int32
+             * @description Meals, 1 to 4.
+             */
+            meals: number | string;
         };
         /** @description What a base card makes and which accepted or offered dishes use it. */
         ShoppingPlanComponentView: {
@@ -3501,13 +3607,78 @@ export interface components {
         ShoppingPlanDecisionRequest: {
             /** @description `accept` or `reject`. */
             decision: null | string;
+            /** @description The meal this dish fills; the card's own when null. */
+            mealType?: null | string;
             /** @description `yield` (one cooking covers the meals) or `again` (cook again another day); required when repeats exceed one. */
             mode: null | string;
+            /**
+             * Format: date
+             * @description An optional day inside the period.
+             */
+            plannedDate?: null | string;
             /**
              * Format: int32
              * @description Meals to fill, 1 to 4.
              */
             repeats: null | number | string;
+        };
+        /** @description Body for how many of each meal a plan wants. */
+        ShoppingPlanMealCountsRequest: {
+            /**
+             * Format: int32
+             * @description Breakfasts.
+             */
+            breakfast: number | string;
+            /**
+             * Format: int32
+             * @description Dinners.
+             */
+            dinner: number | string;
+            /**
+             * Format: int32
+             * @description Lunches.
+             */
+            lunch: number | string;
+            /**
+             * Format: int32
+             * @description Snacks.
+             */
+            snack: number | string;
+        };
+        /** @description One meal type of a plan, with its options (PLAN-0065). */
+        ShoppingPlanMealGroupView: {
+            /**
+             * Format: int32
+             * @description How many are chosen.
+             */
+            filled: number | string;
+            /** @description Meal type. */
+            mealType: string;
+            /** @description The next options, best first, at most six; empty once nothing is missing. */
+            options: components["schemas"]["ShoppingPlanCardView"][];
+            /**
+             * Format: int32
+             * @description How many the person wants.
+             */
+            wanted: number | string;
+        };
+        /** @description Body for the switches above the options. */
+        ShoppingPlanPreferencesRequest: {
+            /** @description `quick`, `short`, `save`, or null. */
+            goal: null | string;
+            /** @description Whether to build on the pantry and the dishes already chosen. */
+            usePantry: boolean;
+            /** @description Whether the profile's tastes count. Restrictions and dislikes always do. */
+            usePreferences: boolean;
+        };
+        /** @description The switches above the options (PLAN-0065). */
+        ShoppingPlanPreferencesView: {
+            /** @description `quick`, `short`, `save`, or null. */
+            goal: null | string;
+            /** @description Whether to build on the pantry and the dishes already chosen. */
+            usePantry: boolean;
+            /** @description Whether the profile's tastes count. Restrictions and dislikes always do. */
+            usePreferences: boolean;
         };
         /** @description How far the plan has come. */
         ShoppingPlanProgressView: {
@@ -3756,6 +3927,10 @@ export interface components {
              * @description Last day of the menu, inclusive.
              */
             endDate?: string;
+            /** @description How many of each meal, independent of the days (PLAN-0065). Null on plans from before it, whose count is days times meal types. */
+            mealCounts?: null | {
+                [key: string]: number | string;
+            };
             /** @description Meals to plan: `breakfast`, `lunch`, `dinner`, `snack`. */
             mealTypes: string[];
             /**
@@ -3768,6 +3943,11 @@ export interface components {
              * @description People to feed in this plan, 1 to 12.
              */
             people: number | string;
+            /**
+             * Format: date
+             * @description First day to eat within (PLAN-0065). Null on earlier plans.
+             */
+            periodStart?: null | string;
             /**
              * Format: date
              * @description Day of the preparation session; null for `daily`.
@@ -3801,6 +3981,7 @@ export interface components {
             current: null | components["schemas"]["ShoppingPlanCurrentView"];
             /** @description Whether the profile lists a freezer. */
             hasFreezer: boolean;
+            lastPreferences?: null | components["schemas"]["ShoppingPlanPreferencesView"];
             lastSetup: null | components["schemas"]["ShoppingPlanSetup"];
             /**
              * Format: int32
@@ -3822,6 +4003,8 @@ export interface components {
             canUndo: boolean;
             /** @description Whether no card is left and no batch can be asked for. */
             exhausted: boolean;
+            /** @description Each meal type with what is wanted, chosen, and offered. */
+            groups?: null | components["schemas"]["ShoppingPlanMealGroupView"][];
             /**
              * Format: uuid
              * @description Its menu.
@@ -3831,6 +4014,7 @@ export interface components {
             needsBatch: boolean;
             /** @description Whether to highlight "more options", after three straight rejections. */
             offerMoreOptions: boolean;
+            preferences?: null | components["schemas"]["ShoppingPlanPreferencesView"];
             /** @description Progress. */
             progress: components["schemas"]["ShoppingPlanProgressView"];
             /** @description The next cards, best first, at most five. */
@@ -7308,6 +7492,90 @@ export interface operations {
             };
         };
     };
+    "putApiV1PlanningShopping-plansSessionIdCardsCardIdDay": {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Required CSRF token issued by GET /api/v1/session. */
+                "X-CSRF-TOKEN": string;
+            };
+            path: {
+                sessionId: string;
+                cardId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ShoppingPlanCardDayRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShoppingPlanView"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description The request content type is not supported. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
     "postApiV1PlanningShopping-plansSessionIdCardsCardIdDecision": {
         parameters: {
             query?: never;
@@ -7609,6 +7877,256 @@ export interface operations {
             };
             /** @description Not Found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    "putApiV1PlanningShopping-plansSessionIdCardsCardIdYield": {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Required CSRF token issued by GET /api/v1/session. */
+                "X-CSRF-TOKEN": string;
+            };
+            path: {
+                sessionId: string;
+                cardId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ShoppingPlanCardYieldRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShoppingPlanView"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description The request content type is not supported. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    "putApiV1PlanningShopping-plansSessionIdMeal-counts": {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Required CSRF token issued by GET /api/v1/session. */
+                "X-CSRF-TOKEN": string;
+            };
+            path: {
+                sessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ShoppingPlanMealCountsRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShoppingPlanView"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description The request content type is not supported. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    "putApiV1PlanningShopping-plansSessionIdPreferences": {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Required CSRF token issued by GET /api/v1/session. */
+                "X-CSRF-TOKEN": string;
+            };
+            path: {
+                sessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ShoppingPlanPreferencesRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShoppingPlanView"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description The request content type is not supported. */
+            415: {
                 headers: {
                     [name: string]: unknown;
                 };

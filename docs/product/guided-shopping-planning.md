@@ -21,6 +21,12 @@ The "Planejar" tab, the "Planejar" action on the main button, and the "Planejar"
 4. **List.** One line per item: check, name, amount, and the dishes it is for. "Comprei", "Já tenho", and "Não achei" sit behind the "⋯" on the line. "Compartilhar lista" and "Separar por lugar" are at the top. Opened from a review, "Voltar" returns to it.
 5. **Arrival (`/app/cardapio/:menuId/chegada`).** "Cheguei do mercado": where each purchase goes and how to divide it, recorded with one confirmation.
 
+## Plans by meal counts (PLAN-0065, engine only)
+
+The server now accepts a plan as how many of each meal, for example seven snacks within fourteen days and no fixed day. Nothing about cooking is asked first. Each meal type has its options, and the person can ask for a specific dish, for something like a dish already offered, or switch tastes, pantry, and a goal on or off for this plan. A dish can get a day and cover several meals after being chosen. The screens that use this arrive in PLAN-0065 Slice 2; until then the flow below is what people see.
+
+A plan whose dishes have no day raises no buy reminder, because reminders come from dated meals. The list and the hub still show what to buy.
+
 ## "Quero outras opções" (PLAN-0064)
 
 The button opens quick questions, and nothing is sent until "Ver outras opções":

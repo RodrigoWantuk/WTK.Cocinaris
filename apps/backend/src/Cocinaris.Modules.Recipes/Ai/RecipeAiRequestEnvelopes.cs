@@ -148,6 +148,31 @@ public static class RecipeAiRequestEnvelopes
             envelope["candidatePolicy"]!["inventoryUsageMode"] = "ignore_inventory";
         }
 
+        if (!brief.UsePreferences)
+        {
+            // Tastes only: restrictions, which also carry dislikes, travel apart and always stay.
+            envelope["userPresets"]!["preferences"] = new JsonArray();
+        }
+
+        if (brief.NoFixedDays)
+        {
+            plan["timing"] = new JsonObject
+            {
+                ["windowDays"] = brief.Days,
+                ["fixedDays"] = false,
+                ["rule"] = "These dishes will be eaten at some point in this period, on no fixed day. When the period is over a week, prefer ingredients that keep and dishes that store or freeze well. Never state how long food lasts."
+            };
+        }
+
+        if (!string.IsNullOrWhiteSpace(brief.RequestedDish))
+        {
+            plan["requestedDish"] = new JsonObject
+            {
+                ["text"] = brief.RequestedDish,
+                ["treatment"] = "The person asked for this. The first candidate must be this dish, made the way a home cook would recognize it, even if it needs ingredients not at home; list them. The others are close alternatives. If it is ambiguous, make the most common version. This " + UntrustedPersonTextRule
+            };
+        }
+
         if (brief.Similarity is "similar" or "different" && !string.IsNullOrWhiteSpace(brief.ReferenceDish))
         {
             plan["direction"] = new JsonObject

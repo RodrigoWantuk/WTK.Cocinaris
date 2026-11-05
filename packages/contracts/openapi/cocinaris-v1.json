@@ -882,6 +882,17 @@
               "string"
             ]
           },
+          "mealCounts": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ShoppingPlanMealCountsRequest",
+                "description": "How many of each meal. When given, style, goal, and preparation are optional."
+              }
+            ]
+          },
           "mealTypes": {
             "description": "Meals to plan.",
             "items": {
@@ -931,6 +942,14 @@
           },
           "priority": {
             "description": "`waste`, `short`, `save`, or `time`.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "startDate": {
+            "description": "First day of the period, when counts are given; today when null.",
+            "format": "date",
             "type": [
               "null",
               "string"
@@ -5835,6 +5854,21 @@
               "string"
             ]
           },
+          "likeCardId": {
+            "description": "A card to offer dishes close to.",
+            "format": "uuid",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "mealType": {
+            "description": "One meal type to suggest for. When given, the next three fields apply and the four before them are ignored.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
           "pantry": {
             "description": "`use` to stick to the pantry and chosen dishes, or `free` to ignore them.",
             "type": [
@@ -5845,6 +5879,18 @@
           "referenceCardId": {
             "description": "The card on screen; required to compare.",
             "format": "uuid",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "replaceOffers": {
+            "default": false,
+            "description": "Whether earlier unseen dishes of this meal give way.",
+            "type": "boolean"
+          },
+          "request": {
+            "description": "A specific dish in the person's words, at most 120 characters; untrusted.",
             "type": [
               "null",
               "string"
@@ -5869,6 +5915,23 @@
           "dishFamilies",
           "cuisine",
           "time"
+        ],
+        "type": "object"
+      },
+      "ShoppingPlanCardDayRequest": {
+        "description": "Body for the day of a chosen dish.",
+        "properties": {
+          "plannedDate": {
+            "description": "A day inside the period, or null for no day.",
+            "format": "date",
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "required": [
+          "plannedDate"
         ],
         "type": "object"
       },
@@ -5996,6 +6059,13 @@
               "string"
             ]
           },
+          "requestText": {
+            "description": "What the person typed, when this card answers a specific request.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
           "reusedNames": {
             "description": "At most three ingredients already on the list or at home.",
             "items": {
@@ -6048,6 +6118,24 @@
           "guardIngredient",
           "leadIngredient",
           "ingredients"
+        ],
+        "type": "object"
+      },
+      "ShoppingPlanCardYieldRequest": {
+        "description": "Body for how many meals one cooking covers.",
+        "properties": {
+          "meals": {
+            "description": "Meals, 1 to 4.",
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ]
+          }
+        },
+        "required": [
+          "meals"
         ],
         "type": "object"
       },
@@ -6122,8 +6210,23 @@
               "string"
             ]
           },
+          "mealType": {
+            "description": "The meal this dish fills; the card's own when null.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
           "mode": {
             "description": "`yield` (one cooking covers the meals) or `again` (cook again another day); required when repeats exceed one.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "plannedDate": {
+            "description": "An optional day inside the period.",
+            "format": "date",
             "type": [
               "null",
               "string"
@@ -6144,6 +6247,147 @@
           "decision",
           "mode",
           "repeats"
+        ],
+        "type": "object"
+      },
+      "ShoppingPlanMealCountsRequest": {
+        "description": "Body for how many of each meal a plan wants.",
+        "properties": {
+          "breakfast": {
+            "description": "Breakfasts.",
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ]
+          },
+          "dinner": {
+            "description": "Dinners.",
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ]
+          },
+          "lunch": {
+            "description": "Lunches.",
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ]
+          },
+          "snack": {
+            "description": "Snacks.",
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ]
+          }
+        },
+        "required": [
+          "breakfast",
+          "lunch",
+          "dinner",
+          "snack"
+        ],
+        "type": "object"
+      },
+      "ShoppingPlanMealGroupView": {
+        "description": "One meal type of a plan, with its options (PLAN-0065).",
+        "properties": {
+          "filled": {
+            "description": "How many are chosen.",
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ]
+          },
+          "mealType": {
+            "description": "Meal type.",
+            "type": "string"
+          },
+          "options": {
+            "description": "The next options, best first, at most six; empty once nothing is missing.",
+            "items": {
+              "$ref": "#/components/schemas/ShoppingPlanCardView"
+            },
+            "type": "array"
+          },
+          "wanted": {
+            "description": "How many the person wants.",
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ]
+          }
+        },
+        "required": [
+          "mealType",
+          "wanted",
+          "filled",
+          "options"
+        ],
+        "type": "object"
+      },
+      "ShoppingPlanPreferencesRequest": {
+        "description": "Body for the switches above the options.",
+        "properties": {
+          "goal": {
+            "description": "`quick`, `short`, `save`, or null.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "usePantry": {
+            "description": "Whether to build on the pantry and the dishes already chosen.",
+            "type": "boolean"
+          },
+          "usePreferences": {
+            "description": "Whether the profile's tastes count. Restrictions and dislikes always do.",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "usePreferences",
+          "usePantry",
+          "goal"
+        ],
+        "type": "object"
+      },
+      "ShoppingPlanPreferencesView": {
+        "description": "The switches above the options (PLAN-0065).",
+        "properties": {
+          "goal": {
+            "description": "`quick`, `short`, `save`, or null.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "usePantry": {
+            "description": "Whether to build on the pantry and the dishes already chosen.",
+            "type": "boolean"
+          },
+          "usePreferences": {
+            "description": "Whether the profile's tastes count. Restrictions and dislikes always do.",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "usePreferences",
+          "usePantry",
+          "goal"
         ],
         "type": "object"
       },
@@ -6681,6 +6925,21 @@
             "format": "date",
             "type": "string"
           },
+          "mealCounts": {
+            "additionalProperties": {
+              "format": "int32",
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ]
+            },
+            "description": "How many of each meal, independent of the days (PLAN-0065). Null on plans from before it, whose count is days times meal types.",
+            "type": [
+              "null",
+              "object"
+            ]
+          },
           "mealTypes": {
             "description": "Meals to plan: `breakfast`, `lunch`, `dinner`, `snack`.",
             "items": {
@@ -6703,6 +6962,14 @@
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "integer",
+              "string"
+            ]
+          },
+          "periodStart": {
+            "description": "First day to eat within (PLAN-0065). Null on earlier plans.",
+            "format": "date",
+            "type": [
+              "null",
               "string"
             ]
           },
@@ -6780,6 +7047,17 @@
             "description": "Whether the profile lists a freezer.",
             "type": "boolean"
           },
+          "lastPreferences": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ShoppingPlanPreferencesView",
+                "description": "The switches of the last plan, as defaults for this one."
+              }
+            ]
+          },
           "lastSetup": {
             "oneOf": [
               {
@@ -6851,6 +7129,16 @@
             "description": "Whether no card is left and no batch can be asked for.",
             "type": "boolean"
           },
+          "groups": {
+            "description": "Each meal type with what is wanted, chosen, and offered.",
+            "items": {
+              "$ref": "#/components/schemas/ShoppingPlanMealGroupView"
+            },
+            "type": [
+              "null",
+              "array"
+            ]
+          },
           "menuId": {
             "description": "Its menu.",
             "format": "uuid",
@@ -6863,6 +7151,17 @@
           "offerMoreOptions": {
             "description": "Whether to highlight \"more options\", after three straight rejections.",
             "type": "boolean"
+          },
+          "preferences": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ShoppingPlanPreferencesView",
+                "description": "The switches in force."
+              }
+            ]
           },
           "progress": {
             "$ref": "#/components/schemas/ShoppingPlanProgressView",
@@ -14014,6 +14313,170 @@
         ]
       }
     },
+    "/api/v1/planning/shopping-plans/{sessionId}/cards/{cardId}/day": {
+      "put": {
+        "operationId": "putApiV1PlanningShopping-plansSessionIdCardsCardIdDay",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sessionId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "cardId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Required CSRF token issued by GET /api/v1/session.",
+            "in": "header",
+            "name": "X-CSRF-TOKEN",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ShoppingPlanCardDayRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShoppingPlanView"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "authenticationFailure": {
+                    "summary": "The backend-managed session is absent or invalid.",
+                    "value": {
+                      "detail": "Authentication is required.",
+                      "errorCode": "authentication_required",
+                      "status": 401,
+                      "title": "Unauthorized",
+                      "traceId": "00-00000000000000000000000000000000-0000000000000000-00",
+                      "type": "about:blank"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authentication is required."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "415": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "unsupportedMediaType": {
+                    "summary": "The request content type is unsupported.",
+                    "value": {
+                      "detail": "The request content type is not supported.",
+                      "errorCode": "unsupported_media_type",
+                      "status": 415,
+                      "title": "Unsupported Media Type",
+                      "traceId": "00-00000000000000000000000000000000-0000000000000000-00",
+                      "type": "about:blank"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request content type is not supported."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "unexpectedFailure": {
+                    "summary": "An unexpected error was safely redacted.",
+                    "value": {
+                      "detail": "An unexpected error occurred.",
+                      "errorCode": "unexpected_error",
+                      "status": 500,
+                      "title": "Internal Server Error",
+                      "traceId": "00-00000000000000000000000000000000-0000000000000000-00",
+                      "type": "about:blank"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An unexpected server error occurred."
+          }
+        },
+        "security": [
+          {
+            "cocinarisSession": []
+          }
+        ],
+        "summary": "PUT /api/v1/planning/shopping-plans/{sessionId}/cards/{cardId}/day",
+        "tags": [
+          "Cocinaris.Api"
+        ]
+      }
+    },
     "/api/v1/planning/shopping-plans/{sessionId}/cards/{cardId}/decision": {
       "post": {
         "operationId": "postApiV1PlanningShopping-plansSessionIdCardsCardIdDecision",
@@ -14619,6 +15082,480 @@
           }
         ],
         "summary": "POST /api/v1/planning/shopping-plans/{sessionId}/cards/{cardId}/removal",
+        "tags": [
+          "Cocinaris.Api"
+        ]
+      }
+    },
+    "/api/v1/planning/shopping-plans/{sessionId}/cards/{cardId}/yield": {
+      "put": {
+        "operationId": "putApiV1PlanningShopping-plansSessionIdCardsCardIdYield",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sessionId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "cardId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Required CSRF token issued by GET /api/v1/session.",
+            "in": "header",
+            "name": "X-CSRF-TOKEN",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ShoppingPlanCardYieldRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShoppingPlanView"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "authenticationFailure": {
+                    "summary": "The backend-managed session is absent or invalid.",
+                    "value": {
+                      "detail": "Authentication is required.",
+                      "errorCode": "authentication_required",
+                      "status": 401,
+                      "title": "Unauthorized",
+                      "traceId": "00-00000000000000000000000000000000-0000000000000000-00",
+                      "type": "about:blank"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authentication is required."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "415": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "unsupportedMediaType": {
+                    "summary": "The request content type is unsupported.",
+                    "value": {
+                      "detail": "The request content type is not supported.",
+                      "errorCode": "unsupported_media_type",
+                      "status": 415,
+                      "title": "Unsupported Media Type",
+                      "traceId": "00-00000000000000000000000000000000-0000000000000000-00",
+                      "type": "about:blank"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request content type is not supported."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "unexpectedFailure": {
+                    "summary": "An unexpected error was safely redacted.",
+                    "value": {
+                      "detail": "An unexpected error occurred.",
+                      "errorCode": "unexpected_error",
+                      "status": 500,
+                      "title": "Internal Server Error",
+                      "traceId": "00-00000000000000000000000000000000-0000000000000000-00",
+                      "type": "about:blank"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An unexpected server error occurred."
+          }
+        },
+        "security": [
+          {
+            "cocinarisSession": []
+          }
+        ],
+        "summary": "PUT /api/v1/planning/shopping-plans/{sessionId}/cards/{cardId}/yield",
+        "tags": [
+          "Cocinaris.Api"
+        ]
+      }
+    },
+    "/api/v1/planning/shopping-plans/{sessionId}/meal-counts": {
+      "put": {
+        "operationId": "putApiV1PlanningShopping-plansSessionIdMeal-counts",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sessionId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Required CSRF token issued by GET /api/v1/session.",
+            "in": "header",
+            "name": "X-CSRF-TOKEN",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ShoppingPlanMealCountsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShoppingPlanView"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "authenticationFailure": {
+                    "summary": "The backend-managed session is absent or invalid.",
+                    "value": {
+                      "detail": "Authentication is required.",
+                      "errorCode": "authentication_required",
+                      "status": 401,
+                      "title": "Unauthorized",
+                      "traceId": "00-00000000000000000000000000000000-0000000000000000-00",
+                      "type": "about:blank"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authentication is required."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "415": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "unsupportedMediaType": {
+                    "summary": "The request content type is unsupported.",
+                    "value": {
+                      "detail": "The request content type is not supported.",
+                      "errorCode": "unsupported_media_type",
+                      "status": 415,
+                      "title": "Unsupported Media Type",
+                      "traceId": "00-00000000000000000000000000000000-0000000000000000-00",
+                      "type": "about:blank"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request content type is not supported."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "unexpectedFailure": {
+                    "summary": "An unexpected error was safely redacted.",
+                    "value": {
+                      "detail": "An unexpected error occurred.",
+                      "errorCode": "unexpected_error",
+                      "status": 500,
+                      "title": "Internal Server Error",
+                      "traceId": "00-00000000000000000000000000000000-0000000000000000-00",
+                      "type": "about:blank"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An unexpected server error occurred."
+          }
+        },
+        "security": [
+          {
+            "cocinarisSession": []
+          }
+        ],
+        "summary": "PUT /api/v1/planning/shopping-plans/{sessionId}/meal-counts",
+        "tags": [
+          "Cocinaris.Api"
+        ]
+      }
+    },
+    "/api/v1/planning/shopping-plans/{sessionId}/preferences": {
+      "put": {
+        "operationId": "putApiV1PlanningShopping-plansSessionIdPreferences",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sessionId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Required CSRF token issued by GET /api/v1/session.",
+            "in": "header",
+            "name": "X-CSRF-TOKEN",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ShoppingPlanPreferencesRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShoppingPlanView"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "authenticationFailure": {
+                    "summary": "The backend-managed session is absent or invalid.",
+                    "value": {
+                      "detail": "Authentication is required.",
+                      "errorCode": "authentication_required",
+                      "status": 401,
+                      "title": "Unauthorized",
+                      "traceId": "00-00000000000000000000000000000000-0000000000000000-00",
+                      "type": "about:blank"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authentication is required."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "415": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "unsupportedMediaType": {
+                    "summary": "The request content type is unsupported.",
+                    "value": {
+                      "detail": "The request content type is not supported.",
+                      "errorCode": "unsupported_media_type",
+                      "status": 415,
+                      "title": "Unsupported Media Type",
+                      "traceId": "00-00000000000000000000000000000000-0000000000000000-00",
+                      "type": "about:blank"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request content type is not supported."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "unexpectedFailure": {
+                    "summary": "An unexpected error was safely redacted.",
+                    "value": {
+                      "detail": "An unexpected error occurred.",
+                      "errorCode": "unexpected_error",
+                      "status": 500,
+                      "title": "Internal Server Error",
+                      "traceId": "00-00000000000000000000000000000000-0000000000000000-00",
+                      "type": "about:blank"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An unexpected server error occurred."
+          }
+        },
+        "security": [
+          {
+            "cocinarisSession": []
+          }
+        ],
+        "summary": "PUT /api/v1/planning/shopping-plans/{sessionId}/preferences",
         "tags": [
           "Cocinaris.Api"
         ]

@@ -362,6 +362,71 @@ public sealed class ShoppingPlanTests
         Assert.False(RecipeProtocolValidator.ValidatePlanDeck(DeckJson(6), request.RootElement).IsValid);
     }
 
+    private static CreateShoppingPlanCommand CountsCommand(int days, Dictionary<string, int> counts, DateOnly? start = null) =>
+        new(null, "test", null, Today, days, null, 0, null, null, null, null, null, 1, null, counts, start);
+
+    [Fact]
+    public void APlanFromBeforeTheCountsReadsAsItsDaysLessTheMealsOut()
+    {
+        var setup = Setup(5, ["lunch", "dinner", "snack"], mealsOut: 7);
+
+        Assert.Equal(setup.Days * 3 - 7, setup.TotalMeals);
+        Assert.Equal(setup.TotalMeals, setup.Counts().Values.Sum());
+        // Meals out come off lunch and dinner first, the ones people eat out.
+        Assert.Equal((0, 3, 5), (setup.Counts()["lunch"], setup.Counts()["dinner"], setup.Counts()["snack"]));
+        Assert.Equal(3, setup.MealNeeds()["main"]);
+    }
+
+    [Fact]
+    public void CountsDecideTheMealsAndThePeriodStandsOnItsOwn()
+    {
+        var setup = ShoppingPlanApplicationService.ValidateSetup(CountsCommand(14, new() { ["lunch"] = 3, ["dinner"] = 2, ["snack"] = 7, ["breakfast"] = 0 }, Today.AddDays(1)), 2)!;
+
+        Assert.Equal(12, setup.TotalMeals);
+        Assert.Equal((5, 7), (setup.MealNeeds()["main"], setup.MealNeeds()["snack"]));
+        Assert.False(setup.MealNeeds().ContainsKey("breakfast"));
+        Assert.Equal(["lunch", "dinner", "snack"], setup.MealTypes);
+        Assert.Equal((Today.AddDays(1), Today.AddDays(14)), (setup.StartDate, setup.EndDate));
+        // Nothing about cooking is asked up front.
+        Assert.Equal(("mix", "none", null, null, 0), (setup.CookingStyle, setup.Priority, setup.PrepDate, setup.PrepMinutes, setup.MealsOut));
+    }
+
+    [Fact]
+    public void CountsOutsideTheLimitsAreRefused()
+    {
+        Assert.Null(ShoppingPlanApplicationService.ValidateSetup(CountsCommand(7, new() { ["snack"] = 0 }), 2));
+        Assert.Null(ShoppingPlanApplicationService.ValidateSetup(CountsCommand(7, new() { ["snack"] = 41 }), 2));
+        Assert.Null(ShoppingPlanApplicationService.ValidateSetup(CountsCommand(7, new() { ["supper"] = 2 }), 2));
+        Assert.Null(ShoppingPlanApplicationService.ValidateSetup(CountsCommand(15, new() { ["snack"] = 2 }), 2));
+        Assert.Null(ShoppingPlanApplicationService.ValidateSetup(CountsCommand(7, new() { ["snack"] = 2 }, Today.AddDays(-1)), 2));
+        Assert.NotNull(ShoppingPlanApplicationService.ValidateSetup(CountsCommand(14, new() { ["snack"] = 40 }), 2));
+    }
+
+    [Fact]
+    public void AGoalChosenAsAFilterCountsEvenWithThePantrySwitchedOff()
+    {
+        var accepted = Card(1, "a", "x", [Ingredient("tomate|Gram", 100)]);
+        var fewer = Card(2, "b", "y", [Ingredient("tomate|Gram", 100)]);
+        var more = Card(3, "c", "z", [Ingredient("arroz|Gram", 100), Ingredient("feijao|Gram", 100), Ingredient("couve|Gram", 100)]);
+        var off = Context("short", [new RankAccepted(accepted, 1, false)]) with { PantryWeight = 0 };
+
+        var plain = ShoppingPlanRanker.Rank([more, fewer], off with { GoalIsExplicit = false });
+        var filtered = ShoppingPlanRanker.Rank([more, fewer], off with { GoalIsExplicit = true });
+
+        Assert.Equal(fewer.Id, filtered[0].Card.Id);
+        Assert.True(filtered[0].Score - filtered[1].Score > plain.Max(item => item.Score) - plain.Min(item => item.Score));
+    }
+
+    [Fact]
+    public void WithThePantrySwitchedOffAttentionNoLongerDecidesEvenWithAGoal()
+    {
+        var plain = Card(1, "a", "x", [Ingredient("arroz|Gram", 100)]);
+        var uses = Card(2, "b", "y", [Ingredient("iogurte|Gram", 100), Ingredient("mel|Gram", 10), Ingredient("aveia|Gram", 10)]);
+        var context = Context("short") with { AttentionKeys = new HashSet<string> { "iogurte|Gram" }, PantryWeight = 0, GoalIsExplicit = true };
+
+        Assert.Equal(plain.Id, ShoppingPlanRanker.Rank([uses, plain], context)[0].Card.Id);
+    }
+
     private static string DeckJson(int count, bool sameDish = false, string strategy = "exploratory")
     {
         var candidates = Enumerable.Range(0, count).Select(index => $$"""

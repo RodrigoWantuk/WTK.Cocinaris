@@ -14,7 +14,9 @@ namespace Cocinaris.Modules.Planning.Domain;
 /// <param name="PrepMinutes">Time for the session (60, 120, or 240); null for <c>daily</c>.</param>
 /// <param name="AnchorIngredient">Typed starting ingredient, already cleaned; untrusted and private.</param>
 /// <param name="People">People to feed in this plan, 1 to 12.</param>
-public sealed record ShoppingPlanSetup(DateOnly Today, int Days, IReadOnlyList<string> MealTypes, int MealsOut, string CookingStyle, string Priority, DateOnly? PrepDate, int? PrepMinutes, string? AnchorIngredient, int People)
+/// <param name="MealCounts">How many of each meal, independent of the days (PLAN-0065). Null on plans from before it, whose count is days times meal types.</param>
+/// <param name="PeriodStart">First day to eat within (PLAN-0065). Null on earlier plans.</param>
+public sealed record ShoppingPlanSetup(DateOnly Today, int Days, IReadOnlyList<string> MealTypes, int MealsOut, string CookingStyle, string Priority, DateOnly? PrepDate, int? PrepMinutes, string? AnchorIngredient, int People, IReadOnlyDictionary<string, int>? MealCounts = null, DateOnly? PeriodStart = null)
 {
     /// <summary>Longest period a shopping plan covers, in days.</summary>
     public const int MaxDays = 14;
@@ -38,10 +40,10 @@ public sealed record ShoppingPlanSetup(DateOnly Today, int Days, IReadOnlyList<s
     public static readonly IReadOnlySet<int> PrepLengths = new HashSet<int> { 60, 120, 240 };
 
     /// <summary>Meals the plan must fill.</summary>
-    public int TotalMeals => Days * MealTypes.Count - MealsOut;
+    public int TotalMeals => MealCounts is { } counts ? counts.Values.Sum() : Days * MealTypes.Count - MealsOut;
 
     /// <summary>First day of the menu: the session day when there is one, else today.</summary>
-    public DateOnly StartDate => PrepDate ?? Today;
+    public DateOnly StartDate => PeriodStart ?? PrepDate ?? Today;
 
     /// <summary>Last day of the menu, inclusive.</summary>
     public DateOnly EndDate => StartDate.AddDays(Days - 1);
@@ -53,6 +55,16 @@ public sealed record ShoppingPlanSetup(DateOnly Today, int Days, IReadOnlyList<s
     public IReadOnlyDictionary<string, int> MealNeeds()
     {
         var needs = new Dictionary<string, int>(StringComparer.Ordinal);
+        if (MealCounts is not null)
+        {
+            foreach (var (meal, count) in Counts().Where(item => item.Value > 0))
+            {
+                needs[GroupOf(meal)] = needs.GetValueOrDefault(GroupOf(meal)) + count;
+            }
+
+            return needs;
+        }
+
         foreach (var meal in MealTypes)
         {
             var group = GroupOf(meal);
@@ -71,6 +83,32 @@ public sealed record ShoppingPlanSetup(DateOnly Today, int Days, IReadOnlyList<s
         }
 
         return needs;
+    }
+
+    /// <summary>
+    /// How many of each meal type the plan wants. A plan from before the counts existed reads as its
+    /// days for each meal type, with meals eaten out taken from lunch and dinner first.
+    /// </summary>
+    public IReadOnlyDictionary<string, int> Counts()
+    {
+        if (MealCounts is { } counts)
+        {
+            return counts;
+        }
+
+        var derived = MealTypes.ToDictionary(meal => meal, _ => Days, StringComparer.Ordinal);
+        var left = MealsOut;
+        foreach (var meal in new[] { "lunch", "dinner", "snack", "breakfast" })
+        {
+            if (left > 0 && derived.TryGetValue(meal, out var count))
+            {
+                var taken = Math.Min(count, left);
+                derived[meal] = count - taken;
+                left -= taken;
+            }
+        }
+
+        return derived;
     }
 
     /// <summary>Group of a meal type.</summary>
@@ -120,7 +158,7 @@ public sealed class ShoppingPlanSession
     /// <summary>Gets the idempotency key of the creating request.</summary>
     public required Guid CreationKey { get; init; }
     /// <summary>Gets the setup answers.</summary>
-    public required ShoppingPlanSetup Setup { get; init; }
+    public required ShoppingPlanSetup Setup { get; set; }
     /// <summary>Gets or sets the lifecycle status.</summary>
     public ShoppingPlanStatus Status { get; set; } = ShoppingPlanStatus.Building;
     /// <summary>Gets or sets the AI batches used.</summary>
@@ -211,6 +249,8 @@ public sealed record ShoppingPlanCardComponent(string OutputName, decimal Output
 /// <param name="FailureCode">Stable reason for a failed expansion, if any.</param>
 /// <param name="ExpansionAttempt">Expansion attempt, which derives a fresh key after a generation session expires.</param>
 /// <param name="Component">Present when the card is a reusable base rather than a dish.</param>
+/// <param name="PlannedDate">The day the person gave this dish, if any. Dates are optional (PLAN-0065).</param>
+/// <param name="RequestText">What the person typed when this card answers a specific request. Untrusted, and shown only to them.</param>
 /// <param name="PrivateHint">The typed hint this card was made under, if any. Untrusted. It follows the card to its expansion, which keeps the recipe out of the shared idea library (PLAN-0060).</param>
 public sealed record ShoppingPlanCardSnapshot(
     string Name,
@@ -229,7 +269,9 @@ public sealed record ShoppingPlanCardSnapshot(
     string? FailureCode = null,
     int ExpansionAttempt = 0,
     ShoppingPlanCardComponent? Component = null,
-    string? PrivateHint = null);
+    string? PrivateHint = null,
+    DateOnly? PlannedDate = null,
+    string? RequestText = null);
 
 /// <summary>
 /// What the person asked for under "Quero outras opções" (PLAN-0064). It belongs to this plan and never
@@ -240,7 +282,9 @@ public sealed record ShoppingPlanCardSnapshot(
 /// <param name="ReferenceDish">The dish on screen when the person asked; untrusted data.</param>
 /// <param name="Hint">Typed hint, at most 40 characters, already cleaned; untrusted and private.</param>
 /// <param name="FromOrder">Cards from this order on answer the request, so they come first.</param>
-public sealed record ShoppingPlanDeckPreference(string? Pantry, string? Similarity, string? ReferenceDish, string? Hint, int FromOrder)
+/// <param name="UsePreferences">Whether the profile's tastes reach the model. Restrictions and dislikes always do.</param>
+/// <param name="Goal"><c>quick</c>, <c>short</c>, <c>save</c>, or null.</param>
+public sealed record ShoppingPlanDeckPreference(string? Pantry, string? Similarity, string? ReferenceDish, string? Hint, int FromOrder, bool UsePreferences = true, string? Goal = null)
 {
     /// <summary>Longest hint accepted.</summary>
     public const int MaxHintLength = 40;

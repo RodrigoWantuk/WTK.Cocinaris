@@ -48,6 +48,13 @@ public sealed class RecipePlanDeckService(
     /// <param name="text">Text the person typed.</param>
     public static string? CleanAnchor(string? text) => UntrustedText.Normalize(text, MaxAnchorLength);
 
+    /// <summary>Longest specific request kept (PLAN-0065).</summary>
+    public const int MaxRequestLength = 120;
+
+    /// <summary>Cleans a typed request for a specific dish; null when nothing is left.</summary>
+    /// <param name="text">Typed text; untrusted.</param>
+    public static string? CleanRequest(string? text) => UntrustedText.Normalize(text, MaxRequestLength);
+
     /// <summary>Cleans a hint typed under "Quero outras opções"; null when nothing is left.</summary>
     /// <param name="text">Typed text; untrusted.</param>
     public static string? CleanHint(string? text) => UntrustedText.Normalize(text, MaxHintLength);

@@ -42,7 +42,8 @@ public sealed record RankRejected(RankCard Card, string? Reason, string? Ingredi
 /// <param name="AttentionKeys">Keys of lots needing attention soon.</param>
 /// <param name="SessionMinutes">Time for the session, if the plan has one.</param>
 /// <param name="PantryWeight">How much the pantry and the list count, from 0 to <see cref="ShoppingPlanRanker.FullPantryWeight"/>.</param>
-public sealed record RankContext(string Priority, IReadOnlyList<RankAccepted> Accepted, IReadOnlyList<RankRejected> Rejected, IReadOnlyDictionary<string, decimal> FreeStock, IReadOnlySet<string> AttentionKeys, int? SessionMinutes, int PantryWeight = ShoppingPlanRanker.FullPantryWeight);
+/// <param name="GoalIsExplicit">The person chose this goal as a filter, so it counts in full whatever the pantry weight.</param>
+public sealed record RankContext(string Priority, IReadOnlyList<RankAccepted> Accepted, IReadOnlyList<RankRejected> Rejected, IReadOnlyDictionary<string, decimal> FreeStock, IReadOnlySet<string> AttentionKeys, int? SessionMinutes, int PantryWeight = ShoppingPlanRanker.FullPantryWeight, bool GoalIsExplicit = false);
 
 /// <summary>How one card compares with the plan so far.</summary>
 /// <param name="Card">Card.</param>
@@ -211,8 +212,9 @@ public static class ShoppingPlanRanker
         }
 
         var overBudget = context.SessionMinutes is { } minutes && card.ActiveMinutes > minutes - SessionMinutesUsed(context.Accepted);
-        var pantry = (100 * attention + pantryGoal) * context.PantryWeight / FullPantryWeight;
-        var score = pantry + minutesGoal + diversity + feedback + (overBudget ? -200 : 0);
+        // "Menos compras" with the pantry switched off must still mean fewer purchases.
+        var pantry = (100 * attention + (context.GoalIsExplicit ? 0 : pantryGoal)) * context.PantryWeight / FullPantryWeight;
+        var score = pantry + (context.GoalIsExplicit ? pantryGoal : 0) + minutesGoal + diversity + feedback + (overBudget ? -200 : 0);
         return new RankedCard(card, score, newItems, reused, attention, overBudget);
     }
 }

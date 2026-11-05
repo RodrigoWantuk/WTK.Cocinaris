@@ -63,6 +63,30 @@ public static class ShoppingPlanEndpoints
             .Produces<ShoppingPlanView>()
             .ProducesProblem(404)
             .ProducesProblem(422);
+        group.MapPut("/{sessionId:guid}/preferences", (ShoppingPlanApiService service, Guid sessionId, ShoppingPlanPreferencesRequest body, HttpContext context, CancellationToken cancellationToken) => service.SetPreferencesAsync(sessionId, body, context, cancellationToken))
+            .RequireRateLimiting("shopping-plan-decision")
+            .Produces<ShoppingPlanView>()
+            .ProducesProblem(400)
+            .ProducesProblem(404)
+            .ProducesProblem(422);
+        group.MapPut("/{sessionId:guid}/meal-counts", (ShoppingPlanApiService service, Guid sessionId, ShoppingPlanMealCountsRequest body, HttpContext context, CancellationToken cancellationToken) => service.SetMealCountsAsync(sessionId, body, context, cancellationToken))
+            .RequireRateLimiting("shopping-plan-decision")
+            .Produces<ShoppingPlanView>()
+            .ProducesProblem(400)
+            .ProducesProblem(404)
+            .ProducesProblem(422);
+        group.MapPut("/{sessionId:guid}/cards/{cardId:guid}/day", (ShoppingPlanApiService service, Guid sessionId, Guid cardId, ShoppingPlanCardDayRequest body, HttpContext context, CancellationToken cancellationToken) => service.SetCardDayAsync(sessionId, cardId, body, context, cancellationToken))
+            .RequireRateLimiting("shopping-plan-decision")
+            .Produces<ShoppingPlanView>()
+            .ProducesProblem(400)
+            .ProducesProblem(404)
+            .ProducesProblem(422);
+        group.MapPut("/{sessionId:guid}/cards/{cardId:guid}/yield", (ShoppingPlanApiService service, Guid sessionId, Guid cardId, ShoppingPlanCardYieldRequest body, HttpContext context, CancellationToken cancellationToken) => service.SetCardYieldAsync(sessionId, cardId, body, context, cancellationToken))
+            .RequireRateLimiting("shopping-plan-decision")
+            .Produces<ShoppingPlanView>()
+            .ProducesProblem(400)
+            .ProducesProblem(404)
+            .ProducesProblem(422);
         group.MapPost("/{sessionId:guid}/reopen", (ShoppingPlanApiService service, Guid sessionId, HttpContext context, CancellationToken cancellationToken) => service.ReopenAsync(sessionId, context, cancellationToken))
             .RequireRateLimiting("mutation")
             .Produces<ShoppingPlanView>()
@@ -134,11 +158,27 @@ public sealed class ShoppingPlanApiService(ShoppingPlanApplicationService applic
 
     /// <summary>Creates a plan; requires an Idempotency-Key.</summary>
     public async Task<IResult> CreateAsync(CreateShoppingPlanRequest body, HttpRequest request, CancellationToken cancellationToken) =>
-        ToResult(await application.CreateAsync(new CreateShoppingPlanCommand(Key(request), request.HttpContext.TraceIdentifier, Language(request), body.Today, body.Days, body.MealTypes, body.MealsOut, body.CookingStyle, body.Priority, body.PrepDate, body.PrepMinutes, body.AnchorIngredient, body.People, body.FromMenuId), cancellationToken), request.HttpContext.TraceIdentifier);
+        ToResult(await application.CreateAsync(new CreateShoppingPlanCommand(Key(request), request.HttpContext.TraceIdentifier, Language(request), body.Today, body.Days, body.MealTypes, body.MealsOut, body.CookingStyle, body.Priority, body.PrepDate, body.PrepMinutes, body.AnchorIngredient, body.People, body.FromMenuId, body.MealCounts?.Counts(), body.StartDate), cancellationToken), request.HttpContext.TraceIdentifier);
 
     /// <summary>Gets one plan.</summary>
     public async Task<IResult> GetAsync(Guid sessionId, HttpContext context, CancellationToken cancellationToken) =>
         ToResult(await application.GetAsync(sessionId, cancellationToken), context.TraceIdentifier);
+
+    /// <summary>Sets the switches above the options.</summary>
+    public async Task<IResult> SetPreferencesAsync(Guid sessionId, ShoppingPlanPreferencesRequest body, HttpContext context, CancellationToken cancellationToken) =>
+        ToResult(await application.SetPreferencesAsync(sessionId, body.UsePreferences, body.UsePantry, body.Goal, cancellationToken), context.TraceIdentifier);
+
+    /// <summary>Changes how many of each meal the plan wants.</summary>
+    public async Task<IResult> SetMealCountsAsync(Guid sessionId, ShoppingPlanMealCountsRequest body, HttpContext context, CancellationToken cancellationToken) =>
+        ToResult(await application.SetMealCountsAsync(sessionId, body.Counts(), cancellationToken), context.TraceIdentifier);
+
+    /// <summary>Sets or clears the day of a chosen dish.</summary>
+    public async Task<IResult> SetCardDayAsync(Guid sessionId, Guid cardId, ShoppingPlanCardDayRequest body, HttpContext context, CancellationToken cancellationToken) =>
+        ToResult(await application.SetCardDayAsync(sessionId, cardId, body.PlannedDate, cancellationToken), context.TraceIdentifier);
+
+    /// <summary>Sets how many meals one cooking of a chosen dish covers.</summary>
+    public async Task<IResult> SetCardYieldAsync(Guid sessionId, Guid cardId, ShoppingPlanCardYieldRequest body, HttpContext context, CancellationToken cancellationToken) =>
+        ToResult(await application.SetCardYieldAsync(sessionId, cardId, body.Meals, cancellationToken), context.TraceIdentifier);
 
     /// <summary>Goes back to choosing dishes from the review.</summary>
     public async Task<IResult> ReopenAsync(Guid sessionId, HttpContext context, CancellationToken cancellationToken) =>
@@ -146,11 +186,11 @@ public sealed class ShoppingPlanApiService(ShoppingPlanApplicationService applic
 
     /// <summary>Adds up to six AI cards; requires an Idempotency-Key.</summary>
     public async Task<IResult> AddBatchAsync(Guid sessionId, ShoppingPlanBatchRequest? body, HttpRequest request, CancellationToken cancellationToken) =>
-        ToResult(await application.AddBatchAsync(sessionId, Key(request), body?.DishFamilies, body?.Cuisine, body?.Time, body is null ? null : new ShoppingPlanDirection(body.Pantry, body.Similarity, body.ReferenceCardId, body.Hint), request.HttpContext.TraceIdentifier, Language(request), cancellationToken), request.HttpContext.TraceIdentifier);
+        ToResult(await application.AddBatchAsync(sessionId, Key(request), body?.DishFamilies, body?.Cuisine, body?.Time, body is null ? null : new ShoppingPlanDirection(body.Pantry, body.Similarity, body.ReferenceCardId, body.Hint), body?.MealType is { } mealType ? new ShoppingPlanBatchAsk(mealType, body.Request, body.LikeCardId, body.ReplaceOffers) : null, request.HttpContext.TraceIdentifier, Language(request), cancellationToken), request.HttpContext.TraceIdentifier);
 
     /// <summary>Accepts or rejects a card.</summary>
     public async Task<IResult> DecideAsync(Guid sessionId, Guid cardId, ShoppingPlanDecisionRequest body, HttpContext context, CancellationToken cancellationToken) =>
-        ToResult(await application.DecideAsync(sessionId, cardId, body.Decision, body.Mode, body.Repeats, cancellationToken), context.TraceIdentifier);
+        ToResult(await application.DecideAsync(sessionId, cardId, body.Decision, body.Mode, body.Repeats, body.MealType, body.PlannedDate, cancellationToken), context.TraceIdentifier);
 
     /// <summary>Records why a card was refused.</summary>
     public async Task<IResult> SetReasonAsync(Guid sessionId, Guid cardId, ShoppingPlanReasonRequest body, HttpContext context, CancellationToken cancellationToken) =>
@@ -228,7 +268,7 @@ public sealed class ShoppingPlanApiService(ShoppingPlanApplicationService applic
     {
         "validation_failed" => StatusCodes.Status400BadRequest,
         "resource_not_found" => StatusCodes.Status404NotFound,
-        "domain_rule_violated" or "plan_in_progress" or "expansions_pending" or "no_more_options" or "ai_output_invalid" => StatusCodes.Status422UnprocessableEntity,
+        "domain_rule_violated" or "plan_in_progress" or "expansions_pending" or "no_more_options" or "request_blocked" or "meal_count_below_chosen" or "ai_output_invalid" => StatusCodes.Status422UnprocessableEntity,
         "ai_capability_unavailable" or "ai_budget_exhausted" or "ai_budget_unavailable" or "ai_provider_timeout" or "ai_provider_unavailable" => StatusCodes.Status503ServiceUnavailable,
         _ => StatusCodes.Status409Conflict
     };
@@ -246,7 +286,9 @@ public sealed class ShoppingPlanApiService(ShoppingPlanApplicationService applic
 /// <param name="AnchorIngredient">Optional typed ingredient, at most 60 characters.</param>
 /// <param name="People">People for this plan, 1 to 12; the profile's default when null. It never updates the profile.</param>
 /// <param name="FromMenuId">Menu of an accepted plan to repeat. That plan's answers then replace all of these except <paramref name="Today"/>, and the new plan starts today.</param>
-public sealed record CreateShoppingPlanRequest(DateOnly? Today, int Days, IReadOnlyList<string>? MealTypes, int MealsOut, string? CookingStyle, string? Priority, DateOnly? PrepDate, int? PrepMinutes, string? AnchorIngredient, int? People, Guid? FromMenuId = null);
+/// <param name="MealCounts">How many of each meal. When given, style, goal, and preparation are optional.</param>
+/// <param name="StartDate">First day of the period, when counts are given; today when null.</param>
+public sealed record CreateShoppingPlanRequest(DateOnly? Today, int Days, IReadOnlyList<string>? MealTypes, int MealsOut, string? CookingStyle, string? Priority, DateOnly? PrepDate, int? PrepMinutes, string? AnchorIngredient, int? People, Guid? FromMenuId = null, ShoppingPlanMealCountsRequest? MealCounts = null, DateOnly? StartDate = null);
 
 /// <summary>Body for asking for more cards.</summary>
 /// <param name="DishFamilies">Up to three family codes.</param>
@@ -256,13 +298,45 @@ public sealed record CreateShoppingPlanRequest(DateOnly? Today, int Days, IReadO
 /// <param name="Similarity"><c>any</c>, <c>similar</c>, or <c>different</c>, compared with the card on screen.</param>
 /// <param name="ReferenceCardId">The card on screen; required to compare.</param>
 /// <param name="Hint">Optional typed hint, at most 40 characters; untrusted.</param>
-public sealed record ShoppingPlanBatchRequest(IReadOnlyList<string>? DishFamilies, string? Cuisine, string? Time, string? Pantry = null, string? Similarity = null, Guid? ReferenceCardId = null, string? Hint = null);
+/// <param name="MealType">One meal type to suggest for. When given, the next three fields apply and the four before them are ignored.</param>
+/// <param name="Request">A specific dish in the person's words, at most 120 characters; untrusted.</param>
+/// <param name="LikeCardId">A card to offer dishes close to.</param>
+/// <param name="ReplaceOffers">Whether earlier unseen dishes of this meal give way.</param>
+public sealed record ShoppingPlanBatchRequest(IReadOnlyList<string>? DishFamilies, string? Cuisine, string? Time, string? Pantry = null, string? Similarity = null, Guid? ReferenceCardId = null, string? Hint = null, string? MealType = null, string? Request = null, Guid? LikeCardId = null, bool ReplaceOffers = false);
 
 /// <summary>Body for deciding a card.</summary>
 /// <param name="Decision"><c>accept</c> or <c>reject</c>.</param>
 /// <param name="Mode"><c>yield</c> (one cooking covers the meals) or <c>again</c> (cook again another day); required when repeats exceed one.</param>
 /// <param name="Repeats">Meals to fill, 1 to 4.</param>
-public sealed record ShoppingPlanDecisionRequest(string? Decision, string? Mode, int? Repeats);
+/// <param name="MealType">The meal this dish fills; the card's own when null.</param>
+/// <param name="PlannedDate">An optional day inside the period.</param>
+public sealed record ShoppingPlanDecisionRequest(string? Decision, string? Mode, int? Repeats, string? MealType = null, DateOnly? PlannedDate = null);
+
+/// <summary>Body for the switches above the options.</summary>
+/// <param name="UsePreferences">Whether the profile's tastes count. Restrictions and dislikes always do.</param>
+/// <param name="UsePantry">Whether to build on the pantry and the dishes already chosen.</param>
+/// <param name="Goal"><c>quick</c>, <c>short</c>, <c>save</c>, or null.</param>
+public sealed record ShoppingPlanPreferencesRequest(bool UsePreferences, bool UsePantry, string? Goal);
+
+/// <summary>Body for how many of each meal a plan wants.</summary>
+/// <param name="Breakfast">Breakfasts.</param>
+/// <param name="Lunch">Lunches.</param>
+/// <param name="Dinner">Dinners.</param>
+/// <param name="Snack">Snacks.</param>
+public sealed record ShoppingPlanMealCountsRequest(int Breakfast, int Lunch, int Dinner, int Snack)
+{
+    /// <summary>The counts by meal type.</summary>
+    public IReadOnlyDictionary<string, int> Counts() =>
+        new Dictionary<string, int>(StringComparer.Ordinal) { ["breakfast"] = Breakfast, ["lunch"] = Lunch, ["dinner"] = Dinner, ["snack"] = Snack };
+}
+
+/// <summary>Body for the day of a chosen dish.</summary>
+/// <param name="PlannedDate">A day inside the period, or null for no day.</param>
+public sealed record ShoppingPlanCardDayRequest(DateOnly? PlannedDate);
+
+/// <summary>Body for how many meals one cooking covers.</summary>
+/// <param name="Meals">Meals, 1 to 4.</param>
+public sealed record ShoppingPlanCardYieldRequest(int Meals);
 
 /// <summary>Body for the reason a card was refused.</summary>
 /// <param name="Reason"><c>dislike</c>, <c>too_much_work</c>, or <c>tired_of</c>.</param>

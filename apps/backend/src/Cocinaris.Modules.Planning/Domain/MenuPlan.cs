@@ -298,6 +298,31 @@ public sealed class MenuEntry
         UpdatedAt = updatedAt
     };
 
+    /// <summary>Sets how many meals one cooking covers, with the portions to match (PLAN-0065).</summary>
+    /// <exception cref="ArgumentException">The meals or portions are out of range.</exception>
+    /// <exception cref="InvalidOperationException">The plan is archived.</exception>
+    /// <param name="plan">The entry's plan.</param>
+    /// <param name="meals">Meals covered, 1 to 4.</param>
+    /// <param name="servings">Portions, 1 to 24.</param>
+    /// <param name="now">Change instant.</param>
+    public void ChangeCoverage(MenuPlan plan, int meals, int servings, DateTimeOffset now)
+    {
+        plan.EnsureEditable();
+        if (meals is < 1 or > 4)
+        {
+            throw new ArgumentException("A cooking covers one to four meals.", nameof(meals));
+        }
+
+        if (servings is < 1 or > 24)
+        {
+            throw new ArgumentException("Servings must be between 1 and 24.", nameof(servings));
+        }
+
+        MealsCovered = meals;
+        Servings = servings;
+        UpdatedAt = now;
+    }
+
     /// <summary>Moves, re-portions, skips, or restores the entry. Changing one entry never touches another.</summary>
     /// <exception cref="ArgumentException">The day is outside the period, or the meal or portions are invalid.</exception>
     /// <exception cref="InvalidOperationException">The plan is archived.</exception>
