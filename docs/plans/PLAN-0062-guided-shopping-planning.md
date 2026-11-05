@@ -739,9 +739,9 @@ Migrations are additive, and rollback means deploying the earlier code with unus
 
 - **Current run delivery target:** Publish merged `main` on the test host, repair what the first full gate run found, then Slice 7.
 - **Current checkpoint:** `main` at `8ddec16` deployed on 2026-11-05 at the owner's request. Worker cache header applied to the installed Caddy block; template, runbook, gate script, and a migration encoding fix on `agent/plan-0062-sw-cache-header`.
-- **Last completed step:** Deploy of `8ddec16` with migrations through `AddShoppingPlanRoute`; first full gate run on that commit, which failed for the causes in the log.
-- **Exact next action:** Rerun full local gates on this branch, record the result in the pull request, open it as a draft, then start Slice 7 (web push) from fresh `origin/main` on `agent/plan-0062-s7-web-push`, writing ADR-0013 first.
-- **Blockers:** The G6 phone check with wake lock needs the owner's phone. G5-A and G1-B need the provider key. G2-A for the Slice 4 limits and for storage guidance. Deploying `main` was refused by this agent's permission classifier, so the owner must run it. The browser smoke matrix fails on unmodified `main` on this host, and full local gates have not run.
+- **Last completed step:** Second full gate run on `d0face5`: 32 of 33 steps passed; only the browser smoke matrix failed.
+- **Exact next action:** The owner reviews and merges the worker cache pull request. Slice 7 (web push) proceeds from fresh `origin/main` on `agent/plan-0062-s7-web-push`, writing ADR-0013 first.
+- **Blockers:** The G6 phone check with wake lock needs the owner's phone. G5-A and G1-B need the provider key. G1-A has no owner comment. G2-A for the Slice 4 limits and for storage guidance. The browser smoke matrix does not finish on this host.
 - **Partially modified areas:** Slice 4 limits and warnings are not delivered.
 - **Documentation delivered:** Product, planning, recipes, closed-loop, privacy, and gates documents; PLAN-0044 registry row.
 - **Validation performed:** See the Slice 6 entry in the progress log.
@@ -943,6 +943,14 @@ Migrations are additive, and rollback means deploying the earlier code with unus
   - Every remaining frontend, contract, and OpenAPI step failed on `ENOSPC`, because the gate worktree lived in the 2 GB RAM-backed `/tmp`. The script now builds in `/var/tmp`, as the deploy script does.
 - **Changes included in the commit:** `Caddyfile.cocinaris`, the runbook, `run-local-gates.sh`, the migration's encoding, this plan, and the registry.
 - **Next action:** See "Exact next action".
+
+- **Second full gate run on `d0face5`, result Failed in one step:** 32 of 33 steps passed, including format, the 14 architecture, 391 unit, and 228 integration tests (the 11 login and logout failures are gone, so they came from the missing Keycloak), migrations applied twice, OpenAPI drift, contracts, frontend tests and builds, audit, and the secrets scan.
+- **`frontend-smoke` does not finish, cause not established:**
+  - In the full run it failed after 44 s, on `page.goto: net::ERR_INSUFFICIENT_RESOURCES` for `/app/hoje`.
+  - Run alone with only `frontend,smoke`, it hung with no output for 25 minutes and was stopped by hand.
+  - Both stopped right after the CSS zoom check, whose next step is the touch check in a new browser context. Six checks passed before that; everything after, including the production part with `serviceWorkers: "block"`, has never run since Slice 3.
+  - Earlier runs failed with a 15 s `page.goto` timeout, also on unmodified `main`. A smoke run has no overall time limit, so the gate script can wait forever.
+  - The partial run overwrote the full run's summary under `artifacts/local-gates/d0face5…`; the table is in the pull request.
 
 ## Completion and handoff checklist
 
