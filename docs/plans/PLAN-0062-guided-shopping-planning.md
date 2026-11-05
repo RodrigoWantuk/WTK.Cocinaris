@@ -740,7 +740,7 @@ Migrations are additive, and rollback means deploying the earlier code with unus
 - **Current run delivery target:** Slice 7, web push.
 - **Current checkpoint:** Slice 7 implemented on `agent/plan-0062-s7-web-push`, in a draft pull request. No notification has reached a real phone.
 - **Last completed step:** Worker check and signed-in journey on the proxy replica with disposable keys; see the Slice 7 log entry.
-- **Exact next action:** The owner merges #90 and this pull request, deploys, adds keys with `scripts/ops/generate-vapid-keys.mjs`, turns notifications on from a real installed phone, and confirms one arrives at 09:00. All seven slices are then delivered except the Slice 4 limits, which wait for G2-A.
+- **Exact next action:** The owner merges this pull request (#91), deploys, adds keys with `scripts/ops/generate-vapid-keys.mjs`, turns notifications on from a real installed phone, and confirms one arrives at 09:00. All seven slices are then delivered except the Slice 4 limits, which wait for G2-A.
 - **Blockers:** G7 and G6 need the owner's phone. G5-A and G1-B need the provider key. G1-A has no owner comment. G2-A for the Slice 4 limits and for storage guidance. The browser smoke matrix does not finish on this host.
 - **Partially modified areas:** Slice 4 limits and warnings are not delivered.
 - **Documentation delivered:** ADR-0013 and its index row; runbook, `api.env.example`, privacy, product spec, planning, and gates documents; PLAN-0048 registry row; this plan.
@@ -931,6 +931,27 @@ Migrations are additive, and rollback means deploying the earlier code with unus
 - **Next action:** See `Exact next action`.
 - **Blockers or handoff notes:** See `Blockers`. The development database has this migration; production gets it on deploy. Dev Keycloak and the replica are stopped.
 
+### 2026-11-05 — Claude Code (deploy and first full gate run)
+
+- **Run delivery target:** Publish `main` on the test host at the owner's request, and repair what the first full gate run found.
+- **Deploy:** `8ddec16` active as release `20261105T102018Z-8ddec165110f`. Migration history went from 28 to 32 rows, `cocinaris_app` has access to the new tables, `/health/ready` returns 200, and the service log shows no errors in the first minutes. Sign-in, the new screens, and any plan on the deployed site were not exercised, because the agent has no account there.
+- **Worker caching:** the CDN cached `/sw.js` because of its extension. The agent's own check, made before the first release with a worker, stored the `index.html` fallback there, and that copy still answered after the deploy. The Caddy block now sends `Cache-Control: no-cache` on the path, and a fresh URL at the CDN answered `REVALIDATED` on its second read. The CDN still rewrites the browser header to `max-age=14400`, which does not delay worker updates because browsers skip the HTTP cache for the worker script by default. The stale copy stays until it expires or the owner purges it; the agent has no CDN credentials.
+- **First full gate run on `8ddec16`, result Failed:**
+  - `backend-format`: a real defect. `AddShoppingPlanRoute.cs` had a UTF-8 BOM that `.editorconfig` rejects. Repaired here. No effect on behavior.
+  - `backend-dependencies`: the agent's development PostgreSQL held port 55432, so the gate's PostgreSQL and Keycloak did not start.
+  - `backend-tests`: 14 architecture and 391 unit tests passed; integration 217 of 228. The 11 failures are login and logout routes answering 500, which fits the missing Keycloak; this is confirmed only if they pass on the rerun.
+  - Every remaining frontend, contract, and OpenAPI step failed on `ENOSPC`, because the gate worktree lived in the 2 GB RAM-backed `/tmp`. The script now builds in `/var/tmp`, as the deploy script does.
+- **Changes included in the commit:** `Caddyfile.cocinaris`, the runbook, `run-local-gates.sh`, the migration's encoding, this plan, and the registry.
+- **Next action:** See "Exact next action".
+
+- **Second full gate run on `d0face5`, result Failed in one step:** 32 of 33 steps passed, including format, the 14 architecture, 391 unit, and 228 integration tests (the 11 login and logout failures are gone, so they came from the missing Keycloak), migrations applied twice, OpenAPI drift, contracts, frontend tests and builds, audit, and the secrets scan.
+- **`frontend-smoke` does not finish, cause not established:**
+  - In the full run it failed after 44 s, on `page.goto: net::ERR_INSUFFICIENT_RESOURCES` for `/app/hoje`.
+  - Run alone with only `frontend,smoke`, it hung with no output for 25 minutes and was stopped by hand.
+  - Both stopped right after the CSS zoom check, whose next step is the touch check in a new browser context. Six checks passed before that; everything after, including the production part with `serviceWorkers: "block"`, has never run since Slice 3.
+  - Earlier runs failed with a 15 s `page.goto` timeout, also on unmodified `main`. A smoke run has no overall time limit, so the gate script can wait forever.
+  - The partial run overwrote the full run's summary under `artifacts/local-gates/d0face5…`; the table is in the pull request.
+
 ### 2026-11-05 — Claude Code (Slice 7)
 
 - **Run delivery target:** Slice 7, opt-in web push, from fresh `origin/main` after the owner asked to continue. PR #90 is still open, so its gate script and encoding fixes are repeated here unchanged to keep this branch's gates honest; they merge cleanly in either order.
@@ -964,6 +985,12 @@ Migrations are additive, and rollback means deploying the earlier code with unus
   - On the very first page load the worker may not be registered yet, so the option appears only after the next navigation.
   - The session can expire without a logout, and then the subscription stays until another owner takes it or the push service removes it. The message names nothing about the person.
 - **Next action:** See "Exact next action".
+
+### 2026-11-05 — Claude Code (merge of `main` into Slice 7)
+
+- **Correction:** the Slice 7 entry says #90 and this branch "merge cleanly in either order". That was wrong and was never tried: after #90 merged, this branch conflicted in the plan and the registry.
+- **Changes:** merged `origin/main` at `41d597a`, kept both progress log sections in order, and updated the state and registry to say #90 is merged.
+- **Validation:** the diff against the gated commit `e4d4fa3` is limited to the files #90 changed and this plan's records, so the gates were not rerun.
 
 ## Completion and handoff checklist
 
