@@ -569,6 +569,13 @@ namespace Cocinaris.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("CreationKey")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("meal");
+
                     b.Property<string>("MealType")
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
@@ -589,6 +596,18 @@ namespace Cocinaris.Infrastructure.Persistence.Migrations
 
                     b.Property<DateOnly?>("PlannedDate")
                         .HasColumnType("date");
+
+                    b.Property<string>("ProducesName")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<decimal?>("ProducesQuantity")
+                        .HasPrecision(18, 3)
+                        .HasColumnType("numeric(18,3)");
+
+                    b.Property<string>("ProducesUnit")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
 
                     b.Property<Guid>("RecipeId")
                         .HasColumnType("uuid");
@@ -625,6 +644,8 @@ namespace Cocinaris.Infrastructure.Persistence.Migrations
 
                     b.ToTable("menu_entries", "planning", t =>
                         {
+                            t.HasCheckConstraint("ck_menu_entries_kind", "(\"Kind\" = 'meal' AND \"ProducesName\" IS NULL AND \"ProducesQuantity\" IS NULL AND \"ProducesUnit\" IS NULL) OR (\"Kind\" = 'component' AND \"ProducesName\" IS NOT NULL AND \"ProducesQuantity\" > 0 AND \"ProducesUnit\" IN ('Gram', 'Milliliter', 'Unit'))");
+
                             t.HasCheckConstraint("ck_menu_entries_meal_type", "\"MealType\" IS NULL OR \"MealType\" IN ('breakfast', 'lunch', 'dinner', 'snack')");
 
                             t.HasCheckConstraint("ck_menu_entries_meals_covered", "\"MealsCovered\" BETWEEN 1 AND 4");

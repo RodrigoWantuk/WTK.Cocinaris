@@ -11,13 +11,15 @@ import {
   fixturesDir,
   listJsonFiles,
   validateExpandSemantics,
+  validPlanDeckComponents,
   validatePlanDeckSemantics,
   validateRequestFixture,
   validateSuggestSemantics,
 } from "./lib/validate-core.mjs";
 
 const ajv = createAjv();
-const { validateSuggest, validateExpand, validatePlanDeck } = compileSchemas(ajv);
+const { validateSuggest, validateExpand, validatePlanDeck, validatePlanDeckV2 } =
+  compileSchemas(ajv);
 
 let failures = 0;
 
@@ -57,6 +59,16 @@ for (const file of listJsonFiles(join(fixturesDir, "responses/positive"))) {
       const semantic = validateSuggestSemantics(data);
       if (!semantic.ok) fail(`${name} semantics: ${semantic.errors.join("; ")}`);
       else pass(`positive ${name}`);
+    }
+  } else if (name.startsWith("plan-deck-v2")) {
+    if (!validatePlanDeckV2(data)) {
+      fail(`${name} schema: ${ajv.errorsText(validatePlanDeckV2.errors)}`);
+    } else if (!validatePlanDeckSemantics(data).ok) {
+      fail(`${name} semantics`);
+    } else if (validPlanDeckComponents(data).length !== data.components.length) {
+      fail(`${name} dropped a valid component`);
+    } else {
+      pass(`positive ${name}`);
     }
   } else if (name.startsWith("plan-deck-")) {
     if (!validatePlanDeck(data)) {
@@ -106,6 +118,10 @@ const negativeExpectations = {
     schemaFail: false,
     semanticFail: true,
   },
+  "plan-deck-v2-three-components.json": { schemaFail: true },
+  "plan-deck-v2-component-unknown-user.json": { componentDropped: true },
+  "plan-deck-v2-component-short-output.json": { componentDropped: true },
+  "plan-deck-v2-component-wrong-name.json": { componentDropped: true },
   "plan-deck-five-candidates.json": { schemaFail: true },
   "plan-deck-seven-candidates.json": { schemaFail: true },
   "plan-deck-extra-property.json": { schemaFail: true },
@@ -134,7 +150,10 @@ for (const file of listJsonFiles(join(fixturesDir, "responses/negative"))) {
   const data = JSON.parse(readFileSync(file, "utf8"));
   const isSuggest = name.startsWith("suggest-");
   const isPlanDeck = name.startsWith("plan-deck-");
-  const validate = isPlanDeck ? validatePlanDeck : isSuggest ? validateSuggest : validateExpand;
+  const isPlanDeckV2 = name.startsWith("plan-deck-v2");
+  const validate = isPlanDeckV2
+    ? validatePlanDeckV2
+    : isPlanDeck ? validatePlanDeck : isSuggest ? validateSuggest : validateExpand;
   const schemaOk = validate(data);
   if (expectation.schemaFail) {
     if (schemaOk) fail(`${name} expected schema failure`);
@@ -143,6 +162,13 @@ for (const file of listJsonFiles(join(fixturesDir, "responses/negative"))) {
   }
   if (!schemaOk) {
     fail(`${name} unexpectedly failed schema: ${ajv.errorsText(validate.errors)}`);
+    continue;
+  }
+  if (expectation.componentDropped) {
+    // A bad component never fails the batch: the dishes stay valid, and only it is dropped.
+    if (!validatePlanDeckSemantics(data).ok) fail(`${name} failed the batch`);
+    else if (validPlanDeckComponents(data).length !== 0) fail(`${name} kept the component`);
+    else pass(`negative component ${name}`);
     continue;
   }
   const request = expectation.request?.startsWith("inline:")

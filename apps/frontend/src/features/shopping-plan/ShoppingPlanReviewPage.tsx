@@ -293,6 +293,16 @@ export function ShoppingPlanReviewPage() {
                   : t("shoppingPlan.review.position", { position: index + 1 })}
               </p>
               <p className="text-[17px] font-semibold">{entry.recipeName}</p>
+              {entry.kind === "component" ? (
+                <p
+                  className="text-sm font-medium"
+                  data-testid="plan-review-base"
+                >
+                  {t("shoppingPlan.review.base", {
+                    name: entry.producesName ?? "",
+                  })}
+                </p>
+              ) : null}
               <p className="text-sm text-muted-foreground">
                 {[
                   t("recipes.detail.servings", { count: entry.servings }),

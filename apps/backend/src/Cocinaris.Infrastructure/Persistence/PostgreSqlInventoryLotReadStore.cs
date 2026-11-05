@@ -56,6 +56,12 @@ public sealed class PostgreSqlInventoryLotReadStore(ApplicationDbContext databas
     }
 
     /// <inheritdoc />
+    public async Task<IReadOnlyDictionary<Guid, Guid>> ListOutputBatchesAsync(Guid ownerUserId, IReadOnlyCollection<Guid> batchIds, CancellationToken cancellationToken) =>
+        await database.PreparationOutputs.AsNoTracking()
+            .Where(item => item.OwnerUserId == ownerUserId && batchIds.Contains(item.BatchId))
+            .ToDictionaryAsync(item => item.OutputLotId, item => item.BatchId, cancellationToken);
+
+    /// <inheritdoc />
     public async Task<IReadOnlyList<InventoryLotReadModel>> ListActiveAsync(Guid ownerUserId, int limit, CancellationToken cancellationToken)
     {
         var records = await (from lot in database.Lots.AsNoTracking()

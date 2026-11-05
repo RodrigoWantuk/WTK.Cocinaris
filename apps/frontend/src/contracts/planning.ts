@@ -49,6 +49,12 @@ export interface MenuEntry {
   readiness: MealReadiness | null;
   /** Meals this one cooking covers (PLAN-0062): "yields 2 meals" is one entry covering two. */
   mealsCovered: number;
+  /** `meal`, or `component` for a base prepared ahead for other dishes (PLAN-0062). */
+  kind?: string;
+  /** What a base makes. */
+  producesName?: string | null;
+  producesQuantity?: number | null;
+  producesUnit?: string | null;
   /** Suggested cooking order in a shopping plan's menu; null for a menu built by hand. */
   suggestedOrder: number | null;
 }

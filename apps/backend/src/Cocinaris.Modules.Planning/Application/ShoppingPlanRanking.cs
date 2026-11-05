@@ -18,7 +18,9 @@ public sealed record RankIngredient(string Key, string DisplayName, decimal Quan
 /// <param name="TotalMinutes">Total minutes.</param>
 /// <param name="Ingredients">Required ingredients.</param>
 /// <param name="DislikeMatches">How many of the person's dislikes it matches.</param>
-public sealed record RankCard(Guid Id, int Order, string DishFormat, string Technique, string? LeadKey, int ActiveMinutes, int TotalMinutes, IReadOnlyList<RankIngredient> Ingredients, int DislikeMatches = 0);
+/// <param name="ProducesKey">Key of what a base makes; null for a dish.</param>
+/// <param name="ProducesQuantity">Quantity a base makes.</param>
+public sealed record RankCard(Guid Id, int Order, string DishFormat, string Technique, string? LeadKey, int ActiveMinutes, int TotalMinutes, IReadOnlyList<RankIngredient> Ingredients, int DislikeMatches = 0, string? ProducesKey = null, decimal ProducesQuantity = 0);
 
 /// <summary>An accepted card and the meals it fills.</summary>
 /// <param name="Card">Card.</param>
@@ -68,7 +70,8 @@ public sealed class ShoppingPlanProjection
     public ShoppingPlanProjection(IEnumerable<RankAccepted> accepted, IReadOnlyDictionary<string, decimal> freeStock)
     {
         _remaining = new Dictionary<string, decimal>(freeStock, StringComparer.Ordinal);
-        foreach (var item in accepted)
+        // Bases come first, as on the real list, so what they make is there for the dishes that use it.
+        foreach (var item in accepted.OrderByDescending(item => item.Card.ProducesKey is not null))
         {
             foreach (var ingredient in item.Card.Ingredients)
             {
@@ -78,6 +81,11 @@ public sealed class ShoppingPlanProjection
                 _toBuy[ingredient.Key] = _toBuy.GetValueOrDefault(ingredient.Key) + need - covered;
                 _uses[ingredient.Key] = _uses.GetValueOrDefault(ingredient.Key) + 1;
                 _names.TryAdd(ingredient.Key, ingredient.DisplayName);
+            }
+
+            if (item.Card.ProducesKey is { } made)
+            {
+                _remaining[made] = _remaining.GetValueOrDefault(made) + item.Card.ProducesQuantity;
             }
         }
     }
@@ -195,7 +203,8 @@ public static class ShoppingPlanRanker
 /// <param name="UsesAttention">Whether it uses food needing attention.</param>
 /// <param name="TotalMinutes">Total minutes.</param>
 /// <param name="CreatedAt">Creation instant.</param>
-public sealed record SequenceEntry(Guid EntryId, Guid RecipeId, int Rank, bool UsesAttention, int TotalMinutes, DateTimeOffset CreatedAt);
+/// <param name="IsComponent">Whether it is a base other dishes use, which must come before them.</param>
+public sealed record SequenceEntry(Guid EntryId, Guid RecipeId, int Rank, bool UsesAttention, int TotalMinutes, DateTimeOffset CreatedAt, bool IsComponent = false);
 
 /// <summary>
 /// Suggests a cooking order (PLAN-0062): what spoils first comes first. This sets an order, not a
@@ -208,7 +217,8 @@ public static class ShoppingPlanSequencer
     public static IReadOnlyList<Guid> Order(IEnumerable<SequenceEntry> entries)
     {
         var sorted = entries
-            .OrderBy(item => item.Rank)
+            .OrderByDescending(item => item.IsComponent)
+            .ThenBy(item => item.Rank)
             .ThenByDescending(item => item.UsesAttention)
             .ThenBy(item => item.TotalMinutes)
             .ThenBy(item => item.CreatedAt)

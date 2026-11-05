@@ -311,6 +311,52 @@ describe("shopping plan setup (PLAN-0062)", () => {
 });
 
 describe("shopping plan cards (PLAN-0062)", () => {
+  const BASE = card("base", {
+    name: "Frango desfiado para a semana",
+    component: {
+      outputName: "Frango desfiado",
+      outputQuantity: 700,
+      outputUnit: "Gram",
+      usedBy: ["Wrap", "Escondidinho"],
+    },
+  });
+
+  it("offers a base as a single decision and says what it is for", async () => {
+    renderAt(
+      repository({ get: vi.fn(async () => plan({ queue: [BASE] })) }),
+      "/app/compras/planejar/s1",
+    );
+
+    const base = await screen.findByTestId("plan-card-base");
+    expect(base).toHaveTextContent("Base sugerida: Frango desfiado, 700 g.");
+    expect(base).toHaveTextContent("Serve para: Wrap, Escondidinho.");
+    expect(screen.getByTestId("plan-yes-twice")).toBeDisabled();
+  });
+
+  it("waits for the answer about a base even when every meal is filled", async () => {
+    const filled = {
+      mealsTotal: 5,
+      mealsFilled: 5,
+      listItemCount: 1,
+      sessionMinutesUsed: 0,
+      sessionMinutesBudget: 120,
+    };
+    const user = userEvent.setup();
+    const decide = vi.fn(async () => plan({ queue: [], progress: filled }));
+    renderAt(
+      repository({
+        get: vi.fn(async () => plan({ queue: [BASE], progress: filled })),
+        decide,
+      }),
+      "/app/compras/planejar/s1",
+    );
+
+    await screen.findByTestId("plan-card-base");
+    expect(screen.queryByText("revisão")).toBeNull();
+    await user.click(screen.getByTestId("plan-yes"));
+    await screen.findByText("revisão");
+  });
+
   it("moves on at once, takes a reason, and undoes", async () => {
     const user = userEvent.setup();
     const rejected = plan({ queue: [card("b")], canUndo: true });

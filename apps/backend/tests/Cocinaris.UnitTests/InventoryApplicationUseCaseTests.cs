@@ -53,6 +53,9 @@ public sealed class InventoryApplicationUseCaseTests
 
     private sealed class TestReadStore : IInventoryLotReadStore
     {
+        public Task<IReadOnlyDictionary<Guid, Guid>> ListOutputBatchesAsync(Guid ownerUserId, IReadOnlyCollection<Guid> batchIds, CancellationToken cancellationToken) =>
+            Task.FromResult<IReadOnlyDictionary<Guid, Guid>>(new Dictionary<Guid, Guid>());
+
         public Task<InventoryLotReadModel?> FindActiveAsync(Guid ownerUserId, Guid lotId, CancellationToken cancellationToken) => Task.FromResult<InventoryLotReadModel?>(null);
         public Task<IReadOnlyList<InventoryHistoryReadModel>?> GetHistoryAsync(Guid ownerUserId, Guid lotId, CancellationToken cancellationToken) => Task.FromResult<IReadOnlyList<InventoryHistoryReadModel>?>(null);
         public Task<IReadOnlyList<InventoryLotReadModel>> ListActiveAsync(Guid ownerUserId, int limit, CancellationToken cancellationToken) => Task.FromResult<IReadOnlyList<InventoryLotReadModel>>([]);

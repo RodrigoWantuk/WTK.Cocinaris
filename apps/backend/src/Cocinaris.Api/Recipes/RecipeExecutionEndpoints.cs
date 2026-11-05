@@ -103,7 +103,8 @@ public sealed class RecipeExecutionApiService(RecipeExecutionApplicationService 
             body.Rating,
             body.Notes,
             key,
-            request.HttpContext.TraceIdentifier);
+            request.HttpContext.TraceIdentifier,
+            body.StoredOutputs?.Select(item => new ExecutionStoredOutputCommand(item.Quantity, item.Unit, item.StorageLocation, item.UseBy)).ToList());
         return ToResult(await application.CompleteAsync(command, cancellationToken), request.HttpContext.TraceIdentifier, ToResponse);
     }
 
@@ -122,7 +123,8 @@ public sealed class RecipeExecutionApiService(RecipeExecutionApplicationService 
                 proposal.Lines.Select(line => new RecipeExecutionProposalLineResponse(line.IngredientId, line.DisplayName, line.Optional, line.RequiredQuantity, line.Unit, line.Status, line.LotId, line.ProposedQuantity, line.ProtectedQuantity, (line.ReservedElsewhere ?? []).Select(item => new RecipeExecutionReservationResponse(item.MenuEntryId, item.RecipeName, item.PlannedDate, item.Quantity)).ToList(), line.Adjustment, line.OriginalName)).ToList(),
                 proposal.PantryLots.Select(lot => new RecipeExecutionPantryLotResponse(lot.LotId, lot.ProductName, lot.Quantity, lot.Unit, lot.StorageLocation, lot.Version, lot.ProtectedQuantity, lot.ReservedQuantity, (lot.ReservedFor ?? []).Select(item => new RecipeExecutionReservationResponse(item.MenuEntryId, item.RecipeName, item.PlannedDate, item.Quantity)).ToList())).ToList())
             : null,
-        (view.Adjustments ?? []).Select(item => new RecipeExecutionAdjustmentResponse(item.IngredientId, item.Kind, item.SubstituteName, item.Quantity)).ToList());
+        (view.Adjustments ?? []).Select(item => new RecipeExecutionAdjustmentResponse(item.IngredientId, item.Kind, item.SubstituteName, item.Quantity)).ToList(),
+        view.Plan is { } plan ? new RecipeExecutionPlanResponse(plan.IsComponent, plan.ProducesName, plan.ProducesQuantity, plan.ProducesUnit, plan.Proposed.Select(item => new RecipeExecutionOutputProposalResponse(item.Quantity, item.Unit, item.StorageLocation)).ToList()) : null);
 
     private static IResult ToResult<TApp, THttp>(RecipeApplicationResult<TApp> result, string traceId, Func<TApp, THttp> map)
     {
@@ -170,7 +172,33 @@ public sealed record RecipeExecutionConsumptionRequest(Guid LotId, decimal Quant
 public sealed record RecipeExecutionLeftoverRequest(int Portions, string StorageLocation, DateOnly? UseBy);
 
 /// <summary>Completion body. Every field is the user's confirmed choice; none is inferred server-side.</summary>
-public sealed record CompleteRecipeExecutionRequest(IReadOnlyList<RecipeExecutionConsumptionRequest>? Consumptions, RecipeExecutionLeftoverRequest? Leftover, int? Rating, string? Notes);
+/// <param name="Consumptions">Lot quantities confirmed as used.</param>
+/// <param name="Leftover">One leftover lot; not allowed with <paramref name="StoredOutputs"/>.</param>
+/// <param name="Rating">Rating, 1 to 5.</param>
+/// <param name="Notes">Notes.</param>
+/// <param name="StoredOutputs">Up to four portions to store, in one batch.</param>
+public sealed record CompleteRecipeExecutionRequest(IReadOnlyList<RecipeExecutionConsumptionRequest>? Consumptions, RecipeExecutionLeftoverRequest? Leftover, int? Rating, string? Notes, IReadOnlyList<RecipeExecutionStoredOutputRequest>? StoredOutputs = null);
+
+/// <summary>One portion to store.</summary>
+/// <param name="Quantity">Quantity: portions for a dish, measured for a base.</param>
+/// <param name="Unit"><c>Unit</c> for a dish; the base's unit for a base.</param>
+/// <param name="StorageLocation"><c>Pantry</c>, <c>Refrigerator</c>, or <c>Freezer</c>.</param>
+/// <param name="UseBy">Date the person chose, if any.</param>
+public sealed record RecipeExecutionStoredOutputRequest(decimal Quantity, string Unit, string StorageLocation, DateOnly? UseBy);
+
+/// <summary>A storage the finished screen proposes.</summary>
+/// <param name="Quantity">Quantity.</param>
+/// <param name="Unit">Unit.</param>
+/// <param name="StorageLocation">Location.</param>
+public sealed record RecipeExecutionOutputProposalResponse(decimal Quantity, string Unit, string StorageLocation);
+
+/// <summary>What the plan says about this cooking.</summary>
+/// <param name="IsComponent">Whether it is a base.</param>
+/// <param name="ProducesName">What a base makes.</param>
+/// <param name="ProducesQuantity">Quantity it makes.</param>
+/// <param name="ProducesUnit">Its unit.</param>
+/// <param name="Proposed">Proposed storage.</param>
+public sealed record RecipeExecutionPlanResponse(bool IsComponent, string? ProducesName, decimal? ProducesQuantity, string? ProducesUnit, IReadOnlyList<RecipeExecutionOutputProposalResponse> Proposed);
 
 /// <summary>One proposal line; <c>status</c> is <c>ready</c>, <c>insufficient</c>, <c>lot_unavailable</c>, <c>not_tracked</c>, or <c>skipped</c> (left out this time). <c>Adjustment</c> is the session's change to it (<c>substitute</c>, <c>quantity</c>, <c>skip</c>), and <c>OriginalName</c> the recipe's name when substituted.</summary>
 /// <remarks>
@@ -190,7 +218,7 @@ public sealed record RecipeExecutionPantryLotResponse(Guid LotId, string Product
 public sealed record RecipeExecutionProposalResponse(IReadOnlyList<RecipeExecutionProposalLineResponse> Lines, IReadOnlyList<RecipeExecutionPantryLotResponse> PantryLots);
 
 /// <summary>One recipe execution. <c>status</c> is <c>InProgress</c>, <c>Completed</c>, or <c>Abandoned</c>; <c>proposal</c> is present while in progress; <c>adjustments</c> are the session's ingredient changes (PLAN-0042 Phase 2).</summary>
-public sealed record RecipeExecutionResponse(Guid ExecutionId, Guid RecipeId, int RevisionNumber, string RecipeName, int Servings, int RecipeServings, string Status, DateTimeOffset StartedAt, DateTimeOffset? FinishedAt, Guid? InventoryBatchId, int? Rating, string? Notes, string NormalizedRecipeJson, RecipeExecutionProposalResponse? Proposal, IReadOnlyList<RecipeExecutionAdjustmentResponse> Adjustments);
+public sealed record RecipeExecutionResponse(Guid ExecutionId, Guid RecipeId, int RevisionNumber, string RecipeName, int Servings, int RecipeServings, string Status, DateTimeOffset StartedAt, DateTimeOffset? FinishedAt, Guid? InventoryBatchId, int? Rating, string? Notes, string NormalizedRecipeJson, RecipeExecutionProposalResponse? Proposal, IReadOnlyList<RecipeExecutionAdjustmentResponse> Adjustments, RecipeExecutionPlanResponse? Plan = null);
 
 /// <summary>Whether the pantry covers one recipe ingredient at the recipe's servings (advisory).</summary>
 /// <param name="IngredientId">Ingredient identifier in the revision.</param>

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useProductionI18n } from "@/app/i18n/ProductionI18nProvider";
 import { Button } from "@/components/ui/button";
 import type { ParsedNormalizedRecipe } from "./parseNormalizedRecipe";
@@ -384,6 +384,7 @@ function ChoicePills<T extends string>({
 export function FinishScreen({
   usedNames,
   servings,
+  storage,
   leftoverPortions,
   onLeftover,
   rating,
@@ -396,6 +397,8 @@ export function FinishScreen({
 }: {
   usedNames: string[];
   servings: number;
+  /** A plan's storage proposal, shown instead of the single leftover choice. */
+  storage?: ReactNode;
   leftoverPortions: number;
   onLeftover: (portions: number) => void;
   rating: string;
@@ -430,24 +433,26 @@ export function FinishScreen({
             : t("cooking.finish.usesNothing")}
         </p>
       </div>
-      <ChoicePills
-        legend={t("cooking.finish.leftover")}
-        name="cooking-leftover"
-        value={String(leftoverPortions)}
-        options={[
-          { value: "0", label: t("cooking.finish.noLeftover") },
-          ...portions.map((count) => ({
-            value: String(count),
-            label: t(
-              count === 1
-                ? "cooking.finish.portion.one"
-                : "cooking.finish.portion.many",
-              { count },
-            ),
-          })),
-        ]}
-        onChange={(value) => onLeftover(Number(value))}
-      />
+      {storage ?? (
+        <ChoicePills
+          legend={t("cooking.finish.leftover")}
+          name="cooking-leftover"
+          value={String(leftoverPortions)}
+          options={[
+            { value: "0", label: t("cooking.finish.noLeftover") },
+            ...portions.map((count) => ({
+              value: String(count),
+              label: t(
+                count === 1
+                  ? "cooking.finish.portion.one"
+                  : "cooking.finish.portion.many",
+                { count },
+              ),
+            })),
+          ]}
+          onChange={(value) => onLeftover(Number(value))}
+        />
+      )}
       <ChoicePills
         legend={t("cooking.finish.rating")}
         name="cooking-rating"

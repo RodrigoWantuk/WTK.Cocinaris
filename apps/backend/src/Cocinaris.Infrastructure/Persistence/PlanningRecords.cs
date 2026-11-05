@@ -52,6 +52,14 @@ public sealed class MenuEntryRecord
     public bool ReserveIngredients { get; set; } = true;
     /// <summary>Gets or sets the meals this one cooking covers, 1 to 4 (PLAN-0062).</summary>
     public int MealsCovered { get; set; } = 1;
+    /// <summary>Gets or sets the kind: <c>meal</c> or <c>component</c> (PLAN-0062).</summary>
+    public string Kind { get; set; } = "meal";
+    /// <summary>Gets or sets what a component makes.</summary>
+    public string? ProducesName { get; set; }
+    /// <summary>Gets or sets the quantity a component makes.</summary>
+    public decimal? ProducesQuantity { get; set; }
+    /// <summary>Gets or sets the unit of what a component makes.</summary>
+    public string? ProducesUnit { get; set; }
     /// <summary>Gets or sets the suggested cooking order within the menu; null for a menu built by hand.</summary>
     public int? SuggestedOrder { get; set; }
     /// <summary>Gets or sets the UTC creation instant.</summary>

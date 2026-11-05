@@ -1,0 +1,395 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cocinaris.local/contracts/ai/recipe/plan-deck.response.v0.4.json",
+  "title": "recipe.suggest_plan_deck.v2 response",
+  "description": "Strict closed response schema for six dish cards and up to two reusable components of a shopping plan (protocol 0.4, PLAN-0062 Slice 5). An invalid component is dropped by the service instead of failing the batch.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "operation",
+    "schemaVersion",
+    "candidates",
+    "components"
+  ],
+  "properties": {
+    "operation": {
+      "const": "recipe.suggest_plan_deck.v2"
+    },
+    "schemaVersion": {
+      "const": "0.4"
+    },
+    "candidates": {
+      "type": "array",
+      "minItems": 6,
+      "maxItems": 6,
+      "items": {
+        "$ref": "#/$defs/candidate"
+      }
+    },
+    "components": {
+      "type": "array",
+      "minItems": 0,
+      "maxItems": 2,
+      "items": {
+        "$ref": "#/$defs/component"
+      }
+    }
+  },
+  "$defs": {
+    "nonEmptyString": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 120
+    },
+    "stableId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$"
+    },
+    "canonicalUnit": {
+      "type": "string",
+      "enum": [
+        "g",
+        "ml",
+        "unit"
+      ]
+    },
+    "availabilitySource": {
+      "type": "string",
+      "enum": [
+        "on_hand",
+        "planned_purchase",
+        "prepared_component"
+      ]
+    },
+    "ingredientState": {
+      "type": "string",
+      "enum": [
+        "raw",
+        "cooked",
+        "frozen",
+        "thawed",
+        "soaked",
+        "chopped",
+        "prepared_component",
+        "unknown"
+      ]
+    },
+    "candidateStrategy": {
+      "type": "string",
+      "enum": [
+        "on_hand_first",
+        "on_hand_flexible",
+        "planned_purchase_reuse",
+        "exploratory"
+      ]
+    },
+    "mealType": {
+      "type": "string",
+      "enum": [
+        "breakfast",
+        "lunch",
+        "dinner",
+        "snack"
+      ]
+    },
+    "difficulty": {
+      "type": "string",
+      "enum": [
+        "easy",
+        "medium",
+        "hard"
+      ]
+    },
+    "quantity": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "maximum": 100000
+    },
+    "inventoryUse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ingredientRef",
+        "inventoryItemId",
+        "userName",
+        "requiredQuantity",
+        "unit",
+        "availabilitySource",
+        "requiredState"
+      ],
+      "properties": {
+        "ingredientRef": {
+          "$ref": "#/$defs/stableId"
+        },
+        "inventoryItemId": {
+          "$ref": "#/$defs/stableId"
+        },
+        "userName": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "requiredQuantity": {
+          "$ref": "#/$defs/quantity"
+        },
+        "unit": {
+          "$ref": "#/$defs/canonicalUnit"
+        },
+        "availabilitySource": {
+          "$ref": "#/$defs/availabilitySource"
+        },
+        "requiredState": {
+          "$ref": "#/$defs/ingredientState"
+        }
+      }
+    },
+    "additionalIngredient": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "requiredQuantity",
+        "unit",
+        "optional"
+      ],
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "requiredQuantity": {
+          "$ref": "#/$defs/quantity"
+        },
+        "unit": {
+          "$ref": "#/$defs/canonicalUnit"
+        },
+        "optional": {
+          "type": "boolean"
+        }
+      }
+    },
+    "preparationProfile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "requiresAdvancePreparation",
+        "minimumLeadMinutes",
+        "blockingPreparationCodes",
+        "mayProduceReusableComponents"
+      ],
+      "properties": {
+        "requiresAdvancePreparation": {
+          "type": "boolean"
+        },
+        "minimumLeadMinutes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10080
+        },
+        "blockingPreparationCodes": {
+          "type": "array",
+          "maxItems": 8,
+          "items": {
+            "type": "string",
+            "enum": [
+              "thaw",
+              "soak",
+              "marinate",
+              "ferment",
+              "cool",
+              "proof",
+              "rest",
+              "other"
+            ]
+          }
+        },
+        "mayProduceReusableComponents": {
+          "type": "boolean"
+        }
+      }
+    },
+    "timeProfile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "activeMinutes",
+        "passiveMinutes",
+        "totalMinutes"
+      ],
+      "properties": {
+        "activeMinutes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 480
+        },
+        "passiveMinutes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2880
+        },
+        "totalMinutes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2880
+        }
+      }
+    },
+    "candidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "candidateId",
+        "candidateStrategy",
+        "name",
+        "targetMealType",
+        "dishFormat",
+        "primaryTechnique",
+        "primaryIngredientRefs",
+        "summary",
+        "servings",
+        "time",
+        "difficulty",
+        "requiredEquipmentIds",
+        "requiredCapabilities",
+        "inventoryUses",
+        "additionalIngredients",
+        "preparationProfile",
+        "assumptionsUsed"
+      ],
+      "properties": {
+        "candidateId": {
+          "$ref": "#/$defs/stableId"
+        },
+        "candidateStrategy": {
+          "$ref": "#/$defs/candidateStrategy"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "targetMealType": {
+          "$ref": "#/$defs/mealType"
+        },
+        "dishFormat": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "primaryTechnique": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "primaryIngredientRefs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 6,
+          "items": {
+            "$ref": "#/$defs/stableId"
+          }
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 320
+        },
+        "servings": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 24
+        },
+        "time": {
+          "$ref": "#/$defs/timeProfile"
+        },
+        "difficulty": {
+          "$ref": "#/$defs/difficulty"
+        },
+        "requiredEquipmentIds": {
+          "type": "array",
+          "maxItems": 12,
+          "items": {
+            "$ref": "#/$defs/stableId"
+          }
+        },
+        "requiredCapabilities": {
+          "type": "array",
+          "maxItems": 16,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 48
+          }
+        },
+        "inventoryUses": {
+          "type": "array",
+          "maxItems": 10,
+          "items": {
+            "$ref": "#/$defs/inventoryUse"
+          }
+        },
+        "additionalIngredients": {
+          "type": "array",
+          "maxItems": 12,
+          "items": {
+            "$ref": "#/$defs/additionalIngredient"
+          }
+        },
+        "preparationProfile": {
+          "$ref": "#/$defs/preparationProfile"
+        },
+        "assumptionsUsed": {
+          "type": "array",
+          "maxItems": 8,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 40
+          }
+        }
+      }
+    },
+    "component": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "candidate",
+        "output",
+        "usedBy"
+      ],
+      "properties": {
+        "candidate": {
+          "$ref": "#/$defs/candidate"
+        },
+        "output": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "name",
+            "quantity",
+            "unit"
+          ],
+          "properties": {
+            "name": {
+              "$ref": "#/$defs/nonEmptyString"
+            },
+            "quantity": {
+              "$ref": "#/$defs/quantity"
+            },
+            "unit": {
+              "$ref": "#/$defs/canonicalUnit"
+            }
+          }
+        },
+        "usedBy": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 6,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/stableId"
+          }
+        }
+      }
+    }
+  }
+}

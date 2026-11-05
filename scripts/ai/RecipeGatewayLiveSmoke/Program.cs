@@ -203,11 +203,12 @@ if (Environment.GetEnvironmentVariable("PLAN0062_LIVE_EVAL") == "1")
         var context = new RecipeSuggestRequestContext($"plan-0062-{scenario.Name}", scenario.Pantry, equipment, presets with { Restrictions = scenario.Restrictions, OutputLanguage = "pt-BR" }, new RecipeExecutionContext("menu_planning", null, null, null, []));
         var brief = new PlanDeckBrief(5, "mix", scenario.Priority, new Dictionary<string, int> { ["main"] = 5 }, ["lunch", "dinner"], 120, [], [], [], [], scenario.Anchor);
         var payload = RecipeAiRequestEnvelopes.BuildPlanDeckRequest(context, brief);
-        AssertEnvelopeHasFullSchema(payload, AiOperationRegistry.SuggestPlanDeck);
+        // These scenarios cook ahead ("mix"), so they use v2: gate G5-A reads the component lines below.
+        AssertEnvelopeHasFullSchema(payload, AiOperationRegistry.SuggestPlanDeckV2);
         using var document = JsonDocument.Parse(payload);
         var clock = System.Diagnostics.Stopwatch.StartNew();
         var (ok, raw, calls, prompt, completion, repaired) = await RunWithOptionalRepairAsync(
-            provider, AiOperationRegistry.SuggestPlanDeck, payload,
+            provider, AiOperationRegistry.SuggestPlanDeckV2, payload,
             answer => { var result = RecipeProtocolValidator.ValidatePlanDeck(answer, document.RootElement); return (result.IsValid, result.Errors); },
             (errors, previous) => RecipeAiRequestEnvelopes.BuildPlanDeckRepairRequest(context, brief, errors, previous), scenario.Name);
         clock.Stop();
@@ -221,7 +222,19 @@ if (Environment.GetEnvironmentVariable("PLAN0062_LIVE_EVAL") == "1")
         }
 
         valid++;
-        var candidates = RecipeProtocolValidator.ValidatePlanDeck(raw!, document.RootElement).Response!.Candidates;
+        var deck = RecipeProtocolValidator.ValidatePlanDeck(raw!, document.RootElement).Response!;
+        var candidates = deck.Candidates;
+        using (var answer = JsonDocument.Parse(raw!))
+        {
+            Console.WriteLine($"  components: returned={(answer.RootElement.TryGetProperty("components", out var returned) ? returned.GetArrayLength() : 0)} valid={deck.Components?.Count ?? 0}");
+        }
+
+        foreach (var component in deck.Components ?? [])
+        {
+            var verdict = guard.Check(component.Candidate.AdditionalIngredients.Select(item => item.Name).Append(component.Output.Name), IngredientMatchKeys.NamesOnly, scenario.Codes);
+            Console.WriteLine($"  component {component.Output.Name}: guard={verdict.Status}");
+        }
+
         var names = candidates.Select(item => item.AdditionalIngredients.Select(ingredient => ingredient.Name).Concat(item.InventoryUses.Select(use => use.UserName)).ToList()).ToList();
         var shared = names.SelectMany(list => list.Select(IngredientText.Normalize).Distinct()).GroupBy(name => name).Count(group => group.Count() > 1);
         Console.WriteLine($"  ingredients used by more than one dish: {shared}");

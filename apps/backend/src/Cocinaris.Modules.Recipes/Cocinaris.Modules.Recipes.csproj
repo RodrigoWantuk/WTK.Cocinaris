@@ -20,6 +20,7 @@
     <EmbeddedResource Include="..\..\..\..\packages\contracts\ai\recipe\schemas\recipe-expand-selected.response.v0.3.json" Link="Contracts\recipe-expand-selected.response.v0.3.json" LogicalName="Cocinaris.Modules.Recipes.Contracts.recipe-expand-selected.response.v0.3.json" />
     <EmbeddedResource Include="..\..\..\..\packages\contracts\ai\recipe\schemas\recipe-revise.response.v0.3.json" Link="Contracts\recipe-revise.response.v0.3.json" LogicalName="Cocinaris.Modules.Recipes.Contracts.recipe-revise.response.v0.3.json" />
     <EmbeddedResource Include="..\..\..\..\packages\contracts\ai\recipe\schemas\recipe-plan-deck.response.v0.3.json" Link="Contracts\recipe-plan-deck.response.v0.3.json" LogicalName="Cocinaris.Modules.Recipes.Contracts.recipe-plan-deck.response.v0.3.json" />
+    <EmbeddedResource Include="..\..\..\..\packages\contracts\ai\recipe\schemas\recipe-plan-deck.response.v0.4.json" Link="Contracts\recipe-plan-deck.response.v0.4.json" LogicalName="Cocinaris.Modules.Recipes.Contracts.recipe-plan-deck.response.v0.4.json" />
   </ItemGroup>
 
 </Project>

@@ -7,7 +7,8 @@ namespace Cocinaris.Modules.Recipes.Ai;
 /// Closed structural representation of one <c>recipe.suggest_plan_deck.v1</c> response (PLAN-0062):
 /// six dish cards for a shopping plan. Candidates have the same shape as
 /// <c>recipe.suggest_candidates.v1</c>, so expansion and the idea library work on them unchanged.
-/// This shape stays in lock-step with <c>packages/contracts/ai/recipe/schemas/recipe-plan-deck.response.v0.3.json</c>.
+/// This shape stays in lock-step with <c>packages/contracts/ai/recipe/schemas/recipe-plan-deck.response.v0.3.json</c>
+/// and, for <c>recipe.suggest_plan_deck.v2</c>, with <c>recipe-plan-deck.response.v0.4.json</c>, which adds components.
 /// </summary>
 public sealed class PlanDeckResponse
 {
@@ -17,12 +18,17 @@ public sealed class PlanDeckResponse
     /// <summary>Strategies a plan card may use. They may repeat across cards.</summary>
     public static readonly IReadOnlySet<string> Strategies = new HashSet<string>(StringComparer.Ordinal) { "on_hand_first", "planned_purchase_reuse", "exploratory" };
 
-    /// <summary>Gets the operation discriminator, which must equal <c>recipe.suggest_plan_deck.v1</c>.</summary>
+    /// <summary>Most components in one answer.</summary>
+    public const int MaxComponents = 2;
+
+    /// <summary>Gets the operation discriminator: <c>recipe.suggest_plan_deck.v1</c> or <c>.v2</c>.</summary>
     public required string Operation { get; init; }
-    /// <summary>Gets the protocol schema version, which must equal <c>0.3</c>.</summary>
+    /// <summary>Gets the protocol schema version: <c>0.3</c> for v1 and <c>0.4</c> for v2.</summary>
     public required string SchemaVersion { get; init; }
     /// <summary>Gets the candidates.</summary>
     public required List<SuggestCandidate> Candidates { get; init; }
+    /// <summary>Gets the reusable components, present only in v2. After validation only valid ones remain.</summary>
+    public List<PlanDeckComponent>? Components { get; set; }
     /// <summary>Gets unexpected properties captured to enforce the closed schema.</summary>
     [JsonExtensionData]
     public Dictionary<string, JsonElement>? Extra { get; set; }
@@ -32,10 +38,65 @@ public sealed class PlanDeckResponse
     {
         var errors = new List<string>();
         ProtocolCheck.RejectAdditionalProperties(errors, "$", Extra);
-        ProtocolCheck.Const(errors, "$.operation", Operation, "recipe.suggest_plan_deck.v1");
-        ProtocolCheck.Const(errors, "$.schemaVersion", SchemaVersion, "0.3");
+        var v2 = Operation == "recipe.suggest_plan_deck.v2";
+        if (!v2)
+        {
+            ProtocolCheck.Const(errors, "$.operation", Operation, "recipe.suggest_plan_deck.v1");
+        }
+
+        ProtocolCheck.Const(errors, "$.schemaVersion", SchemaVersion, v2 ? "0.4" : "0.3");
+        if (v2)
+        {
+            ProtocolCheck.ArrayLength(errors, "$.components", Components, 0, MaxComponents);
+        }
+        else if (Components is not null)
+        {
+            errors.Add("$.components is not allowed in recipe.suggest_plan_deck.v1");
+        }
         ProtocolCheck.ArrayLength(errors, "$.candidates", Candidates, CandidateCount, CandidateCount);
         for (var index = 0; index < Candidates.Count; index++) { Candidates[index].Validate(errors, $"$.candidates[{index}]"); }
+        return errors;
+    }
+}
+
+/// <summary>What a component makes: the ingredient the dishes that use it no longer need to buy.</summary>
+public sealed class PlanDeckComponentOutput
+{
+    /// <summary>Gets the name, which must equal an additional ingredient of every dish that uses it.</summary>
+    public required string Name { get; init; }
+    /// <summary>Gets the quantity made.</summary>
+    public required decimal Quantity { get; init; }
+    /// <summary>Gets the canonical unit.</summary>
+    public required string Unit { get; init; }
+    /// <summary>Gets unexpected properties captured to enforce the closed schema.</summary>
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? Extra { get; set; }
+}
+
+/// <summary>A reusable base to prepare ahead, such as shredded chicken for two dishes.</summary>
+public sealed class PlanDeckComponent
+{
+    /// <summary>Gets the base as a recipe candidate, so expansion works on it unchanged.</summary>
+    public required SuggestCandidate Candidate { get; init; }
+    /// <summary>Gets what it makes.</summary>
+    public required PlanDeckComponentOutput Output { get; init; }
+    /// <summary>Gets the candidate identifiers of the dishes that use it.</summary>
+    public required List<string> UsedBy { get; init; }
+    /// <summary>Gets unexpected properties captured to enforce the closed schema.</summary>
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? Extra { get; set; }
+
+    /// <summary>Checks the structure, which a bad component fails without failing the batch.</summary>
+    public List<string> Validate()
+    {
+        var errors = new List<string>();
+        ProtocolCheck.RejectAdditionalProperties(errors, "$", Extra);
+        ProtocolCheck.RejectAdditionalProperties(errors, "$.output", Output.Extra);
+        ProtocolCheck.StringLength(errors, "$.output.name", Output.Name, 1, 120);
+        ProtocolCheck.QuantityValue(errors, "$.output.quantity", Output.Quantity);
+        ProtocolCheck.EnumValue(errors, "$.output.unit", Output.Unit, ProtocolCheck.CanonicalUnits);
+        ProtocolCheck.ArrayLength(errors, "$.usedBy", UsedBy, 1, PlanDeckResponse.CandidateCount);
+        Candidate.Validate(errors, "$.candidate");
         return errors;
     }
 }

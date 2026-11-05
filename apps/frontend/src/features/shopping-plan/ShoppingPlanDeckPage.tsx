@@ -135,7 +135,13 @@ export function ShoppingPlanDeckPage() {
   }, [cardId]);
 
   useEffect(() => {
-    if (plan && filled && plan.status === "building") {
+    // A base offered for the dish just chosen still gets its answer before review.
+    if (
+      plan &&
+      filled &&
+      plan.status === "building" &&
+      !plan.queue.some((item) => item.component)
+    ) {
       navigate(`/app/compras/planejar/${sessionId}/revisar`);
     }
   }, [filled, navigate, plan, sessionId]);
@@ -325,6 +331,24 @@ export function ShoppingPlanDeckPage() {
           >
             {card.name}
           </h1>
+          {card.component ? (
+            <div data-testid="plan-card-base" className="space-y-1">
+              <p className="font-semibold">
+                {t("shoppingPlan.card.base", {
+                  name: card.component.outputName,
+                  amount: `${formatLocaleDecimal(card.component.outputQuantity, locale)} ${t(UNIT_KEYS[card.component.outputUnit] ?? "recipes.unit.unit")}`,
+                })}
+              </p>
+              <p className="text-sm">
+                {t("shoppingPlan.card.baseFor", {
+                  dishes: card.component.usedBy.join(", "),
+                })}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {t("shoppingPlan.card.baseNo")}
+              </p>
+            </div>
+          ) : null}
           {card.summary ? (
             <p className="text-muted-foreground">{card.summary}</p>
           ) : null}
@@ -407,7 +431,8 @@ export function ShoppingPlanDeckPage() {
               variant="secondary"
               data-testid="plan-yes-twice"
               aria-expanded={repeatOpen}
-              disabled={remaining < 2}
+              // A base is prepared once.
+              disabled={remaining < 2 || Boolean(card.component)}
               onClick={() => setRepeatOpen((value) => !value)}
             >
               {t("shoppingPlan.yesTwice")}

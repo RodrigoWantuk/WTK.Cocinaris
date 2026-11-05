@@ -19,6 +19,7 @@ public static class RecipeAiRequestEnvelopes
     private static readonly JsonSerializerOptions SerializerOptions = new(JsonSerializerDefaults.Web) { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull };
     private static readonly Lazy<JsonNode> SuggestResponseSchema = new(() => LoadEmbeddedSchema("recipe-suggest-candidates.response.v0.3.json"));
     private static readonly Lazy<JsonNode> PlanDeckResponseSchema = new(() => LoadEmbeddedSchema("recipe-plan-deck.response.v0.3.json"));
+    private static readonly Lazy<JsonNode> PlanDeckV2ResponseSchema = new(() => LoadEmbeddedSchema("recipe-plan-deck.response.v0.4.json"));
     private static readonly Lazy<JsonNode> ExpandResponseSchema = new(() => LoadEmbeddedSchema("recipe-expand-selected.response.v0.3.json"));
     private static readonly Lazy<JsonNode> ReviseResponseSchema = new(() => LoadEmbeddedSchema("recipe-revise.response.v0.3.json"));
 
@@ -82,16 +83,19 @@ public static class RecipeAiRequestEnvelopes
     private static string BuildPlanDeckEnvelope(RecipeSuggestRequestContext context, PlanDeckBrief brief, RepairPayload? repair)
     {
         var envelope = BuildSuggestNode(context, repair);
-        envelope["operation"] = "recipe.suggest_plan_deck.v1";
+        // Only a plan that cooks ahead has a session to prepare a base in.
+        var withComponents = brief.CookingStyle != "daily";
+        envelope["schemaVersion"] = withComponents ? "0.4" : "0.3";
+        envelope["operation"] = withComponents ? "recipe.suggest_plan_deck.v2" : "recipe.suggest_plan_deck.v1";
         envelope["candidatePolicy"]!["count"] = PlanDeckResponse.CandidateCount;
         envelope["candidatePolicy"]!["requireDistinctCandidateStrategies"] = false;
         envelope["candidatePolicy"]!["allowedCandidateStrategies"] = new JsonArray(PlanDeckResponse.Strategies.Select(item => (JsonNode)item).ToArray());
         envelope["candidatePolicy"]!["recommendedStrategySet"] = new JsonArray(PlanDeckResponse.Strategies.Select(item => (JsonNode)item).ToArray());
-        envelope["responseSchema"] = PlanDeckResponseSchema.Value.DeepClone();
+        envelope["responseSchema"] = (withComponents ? PlanDeckV2ResponseSchema : PlanDeckResponseSchema).Value.DeepClone();
         envelope["responseContract"] = new JsonObject
         {
             ["responseFormat"] = "json_only",
-            ["rootRequired"] = new JsonArray("operation", "schemaVersion", "candidates"),
+            ["rootRequired"] = withComponents ? new JsonArray("operation", "schemaVersion", "candidates", "components") : new JsonArray("operation", "schemaVersion", "candidates"),
             ["candidateCount"] = new JsonObject { ["min"] = PlanDeckResponse.CandidateCount, ["max"] = PlanDeckResponse.CandidateCount },
             ["additionalProperties"] = false
         };
@@ -108,6 +112,11 @@ public static class RecipeAiRequestEnvelopes
             ["avoidIngredients"] = ToStringArray(brief.AvoidIngredients.Take(10)),
             ["rule"] = "Return six dishes a home cook would recognize. Reuse perishable ingredients from shoppingListIngredients and from each other, so little is left over, and make dishes differ in format, technique, and flavor. Rice, chicken, and tomato may repeat if the dishes do not feel the same. Never use avoidIngredients. List everything to buy, with quantities for userPresets.servings, in additionalIngredients. userPresets.restrictions always win."
         };
+        if (withComponents)
+        {
+            plan["componentRule"] = $"Return at most {PlanDeckResponse.MaxComponents} components, or none when no base fits: a base a home cook prepares once and uses in at least two of these dishes, such as shredded chicken or a tomato sauce. Each dish that uses one lists output.name, spelled the same and in output.unit, in additionalIngredients; usedBy names those dishes by candidateId; output.quantity covers all of them. A component's candidate follows every candidate rule and userPresets.restrictions.";
+        }
+
         if (brief.MaxActiveMinutes is { } minutes)
         {
             plan["maxActiveMinutes"] = minutes;

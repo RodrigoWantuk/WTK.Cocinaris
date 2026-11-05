@@ -1662,11 +1662,18 @@ export interface components {
         };
         /** @description Completion body. Every field is the user's confirmed choice; none is inferred server-side. */
         CompleteRecipeExecutionRequest: {
+            /** @description Lot quantities confirmed as used. */
             consumptions: null | components["schemas"]["RecipeExecutionConsumptionRequest"][];
             leftover: null | components["schemas"]["RecipeExecutionLeftoverRequest"];
+            /** @description Notes. */
             notes: null | string;
-            /** Format: int32 */
+            /**
+             * Format: int32
+             * @description Rating, 1 to 5.
+             */
             rating: null | number | string;
+            /** @description Up to four portions to store, in one batch. */
+            storedOutputs?: null | components["schemas"]["RecipeExecutionStoredOutputRequest"][];
         };
         /** @description Cooking context transport DTO. */
         CookingContextDto: {
@@ -2046,11 +2053,17 @@ export interface components {
             entryId: string;
             /** Format: uuid */
             executionId: null | string;
+            /** @default meal */
+            kind: string;
             mealType: null | string;
             /** Format: int32 */
             mealsCovered: number | string;
             /** Format: date */
             plannedDate: null | string;
+            producesName?: null | string;
+            /** Format: double */
+            producesQuantity?: null | number | string;
+            producesUnit?: null | string;
             readiness: null | components["schemas"]["MealReadinessResponse"];
             /** Format: uuid */
             recipeId: string;
@@ -2655,6 +2668,18 @@ export interface components {
              */
             useBy: null | string;
         };
+        /** @description A storage the finished screen proposes. */
+        RecipeExecutionOutputProposalResponse: {
+            /**
+             * Format: double
+             * @description Quantity.
+             */
+            quantity: number | string;
+            /** @description Location. */
+            storageLocation: string;
+            /** @description Unit. */
+            unit: string;
+        };
         /** @description An active measured pantry lot the user can pick. */
         RecipeExecutionPantryLotResponse: {
             /** Format: uuid */
@@ -2671,6 +2696,22 @@ export interface components {
             unit: string;
             /** Format: uuid */
             version: string;
+        };
+        /** @description What the plan says about this cooking. */
+        RecipeExecutionPlanResponse: {
+            /** @description Whether it is a base. */
+            isComponent: boolean;
+            /** @description What a base makes. */
+            producesName: null | string;
+            /**
+             * Format: double
+             * @description Quantity it makes.
+             */
+            producesQuantity: null | number | string;
+            /** @description Its unit. */
+            producesUnit: null | string;
+            /** @description Proposed storage. */
+            proposed: components["schemas"]["RecipeExecutionOutputProposalResponse"][];
         };
         /** @description One proposal line; `status` is `ready`, `insufficient`, `lot_unavailable`, `not_tracked`, or `skipped` (left out this time). `Adjustment` is the session's change to it (`substitute`, `quantity`, `skip`), and `OriginalName` the recipe's name when substituted. */
         RecipeExecutionProposalLineResponse: {
@@ -2717,6 +2758,7 @@ export interface components {
             inventoryBatchId: null | string;
             normalizedRecipeJson: string;
             notes: null | string;
+            plan?: null | components["schemas"]["RecipeExecutionPlanResponse"];
             proposal: null | components["schemas"]["RecipeExecutionProposalResponse"];
             /** Format: int32 */
             rating: null | number | string;
@@ -2732,6 +2774,23 @@ export interface components {
             /** Format: date-time */
             startedAt: string;
             status: string;
+        };
+        /** @description One portion to store. */
+        RecipeExecutionStoredOutputRequest: {
+            /**
+             * Format: double
+             * @description Quantity: portions for a dish, measured for a base.
+             */
+            quantity: number | string;
+            /** @description `Pantry`, `Refrigerator`, or `Freezer`. */
+            storageLocation: string;
+            /** @description `Unit` for a dish; the base's unit for a base. */
+            unit: string;
+            /**
+             * Format: date
+             * @description Date the person chose, if any.
+             */
+            useBy: null | string;
         };
         /** @description Compact in-progress execution. */
         RecipeExecutionSummaryResponse: {
@@ -3160,6 +3219,11 @@ export interface components {
             guardCode: null | string;
             /** @description Ingredient that could not be verified, if any. */
             guardIngredient: null | string;
+            /**
+             * @description Whether it is a base, which fills no meal.
+             * @default false
+             */
+            isComponent: boolean;
             /** @description Meal. */
             mealType: string;
             /** @description `yield`, `again`, or null. */
@@ -3212,6 +3276,7 @@ export interface components {
              * @description Card.
              */
             cardId: string;
+            component?: null | components["schemas"]["ShoppingPlanComponentView"];
             /** @description Restriction that could not be verified, if any. */
             guardCode: null | string;
             /** @description Ingredient that could not be verified, if any. */
@@ -3251,6 +3316,20 @@ export interface components {
              * @description Total minutes.
              */
             totalMinutes: number | string;
+        };
+        /** @description What a base card makes and which accepted or offered dishes use it. */
+        ShoppingPlanComponentView: {
+            /** @description Ingredient it makes. */
+            outputName: string;
+            /**
+             * Format: double
+             * @description Quantity it makes.
+             */
+            outputQuantity: number | string;
+            /** @description `Gram`, `Milliliter`, or `Unit`. */
+            outputUnit: string;
+            /** @description Dish names. */
+            usedBy: string[];
         };
         /** @description A plan in progress, so entry points can offer to continue it. */
         ShoppingPlanCurrentView: {

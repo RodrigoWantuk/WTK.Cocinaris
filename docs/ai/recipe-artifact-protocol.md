@@ -42,6 +42,18 @@ Strict response schema: `packages/contracts/ai/recipe/schemas/recipe-plan-deck.r
 - **Validation.** Exactly six; strategies limited to `on_hand_first`, `planned_purchase_reuse`, and `exploratory`, repeats allowed; unique fingerprints; every `targetMealType` requested; and the per-candidate rules shared with suggestions. Summary language is a soft check.
 - **After validation.** The application drops near-duplicates and runs `RestrictionGuard`. Model output never changes a menu directly.
 
+### `recipe.suggest_plan_deck.v2`
+
+The same six cards plus `components`, 0 to 2 reusable bases, for plans that cook ahead (`once` and `mix`; PLAN-0062 Slice 5). A `daily` plan keeps v1.
+
+Strict response schema: `packages/contracts/ai/recipe/schemas/recipe-plan-deck.response.v0.4.json`, with `schemaVersion: "0.4"`.
+
+- **Component.** `{ candidate, output: { name, quantity, unit }, usedBy: [candidateId] }`. `candidate` has the usual shape, so expansion works unchanged.
+- **Rules.** Every `usedBy` id exists; `output.name`, normalized, is an `additionalIngredients` name of each of those dishes, in `output.unit`; `output.quantity` covers all of them; the candidate passes every candidate rule.
+- **A bad component is dropped, not repaired.** The six dishes are useful without it. More than two components fails the schema, as usual.
+- **After validation.** `RestrictionGuard` also checks what the base makes. A base is offered only after a dish that uses it is accepted.
+- **Evaluation.** Gate G5-A: `PLAN0062_LIVE_EVAL=1` prints returned and valid components per scenario. It has not run yet; it needs the provider key.
+
 ### `recipe.expand_selected.v1`
 
 Produces one persisted recipe revision containing ingredients, equipment, preparation tasks, stages, dependencies, relative lead times, sensory cues, storage/freezing guidance, produced components, reconciliation hints and `thumbnailVisual`.

@@ -35,7 +35,7 @@ import { usePlanningRepository } from "./PlanningProvider";
 
 /** Lines still to buy, grouped by store section; the rest keep their own blocks below. */
 const TO_BUY = ["required", "assumed", "optional"] as const;
-const OWNED = ["runs_out", "available"] as const;
+const OWNED = ["from_prep", "runs_out", "available"] as const;
 /** Places a person may buy at, in the order of a typical trip (PLAN-0062). */
 const PLACES = ["street_market", "butcher", "bakery", "market"] as const;
 /** Store sections in the order of a typical shopping trip (PLAN-0037 Phase 3). */

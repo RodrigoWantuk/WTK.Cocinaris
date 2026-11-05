@@ -2,6 +2,26 @@ import type { ProductionLocale } from "./productionCatalog";
 
 /** Text of shopping plans (PLAN-0062). */
 const ptBR: Record<string, string> = {
+  "shoppingPlan.card.base": "Base sugerida: {{name}}, {{amount}}.",
+  "shoppingPlan.card.baseFor": "Serve para: {{dishes}}.",
+  "shoppingPlan.card.baseNo":
+    "Se disser não, o item fica na lista: dá para comprar pronto.",
+  "shoppingPlan.review.base": "Base: faz {{name}} para os outros pratos",
+  "shopping.category.from_prep": "Vem do pré-preparo",
+  "cooking.outputs.title": "Como guardar?",
+  "cooking.outputs.base":
+    "Vai para a despensa como {{name}}, para os próximos pratos.",
+  "cooking.outputs.dish": "Um lugar para cada refeição que vem depois.",
+  "cooking.outputs.amount": "Quantidade ({{unit}})",
+  "cooking.outputs.add": "Adicionar porção",
+  "cooking.outputs.remove": "Remover",
+  "cooking.outputs.advisory":
+    "É uma sugestão, não uma garantia. Confira sempre o alimento.",
+  "cooking.outputs.invalid": "Confira as quantidades.",
+  "cooking.done.stored": "{{count}} porções guardadas.",
+  "today.prep.ready": "{{item}}: {{count}} porções prontas",
+  "today.prep.eat": "Comer uma porção",
+  "today.prep.eatError": "Não consegui registrar. Tente de novo.",
   "shoppingPlan.recent.title": "Repetir um plano",
   "shoppingPlan.recent.meals": "{{count}} refeições · {{dishes}}",
   "shoppingPlan.recent.repeat": "Repetir",
@@ -204,6 +224,26 @@ const ptBR: Record<string, string> = {
 };
 
 const en: Record<string, string> = {
+  "shoppingPlan.card.base": "Suggested base: {{name}}, {{amount}}.",
+  "shoppingPlan.card.baseFor": "Goes into: {{dishes}}.",
+  "shoppingPlan.card.baseNo":
+    "If you say no, the item stays on the list: you can buy it ready-made.",
+  "shoppingPlan.review.base": "Base: makes {{name}} for the other dishes",
+  "shopping.category.from_prep": "Comes from your prep",
+  "cooking.outputs.title": "How to store it?",
+  "cooking.outputs.base":
+    "It goes to the pantry as {{name}}, for the next dishes.",
+  "cooking.outputs.dish": "One place for each meal that comes later.",
+  "cooking.outputs.amount": "Amount ({{unit}})",
+  "cooking.outputs.add": "Add a portion",
+  "cooking.outputs.remove": "Remove",
+  "cooking.outputs.advisory":
+    "This is a suggestion, not a guarantee. Always check the food.",
+  "cooking.outputs.invalid": "Check the amounts.",
+  "cooking.done.stored": "{{count}} portions stored.",
+  "today.prep.ready": "{{item}}: {{count}} portions ready",
+  "today.prep.eat": "Eat a portion",
+  "today.prep.eatError": "Could not record that. Try again.",
   "shoppingPlan.recent.title": "Repeat a plan",
   "shoppingPlan.recent.meals": "{{count}} meals · {{dishes}}",
   "shoppingPlan.recent.repeat": "Repeat",
@@ -403,6 +443,26 @@ const en: Record<string, string> = {
 };
 
 const es: Record<string, string> = {
+  "shoppingPlan.card.base": "Base sugerida: {{name}}, {{amount}}.",
+  "shoppingPlan.card.baseFor": "Sirve para: {{dishes}}.",
+  "shoppingPlan.card.baseNo":
+    "Si dices que no, el producto queda en la lista: puedes comprarlo listo.",
+  "shoppingPlan.review.base": "Base: hace {{name}} para los otros platos",
+  "shopping.category.from_prep": "Viene de tu preparación",
+  "cooking.outputs.title": "¿Cómo guardarlo?",
+  "cooking.outputs.base":
+    "Va a la despensa como {{name}}, para los próximos platos.",
+  "cooking.outputs.dish": "Un lugar para cada comida que viene después.",
+  "cooking.outputs.amount": "Cantidad ({{unit}})",
+  "cooking.outputs.add": "Agregar porción",
+  "cooking.outputs.remove": "Quitar",
+  "cooking.outputs.advisory":
+    "Es una sugerencia, no una garantía. Revisa siempre el alimento.",
+  "cooking.outputs.invalid": "Revisa las cantidades.",
+  "cooking.done.stored": "{{count}} porciones guardadas.",
+  "today.prep.ready": "{{item}}: {{count}} porciones listas",
+  "today.prep.eat": "Comer una porción",
+  "today.prep.eatError": "No pude registrarlo. Inténtalo de nuevo.",
   "shoppingPlan.recent.title": "Repetir un plan",
   "shoppingPlan.recent.meals": "{{count}} comidas · {{dishes}}",
   "shoppingPlan.recent.repeat": "Repetir",

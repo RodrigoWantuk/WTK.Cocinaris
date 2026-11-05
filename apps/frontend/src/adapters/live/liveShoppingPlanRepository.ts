@@ -90,6 +90,14 @@ function mapPlan(dto: PlanDto): ShoppingPlan {
       guardCode: text(card.guardCode),
       guardIngredient: text(card.guardIngredient),
       leadIngredient: text(card.leadIngredient),
+      component: card.component
+        ? {
+            outputName: String(card.component.outputName),
+            outputQuantity: num(card.component.outputQuantity),
+            outputUnit: String(card.component.outputUnit),
+            usedBy: (card.component.usedBy ?? []).map(String),
+          }
+        : null,
       ingredients: (card.ingredients ?? []).map((item) => ({
         name: String(item.name),
         quantity: num(item.quantity),
@@ -108,6 +116,7 @@ function mapPlan(dto: PlanDto): ShoppingPlan {
       recipeId: text(card.recipeId),
       guardCode: text(card.guardCode),
       guardIngredient: text(card.guardIngredient),
+      isComponent: card.isComponent === true,
     })),
     needsBatch: dto.needsBatch === true,
     offerMoreOptions: dto.offerMoreOptions === true,

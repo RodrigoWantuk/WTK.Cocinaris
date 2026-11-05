@@ -130,6 +130,13 @@ public sealed record ShoppingPlanProgressView(int MealsTotal, int MealsFilled, i
 /// <param name="Optional">Whether the dish works without it.</param>
 public sealed record ShoppingPlanCardIngredientView(string Name, decimal Quantity, string Unit, bool Optional);
 
+/// <summary>What a base card makes and which accepted or offered dishes use it.</summary>
+/// <param name="OutputName">Ingredient it makes.</param>
+/// <param name="OutputQuantity">Quantity it makes.</param>
+/// <param name="OutputUnit"><c>Gram</c>, <c>Milliliter</c>, or <c>Unit</c>.</param>
+/// <param name="UsedBy">Dish names.</param>
+public sealed record ShoppingPlanComponentView(string OutputName, decimal OutputQuantity, string OutputUnit, IReadOnlyList<string> UsedBy);
+
 /// <summary>A card to decide on. <paramref name="NewItemCount"/> is an estimate until the recipe is expanded.</summary>
 /// <param name="CardId">Card.</param>
 /// <param name="Source"><c>saved</c>, <c>idea</c>, or <c>ai</c>.</param>
@@ -148,7 +155,8 @@ public sealed record ShoppingPlanCardIngredientView(string Name, decimal Quantit
 /// <param name="GuardIngredient">Ingredient that could not be verified, if any.</param>
 /// <param name="LeadIngredient">Main ingredient, offered by "tired of".</param>
 /// <param name="Ingredients">Ingredients.</param>
-public sealed record ShoppingPlanCardView(Guid CardId, string Source, string Name, string Summary, string MealType, int Servings, int TotalMinutes, int ActiveMinutes, int NewItemCount, IReadOnlyList<string> ReusedNames, string? ReasonCode, string? ReasonIngredient, bool OverBudget, string? GuardCode, string? GuardIngredient, string? LeadIngredient, IReadOnlyList<ShoppingPlanCardIngredientView> Ingredients);
+/// <param name="Component">Present when the card is a reusable base.</param>
+public sealed record ShoppingPlanCardView(Guid CardId, string Source, string Name, string Summary, string MealType, int Servings, int TotalMinutes, int ActiveMinutes, int NewItemCount, IReadOnlyList<string> ReusedNames, string? ReasonCode, string? ReasonIngredient, bool OverBudget, string? GuardCode, string? GuardIngredient, string? LeadIngredient, IReadOnlyList<ShoppingPlanCardIngredientView> Ingredients, ShoppingPlanComponentView? Component = null);
 
 /// <summary>An accepted card.</summary>
 /// <param name="CardId">Card.</param>
@@ -161,7 +169,8 @@ public sealed record ShoppingPlanCardView(Guid CardId, string Source, string Nam
 /// <param name="RecipeId">Recipe, once it exists.</param>
 /// <param name="GuardCode">Restriction that could not be verified, if any.</param>
 /// <param name="GuardIngredient">Ingredient that could not be verified, if any.</param>
-public sealed record ShoppingPlanAcceptedView(Guid CardId, string Name, string MealType, int Repeats, string? Mode, string ExpansionState, string? FailureCode, Guid? RecipeId, string? GuardCode, string? GuardIngredient);
+/// <param name="IsComponent">Whether it is a base, which fills no meal.</param>
+public sealed record ShoppingPlanAcceptedView(Guid CardId, string Name, string MealType, int Repeats, string? Mode, string ExpansionState, string? FailureCode, Guid? RecipeId, string? GuardCode, string? GuardIngredient, bool IsComponent = false);
 
 /// <summary>The state every plan route returns.</summary>
 /// <param name="SessionId">Plan.</param>
@@ -253,7 +262,7 @@ public sealed class ShoppingPlanApplicationService(
         var recent = new List<ShoppingPlanRecentView>();
         foreach (var session in finished)
         {
-            var dishes = entries.Where(item => item.MenuPlanId == session.MenuPlanId && item.Status != MenuEntryStatus.Skipped && active.ContainsKey(item.RecipeId))
+            var dishes = entries.Where(item => item.MenuPlanId == session.MenuPlanId && item.Kind == MenuEntryKind.Meal && item.Status != MenuEntryStatus.Skipped && active.ContainsKey(item.RecipeId))
                 .Select(item => active[item.RecipeId].Name)
                 .Distinct(StringComparer.Ordinal)
                 .ToList();
@@ -413,7 +422,7 @@ public sealed class ShoppingPlanApplicationService(
         }
 
         Batches.Add(1, new KeyValuePair<string, object?>("source", "ai"), new KeyValuePair<string, object?>("outcome", "succeeded"));
-        await AddCandidatesAsync(user.Id, session, existing, generated.Value!, ShoppingPlanCardSource.Ai, await profiles.FindAsync(user.Id, cancellationToken), cancellationToken);
+        await AddCandidatesAsync(user.Id, session, existing, generated.Value!.Candidates, ShoppingPlanCardSource.Ai, await profiles.FindAsync(user.Id, cancellationToken), cancellationToken, generated.Value.Components);
         return await ResultAsync(user.Id, session, cancellationToken);
     }
 
@@ -449,6 +458,11 @@ public sealed class ShoppingPlanApplicationService(
             if (count is < 1 or > MaxRepeats || (count > 1 && mode is not ("yield" or "again")))
             {
                 return Failure<ShoppingPlanView>("validation_failed", "Choose one to four meals, and how a repeat is cooked.", "repeats");
+            }
+
+            if (card!.Snapshot.Component is not null && count > 1)
+            {
+                return Failure<ShoppingPlanView>("validation_failed", "A base is prepared once.", "repeats");
             }
 
             if (mode == "yield" && session!.Setup.People * count > MaxEntryServings)
@@ -903,7 +917,7 @@ public sealed class ShoppingPlanApplicationService(
         var setup = session.Setup;
         var active = (await recipes.ListActiveAsync(ownerUserId, MaxActiveRecipes, cancellationToken)).ToDictionary(item => item.RecipeId);
         var entries = (await menus.ListEntriesAsync(ownerUserId, [sourceMenuId], cancellationToken))
-            .Where(item => item.Status != MenuEntryStatus.Skipped && active.ContainsKey(item.RecipeId) && item.MealType is not null && setup.MealTypes.Contains(item.MealType))
+            .Where(item => item.Kind == MenuEntryKind.Meal && item.Status != MenuEntryStatus.Skipped && active.ContainsKey(item.RecipeId) && item.MealType is not null && setup.MealTypes.Contains(item.MealType))
             .OrderBy(item => item.SuggestedOrder ?? int.MaxValue)
             .ThenBy(item => item.CreatedAt)
             .ToList();
@@ -1037,14 +1051,17 @@ public sealed class ShoppingPlanApplicationService(
     }
 
     // Cards are checked before anyone sees them: a blocked dish is dropped, whatever the model said.
-    private async Task AddCandidatesAsync(Guid ownerUserId, ShoppingPlanSession session, IReadOnlyList<ShoppingPlanCard> existing, IReadOnlyList<SuggestCandidate> candidates, ShoppingPlanCardSource source, ProfileReadModel? profile, CancellationToken cancellationToken)
+    private async Task AddCandidatesAsync(Guid ownerUserId, ShoppingPlanSession session, IReadOnlyList<ShoppingPlanCard> existing, IReadOnlyList<SuggestCandidate> candidates, ShoppingPlanCardSource source, ProfileReadModel? profile, CancellationToken cancellationToken, IReadOnlyList<PlanDeckComponent>? components = null)
     {
         var restrictions = Restrictions(profile);
         var seenNames = existing.Select(card => IngredientText.Normalize(card.Snapshot.Name)).ToHashSet(StringComparer.Ordinal);
         var seenPrints = existing.Select(Fingerprint).ToHashSet(StringComparer.Ordinal);
-        var names = candidates.SelectMany(IngredientNames).ToList();
+        var names = candidates.SelectMany(IngredientNames)
+            .Concat((components ?? []).SelectMany(component => IngredientNames(component.Candidate).Append(component.Output.Name)))
+            .ToList();
         var keys = await matching.KeysAsync(ownerUserId, names, cancellationToken);
         var cards = new List<ShoppingPlanCard>();
+        var cardByCandidate = new Dictionary<string, (Guid Id, string Name)>(StringComparer.Ordinal);
         foreach (var candidate in candidates)
         {
             if (existing.Count + cards.Count >= ShoppingPlanSession.MaxCards)
@@ -1065,6 +1082,39 @@ public sealed class ShoppingPlanApplicationService(
                 continue;
             }
 
+            cardByCandidate[candidate.CandidateId] = (Guid.NewGuid(), candidate.Name);
+            cards.Add(new ShoppingPlanCard
+            {
+                Id = cardByCandidate[candidate.CandidateId].Id,
+                SessionId = session.Id,
+                OwnerUserId = ownerUserId,
+                Source = source,
+                CandidateJson = JsonSerializer.Serialize(candidate, SerializerOptions),
+                ExpansionKey = Guid.NewGuid(),
+                FirstSeenOrder = existing.Count + cards.Count,
+                Snapshot = new ShoppingPlanCardSnapshot(
+                    candidate.Name, candidate.Summary, candidate.TargetMealType, candidate.DishFormat, candidate.PrimaryTechnique, candidate.PrimaryIngredientRefs, candidate.Servings,
+                    candidate.Time.ActiveMinutes, candidate.Time.TotalMinutes, candidate.Difficulty, CardIngredients(candidate), Unverified(guard)?.Code, Unverified(guard)?.Ingredient)
+            });
+        }
+
+        // A base stays out of sight until a dish that uses it is accepted, and only dishes that made
+        // it onto the deck can call for it. It passes the same guard, including what it makes.
+        foreach (var component in components ?? [])
+        {
+            var users = component.UsedBy.Where(cardByCandidate.ContainsKey).Select(id => cardByCandidate[id]).ToList();
+            var candidate = component.Candidate;
+            if (users.Count == 0 || existing.Count + cards.Count >= ShoppingPlanSession.MaxCards || !seenNames.Add(IngredientText.Normalize(candidate.Name)) || !seenPrints.Add(RecipeSuggestSemantics.Fingerprint(candidate)))
+            {
+                continue;
+            }
+
+            var guard = RestrictionGuard.Default.Check(IngredientNames(candidate).Append(component.Output.Name), keys, restrictions);
+            if (!CountGuard(guard))
+            {
+                continue;
+            }
+
             cards.Add(new ShoppingPlanCard
             {
                 Id = Guid.NewGuid(),
@@ -1076,7 +1126,8 @@ public sealed class ShoppingPlanApplicationService(
                 FirstSeenOrder = existing.Count + cards.Count,
                 Snapshot = new ShoppingPlanCardSnapshot(
                     candidate.Name, candidate.Summary, candidate.TargetMealType, candidate.DishFormat, candidate.PrimaryTechnique, candidate.PrimaryIngredientRefs, candidate.Servings,
-                    candidate.Time.ActiveMinutes, candidate.Time.TotalMinutes, candidate.Difficulty, CardIngredients(candidate), Unverified(guard)?.Code, Unverified(guard)?.Ingredient)
+                    candidate.Time.ActiveMinutes, candidate.Time.TotalMinutes, candidate.Difficulty, CardIngredients(candidate), Unverified(guard)?.Code, Unverified(guard)?.Ingredient,
+                    Component: new ShoppingPlanCardComponent(component.Output.Name, component.Output.Quantity, RecipeIngredientReader.ToLotUnit(component.Output.Unit), users.Select(user => user.Id).ToList(), users.Select(user => user.Name).ToList()))
             });
         }
 
@@ -1165,6 +1216,21 @@ public sealed class ShoppingPlanApplicationService(
         }
 
         var setup = session.Setup;
+        if (card.Snapshot.Component is { } component)
+        {
+            // A base has no meal of its own: it is prepared on the session day, at its own size.
+            var baseKey = EntryKey(card, 0);
+            if (await menus.FindEntryByCreationKeyAsync(ownerUserId, baseKey, cancellationToken) is null)
+            {
+                var at = timeProvider.GetUtcNow();
+                var made = MenuEntry.Create(plan, baseKey, recipeId, null, setup.PrepDate, null, Math.Clamp(card.Snapshot.Servings, 1, MaxEntryServings), at, 1, new MenuEntryProduction(component.OutputName, component.OutputQuantity, component.OutputUnit));
+                plan.Touch(at);
+                await menus.TryAddEntryAsync(plan, made, cancellationToken);
+            }
+
+            return;
+        }
+
         var yields = card.AcceptMode == "yield";
         var count = card.AcceptMode == "again" ? card.Repeats : 1;
         var plannedDate = yields && setup.CookingStyle != "daily" ? setup.PrepDate : null;
@@ -1222,7 +1288,7 @@ public sealed class ShoppingPlanApplicationService(
             byRecipe.TryGetValue(entry.RecipeId, out var card);
             if (card is null)
             {
-                return new SequenceEntry(entry.Id, entry.RecipeId, IngredientPerishability.NotPerishable, false, 0, entry.CreatedAt);
+                return new SequenceEntry(entry.Id, entry.RecipeId, IngredientPerishability.NotPerishable, false, 0, entry.CreatedAt, entry.Kind == MenuEntryKind.Component);
             }
 
             var ranked = ToRankCard(card, session.Setup, keys, []);
@@ -1231,7 +1297,7 @@ public sealed class ShoppingPlanApplicationService(
                 .Select(item => PerishabilityOf(item.Key))
                 .DefaultIfEmpty(IngredientPerishability.NotPerishable)
                 .Min();
-            return new SequenceEntry(entry.Id, entry.RecipeId, rank, ranked.Ingredients.Any(item => attention.Contains(item.Key)), card.Snapshot.TotalMinutes, entry.CreatedAt);
+            return new SequenceEntry(entry.Id, entry.RecipeId, rank, ranked.Ingredients.Any(item => attention.Contains(item.Key)), card.Snapshot.TotalMinutes, entry.CreatedAt, entry.Kind == MenuEntryKind.Component);
         }).ToList();
         var ordered = ShoppingPlanSequencer.Order(sequence);
         await menus.SetSuggestedOrdersAsync(ownerUserId, session.MenuPlanId, ordered.Select((id, index) => (id, index)).ToDictionary(item => item.id, item => item.index + 1), timeProvider.GetUtcNow(), cancellationToken);
@@ -1254,7 +1320,7 @@ public sealed class ShoppingPlanApplicationService(
         var lots = await inventory.ListActiveAsync(ownerUserId, MaxPantryLots, cancellationToken);
         var profile = await profiles.FindAsync(ownerUserId, cancellationToken);
         var restrictions = Restrictions(profile);
-        var keys = await matching.KeysAsync(ownerUserId, cards.SelectMany(card => card.Snapshot.Ingredients.Select(item => item.Name)).Concat(lots.Select(lot => lot.ProductName)), cancellationToken);
+        var keys = await matching.KeysAsync(ownerUserId, cards.SelectMany(card => card.Snapshot.Ingredients.Select(item => item.Name)).Concat(cards.Select(card => card.Snapshot.Component?.OutputName).OfType<string>()).Concat(lots.Select(lot => lot.ProductName)), cancellationToken);
         var committed = await planning.GetCommitmentsAsync(ownerUserId, cancellationToken);
         var free = new Dictionary<string, decimal>(StringComparer.Ordinal);
         foreach (var lot in lots.Where(lot => lot.MeasuredValue is > 0 && lot.MeasuredUnit is not null))
@@ -1268,7 +1334,7 @@ public sealed class ShoppingPlanApplicationService(
         var ranked = cards.ToDictionary(card => card.Id, card => ToRankCard(card, session.Setup, keys, restrictions));
         var accepted = cards.Where(card => card.State == ShoppingPlanCardState.Accepted)
             .OrderBy(card => card.DecidedAt)
-            .Select(card => new RankAccepted(ranked[card.Id], card.Repeats, session.Setup.CookingStyle == "once" || (session.Setup.CookingStyle == "mix" && card.AcceptMode == "yield")))
+            .Select(card => new RankAccepted(ranked[card.Id], card.Repeats, card.Snapshot.Component is not null || session.Setup.CookingStyle == "once" || (session.Setup.CookingStyle == "mix" && card.AcceptMode == "yield")))
             .ToList();
         var rejected = cards.Where(card => card.State == ShoppingPlanCardState.Rejected)
             .Select(card => new RankRejected(ranked[card.Id], card.RejectReason, card.RejectIngredientKey))
@@ -1299,7 +1365,7 @@ public sealed class ShoppingPlanApplicationService(
         // The main ingredient by weight or volume comes first, because a count of units cannot be
         // compared with grams, and the model's primary references are not stable across batches.
         var lead = ingredients.Where(item => !item.Key.EndsWith("|Unit", StringComparison.Ordinal)).OrderByDescending(item => item.Quantity).FirstOrDefault() ?? ingredients.FirstOrDefault();
-        return new RankCard(card.Id, card.FirstSeenOrder, card.Snapshot.DishFormat, card.Snapshot.Technique, lead?.Key, card.Snapshot.ActiveMinutes, card.Snapshot.TotalMinutes, ingredients, RestrictionGuard.Default.DislikeMatches(card.Snapshot.Ingredients.Select(item => item.Name), keys, restrictions));
+        return new RankCard(card.Id, card.FirstSeenOrder, card.Snapshot.DishFormat, card.Snapshot.Technique, lead?.Key, card.Snapshot.ActiveMinutes, card.Snapshot.TotalMinutes, ingredients, RestrictionGuard.Default.DislikeMatches(card.Snapshot.Ingredients.Select(item => item.Name), keys, restrictions), card.Snapshot.Component is { } component ? keys.Key(component.OutputName) + "|" + component.OutputUnit : null, (card.Snapshot.Component?.OutputQuantity ?? 0) * scale);
     }
 
     private static ShoppingPlanView BuildView(ShoppingPlanSession session, IReadOnlyList<ShoppingPlanCard> cards, LoadedRank loaded)
@@ -1307,16 +1373,20 @@ public sealed class ShoppingPlanApplicationService(
         var setup = session.Setup;
         var acceptedCards = cards.Where(card => card.State == ShoppingPlanCardState.Accepted).OrderBy(card => card.DecidedAt).ToList();
         var needs = new Dictionary<string, int>(setup.MealNeeds(), StringComparer.Ordinal);
-        foreach (var card in acceptedCards)
+        // A base fills no meal; it counts on the list and the session, not on the progress.
+        foreach (var card in acceptedCards.Where(card => card.Snapshot.Component is null))
         {
             var group = ShoppingPlanSetup.GroupOf(card.Snapshot.MealType);
             needs[group] = needs.GetValueOrDefault(group) - card.Repeats;
         }
 
-        var filled = acceptedCards.Sum(card => card.Repeats);
-        var eligible = cards.Where(card => card.State == ShoppingPlanCardState.Unseen && needs.GetValueOrDefault(ShoppingPlanSetup.GroupOf(card.Snapshot.MealType)) > 0).ToList();
+        var filled = acceptedCards.Where(card => card.Snapshot.Component is null).Sum(card => card.Repeats);
+        var eligible = cards.Where(card => card.State == ShoppingPlanCardState.Unseen && card.Snapshot.Component is null && needs.GetValueOrDefault(ShoppingPlanSetup.GroupOf(card.Snapshot.MealType)) > 0).ToList();
+        var acceptedIds = acceptedCards.Select(card => card.Id).ToHashSet();
+        var bases = cards.Where(card => card.State == ShoppingPlanCardState.Unseen && card.Snapshot.Component is { } component && component.UsedByCardIds.Any(acceptedIds.Contains)).ToHashSet();
         var byId = cards.ToDictionary(card => card.Id);
-        var ranked = ShoppingPlanRanker.Rank(eligible.Select(card => loaded.ByCard[card.Id]), loaded.Context);
+        // The base a chosen dish calls for comes next, whatever its score.
+        var ranked = ShoppingPlanRanker.Rank(eligible.Concat(bases).Select(card => loaded.ByCard[card.Id]), loaded.Context).OrderByDescending(item => bases.Contains(byId[item.Card.Id]));
         var queue = ranked.Take(QueueSize).Select(item => ToCardView(byId[item.Card.Id], item, loaded.AttentionKeys)).ToList();
         var projection = new ShoppingPlanProjection(loaded.Context.Accepted, loaded.Context.FreeStock);
         var open = IsOpen(session);
@@ -1328,7 +1398,7 @@ public sealed class ShoppingPlanApplicationService(
             setup,
             new ShoppingPlanProgressView(setup.TotalMeals, filled, projection.ListItemCount, ShoppingPlanRanker.SessionMinutesUsed(loaded.Context.Accepted), setup.PrepMinutes),
             queue,
-            acceptedCards.Select(card => new ShoppingPlanAcceptedView(card.Id, card.Snapshot.Name, card.Snapshot.MealType, card.Repeats, card.AcceptMode, card.ExpansionState.ToString().ToLowerInvariant(), card.Snapshot.FailureCode, card.RecipeId, card.Snapshot.GuardCode, card.Snapshot.GuardIngredient)).ToList(),
+            acceptedCards.Select(card => new ShoppingPlanAcceptedView(card.Id, card.Snapshot.Name, card.Snapshot.MealType, card.Repeats, card.AcceptMode, card.ExpansionState.ToString().ToLowerInvariant(), card.Snapshot.FailureCode, card.RecipeId, card.Snapshot.GuardCode, card.Snapshot.GuardIngredient, card.Snapshot.Component is not null)).ToList(),
             canAskBatch && eligible.Count < LowQueue,
             session.ConsecutiveRejections >= MoreOptionsAfterRejections,
             open && eligible.Count == 0 && !canAskBatch && filled < setup.TotalMeals,
@@ -1357,14 +1427,15 @@ public sealed class ShoppingPlanApplicationService(
             snapshot.GuardCode,
             snapshot.GuardIngredient,
             lead,
-            snapshot.Ingredients.Where(item => !item.Assumed).Select(item => new ShoppingPlanCardIngredientView(item.Name, item.Quantity, item.Unit, item.Optional)).ToList());
+            snapshot.Ingredients.Where(item => !item.Assumed).Select(item => new ShoppingPlanCardIngredientView(item.Name, item.Quantity, item.Unit, item.Optional)).ToList(),
+            snapshot.Component is { } component ? new ShoppingPlanComponentView(component.OutputName, component.OutputQuantity, component.OutputUnit, component.UsedByNames) : null);
     }
 
     private static PlanDeckRequest BuildRequest(ShoppingPlanSession session, IReadOnlyList<ShoppingPlanCard> cards, LoadedRank loaded, RecipeSuggestionGuidance? guidance, string? language)
     {
         var setup = session.Setup;
         var needs = new Dictionary<string, int>(setup.MealNeeds(), StringComparer.Ordinal);
-        foreach (var card in cards.Where(card => card.State == ShoppingPlanCardState.Accepted))
+        foreach (var card in cards.Where(card => card.State == ShoppingPlanCardState.Accepted && card.Snapshot.Component is null))
         {
             var group = ShoppingPlanSetup.GroupOf(card.Snapshot.MealType);
             needs[group] = Math.Max(0, needs.GetValueOrDefault(group) - card.Repeats);

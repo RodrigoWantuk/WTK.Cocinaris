@@ -11,6 +11,21 @@ public enum MenuPlanStatus
     Archived
 }
 
+/// <summary>What a menu entry is.</summary>
+public enum MenuEntryKind
+{
+    /// <summary>A meal, which counts toward what the plan must fill.</summary>
+    Meal,
+    /// <summary>A base prepared ahead for other dishes (PLAN-0062). It fills no meal.</summary>
+    Component
+}
+
+/// <summary>What a component makes, which later dishes use instead of buying it.</summary>
+/// <param name="Name">Ingredient name, matched like any other ingredient.</param>
+/// <param name="Quantity">Quantity made.</param>
+/// <param name="Unit"><c>Gram</c>, <c>Milliliter</c>, or <c>Unit</c>.</param>
+public sealed record MenuEntryProduction(string Name, decimal Quantity, string Unit);
+
 /// <summary>Whether the owner still intends to cook a menu entry. Cooking and cooked are derived from executions.</summary>
 public enum MenuEntryStatus
 {
@@ -215,6 +230,12 @@ public sealed class MenuEntry
     /// <summary>Gets the meals this one cooking covers, 1 to 4 (PLAN-0062): "yields 2 meals" is one entry covering two.</summary>
     public int MealsCovered { get; private set; } = 1;
 
+    /// <summary>Gets whether this entry is a meal or a base prepared for other dishes.</summary>
+    public MenuEntryKind Kind => Production is null ? MenuEntryKind.Meal : MenuEntryKind.Component;
+
+    /// <summary>Gets what a component makes; null for a meal.</summary>
+    public MenuEntryProduction? Production { get; private init; }
+
     /// <summary>
     /// Gets the suggested cooking order within the menu (PLAN-0062), or null for a menu built by hand.
     /// A flexible entry with an order appears on the home page only when it is next.
@@ -233,7 +254,7 @@ public sealed class MenuEntry
     /// <summary>Adds an entry to an editable plan.</summary>
     /// <exception cref="ArgumentException">The day is outside the period, or the meal or portions are invalid.</exception>
     /// <exception cref="InvalidOperationException">The plan is archived.</exception>
-    public static MenuEntry Create(MenuPlan plan, Guid creationKey, Guid recipeId, int? pinnedRevisionNumber, DateOnly? plannedDate, string? mealType, int servings, DateTimeOffset now, int mealsCovered = 1)
+    public static MenuEntry Create(MenuPlan plan, Guid creationKey, Guid recipeId, int? pinnedRevisionNumber, DateOnly? plannedDate, string? mealType, int servings, DateTimeOffset now, int mealsCovered = 1, MenuEntryProduction? production = null)
     {
         if (mealsCovered is < 1 or > 4)
         {
@@ -242,6 +263,7 @@ public sealed class MenuEntry
 
         var entry = new MenuEntry
         {
+            Production = production,
             MealsCovered = mealsCovered,
             Id = Guid.NewGuid(),
             MenuPlanId = plan.Id,
@@ -256,8 +278,9 @@ public sealed class MenuEntry
     }
 
     /// <summary>Restores a persisted entry.</summary>
-    public static MenuEntry Restore(Guid id, Guid menuPlanId, Guid ownerUserId, Guid creationKey, Guid recipeId, int? pinnedRevisionNumber, DateOnly? plannedDate, string? mealType, int servings, MenuEntryStatus status, DateTimeOffset createdAt, DateTimeOffset updatedAt, bool reserveIngredients = true, int mealsCovered = 1, int? suggestedOrder = null) => new()
+    public static MenuEntry Restore(Guid id, Guid menuPlanId, Guid ownerUserId, Guid creationKey, Guid recipeId, int? pinnedRevisionNumber, DateOnly? plannedDate, string? mealType, int servings, MenuEntryStatus status, DateTimeOffset createdAt, DateTimeOffset updatedAt, bool reserveIngredients = true, int mealsCovered = 1, int? suggestedOrder = null, MenuEntryProduction? production = null) => new()
     {
+        Production = production,
         ReserveIngredients = reserveIngredients,
         MealsCovered = mealsCovered,
         SuggestedOrder = suggestedOrder,

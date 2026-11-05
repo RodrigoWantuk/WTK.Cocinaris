@@ -12,6 +12,9 @@ public interface IInventoryLotReadStore
     /// <summary>Returns up to <paramref name="limit"/> active, non-depleted lots of one owner, most recently updated first.</summary>
     Task<IReadOnlyList<InventoryLotReadModel>> ListActiveAsync(Guid ownerUserId, int limit, CancellationToken cancellationToken);
 
+    /// <summary>Maps each output lot of the given preparation batches to its batch.</summary>
+    Task<IReadOnlyDictionary<Guid, Guid>> ListOutputBatchesAsync(Guid ownerUserId, IReadOnlyCollection<Guid> batchIds, CancellationToken cancellationToken);
+
     /// <summary>Returns immutable history for a lot only when the owner can observe that lot.</summary>
     Task<IReadOnlyList<InventoryHistoryReadModel>?> GetHistoryAsync(Guid ownerUserId, Guid lotId, CancellationToken cancellationToken);
 }

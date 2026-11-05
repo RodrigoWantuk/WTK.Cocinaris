@@ -88,7 +88,9 @@ public static class InventoryAttentionAdvisor
         if (facts.StorageLocation == "Freezer")
         {
             // Freezing stops the printed-date clock, so a frozen lot is judged on quality only.
-            return facts.FrozenAt is { } frozenAt && today.DayNumber - ToDate(frozenAt).DayNumber > FrozenQualityCheckDays
+            // A prepared portion stored straight in the freezer was never "frozen", so its age counts from when it was made.
+            var frozenSince = facts.FrozenAt ?? (facts.LifecycleState == "Prepared" ? facts.CreatedAt : null);
+            return frozenSince is { } frozenAt && today.DayNumber - ToDate(frozenAt).DayNumber > FrozenQualityCheckDays
                 ? new(InventoryAttentionState.CheckCondition, null, InventoryAttentionEvidence.CuratedRule, ["frozen_long_time"])
                 : new(InventoryAttentionState.Normal, null, InventoryAttentionEvidence.CuratedRule, ["frozen"]);
         }

@@ -62,6 +62,9 @@ public interface IMenuPlanStore
     /// <summary>Lists the shopping item keys checked off in a plan.</summary>
     Task<IReadOnlySet<string>> ListCheckedAsync(Guid ownerUserId, Guid planId, CancellationToken cancellationToken);
 
+    /// <summary>Finds one owned menu entry.</summary>
+    Task<MenuEntry?> FindEntryAsync(Guid ownerUserId, Guid entryId, CancellationToken cancellationToken);
+
     /// <summary>Checks or unchecks a shopping item; repeating the same state is a no-op.</summary>
     Task SetCheckedAsync(Guid ownerUserId, Guid planId, string itemKey, bool isChecked, DateTimeOffset now, CancellationToken cancellationToken);
 
@@ -105,7 +108,11 @@ public sealed record MenuEntryView(
     bool ReserveIngredients = true,
     MealReadinessView? Readiness = null,
     int MealsCovered = 1,
-    int? SuggestedOrder = null);
+    int? SuggestedOrder = null,
+    string Kind = "meal",
+    string? ProducesName = null,
+    decimal? ProducesQuantity = null,
+    string? ProducesUnit = null);
 
 /// <summary>A plan with its entries, ordered by day (flexible last), meal, and creation.</summary>
 public sealed record MenuPlanView(Guid PlanId, string Name, DateOnly StartDate, DateOnly EndDate, string Status, DateTimeOffset? AcceptedAt, DateTimeOffset UpdatedAt, IReadOnlyList<MenuEntryView> Entries);
@@ -403,7 +410,7 @@ public sealed class MenuPlanningApplicationService(
         var resolved = await ResolveEntriesAsync(user.Id, await store.ListEntriesAsync(user.Id, [plan.Id], cancellationToken), cancellationToken);
         var meals = resolved
             .Where(item => item.View.Status is "planned" or "cooking" && (item.View.PlannedDate is null || item.View.PlannedDate >= start) && item.Content is not null)
-            .Select(item => new ShoppingMeal(item.View.EntryId, item.View.RecipeName, item.View.PlannedDate, item.View.Servings, item.Content!.Servings, item.Content.NormalizedRecipeJson))
+            .Select(item => new ShoppingMeal(item.View.EntryId, item.View.RecipeName, item.View.PlannedDate, item.View.Servings, item.Content!.Servings, item.Content.NormalizedRecipeJson, item.View.ProducesName is { } made ? new MenuEntryProduction(made, item.View.ProducesQuantity!.Value, item.View.ProducesUnit!) : null))
             .ToList();
         // Stock this menu can use: physical quantity minus protections and what other menus in use reserve.
         var lots = await inventory.ListActiveAsync(user.Id, MaxPantryLots, cancellationToken);
@@ -417,7 +424,8 @@ public sealed class MenuPlanningApplicationService(
             user.Id,
             lots.Select(lot => lot.ProductName)
                 .Concat(meals.SelectMany(meal => RecipeIngredientReader.Read(meal.NormalizedRecipeJson).Select(ingredient => ingredient.Name)))
-                .Concat(marks.Values.Select(mark => mark.SubstituteName).OfType<string>()),
+                .Concat(marks.Values.Select(mark => mark.SubstituteName).OfType<string>())
+                .Concat(meals.Select(meal => meal.Production?.Name).OfType<string>()),
             cancellationToken);
         var items = ShoppingProjector.Build(meals, usable, await store.ListCheckedAsync(user.Id, plan.Id, cancellationToken), keys, await store.ListPackageSizesAsync(user.Id, cancellationToken), marks);
         return RecipeApplicationResult<ShoppingListView>.Succeeded(new ShoppingListView(plan.Id, start, meals.Count, items));
@@ -561,7 +569,30 @@ public sealed class MenuPlanningApplicationService(
             .Where(item => item.View.PlannedDate is { } date && date >= start && date < end)
             .Select(item => new ReminderMeal(item.PlanId, item.View.EntryId, item.View.RecipeName, item.View.PlannedDate!.Value, item.View.MealType))
             .ToList();
-        return RecipeApplicationResult<PreparationView>.Succeeded(new PreparationView(start, span, PreparationReminders.Build(meals, projected.Projection, lots, start)));
+        // What a base will make is not something to buy before the meal that uses it.
+        var made = projected.Meals.Select(item => item.View.ProducesName).OfType<string>().ToList();
+        var keys = await matching.KeysAsync(user.Id, made.Concat(projected.Projection.Meals.Values.SelectMany(meal => meal.Missing.Select(item => item.Name))), cancellationToken);
+        var fromPrep = made.Select(keys.Key).ToHashSet(StringComparer.Ordinal);
+        var reminders = PreparationReminders.Build(meals, projected.Projection, lots, start).Where(item => item.Kind != "buy" || !fromPrep.Contains(keys.Key(item.ItemName))).ToList();
+        reminders.AddRange(await ReadyPortionsAsync(user.Id, start, lots, cancellationToken));
+        return RecipeApplicationResult<PreparationView>.Succeeded(new PreparationView(start, span, reminders));
+    }
+
+    private async Task<IReadOnlyList<PreparationReminderView>> ReadyPortionsAsync(Guid ownerUserId, DateOnly today, IReadOnlyList<InventoryLotReadModel> lots, CancellationToken cancellationToken)
+    {
+        var plans = await store.ListAcceptedOnAsync(ownerUserId, today, cancellationToken);
+        var entries = (await store.ListEntriesAsync(ownerUserId, plans.Select(plan => plan.Id).ToList(), cancellationToken))
+            .Where(entry => entry.MealsCovered > 1 && entry.Kind == MenuEntryKind.Meal)
+            .ToDictionary(entry => entry.Id);
+        if (entries.Count == 0)
+        {
+            return [];
+        }
+
+        var cooked = (await executions.ListForMenuEntriesAsync(ownerUserId, entries.Keys.ToList(), cancellationToken))
+            .Where(item => item.InventoryBatchId is not null && item.MenuEntryId is not null)
+            .ToDictionary(item => item.InventoryBatchId!.Value, item => entries[item.MenuEntryId!.Value]);
+        return PreparationReminders.ReadyPortions(cooked.Count == 0 ? new Dictionary<Guid, Guid>() : await inventory.ListOutputBatchesAsync(ownerUserId, cooked.Keys.ToList(), cancellationToken), cooked, lots, today);
     }
 
     /// <summary>
@@ -809,7 +840,11 @@ public sealed class MenuPlanningApplicationService(
                 session?.Status is RecipeExecutionStatus.Completed or RecipeExecutionStatus.InProgress ? session.Id : null,
                 entry.ReserveIngredients,
                 MealsCovered: entry.MealsCovered,
-                SuggestedOrder: entry.SuggestedOrder), content));
+                SuggestedOrder: entry.SuggestedOrder,
+                Kind: entry.Kind == MenuEntryKind.Component ? "component" : "meal",
+                ProducesName: entry.Production?.Name,
+                ProducesQuantity: entry.Production?.Quantity,
+                ProducesUnit: entry.Production?.Unit), content));
         }
 
         return resolved;

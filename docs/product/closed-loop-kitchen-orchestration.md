@@ -391,3 +391,7 @@ Future implementation should be split into bounded plans:
 6. troubleshooting and controlled learning.
 
 Exact module contracts, transactions, events, workers, schemas, prompts, and algorithms require later implementation plans and ADRs where necessary.
+
+## Bases and stored portions (PLAN-0062)
+
+A shopping plan closes this loop for food cooked ahead. A base accepted on a card leaves the shopping list what it makes. Cooking it creates pantry lots that later dishes match like any other stock. A dish that covers several meals stores portions that "Hoje" offers until they are eaten. Each step stays a proposal or a derived reading, and completion with inventory stays atomic.

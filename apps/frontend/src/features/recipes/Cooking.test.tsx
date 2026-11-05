@@ -255,6 +255,97 @@ describe("cooking a recipe", () => {
     expect(localStorage.getItem("cocinaris.cooking.exec-1")).toBeNull();
   });
 
+  it("proposes where to store a dish that covers several meals, and takes changes", async () => {
+    const user = userEvent.setup();
+    const completeExecution = vi.fn(async () =>
+      execution({ status: "Completed", proposal: null }),
+    );
+    renderCooking(
+      repoWith({
+        getExecution: async () =>
+          execution({
+            plan: {
+              isComponent: false,
+              producesName: null,
+              producesQuantity: null,
+              producesUnit: null,
+              proposed: [
+                { quantity: 2, unit: "Unit", storageLocation: "Refrigerator" },
+                { quantity: 2, unit: "Unit", storageLocation: "Refrigerator" },
+              ],
+            },
+          }),
+        completeExecution,
+      }),
+    );
+
+    await user.click(await screen.findByTestId("cooking-overview"));
+    await user.click(await screen.findByTestId("cooking-finish"));
+    const rows = await screen.findAllByTestId("cooking-output");
+    expect(rows).toHaveLength(2);
+    expect(screen.queryByTestId("cooking-leftover-toggle")).toBeNull();
+    await user.selectOptions(
+      within(rows[1]!).getByTestId("cooking-output-storage"),
+      "Freezer",
+    );
+    await user.click(screen.getByTestId("cooking-done"));
+
+    await waitFor(() => expect(completeExecution).toHaveBeenCalledTimes(1));
+    expect(completeExecution.mock.calls[0]).toEqual([
+      "exec-1",
+      expect.objectContaining({
+        leftover: null,
+        storedOutputs: [
+          {
+            quantity: 2,
+            unit: "Unit",
+            storageLocation: "Refrigerator",
+            useBy: null,
+          },
+          {
+            quantity: 2,
+            unit: "Unit",
+            storageLocation: "Freezer",
+            useBy: null,
+          },
+        ],
+      }),
+      expect.anything(),
+    ]);
+  });
+
+  it("refuses an empty amount instead of storing it", async () => {
+    const user = userEvent.setup();
+    const completeExecution = vi.fn();
+    renderCooking(
+      repoWith({
+        getExecution: async () =>
+          execution({
+            plan: {
+              isComponent: true,
+              producesName: "Frango desfiado",
+              producesQuantity: 700,
+              producesUnit: "Gram",
+              proposed: [
+                {
+                  quantity: 700,
+                  unit: "Gram",
+                  storageLocation: "Refrigerator",
+                },
+              ],
+            },
+          }),
+        completeExecution,
+      }),
+    );
+
+    await user.click(await screen.findByTestId("cooking-overview"));
+    await user.click(await screen.findByTestId("cooking-finish"));
+    await user.clear(await screen.findByTestId("cooking-output-quantity"));
+    await user.click(screen.getByTestId("cooking-done"));
+    expect(completeExecution).not.toHaveBeenCalled();
+  });
+
   it("records a substitution while cooking and shows it in the proposal", async () => {
     const user = userEvent.setup();
     const substituted = execution({

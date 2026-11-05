@@ -258,6 +258,22 @@ function mapExecution(dto: ExecutionDto): RecipeExecution {
       typeof dto.inventoryBatchId === "string" ? dto.inventoryBatchId : null,
     rating: typeof dto.rating === "number" ? dto.rating : null,
     notes: typeof dto.notes === "string" ? dto.notes : null,
+    plan: dto.plan
+      ? {
+          isComponent: dto.plan.isComponent === true,
+          producesName: dto.plan.producesName ?? null,
+          producesQuantity:
+            dto.plan.producesQuantity == null
+              ? null
+              : Number(dto.plan.producesQuantity),
+          producesUnit: dto.plan.producesUnit ?? null,
+          proposed: (dto.plan.proposed ?? []).map((item) => ({
+            quantity: Number(item.quantity),
+            unit: String(item.unit),
+            storageLocation: String(item.storageLocation),
+          })),
+        }
+      : null,
     normalizedRecipeJson: assertString(
       dto.normalizedRecipeJson,
       "normalizedRecipeJson",

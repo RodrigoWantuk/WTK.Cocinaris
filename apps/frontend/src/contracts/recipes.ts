@@ -261,6 +261,24 @@ export interface RecipeExecutionAdjustment {
   quantity: number | null;
 }
 
+/** A portion to store from what was cooked. */
+export interface ExecutionStoredOutput {
+  quantity: number;
+  /** `Unit` for a dish; the base's own unit for a base. */
+  unit: string;
+  storageLocation: string;
+}
+
+/** What a menu entry makes (PLAN-0062): a base's output, and proposed storage. */
+export interface ExecutionPlan {
+  isComponent: boolean;
+  producesName: string | null;
+  producesQuantity: number | null;
+  producesUnit: string | null;
+  /** A proposal only: the person may change everything. */
+  proposed: ExecutionStoredOutput[];
+}
+
 /** One recipe execution; `proposal` is present while in progress. */
 export interface RecipeExecution {
   executionId: string;
@@ -282,6 +300,8 @@ export interface RecipeExecution {
   } | null;
   /** The session's ingredient changes; kept after completion for the recipe editor. */
   adjustments: RecipeExecutionAdjustment[];
+  /** What the plan says about this cooking, while in progress; null for an ordinary meal. */
+  plan?: ExecutionPlan | null;
 }
 
 /** Compact in-progress execution. */
@@ -308,6 +328,8 @@ export interface CompleteExecutionInput {
   } | null;
   rating: number | null;
   notes: string | null;
+  /** Up to four portions, stored together; not sent with `leftover`. */
+  storedOutputs?: Array<ExecutionStoredOutput & { useBy: string | null }>;
 }
 
 /** Stable error codes mapped from recipe BFF Problem Details. */

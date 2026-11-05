@@ -171,6 +171,14 @@ public enum ShoppingPlanExpansionState
 /// <param name="Assumed">Whether the recipe assumes the person has it.</param>
 public sealed record ShoppingPlanCardIngredient(string Name, decimal Quantity, string Unit, bool Optional, bool Assumed);
 
+/// <summary>What makes a card a reusable base: what it makes and the dishes that use it.</summary>
+/// <param name="OutputName">Ingredient it makes.</param>
+/// <param name="OutputQuantity">Quantity it makes.</param>
+/// <param name="OutputUnit"><c>Gram</c>, <c>Milliliter</c>, or <c>Unit</c>.</param>
+/// <param name="UsedByCardIds">Cards of the dishes that use it; it is offered once one is accepted.</param>
+/// <param name="UsedByNames">Their names, for the card's text.</param>
+public sealed record ShoppingPlanCardComponent(string OutputName, decimal OutputQuantity, string OutputUnit, IReadOnlyList<Guid> UsedByCardIds, IReadOnlyList<string> UsedByNames);
+
 /// <summary>What a card displays and how it is ranked. It may hold pantry names, so it is deleted when a plan ends.</summary>
 /// <param name="Name">Dish name.</param>
 /// <param name="Summary">Short description.</param>
@@ -187,6 +195,7 @@ public sealed record ShoppingPlanCardIngredient(string Name, decimal Quantity, s
 /// <param name="GuardIngredient">Ingredient the guard could not verify, if any.</param>
 /// <param name="FailureCode">Stable reason for a failed expansion, if any.</param>
 /// <param name="ExpansionAttempt">Expansion attempt, which derives a fresh key after a generation session expires.</param>
+/// <param name="Component">Present when the card is a reusable base rather than a dish.</param>
 public sealed record ShoppingPlanCardSnapshot(
     string Name,
     string Summary,
@@ -202,7 +211,8 @@ public sealed record ShoppingPlanCardSnapshot(
     string? GuardCode = null,
     string? GuardIngredient = null,
     string? FailureCode = null,
-    int ExpansionAttempt = 0);
+    int ExpansionAttempt = 0,
+    ShoppingPlanCardComponent? Component = null);
 
 /// <summary>One dish card of a shopping plan.</summary>
 public sealed class ShoppingPlanCard

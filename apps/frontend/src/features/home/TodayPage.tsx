@@ -246,6 +246,7 @@ const PREP_ICON = {
   buy: ShoppingCart,
   thaw: Snowflake,
   use_by: Clock,
+  ready_portions: ChefHat,
 } as const;
 
 /**
@@ -254,8 +255,42 @@ const PREP_ICON = {
  * every read, so each disappears once its cause does; nothing here changes the pantry or the
  * menu. Renders nothing when there is nothing to do.
  */
-function PreparationSection({ items }: { items: PreparationReminder[] }) {
+function PreparationSection({
+  items,
+  onChanged,
+}: {
+  items: PreparationReminder[];
+  /** A portion was eaten: the reminders must be read again. */
+  onChanged: () => void;
+}) {
   const { t, locale } = useProductionI18n();
+  const { session } = useSession();
+  const inventory = useInventoryRepository();
+  const [eating, setEating] = useState<string | null>(null);
+  const [eatFailed, setEatFailed] = useState(false);
+  // The ordinary consume adjustment, so the pantry history explains it like any other use.
+  const eatPortion = async (lotId: string) => {
+    if (!session.csrfToken) return;
+    setEating(lotId);
+    setEatFailed(false);
+    try {
+      const lot = await inventory.getLot(lotId);
+      await inventory.adjustLot(
+        lotId,
+        { type: "Consume", value: 1, reasonCode: "ui_consume" },
+        {
+          csrfToken: session.csrfToken,
+          etag: lot.etag,
+          idempotencyKey: crypto.randomUUID(),
+        },
+      );
+      onChanged();
+    } catch {
+      setEatFailed(true);
+    } finally {
+      setEating(null);
+    }
+  };
   if (items.length === 0) return null;
   const today = localIsoDate();
   const day = (iso: string) =>
@@ -271,12 +306,17 @@ function PreparationSection({ items }: { items: PreparationReminder[] }) {
   const action = (item: PreparationReminder) =>
     item.kind === "buy"
       ? t("today.prep.buy", { item: item.itemName, amount: amount(item) })
-      : item.kind === "thaw"
-        ? t("today.prep.thaw", { item: item.itemName })
-        : t("today.prep.useBy", {
+      : item.kind === "ready_portions"
+        ? t("today.prep.ready", {
             item: item.itemName,
-            date: formatMenuDay(item.useByDate ?? item.dueDate, locale),
-          });
+            count: item.quantity ?? 0,
+          })
+        : item.kind === "thaw"
+          ? t("today.prep.thaw", { item: item.itemName })
+          : t("today.prep.useBy", {
+              item: item.itemName,
+              date: formatMenuDay(item.useByDate ?? item.dueDate, locale),
+            });
 
   // Whoever has something to buy may have just come back from the market (PLAN-0062).
   const buyMenu = items.find((item) => item.kind === "buy")?.menuId;
@@ -326,10 +366,29 @@ function PreparationSection({ items }: { items: PreparationReminder[] }) {
                   className="h-5 w-5 shrink-0 text-muted-foreground"
                 />
               </Link>
+              {item.kind === "ready_portions" && item.lotId ? (
+                <div className="px-4 pb-3">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    data-testid="today-eat-portion"
+                    disabled={eating !== null}
+                    onClick={() => void eatPortion(item.lotId!)}
+                  >
+                    {t("today.prep.eat")}
+                  </Button>
+                </div>
+              ) : null}
             </li>
           );
         })}
       </ul>
+      {eatFailed ? (
+        <p role="alert" className="text-sm text-destructive">
+          {t("today.prep.eatError")}
+        </p>
+      ) : null}
       {buyMenu ? (
         <Link
           to={`/app/cardapio/${buyMenu}/chegada`}
@@ -368,12 +427,15 @@ export function TodayPage() {
   );
 
   // Optional source: a repository without reminders simply shows none.
+  const [preparationVersion, setPreparationVersion] = useState(0);
   const preparation = useSource<PreparationReminder>(
     useMemo(
       () => (signal: AbortSignal) =>
         planning.getPreparation?.(localIsoDate(), 2, signal) ??
         Promise.resolve([]),
-      [planning],
+      // The version reads the reminders again after a portion is eaten.
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      [planning, preparationVersion],
     ),
   );
 
@@ -598,7 +660,10 @@ export function TodayPage() {
       <QuickActions />
 
       {preparation.status === "ready" ? (
-        <PreparationSection items={preparation.items} />
+        <PreparationSection
+          items={preparation.items}
+          onChanged={() => setPreparationVersion((value) => value + 1)}
+        />
       ) : null}
 
       <HomeSection
