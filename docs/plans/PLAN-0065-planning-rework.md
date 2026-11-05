@@ -1,13 +1,13 @@
 # PLAN-0065: Planning Rework ("Montar o cardápio")
 
-- **Status:** In Progress; Slice 0 in a draft PR. Slices 1 to 5 wait for the owner's confirmation of D1 and D2
+- **Status:** In Progress; Slice 0 merged (#95); D1 and D2 confirmed by the owner on 2026-11-05; Slice 1 in a draft PR
 - **Type:** Implementation
 - **Priority:** High (owner request)
 - **Owner:** Claude Code
 - **Created:** 2026-11-05
 - **Last updated:** 2026-11-05
 - **Branch:** Plan publication `agent/plan-0065-planning-rework`; each slice uses the branch named in its section
-- **Pull request:** #94 (plan publication, merged); #95 (Slice 0, draft)
+- **Pull request:** #94 (plan publication, merged); #95 (Slice 0, merged); Slice 1 draft PR
 - **Related issues:** None
 - **Related ADRs:** ADR-0009, ADR-0012, ADR-0013
 - **Dependencies:** PLAN-0062, PLAN-0063, PLAN-0064 (all merged). This plan replaces the deck and review screens of PLAN-0062 Slice 1 and the panel of PLAN-0064.
@@ -100,6 +100,8 @@ The owner was building a menu of snacks only, for 7 days, with no fixed days.
 Names follow the owner's decision to keep "cardápio": "plano" leaves the interface, and the tab stays "Planejar".
 
 If D1 is refused, only Slice 0 applies, and the plan must be rewritten.
+
+**Owner confirmation (2026-11-05):** after merging #95 the owner wrote "Merge feito, confio nas suas recomendações, pode seguir." D1 and D2 are confirmed as recommended.
 
 ## Invariants
 
@@ -304,15 +306,15 @@ Branch: `agent/plan-0065-s0-fixes`. Needs no owner decision and is useful even i
 
 Branch: `agent/plan-0065-s1-engine`. Backend only, and the current screens keep working.
 
-- [ ] Migration, records, store.
-- [ ] `MealCounts`, deriving it for existing plans, with optional setup fields, `groups`, and `queues`.
-- [ ] Meal needs per type. Lunch and dinner count separately, and a card targeting either can fill either, because both are main meals.
-- [ ] Decision with `mealType` and optional day; expansion and saved cards create the entry there.
-- [ ] `preferences`, `meal-counts`, `day`, `yield`.
-- [ ] `request`, `likeCardId`, single-type batches, the prompt changes, `request_blocked`, and removal of hint persistence.
-- [ ] Ranking from the switches. Keep `ConsecutiveRejections` in the data, unused.
-- [ ] `GetTodayAsync`: the next undated dish per meal type instead of per plan.
-- [ ] OpenAPI, client, protocol and privacy documents.
+- [x] Records and store (no migration; see the Slice 1 log).
+- [x] `MealCounts`, deriving it for existing plans, with optional setup fields and `groups` (each with its options).
+- [x] Meal needs per type. Lunch and dinner count separately, and a card targeting either can fill either, because both are main meals.
+- [x] Decision with `mealType` and optional day; expansion and saved cards create the entry there.
+- [x] `preferences`, `meal-counts`, `day`, `yield`.
+- [x] `request`, `likeCardId`, single-type batches, the prompt changes, and `request_blocked`. Hint persistence stays until Slice 2 removes the old panel.
+- [x] Ranking from the switches. `ConsecutiveRejections` no longer affects a plan by counts.
+- [x] `GetTodayAsync`: the next undated dish per meal type instead of per plan.
+- [x] OpenAPI, client, protocol and privacy documents.
 
 **Hazards:**
 
@@ -427,15 +429,15 @@ Prices and budgets, curated pack sizes, loose list items (a decision of PLAN-006
 
 ## Execution state
 
-- **Current run delivery target:** Slice 0, fixes to the current flow.
-- **Current checkpoint:** Slice 0 implemented on `agent/plan-0065-s0-fixes`, in a draft pull request.
-- **Last completed step:** Phone audit, journeys, and local gates; see the Slice 0 log entry.
-- **Exact next action:** The owner reviews and merges this pull request, asks for a deploy, tries a snack menu on a phone, and confirms D1 and D2. Slice 1 then starts from fresh `origin/main` on `agent/plan-0065-s1-engine`.
-- **Blockers:** D1 and D2 for Slices 1 to 5. The prompt change has not been tried with the real model, and this needs the deployed site or the provider key.
-- **Partially modified areas:** None.
-- **Documentation delivered:** This plan and registry row; planning domain document, product spec, AI protocol, design system, and gates.
-- **Validation performed:** See the Slice 0 entry in the progress log.
-- **Known failures or limitations:** See the Slice 0 entry. Not checked on a real phone. The `MealFit` word list and its 60-minute limit come from one session's 31 dishes and may need tuning.
+- **Current run delivery target:** Slice 1, the engine.
+- **Current checkpoint:** Slice 1 implemented on `agent/plan-0065-s1-engine`, in a draft pull request.
+- **Last completed step:** Engine, tests, contracts, documents, and the live evaluation script; see the Slice 1 log entry.
+- **Exact next action:** The owner reviews and merges the Slice 1 pull request and, with the provider key, runs `PLAN0065_LIVE_EVAL=1` (gate S1-AI). Slice 2 then starts from fresh `origin/main` on `agent/plan-0065-s2-board`.
+- **Blockers:** None for Slice 2. S1-AI needs the provider key, so the owner runs it.
+- **Partially modified areas:** None. The current screens do not use the new fields yet; Slice 2 does.
+- **Documentation delivered:** This plan and registry row; planning domain document, product spec, AI protocol, and privacy document.
+- **Validation performed:** See the Slice 1 entry in the progress log.
+- **Known failures or limitations:** See the Slice 1 entry. The real model has not seen the new prompt fields.
 - **Working tree state:** Clean after this commit.
 
 ## Progress log
@@ -480,6 +482,29 @@ Prices and budgets, curated pack sizes, loose list items (a decision of PLAN-006
   - **The real model.** How well it follows `mealGuide` and the taste rule is unknown, and G1-B and G5-A have not run.
   - A real phone, screen reader, and 200% zoom. `frontend-smoke`, which does not finish on this host.
 - **Limitations:** the deck, review, and setup screens remain until Slice 2, including the native date field. "Plano" stays in the copy until D1 and D2. `MealFit` can still miss a full meal whose name and format have none of its words, and the prompt is the only protection there.
+- **Next action:** See "Exact next action".
+
+### 2026-11-05 — Claude Code (Slice 1)
+
+- **Run delivery target:** Slice 1, after the owner merged #95 and confirmed D1 and D2.
+- **Changes:**
+  - **Setup.** `ShoppingPlanSetup` gains `MealCounts` and `PeriodStart`. `Counts()` derives counts for older plans (meals eaten out come off lunch, then dinner). `TotalMeals`, `MealNeeds`, and `StartDate` read the counts. A plan by counts validates each count (0 to 40, 1 to 40 in all), days 1 to 14, and a first day from today to 7 days ahead; style is `mix`, goal `none`, and there is no preparation day. A repeated plan copies the counts. The setup is now saved on every change.
+  - **Switches.** `ShoppingPlanDeckPreference` gains `UsePreferences` and `Goal`. A plan by counts starts with tastes on and the pantry off, or with the last plan's switches; `/start` returns them. `PUT /{id}/preferences`.
+  - **Choosing.** The decision takes `mealType` and `plannedDate`, saved in the card snapshot. `PUT /{id}/meal-counts`, `PUT /{id}/cards/{cardId}/day`, and `PUT /{id}/cards/{cardId}/yield`. Undo clears the day.
+  - **Asking.** A batch can name one `mealType`, a `request` (120 characters), a `likeCardId` of the same plan, and `replaceOffers`. Requested dishes skip `MealFit` and `DishSimilarity`, come first in their meal, keep the words on the card, and stay out of the shared library. `request_blocked` names the restriction when a request is fully blocked.
+  - **Prompt.** `planDeck.requestedDish`, `planDeck.timing`, empty `userPresets.preferences` with tastes off, single-meal `mealTypes`/`mealNeeds`, dishes on screen added to `rejectedDishes`, which now lists the newest first, and no base for a plan without lunch or dinner.
+  - **Ranking.** The goal switch maps to `time`, `short`, or `save`; the pantry on with no goal means `waste`. A chosen goal counts in full with the pantry off.
+  - **View.** `groups` (wanted, filled, six options), `preferences`, and `requestText` on cards. "Hoje" shows the next flexible dish of each meal type.
+  - **Evaluation.** `PLAN0065_LIVE_EVAL=1` in `scripts/ai/RecipeGatewayLiveSmoke` runs the seven S1-AI scenarios with a US$ 0.05 limit and writes `docs/evidence/plan-0065/s1-live-eval.json`.
+- **Deviations from this plan:**
+  - **No migration.** `CookOnDate` moves to Slice 4, which uses it. Everything else lives in JSON columns that already exist.
+  - **`groups` carry their options** instead of a separate `queues` object, so the board reads one list.
+  - **Day and yield are per card, not per entry,** because a dish chosen and not yet expanded has no entry. Each route updates the entry too when it exists.
+  - **Counts are checked per group.** Lunch and dinner are interchangeable, so lowering lunches below the lunches chosen is accepted while the main meals still fit, and a dish yielding more than its meal fills the other. Choosing still needs room in the named meal.
+  - **Hint persistence stays** until Slice 2 removes the old panel, because the current screens still send it.
+- **Defects caught:** a new plan's switches were not written on creation, so the first batch still sent the pantry; the store now writes them. The first gate run (`78451e2`) failed `frontend-typecheck` because `replaceOffers` had a default and became required in the contract; it is now optional (`bool?`, false when absent). Every other step of that run passed: 14 architecture, 487 unit, 263 integration, and 633 frontend tests.
+- **Validation performed:** Unit `ShoppingPlanTests` (63) and the planning integration tests (34, of which 16 are new) pass, and the 18 affected ones again after the contract fix. OpenAPI exported, client regenerated and mirrored, drift check passed, frontend typecheck passed, lint with the same 9 warnings as `main`. The live evaluation script builds. One more local gate run on the pull request head; results are in the pull request.
+- **Not run:** the live evaluation (needs the provider key); browser journeys, because no screen changed.
 - **Next action:** See "Exact next action".
 
 ## Completion and handoff checklist

@@ -81,6 +81,7 @@ public sealed class PostgreSqlShoppingPlanStore(ApplicationDbContext database) :
     public async Task SaveAsync(ShoppingPlanSession session, CancellationToken cancellationToken)
     {
         var routeProgress = session.RouteProgress is null ? null : JsonSerializer.Serialize(session.RouteProgress, SerializerOptions);
+        var setup = JsonSerializer.Serialize(session.Setup, SerializerOptions);
         var deckPreference = session.DeckPreference is null ? null : JsonSerializer.Serialize(session.DeckPreference, SerializerOptions);
         // Batch fields change only through their atomic methods, so a save cannot overwrite a batch taken meanwhile.
         await database.ShoppingPlanSessions.Where(item => item.OwnerUserId == session.OwnerUserId && item.Id == session.Id).ExecuteUpdateAsync(
@@ -90,6 +91,7 @@ public sealed class PostgreSqlShoppingPlanStore(ApplicationDbContext database) :
                 .SetProperty(item => item.LastDecidedCardId, session.LastDecidedCardId)
                 .SetProperty(item => item.RouteProgressJson, routeProgress)
                 .SetProperty(item => item.DeckPreferenceJson, deckPreference)
+                .SetProperty(item => item.SetupJson, setup)
                 .SetProperty(item => item.UpdatedAt, session.UpdatedAt),
             cancellationToken);
     }
@@ -131,16 +133,21 @@ public sealed class PostgreSqlShoppingPlanStore(ApplicationDbContext database) :
     }
 
     /// <inheritdoc />
-    public async Task<bool> TryDecideCardAsync(ShoppingPlanCard card, CancellationToken cancellationToken) =>
-        await database.ShoppingPlanCards
+    public async Task<bool> TryDecideCardAsync(ShoppingPlanCard card, CancellationToken cancellationToken)
+    {
+        // The meal and day the person chose live in the snapshot.
+        var snapshot = ToRecord(card).SnapshotJson;
+        return await database.ShoppingPlanCards
             .Where(item => item.OwnerUserId == card.OwnerUserId && item.Id == card.Id && item.State == nameof(ShoppingPlanCardState.Unseen))
             .ExecuteUpdateAsync(update => update
+                .SetProperty(item => item.SnapshotJson, snapshot)
                 .SetProperty(item => item.State, card.State.ToString())
                 .SetProperty(item => item.AcceptMode, card.AcceptMode)
                 .SetProperty(item => item.Repeats, card.Repeats)
                 .SetProperty(item => item.ExpansionState, card.ExpansionState.ToString())
                 .SetProperty(item => item.DecidedAt, card.DecidedAt),
                 cancellationToken) == 1;
+    }
 
     /// <inheritdoc />
     public Task DeleteCardsByIdAsync(Guid ownerUserId, Guid sessionId, IReadOnlyCollection<Guid> cardIds, CancellationToken cancellationToken) =>
@@ -203,6 +210,8 @@ public sealed class PostgreSqlShoppingPlanStore(ApplicationDbContext database) :
         ConsecutiveRejections = session.ConsecutiveRejections,
         LastDecidedCardId = session.LastDecidedCardId,
         PrivateDirection = session.PrivateDirection,
+        // A plan by counts starts with its switches set, so they must be written with it.
+        DeckPreferenceJson = session.DeckPreference is null ? null : JsonSerializer.Serialize(session.DeckPreference, SerializerOptions),
         CreatedAt = session.CreatedAt,
         UpdatedAt = session.UpdatedAt
     };

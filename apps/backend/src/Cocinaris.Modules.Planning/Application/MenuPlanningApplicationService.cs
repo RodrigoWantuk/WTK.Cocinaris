@@ -619,15 +619,16 @@ public sealed class MenuPlanningApplicationService(
             .ToList();
         var names = plans.ToDictionary(plan => plan.Id, plan => plan.Name);
         var resolved = await ResolveEntriesAsync(user.Id, entries, cancellationToken);
-        // A shopping plan's flexible meals have an order (PLAN-0062). Only the next one is shown, or
-        // "Hoje" would list every meal of the plan each day. Other entries behave as before.
+        // A shopping plan's flexible meals have an order (PLAN-0062). Only the next one of each meal type
+        // is shown (PLAN-0065), or "Hoje" would list every meal of the plan each day. Other entries
+        // behave as before.
         var nextByPlan = resolved
             .Where(item => item.View.Status == "planned" && item.View.PlannedDate is null && item.View.SuggestedOrder is not null)
-            .GroupBy(item => item.PlanId)
+            .GroupBy(item => (item.PlanId, item.View.MealType))
             .ToDictionary(group => group.Key, group => group.Min(item => item.View.SuggestedOrder!.Value));
         return RecipeApplicationResult<IReadOnlyList<TodayMenuEntryView>>.Succeeded(resolved
             .Where(item => item.View.Status is "planned" or "cooking")
-            .Where(item => item.View.Status == "cooking" || item.View.PlannedDate is not null || item.View.SuggestedOrder is null || item.View.SuggestedOrder == nextByPlan[item.PlanId])
+            .Where(item => item.View.Status == "cooking" || item.View.PlannedDate is not null || item.View.SuggestedOrder is null || item.View.SuggestedOrder == nextByPlan[(item.PlanId, item.View.MealType)])
             // Meals dated today come before flexible ones.
             .OrderBy(item => item.View.PlannedDate is null)
             .Select(item => new TodayMenuEntryView(item.PlanId, names[item.PlanId], item.View))
