@@ -1,13 +1,13 @@
 # PLAN-0065: Planning Rework ("Montar o cardápio")
 
-- **Status:** Proposed; waits for the owner's answers to D1 to D4
+- **Status:** Proposed; waits for the owner's confirmation of D1 and D2
 - **Type:** Implementation
 - **Priority:** High (owner request)
 - **Owner:** Unassigned; the next execution agent claims it
 - **Created:** 2026-11-05
 - **Last updated:** 2026-11-05
 - **Branch:** Plan publication `agent/plan-0065-planning-rework`; each slice uses the branch named in its section
-- **Pull request:** Plan publication draft PR, opened with this file
+- **Pull request:** #94 (plan publication, draft)
 - **Related issues:** None
 - **Related ADRs:** ADR-0009, ADR-0012, ADR-0013
 - **Dependencies:** PLAN-0062, PLAN-0063, PLAN-0064 (all merged). This plan replaces the deck and review screens of PLAN-0062 Slice 1 and the panel of PLAN-0064.
@@ -16,20 +16,22 @@
 
 Execute one slice at a time, in order. A slice is one pull request from a freshly fetched `origin/main`, and the next starts only after the owner merges the previous one. Agents never merge, approve, or enable auto-merge.
 
-- **Slice 0 needs no owner decision.** Slices 1 to 5 start only after the owner answers D1 to D4.
+- **Slice 0 needs no owner decision.** Slices 1 to 5 start only after the owner confirms D1 and D2.
 - **Deviation rule:** if the code contradicts a detail here, keep the outcome and the invariants, adapt the mechanics, and record the deviation in the progress log.
 - **Stop conditions:** a decision below is unanswered, the code cannot satisfy an invariant, or an unrelated failure blocks the gates.
 - Before every commit, update `Execution state`, `Progress log`, and the registry row.
 
 ## Objective
 
-Let someone build a week of meals on a phone in about a minute, asking for exactly what they want, letting Cocinaris suggest the rest, and always seeing the whole week. The person reaches a usable list without answering abstract questions first and without refusing dishes one by one.
+Let someone say how many days and how many of each meal they want, in any mix, such as only 7 snacks for 14 days with no fixed days, and get dishes that fit each meal. They choose by typing what they want or by comparing options, deciding per choice whether to use their preferences, their pantry, or their own words. Dates stay optional, and the whole set stays visible.
 
 ## Why: what the review found
 
 The review ran on 2026-11-05 at `fc17bfe`. It read every screen and the backend, walked the flow in a browser at 320, 360, and 390 px with measurements, and read the owner's real session on the test host. Headless Chromium was used; no real phone and no WebKit.
 
 ### The owner's real session
+
+The owner was building a menu of snacks only, for 7 days, with no fixed days.
 
 | Measure | Value |
 |---|---|
@@ -39,22 +41,26 @@ The review ran on 2026-11-05 at `fc17bfe`. It read every screen and the backend,
 | Refusals in a row at the end | 13 |
 | Refusals between 15:16:02 and 15:16:32 UTC | 12, clearing old dishes to reach the rest |
 | Batches used | 5 of 5, so no more could be asked for |
+| AI dishes labeled `snack` | All 30, including "Espaguete Agridoce", "Macarrão Picante", "Frango Agridoce", and "Tigela de Carne Bovina" |
 | Dishes with "picante", "apimentado", "pimenta", or "jerk" in the name | 23 of 31; the profile has `spicy_food`, and the prompt treats it as a rule for every dish |
 | Near-duplicates | 3 variations of pão de queijo; formats are free text, so `bolinho frito` and `bolinho assado` count as different |
 | Typed hint | "Jerk beef, cozido e com desidratador": a specific recipe, sent as a soft wish |
-| Result | Plan stopped in `Reviewing` with 4 of 7 meals filled, never accepted, all 4 dishes undated |
+| Result | Plan stopped in `Reviewing` with 4 of 7 meals filled, never accepted |
 | AI time | Batch 21 s on average, 32 s at most; recipe expansion 17 s each, in series |
 | AI cost of the session | About US$ 0.09, so cost is not the constraint |
 
 ### Structural problems
 
-1. **Decisions come before their consequences.** Style, priority, preparation day, and preparation time are asked before any dish exists, and on the phone the setup takes 1.8 screens, or 3 at 320 px with recent plans.
-2. **Two questions do nothing for most dishes.** "Quando vai preparar?" and "Quanto tempo?" only reach a dish through "Sim, 2 vezes" with "Rende". A plain "Sim" has no date, so the route link never appeared in the test.
-3. **There is no way to ask for a dish.** Search exists only for saved recipes, and only on the menu page. The anchor field accepts one ingredient, and the hint is a soft wish.
-4. **Yes or no on one dish at a time.** Nothing can be compared, and the chosen dishes are not visible while choosing. "Refeição 1 de 5" does not say which day.
-5. **Three screens for one object, three ways to build it.** Setup, cards, and review lead to a separate menu page, alongside the manual menu form and "Sugerir com IA" per slot.
-6. **The week is hidden.** Without dates, an accepted menu opens with "Nada planejado" on every day and the dishes at the bottom under "Sem dia definido".
-7. **Names.** "Plano", "cardápio", "lista", and "o que comprar" describe overlapping things.
+1. **Meal type is only a label.** The prompt never defines a snack, and validation only checks that `targetMealType` is one the plan asked for. The model writes `snack` on a plate of spaghetti and it passes.
+2. **Meals are a grid, not quantities.** The total is `days × meal types`, so "3 lunches and 7 snacks in 14 days" cannot be said. Lunch and dinner also share one `main` group.
+3. **Decisions come before their consequences.** Style, priority, preparation day, and preparation time are asked before any dish exists, and on the phone the setup takes 1.8 screens, or 3 at 320 px with recent plans.
+4. **Two questions do nothing for most dishes.** "Quando vai preparar?" and "Quanto tempo?" only reach a dish through "Sim, 2 vezes" with "Rende".
+5. **There is no way to ask for a dish.** Search exists only for saved recipes, and only on the menu page. The anchor field takes one ingredient, and the hint is a soft wish.
+6. **Pantry and tastes cannot be switched off where the choice happens.** PLAN-0064 added a pantry answer behind a panel, and tastes cannot be switched off at all.
+7. **Yes or no on one dish at a time.** Nothing can be compared, and the chosen dishes are not visible while choosing.
+8. **Three screens for one object, three ways to build it.** Setup, cards, and review lead to a separate menu page, alongside the manual menu form and "Sugerir com IA" per slot.
+9. **A menu without dates looks empty.** An accepted menu opens with "Nada planejado" on every day and the dishes at the bottom under "Sem dia definido". "Hoje" shows one flexible dish per plan, whatever the meal.
+10. **Names.** "Plano", "cardápio", "lista", and "o que comprar" describe overlapping things.
 
 ### Confirmed defects
 
@@ -64,6 +70,7 @@ The review ran on 2026-11-05 at `fc17bfe`. It read every screen and the backend,
 | B2 | High | On a list line at 360 px, "800 g" sits under "Já tenho"; the dish name wraps over 5 lines; each line takes 193 to 225 px | Browser measurement and screenshot |
 | B3 | High | After a request, old dishes stay queued, so the person refuses them all to get through | 12 refusals in 30 s in the real session |
 | B4 | High | The model applies one taste to almost every dish and offers near-duplicates | Real session |
+| B12 | High | Full meals are offered as snacks | Real session, query on `shopping_plan_cards` |
 | B5 | Medium | "Usar este plano" accepts 3 of 7 meals with no word about the rest | Browser |
 | B6 | Medium | Expansion runs per page, so the deck and the review race: 12 duplicate-key errors in the log during the session. Leaving the screen stops it | `journalctl`; `useExpansionQueue` |
 | B7 | Medium | Controls under 44 px on the phone: chips 36 to 40, "Trocar" and "Remover" 36, "Não achei" 24, "Voltar" 20, the package link 16 | Measurement |
@@ -72,16 +79,25 @@ The review ran on 2026-11-05 at `fc17bfe`. It read every screen and the backend,
 | B10 | Low | The menu title repeats the period; at 320 px the "+" and AI buttons wrap; "1º a cozinhar" means little; "+1 itens novos" | Browser |
 | B11 | Unverified | `datalist` does nothing on iOS Safari, and native date inputs may overflow there | Known platform behavior; to be checked with WebKit and a real iPhone |
 
-## Owner decisions to confirm
+## Decisions
 
-The plan is written for the recommended answer to each.
+### Already decided by the owner (2026-11-05)
+
+| Topic | Decision |
+|---|---|
+| Dates | Optional. A menu can be a set of dishes to eat within a period, with no fixed days |
+| How much | The person says how many days, and how many breakfasts, lunches, dinners, and snacks, independently |
+| Compatibility | Dishes must fit the meal: a snack is a snack, not a full meal |
+| What drives suggestions | Choosable when picking dishes: preferences, current pantry, or manual parameters, each on or off |
+
+### To confirm
 
 | # | Decision | Recommended | Reverses |
 |---|---|---|---|
-| D1 | Main way to build | **A board of the week, with a list of options per meal.** Dish-by-dish yes or no goes away | PLAN-0062 "Dish-by-dish cards" |
-| D2 | Days | **Every dish sits on a day and meal**, chosen by where it was tapped, and can be moved | PLAN-0062 "a fixed date is optional" |
-| D3 | First screen | **Only days, start, and meals.** People stays as one line. Cooking style and meals eaten out leave; priority becomes a filter; preparation moves to after the menu is in use | PLAN-0062 "Asked in every plan" |
-| D4 | Names | **"Cardápio" everywhere.** "Plano" leaves the interface; the tab stays "Planejar" | PLAN-0063 copy "Começar um plano" |
+| D1 | Main way to build | **One screen grouped by meal type, with a sheet of options to compare.** Dish-by-dish yes or no goes away | PLAN-0062 "Dish-by-dish cards" |
+| D2 | Starting state of the switches | **Preferences on, pantry off,** then each plan starts from the last answers. Cooking style and meals eaten out leave the first screen; priority becomes a filter; preparation moves to after the menu is in use | PLAN-0062 "Asked in every plan" |
+
+Names follow the owner's decision to keep "cardápio": "plano" leaves the interface, and the tab stays "Planejar".
 
 If D1 is refused, only Slice 0 applies, and the plan must be rewritten.
 
@@ -90,16 +106,18 @@ If D1 is refused, only Slice 0 applies, and the plan must be rewritten.
 These hold in every slice, and tests protect each that can be tested.
 
 1. **AI never mutates state.** Output is validated, and only deterministic commands change menus, recipes, or the pantry.
-2. **Restrictions are hard rules.** No filter, typed text, or request relaxes them. A typed request whose result is blocked says why.
+2. **Restrictions are hard rules.** No switch, filter, typed text, or request relaxes them. Turning preferences off removes tastes only: allergies, intolerances, medical restrictions, diets, and dislikes stay. They already travel apart from tastes (`RecipeContextAssembler`).
 3. **Drafts reserve nothing.** Only "Usar este cardápio" reaches "Hoje" and reserves stock.
 4. **An accepted menu is never silently rewritten.** Each change is one explicit command on one entry.
-5. **Private words stay private.** A dish made under typed text carries it through expansion and never reaches the shared idea library.
-6. **Typed text is untrusted,** bounded, in its own prompt field, and never logged.
-7. **Degraded mode works.** With AI off, saved recipes, ideas, and search still fill a week, and typed requests say AI is unavailable.
-8. **Owner isolation.** Another owner's identifier returns 404.
-9. **The offline list keeps working** (ADR-0012), including being saved before the market without having been opened.
-10. **Localization.** All copy in pt-BR, en, and es; the backend returns codes.
-11. **Answers do not update the profile.**
+5. **The list is always net of the pantry.** The pantry switch changes what is suggested, never what is deducted.
+6. **Private words stay private.** A dish made under typed text carries it through expansion and never reaches the shared idea library.
+7. **Typed text is untrusted,** bounded, in its own prompt field, and never logged.
+8. **Shelf-life output comes only from curated rules.** The model never states dates, and without an approved table nothing claims how long food lasts.
+9. **Degraded mode works.** With AI off, saved recipes, ideas, and search still fill a menu, and typed requests say AI is unavailable.
+10. **Owner isolation.** Another owner's identifier returns 404.
+11. **The offline list keeps working** (ADR-0012), including being saved before the market without having been opened.
+12. **Localization.** All copy in pt-BR, en, and es; the backend returns codes.
+13. **Answers do not update the profile.**
 
 ## The new flow
 
@@ -107,60 +125,76 @@ These hold in every slice, and tests protect each that can be tested.
 
 | Decision | Today | New moment |
 |---|---|---|
-| Days, start, meals | Setup, with 7 other questions | First screen, alone |
+| Period | Setup | First screen: days and start |
+| How many of each meal | Not possible | First screen: four counters, changeable later on the board |
 | People | Setup | One line on the first screen and the board |
-| What to eat at a meal | One yes or no at a time | Tap that meal, then type or tap from a list |
-| What matters (use the pantry, fewer purchases, quick, cheap) | Setup, before any dish | A filter above the options, changeable at any time |
-| Meals eaten out | Setup stepper | Tap the meal: "Não preciso desta refeição" |
-| Cook once, eat twice | "Sim, 2 vezes", then a sheet | On a chosen dish: "Rende mais refeições" |
-| Which day | Native date field per dish, optional | Implied by the tap; "Mudar de dia" to move |
+| What to eat | One yes or no at a time | Tap "Escolher lanche", then type or tap from a list |
+| Use my preferences, use my pantry | Tastes always; pantry behind a panel | Switches above the options, changeable at any time |
+| Quick, fewer purchases, cheap | Setup, before any dish | Filter above the options |
+| Cook once, eat several times | "Sim, 2 vezes", then a sheet | On a chosen dish: "Rende mais" |
+| Which day | Native date field | Only if wanted: "Marcar um dia" on a dish |
 | Preparing several together | Setup, before any dish | After the menu is in use: "Preparar vários de uma vez" |
 | Pack size, store | On each line | Inside the line's menu |
 
 ### Screens
 
-**First screen (`/app/compras/planejar`).** Fits one phone screen at 360 × 740 without scrolling: "Pra quantos dias?" (3, 5, 7, outro), "Começando" (hoje, amanhã, outro dia), "Quais refeições?", the line "Para 2 pessoas · Alterar", and primary "Montar cardápio". Below, "Repetir um cardápio" as a disclosure. Last answers are preselected. With a menu in progress it shows "Continuar cardápio".
+**First screen (`/app/compras/planejar`).** Fits one phone screen at 360 × 740 without scrolling.
 
-**Board (`/app/compras/planejar/:sessionId`).** One row per meal, grouped by day, on one surface.
+- **"Por quantos dias?"** 3, 5, 7, 14, outro (1 to 14). This is the period to eat within.
+- **"Começando"** hoje, amanhã, outro dia.
+- **"Quantas refeições?"** Four rows with a counter, 44 px controls: Café da manhã, Almoço, Jantar, Lanche, each 0 to 40, at most 40 in total. Counters are independent of the days, so 7 snacks in 14 days is valid.
+- **"Para 2 pessoas · Alterar".**
+- **Primary:** "Montar cardápio (7)", disabled at zero.
+- **Disclosure:** "Repetir um cardápio".
 
-- An empty meal is a full-width row: "Escolher jantar".
-- A chosen meal shows the name (at most 2 lines), "35 min · +3 itens", and a state when its recipe is being prepared. Tapping it opens its actions.
-- The bottom tab bar is hidden on phones while building, as in guided cooking. A close control at the top says "Sair (fica salvo)".
-- A fixed bottom bar shows "3 de 7 · 9 itens" and the primary action: "Completar" while meals are empty, "Usar este cardápio" when none are. "O que comprar" is a secondary link above the bar.
+Defaults: the last answers, else dinner equal to the days and the rest zero. While a counter is untouched and above zero, it follows the days. With a menu in progress the screen shows "Continuar cardápio".
 
-**Options sheet.** A bottom sheet at 90 dvh, opened from an empty meal. Title: "Jantar · sex., 7 nov".
+**Board (`/app/compras/planejar/:sessionId`).** One surface per meal type that has a count above zero, in meal order.
 
-- **Text box first:** "O que você quer comer?", placeholder "feijoada, algo com frango, jerk beef…", up to 120 characters.
-- **While typing:** saved recipes that match, then always one row: "Pedir à IA: {text}".
-- **Without text:** a filter row (Usa o que tenho, Menos compras, Rápido, Econômico; none chosen by default), "Já neste cardápio" to repeat a dish, and six options at once. Each shows name, time, "+N itens", and what it reuses.
-- **Tap an option** to choose it. A notice offers "Desfazer" for 5 seconds, and the sheet moves on to the next empty meal.
-- **"Ver ingredientes"** on a row expands it, and offers "Quero parecido" and "Não sugerir isso".
-- **"Ver outras"** at the end fetches six more.
-- A wait shows skeleton rows in the list's shape, and existing options stay usable.
+- **Group header:** "Lanches · 3 de 7", with a compact counter to change the quantity.
+- **A chosen dish:** the name (at most 2 lines), "35 min · +3 itens", and a state when its recipe is being prepared. If it has a day, a small tag such as "sex., 7"; without one, no tag and no warning. Tapping opens its actions.
+- **What is missing:** one row, not one per meal: "Escolher lanche · faltam 4". This keeps 7 snacks on one screen.
+- **Chrome:** the tab bar is hidden on phones while building, as in guided cooking. A control at the top says "Sair (fica salvo)".
+- **Fixed bottom bar:** "3 de 7 · 9 itens" with the link "O que comprar", and the primary action: "Completar" while something is missing, "Usar este cardápio" when nothing is.
 
-**Actions on a chosen meal.** A sheet: Trocar, Mudar de dia, Rende mais refeições, Porções, Ver receita, Remover. "Não preciso desta refeição" appears on an empty meal.
+**Options sheet.** A bottom sheet at 90 dvh. Title: "Lanche · faltam 4".
 
-**Completar.** A sheet proposing one dish for each empty meal, with a swap control per row, and "Usar estes". Nothing changes until confirmed.
+- **Text box first:** "O que você quer?", placeholder "pão de queijo, algo com frango, jerk beef…", up to 120 characters. While typing, saved recipes that match appear, then always one row: "Pedir à IA: {text}".
+- **Switches:** "Minhas preferências" and "O que tenho e já escolhi". Changing one asks for new dishes at once, because existing ones were made under the other answer.
+- **Filter, one at a time:** Rápido, Menos compras, Econômico.
+- **"Já neste cardápio":** tap to repeat a dish.
+- **Six options at once.** Each shows name, time, "+N itens", and what it reuses. Tap to choose: a notice offers "Desfazer" for 5 seconds, and the sheet stays open for the same meal type until none is missing.
+- **"Ver ingredientes"** on a row expands it and offers "Quero parecido" and "Não sugerir isso".
+- **"Ver outras"** at the end fetches six more, different from those shown.
+- **Waiting** shows skeleton rows in the list's shape, and existing options stay usable.
 
-**Accepting with empty meals.** Asks once: "Faltam 2 refeições. Usar assim?", with "Usar assim" and "Continuar escolhendo".
+**Actions on a chosen dish.** A sheet: Trocar, Marcar um dia (chips of the period's days, and "Sem dia"), Rende mais (2 to 4, counts toward its meal type), Porções, Ver receita, Remover.
+
+**Completar.** A sheet proposing a dish for everything missing, with a swap control per row, and "Usar estes". Nothing changes until confirmed.
+
+**Accepting with something missing.** Asks once: "Faltam 2 lanches. Usar assim?", with "Usar assim" and "Continuar escolhendo".
+
+**Menu in use (`/app/cardapio/:menuId`).** Heading, the next step, then dishes dated today, later dated dishes, and **"Quando quiser"**, grouped by meal type. Empty days do not appear. A line near the end of the period says "Faltam 2 dias · 3 lanches por fazer".
+
+**"Hoje".** Dated dishes as today, plus the next undated dish of **each meal type**, under "Quando quiser".
 
 ### What goes away
 
-`ShoppingPlanDeckPage`, `ShoppingPlanReviewPage` (its route redirects to the board), the setup questions in D3, the "Quero outras opções" panel, the manual menu form on `MenusPage`, "Montar refeição por refeição", and `AiMealSuggestion` (replaced in Slice 4). PLAN-0064's three answers survive: pantry as a filter, similarity as "Quero parecido" and "Ver outras", and the hint as the text box.
+`ShoppingPlanDeckPage`, `ShoppingPlanReviewPage` (its route redirects to the board), the setup questions in D2, the "Quero outras opções" panel, the manual menu form on `MenusPage`, "Montar refeição por refeição", and `AiMealSuggestion` (replaced in Slice 4). PLAN-0064's answers survive: pantry as a switch, similarity as "Quero parecido" and "Ver outras", and the hint as the text box.
 
 ## Technical design
 
 ### Data
 
-Migration `AddPlanningBoard` (Slice 1). All additive and nullable, so an older release still runs.
+Migration `AddPlanningBoard` (Slice 1): `menu_entries.CookOnDate date null` (Slice 4 uses it; the route selects `CookOnDate ?? PlannedDate`). Additive, so an older release still runs.
 
-| Table | Column | Purpose |
-|---|---|---|
-| `menu_entries` | `LeftoverSlotsJson` jsonb | `[{date, mealType}]` a yielding dish also covers. `MealsCovered` stays `1 + count` |
-| `menu_entries` | `CookOnDate` date | Cook ahead of the day it is eaten (Slice 4). The route selects `CookOnDate ?? PlannedDate` |
-| `shopping_plan_sessions` | `SkippedSlotsJson` jsonb | Meals marked as not needed |
+`ShoppingPlanSetup` (JSON, no migration) gains `MealCounts`: `{ breakfast, lunch, dinner, snack }`, and `StartDate` as a stored value.
 
-`DeckPreferenceJson` changes meaning: it keeps only the filter (`priority`, or none). Typed text no longer persists; it belongs to one request and to the cards made from it through `PrivateHint`.
+- `TotalMeals` is the sum. `MealTypes` is the keys above zero.
+- A setup without `MealCounts` derives it: `Days` for each of its `MealTypes`, minus `MealsOut` from lunch and dinner. The owner's stuck plan reads as 7 snacks, and is the test case.
+- Validation: each 0 to 40, sum 1 to 40, `Days` 1 to 14.
+
+`DeckPreferenceJson` changes meaning: `{ usePreferences: bool, usePantry: bool, goal: quick|short|save|null, likeDish: string|null }`. Typed text no longer persists: it belongs to one request and to the cards it made, through `PrivateHint`. The first screen's next-plan defaults reuse the last preference, and never touch the profile.
 
 ### API
 
@@ -168,42 +202,66 @@ Under `/api/v1/planning/shopping-plans`:
 
 | Route | Change |
 |---|---|
-| `POST /` | Adds `startDate`. `cookingStyle`, `priority`, `prepDate`, `prepMinutes`, and `mealsOut` become optional with fixed defaults: `mix`, no priority, none, none, 0. `ValidateSetup` stops requiring preparation for `mix` |
-| `POST /{id}/cards/{cardId}/decision` | Adds `plannedDate` and `mealType`. Accepting a card for a meal stores them in the snapshot, and expansion creates the entry there. `mode` and `repeats` remain for repeating a saved plan |
-| `GET /{id}` | Adds `queues` by meal group (`main`, `breakfast`, `snack`), six each, and `slots` |
-| `POST /{id}/batches` | Adds `request` (text, up to 120) and `mealType`; replaces `hint`, `pantry`, and `similarity` with `request`, `priority`, and `likeCardId` |
-| `PUT /{id}/filter` | Sets or clears the filter, and re-ranks |
-| `POST /{id}/slots/skip` | Marks or restores a meal as not needed |
-| `PUT /{id}/entries/{entryId}/slot` | Moves a dish; swaps when the target is taken. Allowed on a draft, and on an accepted menu as an explicit command |
-| `PUT /{id}/entries/{entryId}/yield` | Sets what it also covers; scales servings to `people × (1 + count)` |
+| `POST /` | Adds `mealCounts` and `startDate`. `cookingStyle`, `priority`, `prepDate`, `prepMinutes`, and `mealsOut` become optional, with fixed defaults `mix`, none, none, none, 0. `ValidateSetup` stops requiring preparation for `mix` |
+| `POST /{id}/cards/{cardId}/decision` | Adds `mealType` and optional `plannedDate`; expansion creates the entry with them. `mode` and `repeats` remain for a repeated plan |
+| `GET /{id}` | Adds `groups` (`mealType`, `wanted`, `filled`) and `queues` per meal type, six each |
+| `POST /{id}/batches` | Takes `mealType`, optional `request` (text, up to 120), `likeCardId`, and the chip codes. Removes `hint`, `pantry`, and `similarity` |
+| `PUT /{id}/preferences` | Sets the switches and the goal, and re-ranks |
+| `PUT /{id}/meal-counts` | Changes quantities. It cannot go below what is chosen; the screen asks to remove a dish first |
+| `PUT /{id}/entries/{entryId}/day` | Sets or clears a day inside the period. On an accepted menu it is an explicit single-entry command |
+| `PUT /{id}/entries/{entryId}/yield` | Sets how many meals it covers (1 to 4); scales servings to `people × N` |
 | `POST /{id}/reopen` | Slice 0, fixes B1 |
 
 Keep the `Idempotency-Key` pattern on `batches`, and the `shopping-plan-decision` limiter on decisions. Regenerate OpenAPI and the client.
 
+### Meal compatibility
+
+Two layers, because the model's own label cannot be trusted.
+
+**Prompt.** Each batch asks for **one** meal type, with `planDeck.mealGuide`:
+
+| Type | Guide |
+|---|---|
+| `snack` | "A small bite between meals: finger food, baked goods, a small sandwich, something to nibble. Never a plated main course, pasta dish, stew, or bowl." |
+| `breakfast` | "What people eat in the morning: bread, eggs, fruit, cereal, tapioca, cuscuz. Never a lunch or dinner main." |
+| `lunch`, `dinner` | "A complete main meal. Never only a snack or a dessert." |
+
+**Deterministic check.** A pure `MealFit` in Planning with `Catalog/meal-fit-rules.json`, run on every AI and library card before it is shown:
+
+- **Name and format keywords** per type, in pt, en, and es, using `IngredientText.Normalize` with word boundaries. For `snack` and `breakfast`, it blocks words such as macarrão, espaguete, lasanha, risoto, ensopado, feijoada, strogonoff, moqueca, escondidinho, tigela, bowl, "prato". For `lunch` and `dinner`, it blocks pipoca, biscoito, bolacha, and similar.
+- **Mass per serving** from measured grams and millilitres: above 250 g blocks a `snack`; below 120 g blocks a `lunch` or `dinner`. Without measured ingredients, this signal does not apply.
+- **Time:** above 60 total minutes blocks a `snack`.
+
+A blocked card is dropped, with the metric `cocinaris.shopping_plan.meal_fit_dropped{mealType}`. If fewer than 3 survive a batch, the service calls the model once more, with the dropped names in `rejectedDishes`. Saved recipes use the meal types the person gave them, with no `MealFit`, because they are the person's own. A **requested dish skips `MealFit`:** if someone asks for feijoada as a snack, that is their choice.
+
+Tests use the real session's names as fixtures: "Espaguete Agridoce", "Macarrão Picante", "Frango Agridoce" (332 g), "Tigela de Carne", and "Escondidinho" are blocked; "Pão de Queijo", "Bolinho de Polvilho", "Pipoca", and "Tapioca Recheada" pass.
+
 ### Ranking
 
-`ShoppingPlanRanker` keeps its integer arithmetic. No filter means `PantryWeight = 1` and no goal term, so food needing attention can rise without dominating. Filters map to today's goals: Usa o que tenho → `waste` at weight 3; Menos compras → `short`; Rápido → `time`; Econômico → `save`. `ConsecutiveRejections` no longer sets the weight, because refusing is no longer the way through.
+`ShoppingPlanRanker` keeps its integer arithmetic. `usePantry` on means `PantryWeight = 3` with the `waste` goal; off means 0. Goals: `quick` → `time`, `short` → `short`, `save` → `save`. `ConsecutiveRejections` no longer sets the weight, because refusing is no longer the way through. An undated plan keeps `SuggestedOrder`, so what spoils first is still offered first on "Hoje".
 
 ### Prompt
 
 In `RecipeAiRequestEnvelopes.BuildPlanDeckEnvelope`:
 
-- **Taste rule, for every batch:** "userPresets.preferences are tastes, not requirements. At most 2 of the 6 dishes may lead with any one taste or flavor, and vary cuisines and main ingredients." Restrictions remain absolute.
-- **Default rule:** without a filter, stop asking for reuse: "Offer dishes a person would be glad to cook this week. Use availabilitySnapshot when it fits, but do not build dishes around it."
-- **`planDeck.requestedDish`:** `{ text, treatment }`, with text cleaned to 120 characters by `UntrustedText.Normalize`, and the untrusted-text rule. "The person asked for this. Candidate 1 must be this dish, made the way a home cook would recognize it, even if it needs ingredients not at home; list them. The others are close alternatives. If it is ambiguous, make the most common version." With a request, `availabilitySnapshot.items` stays but is not to be favored.
+- **Taste rule, for every batch:** "userPresets.preferences are tastes, not requirements. At most 2 of the 6 dishes may lead with any one taste or flavor; vary cuisines and main ingredients." Restrictions remain absolute.
+- **`usePreferences` off:** `userPresets.preferences` is sent empty. `restrictions`, which also carries dislikes, stays.
+- **`usePantry` off:** `availabilitySnapshot.items` and `shoppingListIngredients` are sent empty, and `rule` stops asking for reuse. **On:** "Build dishes mainly from availabilitySnapshot and shoppingListIngredients, adding as few new ingredients as possible."
+- **`planDeck.timing`:** `{ windowDays, fixedDays: false }` with "These dishes will be eaten at some point in this period, on no fixed day. When the period is over a week, prefer ingredients that keep or dishes that freeze or store well." It must state no dates or durations.
+- **`planDeck.requestedDish`:** `{ text, treatment }`, cleaned to 120 characters by `UntrustedText.Normalize`, with the untrusted-text rule. "The person asked for this. Candidate 1 must be this dish, made the way a home cook would recognize it, even if it needs ingredients not at home; list them. The others are close alternatives. If it is ambiguous, make the most common version."
 - **`planDeck.likeDish`:** replaces `direction`, same untrusted treatment.
 
-A repeat of the schema version is not needed, because only request fields change.
+The response schema does not change.
 
 ### Near-duplicates
 
-`AddCandidatesAsync` gains a pure `DishSimilarity.IsSameDish(a, b)`: normalized name tokens without stop words and cooking words (`de`, `com`, `no`, `na`, `air`, `fryer`, `frigideira`, `assado`, `picante`, `apimentado`), same when Jaccard ≥ 0.6. It applies only to cards from the deck, never to a requested dish's first candidate.
+`AddCandidatesAsync` gains a pure `DishSimilarity.IsSameDish(a, b)`: normalized name tokens without stop words and cooking words (`de`, `com`, `no`, `na`, `air`, `fryer`, `frigideira`, `assado`, `picante`, `apimentado`), same when Jaccard ≥ 0.6. It never applies to a requested dish's first candidate.
 
 ### A typed request
 
 1. The sheet shows saved matches at once, with no AI.
 2. "Pedir à IA" calls `batches` with `request` and `mealType`. Six cards come back in about 20 s, while the rest of the sheet stays usable.
-3. Answers come first for that meal, under "Para {text}", through the existing `FromOrder`.
+3. Answers come first for that meal type, under "Para {text}", through the existing `FromOrder`.
 4. `RestrictionGuard` runs as always. If every card is blocked, the response is 422 `request_blocked` with the restriction code, and the sheet says: "Essa receita conflita com {restrição}." It never offers a way around.
 5. Each card keeps the text in `PrivateHint`, which also keeps it from the idea library.
 
@@ -213,11 +271,11 @@ A single `PlanExpansionProvider` inside `ShoppingPlanProvider` replaces the per-
 
 ### Sheets and phone layout
 
-- Use the existing `vaul` drawer (`components/ui/drawer.tsx`), with `max-h-[90dvh]`, a sticky search box, `env(safe-area-inset-bottom)`, focus trapped, Escape closing it, and focus returned to the row. Reduced motion is respected.
+- Use the existing `vaul` drawer (`components/ui/drawer.tsx`), with `max-h-[90dvh]`, a sticky text box, `env(safe-area-inset-bottom)`, focus trapped, Escape closing it, and focus returned to the row. Reduced motion is respected.
 - A fixed bottom bar needs `padding-bottom` on the page equal to its height, and must rise above the keyboard. Test with `visualViewport`.
 - The shell uses `min-h-dvh` rather than `min-h-screen`.
 - `Button size="sm"` and `ChoiceChips` reach 44 px under `@media (pointer: coarse)`. This one rule fixes most of B7.
-- Replace `<input type="date">` on planning screens with chips of the menu's days, and replace the `datalist`.
+- Replace `<input type="date">` on planning screens with chips of the period's days, and replace the `datalist`.
 
 ## Slices
 
@@ -226,93 +284,96 @@ A single `PlanExpansionProvider` inside `ShoppingPlanProvider` replaces the per-
 Branch: `agent/plan-0065-s0-fixes`. Needs no owner decision and is useful even if D1 is refused.
 
 - [ ] **Mobile audit gate.** New `scripts/e2e/mobile-audit.mjs`: walks the planning routes with seeded data at 320, 360, and 390 px, and fails on horizontal overflow, text or control overlap (`elementsFromPoint` at each control's center and each text's corners), clipped text, and main controls under 44 px, with a short documented allowlist. It stores screenshots under `artifacts/`. Install Playwright WebKit and run the iPhone profile too. Every later slice runs it.
+- [ ] **B12:** `MealFit`, its catalog, and the `mealGuide`, with `mealNeeds` narrowed to the types still missing.
 - [ ] **B1:** add `POST /{id}/reopen`, setting `building`; "Escolher mais pratos" calls it.
 - [ ] **B2:** rebuild the list line. First line: checkbox, name (wraps freely), amount. Second line: dishes clamped to one line, plus "tem {x}" only when something is at home. All actions move behind one 44 px "⋯" control opening a sheet: Comprei, Já tenho, Não achei, Comprar em, Tamanho do pacote. The whole row toggles the check, except the "⋯". Keep every test id working inside the sheet, and keep offline rules.
 - [ ] **B3:** an answered request deletes the earlier unseen cards of that meal group. Raise `MaxBatches` to 12 and `MaxCards` to 120.
 - [ ] **B4:** the taste rule and `DishSimilarity`.
-- [ ] **B5:** the confirmation with empty meals.
+- [ ] **B5:** the confirmation when something is missing.
 - [ ] **B6:** `PlanExpansionProvider`.
 - [ ] **B7:** the coarse-pointer rule; "Voltar" links gain a 44 px target.
 - [ ] **B8:** from a draft reached through a plan, "Voltar" returns to the review.
 - [ ] **B10:** the menu title shows the name only when there is one; dated dishes first, then undated, then empty days collapsed into one line; plurals with `.one` and `.other`.
 
-**Hazards:** the list line is used offline, and the journeys click buttons that now sit in a sheet, so update `shopping-plan-journey`, `offline-list-journey`, and `session-route-journey` in the same PR. Deleting unseen cards must not delete a base waiting on an accepted dish.
+**Hazards:** the list line is used offline, and the journeys click buttons that now sit in a sheet, so update `shopping-plan-journey`, `offline-list-journey`, and `session-route-journey` in the same PR. Deleting unseen cards must not delete a base waiting on an accepted dish. Keyword rules can hide good dishes ("pão de queijo" must pass, and "prato" must match only as a word), so test the rules against the session's 31 names. A library idea has the same check; `RecipeIdeaLibrary` needs no change, because the filter runs on what it returns.
 
-**Gate S0:** mobile audit passes at all widths; B1 and B3 have integration tests; `DishSimilarity` has unit tests using the real session's names; journeys pass; `frontend,backend,contracts,secrets` gates pass. The owner tries the list on a phone.
+**Gate S0:** mobile audit passes at all widths; B1, B3, and B12 have integration tests; `MealFit` and `DishSimilarity` have unit tests using the real session's names; journeys pass; `frontend,backend,contracts,secrets` gates pass. The owner tries a snack menu on a phone.
 
 ### Slice 1: The engine
 
 Branch: `agent/plan-0065-s1-engine`. Backend only, and the current screens keep working.
 
 - [ ] Migration, records, store.
-- [ ] Optional setup fields, `startDate`, `slots`, and `queues`.
-- [ ] Decision with a meal; expansion and saved cards create the entry there.
-- [ ] `filter`, `slots/skip`, `slot`, `yield`.
-- [ ] `request` and `likeCardId` on batches, the prompt changes, `request_blocked`, and removal of hint persistence.
-- [ ] Ranking with no filter. Keep `ConsecutiveRejections` in the data, unused.
+- [ ] `MealCounts`, deriving it for existing plans, with optional setup fields, `groups`, and `queues`.
+- [ ] Meal needs per type. Lunch and dinner count separately, and a card targeting either can fill either, because both are main meals.
+- [ ] Decision with `mealType` and optional day; expansion and saved cards create the entry there.
+- [ ] `preferences`, `meal-counts`, `day`, `yield`.
+- [ ] `request`, `likeCardId`, single-type batches, the prompt changes, `request_blocked`, and removal of hint persistence.
+- [ ] Ranking from the switches. Keep `ConsecutiveRejections` in the data, unused.
+- [ ] `GetTodayAsync`: the next undated dish per meal type instead of per plan.
 - [ ] OpenAPI, client, protocol and privacy documents.
-- [ ] `GetTodayAsync`: a leftover slot shows as "Sobra de {dish}", with no cook action.
 
 **Hazards:**
 
-- `MenuEntry.Create` and `MealsCovered` feed the projector, route, and reminders. A yield keeps one entry, with scaled servings, so the list stays right. Test it.
-- Moving a dish onto a taken slot must swap in one transaction.
-- `PreparationReminders` only checks dated meals. With every dish dated, reminders start firing for all of them, including notifications. This is the intended behavior; test the volume.
-- `GetTodayAsync` and allocation still handle old flexible entries with `SuggestedOrder`. Keep them.
-- A repeated plan (`fromMenuId`) must place dishes on slots in order.
+- `MealNeeds` feeds the queue, `TotalMeals`, and the review. Change them together, and test a plan with 0 lunches and 7 snacks, and one with 3 lunches and 2 dinners.
+- `PreparationReminders` only checks dated meals, so an undated plan raises no "buy" reminder and no notification. This is accepted for now, and the board and hub show what to buy. Say so in the product document.
+- A period of 14 days with undated dishes means `ArrivalAdvisor` estimates each use with `start + floor(position × days / meals)`. Keep that.
+- A repeated plan (`fromMenuId`) must copy counts, and keep dishes undated unless the original had dates.
 - Keep the old batch fields until Slice 2 merges, then remove them.
 
-**Gate S1:** integration tests for each route, isolation, idempotency, restriction on a request, privacy on a requested dish, swap, and yield on the list. Unit tests for ranking with each filter. Contract tests pass.
+**Gate S1:** integration tests for each route, isolation, idempotency, restriction on a request, privacy on a requested dish, each switch's effect on the payload (including that dislikes stay when preferences are off), and meal counts. Unit tests for ranking with each switch. Contract tests pass.
 
-**AI evaluation (Gate S1-AI):** extend the gateway smoke with `PLAN0065_LIVE_EVAL=1` and a US$ 0.05 limit, with these scenarios: a specific request ("jerk beef cozido"), a request that conflicts with a restriction, a profile with `spicy_food` (at most 2 of 6 spicy), and an injection attempt in the text. It needs the provider key, so the owner runs it. Results go in `docs/evidence/plan-0065/`.
+**AI evaluation (Gate S1-AI):** extend the gateway smoke with `PLAN0065_LIVE_EVAL=1` and a US$ 0.05 limit, with these scenarios: 6 snacks (how many `MealFit` drops), 6 breakfasts, a specific request ("jerk beef cozido"), a request that conflicts with a restriction, a profile with `spicy_food` (at most 2 of 6 spicy), preferences off, and an injection attempt in the text. It needs the provider key, so the owner runs it. Results go in `docs/evidence/plan-0065/`.
 
 ### Slice 2: First screen, board, options
 
 Branch: `agent/plan-0065-s2-board`.
 
-- [ ] First screen with `startDate`; recent plans in a disclosure.
-- [ ] `ShoppingPlanBoardPage`, with slots from the server and the fixed bar.
-- [ ] `MealOptionsSheet`: text box, saved matches, "Pedir à IA", filters, six options, "Ver outras", "Ver ingredientes", move to next empty meal, undo.
+- [ ] First screen with the counters; recent plans in a disclosure.
+- [ ] `ShoppingPlanBoardPage`, with groups from the server and the fixed bar.
+- [ ] `MealOptionsSheet`: text box, saved matches, "Pedir à IA", switches, filter, six options, "Ver outras", "Ver ingredientes", undo.
 - [ ] Hidden tab bar while building; "Sair (fica salvo)".
 - [ ] Redirect `/revisar` to the board. Remove the deck, the review, the panel, and their copy. Update hub links.
-- [ ] Copy under D4 in three languages.
-- [ ] Accessibility: rows are buttons named with day, meal, and dish; `role="status"` for progress; focus returns to the row when the sheet closes.
+- [ ] Copy without "plano", in three languages.
+- [ ] Accessibility: rows are buttons named with meal and dish; `role="status"` for progress; focus returns to the row when the sheet closes; switches are real switches with `role="switch"`.
 
 **Hazards:**
 
 - A `vaul` sheet with an on-screen keyboard is the most likely thing to break on iOS. Check on WebKit and a real iPhone before calling it done.
-- A plan in progress at deploy has cards and undated entries. The board must show undated entries in a "Sem dia" group with "Colocar em um dia", so nothing is lost. The owner's stuck plan is the test case.
+- Plans in progress at deploy have undated entries and rejected cards, and must simply appear on the board. The owner's stuck plan is the test case.
 - Saved recipes load once per sheet; keep that list in the provider so typing filters instantly.
-- A batch can return after the sheet closed or moved to another meal. Results belong to their meal group, not to the open sheet.
-- The page must not call a batch by itself for each sheet. One automatic batch when a group has fewer than 6 options and no batch is running.
+- A batch can return after the sheet closed or moved to another meal type. Results belong to their meal type, not to the open sheet.
+- Toggling switches quickly must not fire one batch per tap: wait 600 ms, and send only the last state.
+- One automatic batch when a type has fewer than 6 options and no batch is running; never one per sheet opening.
 
-**Gate S2:** new `planning-board-journey.mjs`: a 5-dinner menu using saved recipes, at 360 px, in at most 12 taps, with a typed search and undo; mobile audit including the open sheet and keyboard; AI failure path; three languages; keyboard only. Owner check on a phone: **"Consigo pedir o que eu quero?"**
+**Gate S2:** new `planning-board-journey.mjs`: 7 snacks with no days, using saved recipes, at 360 px, in at most 12 taps, with a typed search and undo; a mixed menu of 3 lunches and 2 dinners; mobile audit including the open sheet and keyboard; AI failure path; three languages; keyboard only. Owner check on a phone: **"Consigo pedir o que eu quero, e só lanches?"**
 
 ### Slice 3: Acting on a chosen dish
 
-Branch: `agent/plan-0065-s3-slot-actions`.
+Branch: `agent/plan-0065-s3-dish-actions`.
 
-- [ ] Actions sheet: Trocar, Mudar de dia (a list of the menu's meals, showing what is there), Rende mais refeições (stepper 2 to 4, filling the next empty meals, shown as "Sobra de {dish}"), Porções, Ver receita, Remover.
-- [ ] "Não preciso desta refeição", and its undo.
-- [ ] "Completar": proposals for all empty meals, with swap, and one confirmation.
-- [ ] Bases as a quiet row on the board, not an interruption: "Base sugerida: Frango desfiado serve para Wrap e Escondidinho. Adicionar". Style `mix` keeps requesting components.
-- [ ] "Organizar pelo que estraga primeiro" in the board's menu, using `ShoppingPlanSequencer` to reorder dates.
+- [ ] Actions sheet: Trocar, Marcar um dia, Rende mais, Porções, Ver receita, Remover.
+- [ ] "Completar": proposals for everything missing, with swap, and one confirmation.
+- [ ] Group counters on the board.
+- [ ] Bases as a quiet row on the board, not an interruption: "Base sugerida: Frango desfiado serve para Wrap e Escondidinho. Adicionar". Style `mix` keeps requesting components, except for a menu of only snacks or breakfasts.
+- [ ] "Distribuir nos dias", optional, in the board's menu: dates undated dishes across the period using `ShoppingPlanSequencer`, what spoils first coming first.
 
-**Hazards:** Completar sends one decision per meal, so handle a partial failure by naming what stayed empty. Removing a dish with leftovers frees those meals too.
+**Hazards:** Completar sends one decision per dish, so handle a partial failure by naming what stayed missing. `Rende mais` counts toward its type, so it cannot pass what is wanted without raising the count; ask first.
 
-**Gate S3:** journey extended; integration for partial Completar and removal with leftovers; mobile audit.
+**Gate S3:** journey extended; integration for partial Completar and `yield`; mobile audit.
 
 ### Slice 4: The menu in use
 
 Branch: `agent/plan-0065-s4-in-use`.
 
-- [ ] `/app/cardapio/:menuId`: heading, next step as on the hub, today first, past days collapsed, one row per meal using the same row as the board. "Cozinhar" as the primary only on today's or the next dish; others keep it in the row's sheet. Archive moves to the page's menu.
-- [ ] Options sheet on accepted menus, for an empty meal or "Trocar", as explicit single-entry commands. An accepted session reopens only for this; cards are purged as usual. A menu without a session gets one on first use. Remove `AiMealSuggestion`.
+- [ ] `/app/cardapio/:menuId`: heading, next step as on the hub, today's dishes, later dated dishes, "Quando quiser" by meal type, and the line near the end of the period. Empty days disappear. "Cozinhar" as the primary only on today's or the next dish; others keep it in the row's sheet. Archive moves to the page's menu.
+- [ ] "Hoje": "Quando quiser" with the next dish per meal type.
+- [ ] Options sheet on accepted menus, for something missing or "Trocar", as explicit single-entry commands. An accepted session reopens only for this; cards are purged as usual. A menu without a session gets one on first use. Remove `AiMealSuggestion`.
 - [ ] `MenusPage`: list of menus only, with "Novo cardápio".
 - [ ] List header: one summary line with progress, a share icon, "Por seção / Por lugar" chips. A fixed bar "Cheguei do mercado (3)" when something is marked.
-- [ ] "Preparar vários de uma vez": choose a day and dishes (the next 3 days by default). It sets `CookOnDate`, and the route selects by it. Remove the session's `PrepDate` from new plans. `prepMinutes` becomes an optional note on the route.
+- [ ] "Preparar vários de uma vez": choose a day and dishes. It sets `CookOnDate`, and the route selects by it. Remove the session's `PrepDate` from new plans. `prepMinutes` becomes an optional note on the route.
 
-**Hazards:** `CookOnDate` must not move the eating day, the reservation, or "Hoje"; a cooked-ahead dish on its eating day shows the stored portions, and otherwise "Já preparado". Old accepted menus with no slots show their entries as they are. Offline, the list header must work without the server.
+**Hazards:** `CookOnDate` must not move the eating day, the reservation, or "Hoje". A cooked-ahead dish shows its stored portions, and otherwise "Já preparado". Old accepted menus keep their entries as they are. Offline, the list header must work without the server.
 
 **Gate S4:** journeys; route with `CookOnDate`; offline journey; mobile audit; owner phone check with the route and a screen kept on (also closes G6 of PLAN-0062).
 
@@ -333,8 +394,10 @@ Branch: `agent/plan-0065-s5-finish`.
 
 | Measure | Today | Target |
 |---|---|---|
-| Questions before the first dish | 9 | 3 |
-| Taps to a 5-dinner menu from saved recipes | About 30, including setup and review | At most 12 |
+| Can say "7 snacks in 14 days, no days" | No | Yes |
+| Full meals among offered snacks | Many in the real session, including spaghetti and bowls | None after `MealFit`, on the session's names |
+| Questions before the first dish | 9 | 3 (days, start, how many) |
+| Taps to a 7-snack menu from saved recipes | About 30, including setup and review | At most 12 |
 | Steps to ask for a specific dish | Not possible | 2: tap the meal, type |
 | Refusals needed to reach a menu | 27 in the real session | 0 |
 | Dishes leading with one taste, per batch | 23 of 31 | At most 2 of 6 |
@@ -349,28 +412,29 @@ Branch: `agent/plan-0065-s5-finish`.
 | Risk | Likelihood | Impact | Mitigation |
 |---|---|---|---|
 | Sheet and keyboard break on real iPhones | Medium | High | WebKit in the audit, real device check before each merge, plain full-screen page as fallback |
+| `MealFit` hides good dishes or misses bad ones | Medium | Medium | Rules in a reviewable catalog, tests on real names, a metric per type; a typed request is never filtered |
 | Six options still miss what the person wants | Medium | Medium | The text box is always first |
 | The model ignores a specific request | Medium | High | Candidate 1 rule, live evaluation, and the person sees alternatives |
-| Dated dishes feel like an obligation | Low | Medium | Moving takes two taps; "Hoje" keeps offering other things; a menu entry stays an intention |
-| More reminders once every dish has a date | Medium | Low | Still at most one notification a day; check "Prepare-se" length |
-| Plans in progress at deploy | Certain, small | Medium | The board shows undated entries and offers placing them |
+| Food bought for 14 days spoils unnoticed | Medium | High | Without the owner-reviewed storage table (G2-A), the app says nothing about how long food lasts. The prompt prefers what keeps, and what spoils first is offered first. Reviewing the table is what would allow a warning |
+| Undated plans get no reminders or notifications | Certain | Low | "Quando quiser" on "Hoje", and the line near the end of the period |
+| Plans in progress at deploy | Certain, small | Medium | Setup without counts is derived, and undated dishes are the normal state |
 | Scope is large | High | Medium | Each slice ships on its own; Slice 0 is valuable alone |
 
 ## Excluded
 
-Prices and budgets, curated pack sizes, loose list items (a decision of PLAN-0062 that stays), shared household, drag and drop, a server queue for expansion (PLAN-0039), and offline building of a menu.
+Prices and budgets, curated pack sizes, loose list items (a decision of PLAN-0062 that stays), shared household, drag and drop, a calendar view, a server queue for expansion (PLAN-0039), and offline building of a menu.
 
 ## Execution state
 
 - **Current run delivery target:** Publish the review and this plan.
-- **Current checkpoint:** Plan written, in a draft pull request.
-- **Last completed step:** Review of screens, code, and the owner's session.
-- **Exact next action:** The owner answers D1 to D4. Slice 0 can start from fresh `origin/main` on `agent/plan-0065-s0-fixes` once the owner agrees, with no need to wait for those answers.
-- **Blockers:** D1 to D4 for Slices 1 to 5.
+- **Current checkpoint:** Plan rewritten after the owner's correction, in draft PR #94.
+- **Last completed step:** Owner's correction applied: optional dates, counts per meal type, meal compatibility, and switches at selection.
+- **Exact next action:** The owner confirms D1 and D2. Slice 0 can start from fresh `origin/main` on `agent/plan-0065-s0-fixes` once the owner agrees, with no need to wait for those answers.
+- **Blockers:** D1 and D2 for Slices 1 to 5.
 - **Partially modified areas:** None.
 - **Documentation delivered:** This plan and the registry row.
 - **Validation performed:** Browser walk with Playwright at 320, 360, and 390 px on the proxy replica, at `fc17bfe`; read-only queries on the test host's database and log. No code changed.
-- **Known failures or limitations:** Not checked on a real phone or WebKit. The replica has no AI, so AI behavior comes from the owner's session of one person and one plan. The "about 30 taps" figure is an estimate.
+- **Known failures or limitations:** Not checked on a real phone or WebKit. The replica has no AI, so AI behavior comes from one person's single plan. The "about 30 taps" figure is an estimate. The `MealFit` thresholds (250 g, 120 g, 60 minutes) come from that session's 31 dishes and may need tuning.
 - **Working tree state:** Clean after this commit.
 
 ## Progress log
@@ -378,13 +442,22 @@ Prices and budgets, curated pack sizes, loose list items (a decision of PLAN-006
 ### 2026-11-05 — Claude Code
 
 - **Run delivery target:** A review of the planning feature and an executable plan, at the owner's request.
-- **Checkpoint:** Findings recorded; four product decisions proposed for the owner.
+- **Checkpoint:** Findings recorded; product decisions proposed for the owner.
 - **Changes included in the commit:** This plan and the registry row.
 - **Documentation and code-documentation delivered:** This plan.
-- **Validation performed:** See `Execution state`. B1, B2, B5, B7, B8, B9, and B10 were reproduced in a browser. B3, B4, and B6 come from the owner's session and the service log. B11 is unverified.
+- **Validation performed:** See `Execution state`. B1, B2, B5, B7, B8, B9, and B10 were reproduced in a browser. B3, B4, B6, and B12 come from the owner's session and the service log. B11 is unverified.
 - **Result:** Ready for the owner's decisions.
 - **Next action:** See "Exact next action".
-- **Blockers or handoff notes:** The owner's plan on the test host is stuck in `Reviewing` with 4 of 7 meals. It is the test case for Slice 2's handling of plans in progress; do not delete it.
+- **Blockers or handoff notes:** The owner's plan on the test host is stuck in `Reviewing` with 4 of 7 snacks. It is the test case for plans in progress; do not delete it.
+
+### 2026-11-05 — Claude Code (owner's correction)
+
+- **Run delivery target:** Rewrite the plan after the owner's correction.
+- **Checkpoint:** The owner wants to stock food to eat within up to 14 days with no fixed days, for example only snacks; to say how many days and how many of each meal; to get dishes that fit each meal; and to choose per selection whether preferences, the pantry, or manual parameters apply.
+- **Changes included in the commit:** The first version made every dish dated. That recommendation is withdrawn: dates are optional, and the board groups by meal type. Slots, skipped slots, and leftover slots leave the design, which makes the data smaller. Added `MealCounts`, `MealFit`, the switches, and `planDeck.timing`. Added B12.
+- **Validation performed:** Query confirming all 30 AI dishes were labeled `snack`; reading `RecipeContextAssembler`, which keeps dislikes apart from tastes, so turning preferences off can keep them.
+- **Result:** Ready for the owner's confirmation of D1 and D2.
+- **Next action:** See "Exact next action".
 
 ## Completion and handoff checklist
 
