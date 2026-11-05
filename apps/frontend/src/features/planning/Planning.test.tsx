@@ -337,12 +337,14 @@ describe("menu planning (PLAN-0029)", () => {
       csrfToken: expect.any(String),
     });
 
+    await user.click(within(toBuy).getByTestId("shopping-item-more"));
     await user.click(within(toBuy).getByTestId("shopping-item-buy"));
     const quantity = within(toBuy).getByTestId("shopping-buy-quantity");
     await user.clear(quantity);
     await user.type(quantity, "1000");
     await user.click(within(toBuy).getByTestId("shopping-buy-confirm"));
     // A dairy purchase suggests the fridge; dry goods stay in the pantry.
+    await user.click(within(dairy).getByTestId("shopping-item-more"));
     await user.click(within(dairy).getByTestId("shopping-item-buy"));
     expect(within(dairy).getByRole("combobox")).toHaveValue("Refrigerator");
     expect(inventory.createLot).toHaveBeenCalledWith(
@@ -443,6 +445,7 @@ describe("menu planning (PLAN-0029)", () => {
       "1 package(s) of 1,000 g · 600 g left over",
     );
     // The purchase defaults to the whole package.
+    await user.click(within(meat).getByTestId("shopping-item-more"));
     await user.click(within(meat).getByTestId("shopping-item-buy"));
     const quantity = within(meat).getByTestId("shopping-buy-quantity");
     expect(quantity).toHaveValue("1,000");
@@ -484,6 +487,7 @@ describe("menu planning (PLAN-0029)", () => {
     const produce = screen.getByTestId("shopping-section-produce");
     // The size is offered while buying, not on every line.
     expect(within(produce).queryByTestId("shopping-package-edit")).toBeNull();
+    await user.click(within(produce).getByTestId("shopping-item-more"));
     await user.click(within(produce).getByTestId("shopping-item-buy"));
     await user.click(within(produce).getByTestId("shopping-package-edit"));
     await user.type(within(produce).getByTestId("shopping-package-size"), "0");
@@ -753,7 +757,8 @@ describe("menu planning (PLAN-0029)", () => {
       inventory: createMockInventoryRepo({ createLot, deleteLot }),
     });
 
-    await user.click(await screen.findByTestId("shopping-item-have"));
+    await user.click(await screen.findByTestId("shopping-item-more"));
+    await user.click(screen.getByTestId("shopping-item-have"));
 
     await waitFor(() => expect(createLot).toHaveBeenCalled());
     expect(createLot.mock.calls[0]).toEqual([

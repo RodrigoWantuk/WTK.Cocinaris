@@ -49,7 +49,7 @@ export function ChoiceChips<T extends string>({
               disabled={disabled}
               data-testid={testId ? `${testId}-${option.value}` : undefined}
               onClick={() => onChange(option.value)}
-              className={`h-10 rounded-full border px-4 text-sm font-semibold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-50 ${
+              className={`h-11 rounded-full border md:h-10 px-4 text-sm font-semibold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-50 ${
                 chosen
                   ? "border-primary bg-primary text-primary-foreground"
                   : "border-border bg-card text-foreground hover:bg-secondary"

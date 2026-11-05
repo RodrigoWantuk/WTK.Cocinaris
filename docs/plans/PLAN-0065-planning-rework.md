@@ -1,13 +1,13 @@
 # PLAN-0065: Planning Rework ("Montar o cardápio")
 
-- **Status:** Proposed; waits for the owner's confirmation of D1 and D2
+- **Status:** In Progress; Slice 0 in a draft PR. Slices 1 to 5 wait for the owner's confirmation of D1 and D2
 - **Type:** Implementation
 - **Priority:** High (owner request)
-- **Owner:** Unassigned; the next execution agent claims it
+- **Owner:** Claude Code
 - **Created:** 2026-11-05
 - **Last updated:** 2026-11-05
 - **Branch:** Plan publication `agent/plan-0065-planning-rework`; each slice uses the branch named in its section
-- **Pull request:** #94 (plan publication, draft)
+- **Pull request:** #94 (plan publication, merged); #95 (Slice 0, draft)
 - **Related issues:** None
 - **Related ADRs:** ADR-0009, ADR-0012, ADR-0013
 - **Dependencies:** PLAN-0062, PLAN-0063, PLAN-0064 (all merged). This plan replaces the deck and review screens of PLAN-0062 Slice 1 and the panel of PLAN-0064.
@@ -229,12 +229,13 @@ Two layers, because the model's own label cannot be trusted.
 **Deterministic check.** A pure `MealFit` in Planning with `Catalog/meal-fit-rules.json`, run on every AI and library card before it is shown:
 
 - **Name and format keywords** per type, in pt, en, and es, using `IngredientText.Normalize` with word boundaries. For `snack` and `breakfast`, it blocks words such as macarrão, espaguete, lasanha, risoto, ensopado, feijoada, strogonoff, moqueca, escondidinho, tigela, bowl, "prato". For `lunch` and `dinner`, it blocks pipoca, biscoito, bolacha, and similar.
-- **Mass per serving** from measured grams and millilitres: above 250 g blocks a `snack`; below 120 g blocks a `lunch` or `dinner`. Without measured ingredients, this signal does not apply.
 - **Time:** above 60 total minutes blocks a `snack`.
 
 A blocked card is dropped, with the metric `cocinaris.shopping_plan.meal_fit_dropped{mealType}`. If fewer than 3 survive a batch, the service calls the model once more, with the dropped names in `rejectedDishes`. Saved recipes use the meal types the person gave them, with no `MealFit`, because they are the person's own. A **requested dish skips `MealFit`:** if someone asks for feijoada as a snack, that is their choice.
 
-Tests use the real session's names as fixtures: "Espaguete Agridoce", "Macarrão Picante", "Frango Agridoce" (332 g), "Tigela de Carne", and "Escondidinho" are blocked; "Pão de Queijo", "Bolinho de Polvilho", "Pipoca", and "Tapioca Recheada" pass.
+Mass per serving is deliberately not used. The first version of this plan proposed 250 g, and the real session disproved it: recipes count frying oil and water, so "Frango Crocante", which the owner accepted, reaches 696 g, and three of the four accepted dishes would be blocked.
+
+Tests use the real session's names as fixtures: "Espaguete Agridoce", "Macarrão Picante", "Frango Agridoce" (through its format, `salteado em frigideira`), "Tigela de Carne", "Escondidinho", and "Batata Assada Recheada" (70 minutes) are blocked; the four dishes the owner accepted, "Pão de Queijo", "Bolinho de Polvilho", "Pipoca", and "Tapioca Recheada" pass.
 
 ### Ranking
 
@@ -283,17 +284,17 @@ A single `PlanExpansionProvider` inside `ShoppingPlanProvider` replaces the per-
 
 Branch: `agent/plan-0065-s0-fixes`. Needs no owner decision and is useful even if D1 is refused.
 
-- [ ] **Mobile audit gate.** New `scripts/e2e/mobile-audit.mjs`: walks the planning routes with seeded data at 320, 360, and 390 px, and fails on horizontal overflow, text or control overlap (`elementsFromPoint` at each control's center and each text's corners), clipped text, and main controls under 44 px, with a short documented allowlist. It stores screenshots under `artifacts/`. Install Playwright WebKit and run the iPhone profile too. Every later slice runs it.
-- [ ] **B12:** `MealFit`, its catalog, and the `mealGuide`, with `mealNeeds` narrowed to the types still missing.
-- [ ] **B1:** add `POST /{id}/reopen`, setting `building`; "Escolher mais pratos" calls it.
-- [ ] **B2:** rebuild the list line. First line: checkbox, name (wraps freely), amount. Second line: dishes clamped to one line, plus "tem {x}" only when something is at home. All actions move behind one 44 px "⋯" control opening a sheet: Comprei, Já tenho, Não achei, Comprar em, Tamanho do pacote. The whole row toggles the check, except the "⋯". Keep every test id working inside the sheet, and keep offline rules.
-- [ ] **B3:** an answered request deletes the earlier unseen cards of that meal group. Raise `MaxBatches` to 12 and `MaxCards` to 120.
-- [ ] **B4:** the taste rule and `DishSimilarity`.
-- [ ] **B5:** the confirmation when something is missing.
-- [ ] **B6:** `PlanExpansionProvider`.
-- [ ] **B7:** the coarse-pointer rule; "Voltar" links gain a 44 px target.
-- [ ] **B8:** from a draft reached through a plan, "Voltar" returns to the review.
-- [ ] **B10:** the menu title shows the name only when there is one; dated dishes first, then undated, then empty days collapsed into one line; plurals with `.one` and `.other`.
+- [x] **Mobile audit gate.** New `scripts/e2e/mobile-audit.mjs`: walks the planning routes with seeded data at 320, 360, and 390 px, and fails on horizontal overflow, text or control overlap (`elementsFromPoint` at each control's center and each text's corners), clipped text, and main controls under 44 px, with a short documented allowlist. It stores screenshots under `artifacts/`. Install Playwright WebKit and run the iPhone profile too. Every later slice runs it.
+- [x] **B12:** `MealFit`, its catalog, and the `mealGuide`, with `mealNeeds` narrowed to the types still missing.
+- [x] **B1:** add `POST /{id}/reopen`, setting `building`; "Escolher mais pratos" calls it.
+- [x] **B2:** rebuild the list line. First line: checkbox, name (wraps freely), amount. Second line: dishes clamped to one line, plus "tem {x}" only when something is at home. All actions move behind one 44 px "⋯" control opening a sheet: Comprei, Já tenho, Não achei, Comprar em, Tamanho do pacote. The whole row toggles the check, except the "⋯". Keep every test id working inside the sheet, and keep offline rules.
+- [x] **B3:** an answered request deletes the earlier unseen cards of that meal group. Raise `MaxBatches` to 12 and `MaxCards` to 120.
+- [x] **B4:** the taste rule and `DishSimilarity`.
+- [x] **B5:** the confirmation when something is missing.
+- [x] **B6:** `PlanExpansionProvider`.
+- [x] **B7:** the coarse-pointer rule; "Voltar" links gain a 44 px target.
+- [x] **B8:** from a draft reached through a plan, "Voltar" returns to the review.
+- [x] **B10:** the menu title shows the name only when there is one; dated dishes first, then undated, then empty days collapsed into one line; plurals with `.one` and `.other`.
 
 **Hazards:** the list line is used offline, and the journeys click buttons that now sit in a sheet, so update `shopping-plan-journey`, `offline-list-journey`, and `session-route-journey` in the same PR. Deleting unseen cards must not delete a base waiting on an accepted dish. Keyword rules can hide good dishes ("pão de queijo" must pass, and "prato" must match only as a word), so test the rules against the session's 31 names. A library idea has the same check; `RecipeIdeaLibrary` needs no change, because the filter runs on what it returns.
 
@@ -426,15 +427,15 @@ Prices and budgets, curated pack sizes, loose list items (a decision of PLAN-006
 
 ## Execution state
 
-- **Current run delivery target:** Publish the review and this plan.
-- **Current checkpoint:** Plan rewritten after the owner's correction, in draft PR #94.
-- **Last completed step:** Owner's correction applied: optional dates, counts per meal type, meal compatibility, and switches at selection.
-- **Exact next action:** The owner confirms D1 and D2. Slice 0 can start from fresh `origin/main` on `agent/plan-0065-s0-fixes` once the owner agrees, with no need to wait for those answers.
-- **Blockers:** D1 and D2 for Slices 1 to 5.
+- **Current run delivery target:** Slice 0, fixes to the current flow.
+- **Current checkpoint:** Slice 0 implemented on `agent/plan-0065-s0-fixes`, in a draft pull request.
+- **Last completed step:** Phone audit, journeys, and local gates; see the Slice 0 log entry.
+- **Exact next action:** The owner reviews and merges this pull request, asks for a deploy, tries a snack menu on a phone, and confirms D1 and D2. Slice 1 then starts from fresh `origin/main` on `agent/plan-0065-s1-engine`.
+- **Blockers:** D1 and D2 for Slices 1 to 5. The prompt change has not been tried with the real model, and this needs the deployed site or the provider key.
 - **Partially modified areas:** None.
-- **Documentation delivered:** This plan and the registry row.
-- **Validation performed:** Browser walk with Playwright at 320, 360, and 390 px on the proxy replica, at `fc17bfe`; read-only queries on the test host's database and log. No code changed.
-- **Known failures or limitations:** Not checked on a real phone or WebKit. The replica has no AI, so AI behavior comes from one person's single plan. The "about 30 taps" figure is an estimate. The `MealFit` thresholds (250 g, 120 g, 60 minutes) come from that session's 31 dishes and may need tuning.
+- **Documentation delivered:** This plan and registry row; planning domain document, product spec, AI protocol, design system, and gates.
+- **Validation performed:** See the Slice 0 entry in the progress log.
+- **Known failures or limitations:** See the Slice 0 entry. Not checked on a real phone. The `MealFit` word list and its 60-minute limit come from one session's 31 dishes and may need tuning.
 - **Working tree state:** Clean after this commit.
 
 ## Progress log
@@ -457,6 +458,28 @@ Prices and budgets, curated pack sizes, loose list items (a decision of PLAN-006
 - **Changes included in the commit:** The first version made every dish dated. That recommendation is withdrawn: dates are optional, and the board groups by meal type. Slots, skipped slots, and leftover slots leave the design, which makes the data smaller. Added `MealCounts`, `MealFit`, the switches, and `planDeck.timing`. Added B12.
 - **Validation performed:** Query confirming all 30 AI dishes were labeled `snack`; reading `RecipeContextAssembler`, which keeps dislikes apart from tastes, so turning preferences off can keep them.
 - **Result:** Ready for the owner's confirmation of D1 and D2.
+- **Next action:** See "Exact next action".
+
+### 2026-11-05 — Claude Code (Slice 0)
+
+- **Run delivery target:** Slice 0, after the owner said to begin. This branch started with the plan's two commits while #94 was open; #94 has since merged, and `main` was merged in.
+- **Changes:**
+  - **Backend:** `MealFit` with `Catalog/meal-fit-rules.json`, `DishSimilarity`, `planDeck.mealGuide`, the taste rule, one retry when fewer than 3 dishes survive, `POST /{id}/reopen`, deletion of earlier unseen AI and library dishes after an answer, 12 batches and 120 cards, order numbers that survive deletions, and migration `RaiseShoppingPlanBatchLimit`.
+  - **Frontend:** `PlanExpansionRunner` (one queue for the app), the new list line, the menu with planned dishes first and empty days folded, the confirmation when meals are missing, "Escolher mais pratos" through `reopen`, "Voltar" from a draft's list, 44 px small buttons and chips on phones, and plurals.
+  - **Tooling:** `scripts/e2e/mobile-audit.mjs`. `planning-journey.mjs` was stale since an earlier list redesign. Its menu and list selectors were repaired, and it still stops later, on the cooking screen, which this slice did not touch.
+- **Deviations from this plan:**
+  - **No mass per serving in `MealFit`.** The real session disproved it; see "Meal compatibility".
+  - **Width rule instead of `pointer: coarse`.** The media query did not apply in the audit's browser, so small buttons are `h-11 md:h-9`. It also covers real browsers that misreport the pointer, and small buttons grow on narrow desktop windows.
+  - **List actions open inside the line, not in a sheet.** This keeps every control and offline rule where it was, without the sheet and keyboard risk, which Slice 2 takes on.
+  - **Saved recipes survive an answer;** only AI and library dishes are deleted, because the person's own recipes must not vanish.
+  - **A batch asked for with typed words skips `MealFit`,** as a requested dish does.
+- **Defect the tests caught:** the database limited batches to 5 by a check constraint, so raising only the code would have failed with a 500 on the sixth. The migration fixes it.
+- **Validation performed:** Local gates `backend,contracts,frontend,secrets` on `b5eaf62`: all 32 steps passed, with 14 architecture, 482 unit, 247 integration, and 633 frontend tests. The next commit changes only this plan. `mobile-audit.mjs` on the proxy replica: 48 screens at 320, 360, and 390 px, 0 problems. `shopping-plan-journey`: 19 checks. `planning-entry-journey`: 16. `offline-list-journey`: 25. `session-route-journey`: 15. `planning-journey`: 5 checks through menu, list, and purchase, then it stops at a stale cooking selector, so the rest did not run. List and menu screenshots read at 360 px. Rules tested against the names of the real session, including all 4 dishes the owner accepted.
+- **Not run:**
+  - **WebKit.** It installed but does not start here: the host lacks system libraries such as GTK 4 and GStreamer, and installing system packages was not asked for. The audit runs it only with `COCINARIS_AUDIT_WEBKIT=1`. B11 stays unverified.
+  - **The real model.** How well it follows `mealGuide` and the taste rule is unknown, and G1-B and G5-A have not run.
+  - A real phone, screen reader, and 200% zoom. `frontend-smoke`, which does not finish on this host.
+- **Limitations:** the deck, review, and setup screens remain until Slice 2, including the native date field. "Plano" stays in the copy until D1 and D2. `MealFit` can still miss a full meal whose name and format have none of its words, and the prompt is the only protection there.
 - **Next action:** See "Exact next action".
 
 ## Completion and handoff checklist

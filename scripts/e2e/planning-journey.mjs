@@ -62,12 +62,20 @@ try {
   }, { beans, recipeName });
 
   await page.goto(`${BASE}/app/cardapio`, { waitUntil: "networkidle" });
-  check("nav shows Cardápio", (await page.getByTestId("production-nav-cardapio").count()) === 1);
+  check("the tab says Planejar", (await page.getByTestId("production-nav-planejar").innerText()).trim() === "Planejar");
+  // The form opens by itself only with no menus.
+  if (!(await page.getByTestId("menu-create-panel").evaluate((node) => node.open))) {
+    await page.getByTestId("menu-create-panel").locator("summary").click();
+  }
   await page.getByTestId("menu-create-name").fill(`Semana E2E ${run}`);
   await page.getByTestId("menu-create").click();
   await page.getByTestId("menu-page").waitFor({ timeout: 15000 });
 
   for (const day of [today, tomorrow]) {
+    // Days with nothing planned are folded under one line once something is planned.
+    if (await page.getByTestId("menu-empty-days").count() && !(await page.getByTestId("menu-empty-days").evaluate((node) => node.open))) {
+      await page.getByTestId("menu-empty-days").locator("summary").click();
+    }
     const group = page.getByTestId(`menu-day-${day}`);
     await group.getByTestId(`menu-add-${day}`).click();
     await group.getByRole("searchbox").fill(recipeName);
@@ -86,13 +94,14 @@ try {
   check("today's dinner is on Hoje", (await todayEntry.count()) === 1);
 
   await page.goto(`${menuUrl}/compras`, { waitUntil: "networkidle" });
-  const line = page.getByTestId("shopping-required").getByTestId("shopping-item").filter({ hasText: beans });
+  const line = page.getByTestId("shopping-item").filter({ hasText: beans });
   await line.waitFor({ timeout: 10000 });
   check("shopping list asks for 700 g", (await line.textContent()).includes("700 g"), (await line.textContent()).slice(0, 80));
+  await line.getByTestId("shopping-item-more").click();
   await line.getByTestId("shopping-item-buy").click();
   await line.getByTestId("shopping-buy-quantity").fill("1000");
   await line.getByTestId("shopping-buy-confirm").click();
-  await page.getByTestId("shopping-available").getByText(beans).waitFor({ timeout: 10000 });
+  await page.getByTestId("shopping-impact").waitFor({ timeout: 10000 });
   check("purchase covers the menu", true);
 
   await page.goto(`${BASE}/app/hoje`, { waitUntil: "networkidle" });

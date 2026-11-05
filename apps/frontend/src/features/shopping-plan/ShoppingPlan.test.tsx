@@ -25,6 +25,7 @@ import { buildShoppingListText } from "@/features/planning/shoppingListText";
 import { createUnavailablePlanningRepository } from "@/adapters/live/livePlanningRepository";
 import { PlanningProvider } from "@/features/planning/PlanningProvider";
 import { ShoppingPlanDeckPage } from "./ShoppingPlanDeckPage";
+import { ShoppingPlanReviewPage } from "./ShoppingPlanReviewPage";
 import { ShoppingPlanProvider } from "./ShoppingPlanProvider";
 import { ShoppingPlanSetupPage } from "./ShoppingPlanSetupPage";
 import { UNDO_WINDOW_MS, useExpansionQueue } from "./useExpansionQueue";
@@ -115,6 +116,7 @@ function repository(
     removeCard: unused,
     review: unused,
     replace: unused,
+    reopen: unused,
     accept: unused,
     abandon: unused,
     getRoute: vi.fn(async () => {
@@ -124,6 +126,35 @@ function repository(
     findRouteLink: vi.fn(async () => null),
     ...overrides,
   };
+}
+
+function renderReview(
+  repo: ShoppingPlanRepository,
+  planning: ReturnType<typeof createUnavailablePlanningRepository>,
+) {
+  return render(
+    <ProductionI18nProvider initialLocale="pt-BR">
+      <SessionProvider adapter={createSessionAdapter()}>
+        <InventoryProvider repository={createMockInventoryRepo()}>
+          <PlanningProvider repository={planning}>
+            <ShoppingPlanProvider repository={repo}>
+              <MemoryRouter
+                initialEntries={["/app/compras/planejar/s1/revisar"]}
+              >
+                <Routes>
+                  <Route
+                    path="/app/compras/planejar/:sessionId/revisar"
+                    element={<ShoppingPlanReviewPage />}
+                  />
+                  <Route path="*" element={<p>outra tela</p>} />
+                </Routes>
+              </MemoryRouter>
+            </ShoppingPlanProvider>
+          </PlanningProvider>
+        </InventoryProvider>
+      </SessionProvider>
+    </ProductionI18nProvider>,
+  );
 }
 
 function renderAt(
@@ -672,23 +703,176 @@ describe("shopping plan cards (PLAN-0062)", () => {
   });
 });
 
+describe("review (PLAN-0065)", () => {
+  const entry = (id: string) => ({
+    entryId: id,
+    recipeId: `r-${id}`,
+    recipeName: `Prato ${id}`,
+    plannedDate: null,
+    mealType: "dinner",
+    servings: 2,
+    status: "planned",
+    mealsCovered: 1,
+    suggestedOrder: 1,
+    kind: "meal",
+    producesName: null,
+    reserveIngredients: true,
+    readiness: null,
+    executionId: null,
+  });
+  const reviewing = (overrides: Partial<ShoppingPlan> = {}) =>
+    plan({
+      status: "reviewing",
+      progress: {
+        mealsTotal: 7,
+        mealsFilled: 3,
+        listItemCount: 2,
+        sessionMinutesUsed: 0,
+        sessionMinutesBudget: null,
+      },
+      ...overrides,
+    });
+  const planningRepo = {
+    ...createUnavailablePlanningRepository(),
+    getMenu: vi.fn(async () => ({
+      menuId: "m1",
+      name: "",
+      startDate: "2026-11-05",
+      endDate: "2026-11-11",
+      status: "draft",
+      version: 1,
+      entries: [entry("a")],
+    })),
+  } as never;
+
+  it("asks before using a plan with meals still open, and can go back to choosing", async () => {
+    const user = userEvent.setup();
+    const accept = vi.fn(async () => reviewing());
+    const reopen = vi.fn(async () => plan({ status: "building" }));
+    const get = vi.fn(async () => reviewing());
+    renderReview(
+      repository({
+        get,
+        review: vi.fn(async () => reviewing()),
+        accept,
+        reopen,
+      }),
+      planningRepo,
+    );
+
+    await user.click(await screen.findByTestId("plan-use"));
+    expect(accept).not.toHaveBeenCalled();
+    expect(screen.getByTestId("plan-use-confirm")).toHaveTextContent("4");
+
+    await user.click(screen.getByTestId("plan-keep-choosing"));
+    await waitFor(() => expect(reopen).toHaveBeenCalledOnce());
+    expect(accept).not.toHaveBeenCalled();
+  });
+
+  it("uses a plan with meals open only after the answer", async () => {
+    const user = userEvent.setup();
+    const accept = vi.fn(async () => reviewing());
+    renderReview(
+      repository({
+        get: vi.fn(async () => reviewing()),
+        review: vi.fn(async () => reviewing()),
+        accept,
+      }),
+      planningRepo,
+    );
+    await user.click(await screen.findByTestId("plan-use"));
+    await user.click(screen.getByTestId("plan-use-anyway"));
+    await waitFor(() => expect(accept).toHaveBeenCalledOnce());
+  });
+
+  it("does not ask when every meal is filled, and offers no more dishes", async () => {
+    const user = userEvent.setup();
+    const accept = vi.fn(async () => reviewing());
+    const full = reviewing({
+      progress: {
+        mealsTotal: 3,
+        mealsFilled: 3,
+        listItemCount: 2,
+        sessionMinutesUsed: 0,
+        sessionMinutesBudget: null,
+      },
+    });
+    renderReview(
+      repository({
+        get: vi.fn(async () => full),
+        review: vi.fn(async () => full),
+        accept,
+      }),
+      planningRepo,
+    );
+    const use = await screen.findByTestId("plan-use");
+    expect(screen.queryByTestId("plan-more-dishes")).toBeNull();
+    await user.click(use);
+    await waitFor(() => expect(accept).toHaveBeenCalledOnce());
+  });
+
+  it("reopens the plan for 'Escolher mais pratos', because the cards send a reviewed plan back here", async () => {
+    const user = userEvent.setup();
+    const reopen = vi.fn(async () => plan({ status: "building" }));
+    renderReview(
+      repository({
+        get: vi.fn(async () => reviewing()),
+        review: vi.fn(async () => reviewing()),
+        reopen,
+      }),
+      planningRepo,
+    );
+    await user.click(await screen.findByTestId("plan-more-dishes"));
+    await waitFor(() => expect(reopen).toHaveBeenCalledOnce());
+  });
+
+  it("opens the list knowing where to come back to", async () => {
+    renderReview(
+      repository({
+        get: vi.fn(async () => reviewing()),
+        review: vi.fn(async () => reviewing()),
+      }),
+      planningRepo,
+    );
+    expect(await screen.findByTestId("plan-see-list")).toHaveAttribute(
+      "href",
+      expect.stringContaining("/compras"),
+    );
+  });
+});
+
 describe("expansion queue (PLAN-0062)", () => {
-  function Harness({
+  function Queue({
     value,
-    repo,
     onPlan,
   }: {
     value: ShoppingPlan;
-    repo: ShoppingPlanRepository;
     onPlan: (next: ShoppingPlan) => void;
   }) {
     const stopped = useExpansionQueue(
       value,
-      repo,
       { csrfToken: "c", language: "pt-BR" },
       onPlan,
     );
     return <p data-testid="stopped">{stopped ?? "running"}</p>;
+  }
+  function Harness({
+    value,
+    repo,
+    onPlan,
+    screenKey = "a",
+  }: {
+    value: ShoppingPlan;
+    repo: ShoppingPlanRepository;
+    onPlan: (next: ShoppingPlan) => void;
+    /** A new key is a different screen mounting, as when moving from the cards to the review. */
+    screenKey?: string;
+  }) {
+    return (
+      <ShoppingPlanProvider repository={repo}>
+        <Queue key={screenKey} value={value} onPlan={onPlan} />
+      </ShoppingPlanProvider>
+    );
   }
   const accepted = (id: string, state = "pending") => ({
     cardId: id,
@@ -737,6 +921,40 @@ describe("expansion queue (PLAN-0062)", () => {
     });
     expect(expand).toHaveBeenCalledTimes(2);
     expect((expand.mock.calls[1] as unknown[])[1]).toBe("b");
+  });
+
+  it("keeps one queue when the screen changes, so a card is never expanded twice at once", async () => {
+    vi.useFakeTimers();
+    let finish!: (value: ShoppingPlan) => void;
+    const done = plan({ accepted: [accepted("a", "ready")] });
+    const expand = vi.fn(
+      () => new Promise<ShoppingPlan>((resolve) => (finish = resolve)),
+    );
+    const repo = repository({ expand });
+    const pending = plan({ accepted: [accepted("a")] });
+    const onPlan = vi.fn();
+    const view = render(
+      <Harness value={pending} repo={repo} onPlan={vi.fn()} />,
+    );
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(expand).toHaveBeenCalledTimes(1);
+
+    view.rerender(
+      <Harness value={pending} repo={repo} onPlan={onPlan} screenKey="b" />,
+    );
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(UNDO_WINDOW_MS * 2);
+    });
+    expect(expand).toHaveBeenCalledTimes(1);
+
+    // The screen now open hears about the work the previous one started.
+    await act(async () => {
+      finish(done);
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(onPlan).toHaveBeenCalledWith(done);
   });
 
   it("retries a conflict and stops on an exhausted budget", async () => {

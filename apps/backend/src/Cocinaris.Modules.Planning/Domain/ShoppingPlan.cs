@@ -106,10 +106,10 @@ public enum ShoppingPlanStatus
 public sealed class ShoppingPlanSession
 {
     /// <summary>Most AI batches per plan.</summary>
-    public const int MaxBatches = 5;
+    public const int MaxBatches = 12;
 
     /// <summary>Most cards per plan.</summary>
-    public const int MaxCards = 60;
+    public const int MaxCards = 120;
 
     /// <summary>Gets the identifier.</summary>
     public required Guid Id { get; init; }

@@ -33,6 +33,7 @@ export function ShoppingPlanReviewPage() {
   const [failed, setFailed] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [confirmUse, setConfirmUse] = useState(false);
   const csrfToken = session.csrfToken;
   const reviewedFor = useRef<string | null>(null);
 
@@ -54,7 +55,6 @@ export function ShoppingPlanReviewPage() {
 
   const stopped = useExpansionQueue(
     plan,
-    repo,
     { csrfToken, language: locale },
     setPlan,
   );
@@ -147,6 +147,21 @@ export function ShoppingPlanReviewPage() {
   );
   const notes = plan.accepted.filter((card) => card.guardCode);
   const entries = [...(menu?.entries ?? [])].sort(byOrder);
+  const missing = Math.max(
+    0,
+    plan.progress.mealsTotal - plan.progress.mealsFilled,
+  );
+  // The deck sends a plan under review straight back here, so it must be reopened first.
+  const keepChoosing = () =>
+    act(async () => {
+      await repo.reopen(sessionId, { csrfToken });
+      navigate(`/app/compras/planejar/${sessionId}`);
+    });
+  const use = () =>
+    act(async () => {
+      await repo.accept(sessionId, { csrfToken });
+      navigate(`/app/cardapio/${plan.menuId}`);
+    });
 
   return (
     <div data-testid="plan-review" className="space-y-6">
@@ -386,37 +401,72 @@ export function ShoppingPlanReviewPage() {
       ) : null}
 
       <div className="space-y-2">
-        <Button
-          type="button"
-          size="lg"
-          className="w-full"
-          data-testid="plan-use"
-          disabled={saving || pending > 0 || entries.length === 0}
-          onClick={() =>
-            void act(async () => {
-              await repo.accept(sessionId, { csrfToken });
-              navigate(`/app/cardapio/${plan.menuId}`);
-            })
-          }
-        >
-          {t("shoppingPlan.review.use")}
-        </Button>
+        {confirmUse ? (
+          <div className="surface space-y-3 p-4" data-testid="plan-use-confirm">
+            <p role="status" className="font-medium">
+              {t(
+                missing === 1
+                  ? "shoppingPlan.review.missing.one"
+                  : "shoppingPlan.review.missing",
+                { count: missing },
+              )}
+            </p>
+            <Button
+              type="button"
+              className="w-full"
+              data-testid="plan-use-anyway"
+              disabled={saving}
+              onClick={() => void use()}
+            >
+              {t("shoppingPlan.review.useAnyway")}
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              className="w-full"
+              data-testid="plan-keep-choosing"
+              disabled={saving}
+              onClick={() => void keepChoosing()}
+            >
+              {t("shoppingPlan.review.keepChoosing")}
+            </Button>
+          </div>
+        ) : (
+          <Button
+            type="button"
+            size="lg"
+            className="w-full"
+            data-testid="plan-use"
+            disabled={saving || pending > 0 || entries.length === 0}
+            onClick={() => {
+              if (missing > 0) setConfirmUse(true);
+              else void use();
+            }}
+          >
+            {t("shoppingPlan.review.use")}
+          </Button>
+        )}
         <Button asChild variant="secondary" className="w-full">
           <Link
             to={`/app/cardapio/${plan.menuId}/compras`}
+            state={{ backToPlan: sessionId }}
             data-testid="plan-see-list"
           >
             {t("shoppingPlan.review.list")}
           </Link>
         </Button>
-        <Button asChild variant="ghost" className="w-full">
-          <Link
-            to={`/app/compras/planejar/${sessionId}`}
+        {missing > 0 && !confirmUse ? (
+          <Button
+            type="button"
+            variant="ghost"
+            className="w-full"
             data-testid="plan-more-dishes"
+            disabled={saving}
+            onClick={() => void keepChoosing()}
           >
             {t("shoppingPlan.review.more")}
-          </Link>
-        </Button>
+          </Button>
+        ) : null}
       </div>
     </div>
   );
