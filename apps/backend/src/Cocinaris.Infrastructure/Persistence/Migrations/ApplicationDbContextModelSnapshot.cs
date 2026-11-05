@@ -1849,6 +1849,9 @@ namespace Cocinaris.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("CreationKey")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("DeckPreferenceJson")
+                        .HasColumnType("jsonb");
+
                     b.Property<Guid?>("LastBatchKey")
                         .HasColumnType("uuid");
 

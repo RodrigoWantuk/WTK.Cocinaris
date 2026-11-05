@@ -135,6 +135,8 @@ public sealed class ShoppingPlanSession
     public required bool PrivateDirection { get; init; }
     /// <summary>Gets or sets the preparation session's progress; null until it starts.</summary>
     public ShoppingPlanRouteProgress? RouteProgress { get; set; }
+    /// <summary>Gets or sets what the person last asked for under "Quero outras opções", if anything (PLAN-0064).</summary>
+    public ShoppingPlanDeckPreference? DeckPreference { get; set; }
     /// <summary>Gets the UTC creation instant.</summary>
     public required DateTimeOffset CreatedAt { get; init; }
     /// <summary>Gets or sets the UTC instant of the last change.</summary>
@@ -209,6 +211,7 @@ public sealed record ShoppingPlanCardComponent(string OutputName, decimal Output
 /// <param name="FailureCode">Stable reason for a failed expansion, if any.</param>
 /// <param name="ExpansionAttempt">Expansion attempt, which derives a fresh key after a generation session expires.</param>
 /// <param name="Component">Present when the card is a reusable base rather than a dish.</param>
+/// <param name="PrivateHint">The typed hint this card was made under, if any. Untrusted. It follows the card to its expansion, which keeps the recipe out of the shared idea library (PLAN-0060).</param>
 public sealed record ShoppingPlanCardSnapshot(
     string Name,
     string Summary,
@@ -225,7 +228,23 @@ public sealed record ShoppingPlanCardSnapshot(
     string? GuardIngredient = null,
     string? FailureCode = null,
     int ExpansionAttempt = 0,
-    ShoppingPlanCardComponent? Component = null);
+    ShoppingPlanCardComponent? Component = null,
+    string? PrivateHint = null);
+
+/// <summary>
+/// What the person asked for under "Quero outras opções" (PLAN-0064). It belongs to this plan and never
+/// updates the profile. It can never relax a restriction.
+/// </summary>
+/// <param name="Pantry"><c>use</c> to stick to the pantry and chosen dishes, <c>free</c> to ignore them, or null when not answered.</param>
+/// <param name="Similarity"><c>similar</c> or <c>different</c> from <paramref name="ReferenceDish"/>, or null.</param>
+/// <param name="ReferenceDish">The dish on screen when the person asked; untrusted data.</param>
+/// <param name="Hint">Typed hint, at most 40 characters, already cleaned; untrusted and private.</param>
+/// <param name="FromOrder">Cards from this order on answer the request, so they come first.</param>
+public sealed record ShoppingPlanDeckPreference(string? Pantry, string? Similarity, string? ReferenceDish, string? Hint, int FromOrder)
+{
+    /// <summary>Longest hint accepted.</summary>
+    public const int MaxHintLength = 40;
+}
 
 /// <summary>One dish card of a shopping plan.</summary>
 public sealed class ShoppingPlanCard

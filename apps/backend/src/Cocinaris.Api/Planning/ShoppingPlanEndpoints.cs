@@ -136,7 +136,7 @@ public sealed class ShoppingPlanApiService(ShoppingPlanApplicationService applic
 
     /// <summary>Adds up to six AI cards; requires an Idempotency-Key.</summary>
     public async Task<IResult> AddBatchAsync(Guid sessionId, ShoppingPlanBatchRequest? body, HttpRequest request, CancellationToken cancellationToken) =>
-        ToResult(await application.AddBatchAsync(sessionId, Key(request), body?.DishFamilies, body?.Cuisine, body?.Time, request.HttpContext.TraceIdentifier, Language(request), cancellationToken), request.HttpContext.TraceIdentifier);
+        ToResult(await application.AddBatchAsync(sessionId, Key(request), body?.DishFamilies, body?.Cuisine, body?.Time, body is null ? null : new ShoppingPlanDirection(body.Pantry, body.Similarity, body.ReferenceCardId, body.Hint), request.HttpContext.TraceIdentifier, Language(request), cancellationToken), request.HttpContext.TraceIdentifier);
 
     /// <summary>Accepts or rejects a card.</summary>
     public async Task<IResult> DecideAsync(Guid sessionId, Guid cardId, ShoppingPlanDecisionRequest body, HttpContext context, CancellationToken cancellationToken) =>
@@ -218,7 +218,7 @@ public sealed class ShoppingPlanApiService(ShoppingPlanApplicationService applic
     {
         "validation_failed" => StatusCodes.Status400BadRequest,
         "resource_not_found" => StatusCodes.Status404NotFound,
-        "domain_rule_violated" or "plan_in_progress" or "expansions_pending" or "ai_output_invalid" => StatusCodes.Status422UnprocessableEntity,
+        "domain_rule_violated" or "plan_in_progress" or "expansions_pending" or "no_more_options" or "ai_output_invalid" => StatusCodes.Status422UnprocessableEntity,
         "ai_capability_unavailable" or "ai_budget_exhausted" or "ai_budget_unavailable" or "ai_provider_timeout" or "ai_provider_unavailable" => StatusCodes.Status503ServiceUnavailable,
         _ => StatusCodes.Status409Conflict
     };
@@ -242,7 +242,11 @@ public sealed record CreateShoppingPlanRequest(DateOnly? Today, int Days, IReadO
 /// <param name="DishFamilies">Up to three family codes.</param>
 /// <param name="Cuisine">A cuisine code.</param>
 /// <param name="Time"><c>quick</c> or <c>medium</c>.</param>
-public sealed record ShoppingPlanBatchRequest(IReadOnlyList<string>? DishFamilies, string? Cuisine, string? Time);
+/// <param name="Pantry"><c>use</c> to stick to the pantry and chosen dishes, or <c>free</c> to ignore them.</param>
+/// <param name="Similarity"><c>any</c>, <c>similar</c>, or <c>different</c>, compared with the card on screen.</param>
+/// <param name="ReferenceCardId">The card on screen; required to compare.</param>
+/// <param name="Hint">Optional typed hint, at most 40 characters; untrusted.</param>
+public sealed record ShoppingPlanBatchRequest(IReadOnlyList<string>? DishFamilies, string? Cuisine, string? Time, string? Pantry = null, string? Similarity = null, Guid? ReferenceCardId = null, string? Hint = null);
 
 /// <summary>Body for deciding a card.</summary>
 /// <param name="Decision"><c>accept</c> or <c>reject</c>.</param>

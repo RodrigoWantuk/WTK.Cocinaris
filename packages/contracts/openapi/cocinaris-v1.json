@@ -5828,6 +5828,35 @@
               "array"
             ]
           },
+          "hint": {
+            "description": "Optional typed hint, at most 40 characters; untrusted.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "pantry": {
+            "description": "`use` to stick to the pantry and chosen dishes, or `free` to ignore them.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "referenceCardId": {
+            "description": "The card on screen; required to compare.",
+            "format": "uuid",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "similarity": {
+            "description": "`any`, `similar`, or `different`, compared with the card on screen.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
           "time": {
             "description": "`quick` or `medium`.",
             "type": [

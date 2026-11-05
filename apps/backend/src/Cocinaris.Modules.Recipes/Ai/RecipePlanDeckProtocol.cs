@@ -113,6 +113,10 @@ public sealed class PlanDeckComponent
 /// <param name="RejectedDishes">Dishes the person refused.</param>
 /// <param name="AvoidIngredients">Ingredients the person tired of or disliked in this plan.</param>
 /// <param name="AnchorIngredient">The person's typed starting ingredient, already cleaned; untrusted.</param>
+/// <param name="Pantry"><c>use</c> to stick to what is at home and chosen, <c>free</c> to ignore it, or null for the plan's default.</param>
+/// <param name="Similarity"><c>similar</c> or <c>different</c> from <paramref name="ReferenceDish"/>, or null.</param>
+/// <param name="ReferenceDish">The dish to compare with; untrusted.</param>
+/// <param name="Hint">The person's typed hint, already cleaned; untrusted.</param>
 public sealed record PlanDeckBrief(
     int Days,
     string CookingStyle,
@@ -124,4 +128,8 @@ public sealed record PlanDeckBrief(
     IReadOnlyList<string> ShoppingListIngredients,
     IReadOnlyList<string> RejectedDishes,
     IReadOnlyList<string> AvoidIngredients,
-    string? AnchorIngredient);
+    string? AnchorIngredient,
+    string? Pantry = null,
+    string? Similarity = null,
+    string? ReferenceDish = null,
+    string? Hint = null);

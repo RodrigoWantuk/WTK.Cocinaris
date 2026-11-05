@@ -2,7 +2,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useProductionI18n } from "@/app/i18n/ProductionI18nProvider";
 import { useSession } from "@/app/session/SessionProvider";
+import { ChoiceChips } from "@/components/choice/ChoiceChips";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { RecipeApiError } from "@/contracts/recipes";
 import type {
   ShoppingPlan,
@@ -24,6 +26,8 @@ const MORE_FAMILIES = [
 ];
 const MORE_CUISINES = ["brazilian", "italian", "mexican", "japanese"];
 const MAX_REPEATS = 4;
+/** Longest hint under "Quero outras opções"; the server enforces the same limit. */
+const HINT_MAX = 40;
 const MAX_ENTRY_SERVINGS = 24;
 const UNIT_KEYS: Record<string, string> = {
   Gram: "recipes.unit.g",
@@ -55,8 +59,17 @@ export function ShoppingPlanDeckPage() {
     null,
   );
   const [moreOpen, setMoreOpen] = useState(false);
+  const [asking, setAsking] = useState(false);
+  const [pantry, setPantry] = useState<"use" | "free">("free");
+  const [similarity, setSimilarity] = useState<"different" | "similar" | "any">(
+    "different",
+  );
+  const [hintOpen, setHintOpen] = useState(false);
+  const [hint, setHint] = useState("");
   const titleRef = useRef<HTMLHeadingElement>(null);
   const batching = useRef(false);
+  // A request made during an automatic batch waits for it instead of being lost.
+  const waiting = useRef<ShoppingPlanBatchOptions | null>(null);
   const csrfToken = session.csrfToken;
 
   useEffect(() => {
@@ -93,28 +106,39 @@ export function ShoppingPlanDeckPage() {
   );
 
   const fetchBatch = useCallback(
-    async (options: ShoppingPlanBatchOptions) => {
-      if (!csrfToken || batching.current) return;
+    async (first: ShoppingPlanBatchOptions) => {
+      if (!csrfToken) return;
+      if (batching.current) {
+        if (Object.keys(first).length > 0) waiting.current = first;
+        return;
+      }
       batching.current = true;
       setFetching(true);
       setBatchFailure(null);
-      try {
-        setPlan(
-          await repo.addBatch(sessionId, options, {
-            csrfToken,
-            idempotencyKey: crypto.randomUUID(),
-            language: locale,
-          }),
-        );
-      } catch (err) {
-        // The plan keeps working on the cards it has; the person is told once.
-        setBatchFailure(
-          err instanceof RecipeApiError ? err.code : "unexpected",
-        );
-      } finally {
-        batching.current = false;
-        setFetching(false);
+      let options: ShoppingPlanBatchOptions | null = first;
+      while (options) {
+        const asked = Object.keys(options).length > 0;
+        if (asked) setAsking(true);
+        try {
+          setPlan(
+            await repo.addBatch(sessionId, options, {
+              csrfToken,
+              idempotencyKey: crypto.randomUUID(),
+              language: locale,
+            }),
+          );
+        } catch (err) {
+          // The plan keeps working on the cards it has; the person is told once.
+          setBatchFailure(
+            err instanceof RecipeApiError ? err.code : "unexpected",
+          );
+        }
+        options = waiting.current;
+        waiting.current = null;
       }
+      batching.current = false;
+      setFetching(false);
+      setAsking(false);
     },
     [csrfToken, locale, repo, sessionId],
   );
@@ -126,6 +150,21 @@ export function ShoppingPlanDeckPage() {
 
   const queue = (plan?.queue ?? []).filter((card) => !hidden.has(card.cardId));
   const card = queue[0] ?? null;
+
+  /** Sends the answers. The dish on screen gives way to a wait, so the request is visibly under way. */
+  const ask = (extra: ShoppingPlanBatchOptions) => {
+    const compare = card !== null && similarity !== "any";
+    setMoreOpen(false);
+    setBatchFailure(null);
+    setAsking(true);
+    void fetchBatch({
+      ...extra,
+      pantry,
+      similarity: compare ? similarity : "any",
+      referenceCardId: compare ? card.cardId : null,
+      hint: hint.trim() || null,
+    });
+  };
   const cardId = card?.cardId;
   const progress = plan?.progress;
   const filled = progress ? progress.mealsFilled >= progress.mealsTotal : false;
@@ -267,7 +306,11 @@ export function ShoppingPlanDeckPage() {
           data-testid="plan-ai-notice"
           className="text-sm text-muted-foreground"
         >
-          {t("shoppingPlan.ai.notice")}
+          {t(
+            batchFailure === "no_more_options"
+              ? "shoppingPlan.more.none"
+              : "shoppingPlan.ai.notice",
+          )}
         </p>
       ) : null}
       {stopped ? (
@@ -321,7 +364,7 @@ export function ShoppingPlanDeckPage() {
         </div>
       ) : null}
 
-      {card ? (
+      {card && !asking ? (
         <article className="surface space-y-3 p-4" data-testid="plan-card">
           <h1
             ref={titleRef}
@@ -595,56 +638,126 @@ export function ShoppingPlanDeckPage() {
       </div>
 
       {moreOpen ? (
-        <div className="surface space-y-3 p-4" data-testid="plan-more-options">
-          <div className="flex flex-wrap gap-2">
-            {MORE_FAMILIES.map((code) => (
-              <Button
-                key={code}
-                type="button"
-                size="sm"
-                variant="secondary"
-                disabled={fetching}
-                data-testid={`plan-more-${code}`}
-                onClick={() => {
-                  setMoreOpen(false);
-                  setBatchFailure(null);
-                  void fetchBatch({ dishFamilies: [code] });
-                }}
+        <form
+          className="surface space-y-4 p-4"
+          data-testid="plan-more-options"
+          onSubmit={(event) => {
+            event.preventDefault();
+            ask({});
+          }}
+        >
+          <ChoiceChips
+            label={t("shoppingPlan.more.pantry")}
+            testId="plan-more-pantry"
+            value={pantry}
+            onChange={setPantry}
+            options={[
+              { value: "free", label: t("shoppingPlan.more.pantry.free") },
+              { value: "use", label: t("shoppingPlan.more.pantry.use") },
+            ]}
+          />
+          {card ? (
+            <ChoiceChips
+              label={t("shoppingPlan.more.similarity", { dish: card.name })}
+              testId="plan-more-similarity"
+              value={similarity}
+              onChange={setSimilarity}
+              options={[
+                {
+                  value: "different",
+                  label: t("shoppingPlan.more.similarity.different"),
+                },
+                {
+                  value: "similar",
+                  label: t("shoppingPlan.more.similarity.similar"),
+                },
+                { value: "any", label: t("shoppingPlan.more.similarity.any") },
+              ]}
+            />
+          ) : null}
+          {hintOpen ? (
+            <div className="space-y-1.5">
+              <label htmlFor="plan-more-hint" className="text-sm font-medium">
+                {t("shoppingPlan.more.hint")}
+              </label>
+              <Input
+                id="plan-more-hint"
+                data-testid="plan-more-hint"
+                value={hint}
+                maxLength={HINT_MAX}
+                autoFocus
+                placeholder={t("shoppingPlan.more.hint.placeholder")}
+                aria-describedby="plan-more-hint-count"
+                onChange={(event) => setHint(event.target.value)}
+              />
+              <p
+                id="plan-more-hint-count"
+                className="text-sm text-muted-foreground"
               >
-                {t(`recipes.guidance.family.${code}`)}
-              </Button>
-            ))}
-            {MORE_CUISINES.map((code) => (
-              <Button
-                key={code}
-                type="button"
-                size="sm"
-                variant="secondary"
-                disabled={fetching}
-                onClick={() => {
-                  setMoreOpen(false);
-                  setBatchFailure(null);
-                  void fetchBatch({ cuisine: code });
-                }}
-              >
-                {t(`recipes.guidance.cuisine.${code}`)}
-              </Button>
-            ))}
+                {t("shoppingPlan.more.hint.count", {
+                  used: hint.length,
+                  max: HINT_MAX,
+                })}
+              </p>
+            </div>
+          ) : (
             <Button
               type="button"
-              size="sm"
-              variant="secondary"
-              disabled={fetching}
-              onClick={() => {
-                setMoreOpen(false);
-                setBatchFailure(null);
-                void fetchBatch({ time: "quick" });
-              }}
+              variant="ghost"
+              className="px-0"
+              data-testid="plan-more-hint-open"
+              onClick={() => setHintOpen(true)}
             >
-              {t("recipes.guidance.time.quick")}
+              {t("shoppingPlan.more.hint.open")}
             </Button>
-          </div>
-        </div>
+          )}
+          <Button
+            type="submit"
+            className="w-full"
+            disabled={fetching && asking}
+            data-testid="plan-more-submit"
+          >
+            {t("shoppingPlan.more.submit")}
+          </Button>
+          <details data-testid="plan-more-filters">
+            <summary className="flex min-h-11 cursor-pointer items-center text-sm font-medium">
+              {t("shoppingPlan.more.filters")}
+            </summary>
+            <div className="flex flex-wrap gap-2 pt-2">
+              {MORE_FAMILIES.map((code) => (
+                <Button
+                  key={code}
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  data-testid={`plan-more-${code}`}
+                  onClick={() => ask({ dishFamilies: [code] })}
+                >
+                  {t(`recipes.guidance.family.${code}`)}
+                </Button>
+              ))}
+              {MORE_CUISINES.map((code) => (
+                <Button
+                  key={code}
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => ask({ cuisine: code })}
+                >
+                  {t(`recipes.guidance.cuisine.${code}`)}
+                </Button>
+              ))}
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                onClick={() => ask({ time: "quick" })}
+              >
+                {t("recipes.guidance.time.quick")}
+              </Button>
+            </div>
+          </details>
+        </form>
       ) : null}
     </div>
   );

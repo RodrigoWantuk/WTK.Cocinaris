@@ -350,6 +350,7 @@ export type RecipeApiErrorCode =
   | "plan_in_progress"
   | "restriction_blocked"
   | "expansions_pending"
+  | "no_more_options"
   | "unavailable"
   | "cancelled"
   | "unexpected";

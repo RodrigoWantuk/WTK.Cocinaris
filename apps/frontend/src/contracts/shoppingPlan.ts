@@ -182,6 +182,13 @@ export interface ShoppingPlanBatchOptions {
   dishFamilies?: string[];
   cuisine?: string | null;
   time?: string | null;
+  /** `use` sticks to the pantry and chosen dishes; `free` ignores them. */
+  pantry?: "use" | "free" | null;
+  /** Compared with `referenceCardId`. */
+  similarity?: "any" | "similar" | "different" | null;
+  referenceCardId?: string | null;
+  /** At most 40 characters. */
+  hint?: string | null;
 }
 
 interface Mutation {

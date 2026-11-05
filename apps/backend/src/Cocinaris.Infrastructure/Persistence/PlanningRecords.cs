@@ -130,6 +130,8 @@ public sealed class ShoppingPlanSessionRecord
     public Guid? LastBatchKey { get; set; }
     /// <summary>Gets or sets the preparation session's progress as JSON; null until it starts.</summary>
     public string? RouteProgressJson { get; set; }
+    /// <summary>Gets or sets what the person asked for under "Quero outras opções", as JSON. Holds a typed hint, so it is private and never logged.</summary>
+    public string? DeckPreferenceJson { get; set; }
     /// <summary>Gets or sets the rejections since the last acceptance.</summary>
     public int ConsecutiveRejections { get; set; }
     /// <summary>Gets or sets the card undo would restore.</summary>

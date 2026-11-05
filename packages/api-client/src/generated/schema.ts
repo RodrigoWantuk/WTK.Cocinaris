@@ -3370,6 +3370,17 @@ export interface components {
             cuisine: null | string;
             /** @description Up to three family codes. */
             dishFamilies: null | string[];
+            /** @description Optional typed hint, at most 40 characters; untrusted. */
+            hint?: null | string;
+            /** @description `use` to stick to the pantry and chosen dishes, or `free` to ignore them. */
+            pantry?: null | string;
+            /**
+             * Format: uuid
+             * @description The card on screen; required to compare.
+             */
+            referenceCardId?: null | string;
+            /** @description `any`, `similar`, or `different`, compared with the card on screen. */
+            similarity?: null | string;
             /** @description `quick` or `medium`. */
             time: null | string;
         };
