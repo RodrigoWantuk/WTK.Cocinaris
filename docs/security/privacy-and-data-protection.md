@@ -174,6 +174,7 @@ PLAN-0062 stores, per owner, the setup answers of each plan, and dish cards that
 
 - **Purpose.** Build the plan and reuse the last answers as defaults. Answers never update the profile.
 - **Retention.** Unseen and rejected cards are deleted when the plan is accepted, and all cards when it is discarded. Abandoned plans older than 30 days are deleted when the owner starts a new plan; there is no background job yet.
+- **Preparation session.** The plan also keeps which tasks were done or skipped and when its timers end. These are identifiers and times with no food text, and they are deleted with the plan.
 - **Typed ingredient.** It is untrusted text, limited to 60 characters, kept in the plan's setup, and never logged. A plan with one never feeds the shared idea library.
 - **Metrics.** They hold counts and closed codes, never dish or ingredient names.
 - **On the device (ADR-0012).** The IndexedDB database `cocinaris-offline` holds the owner id and display name, the last shopping lists (at most five menus, with ingredient and dish names), unsent marks, and marks that stopped applying, under keys prefixed by the owner id. It is erased at logout and before another owner's session starts. A person who leaves without logging out leaves their last list readable offline on that device. An ended session keeps the data for the same owner and stops opening it. The service worker caches application files only and never an API response. No token is stored.

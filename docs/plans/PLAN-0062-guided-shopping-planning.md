@@ -731,21 +731,21 @@ Migrations are additive, and rollback means deploying the earlier code with unus
 - [ ] **S3:** The list opens and takes marks with no signal, then syncs; no other owner's data appears.
 - [ ] **S4:** Limits and warnings appear only from curated rules, with the three options. A plan can be repeated.
 - [ ] **S5 (code delivered; G5-A pending):** A component reduces purchases and is cooked into stored portions atomically. Frozen dishes are proposed and consumed by portion.
-- [ ] **S6:** A session route merges recipes with parallel passive work, can be resumed, and completes executions.
+- [x] **S6:** A session route merges recipes with parallel passive work, can be resumed, and completes executions. (Phone check with wake lock pending.)
 - [ ] **S7:** Opt-in push arrives at most once a day with no food data.
 - [ ] Every slice: documentation, XML docs, TSDoc, contracts, and gates are current. No unsupported claim remains.
 
 ## Execution state
 
-- **Current run delivery target:** Slice 5, bases and frozen dishes.
-- **Current checkpoint:** Slice 5 implemented on `agent/plan-0062-s5-components`, in a draft pull request. G5-A has not run.
-- **Last completed step:** Browser journey on the proxy replica through cooking a dish that yields two meals and eating a stored portion.
-- **Exact next action:** The owner reviews the pull request and decides whether to merge before G5-A. Slice 6 (timed session route) then starts from fresh `origin/main` on `agent/plan-0062-s6-session-route`. When the owner approves `docs/domain/storage-guidance-review.md`, deliver the rest of Slice 4 in its own pull request.
-- **Blockers:** G5-A and G1-B need the provider key (a stop condition of this plan for the slice's gate, not for its code). G2-A for the Slice 4 limits and for storage guidance. Deploying `main` was refused by this agent's permission classifier, so the owner must run it. The browser smoke matrix fails on unmodified `main` on this host, and full local gates have not run.
+- **Current run delivery target:** Slice 6, timed session route.
+- **Current checkpoint:** Slice 6 implemented on `agent/plan-0062-s6-session-route`, in a draft pull request. The G6 phone check has not run.
+- **Last completed step:** Browser journey on the proxy replica through a route with two recipes, a reload, and finishing both dishes.
+- **Exact next action:** The owner reviews and merges the pull request. Slice 7 (web push) then starts from fresh `origin/main` on `agent/plan-0062-s7-web-push`, writing ADR-0013 first. When the owner approves `docs/domain/storage-guidance-review.md`, deliver the rest of Slice 4 in its own pull request.
+- **Blockers:** The G6 phone check with wake lock needs the owner's phone. G5-A and G1-B need the provider key. G2-A for the Slice 4 limits and for storage guidance. Deploying `main` was refused by this agent's permission classifier, so the owner must run it. The browser smoke matrix fails on unmodified `main` on this host, and full local gates have not run.
 - **Partially modified areas:** Slice 4 limits and warnings are not delivered.
-- **Documentation delivered:** Protocol, AI overview and governance, product, planning, recipes, and closed-loop documents; contract README.
-- **Validation performed:** See the Slice 5 entry in the progress log.
-- **Known failures or limitations:** See the Slice 5 entry. Earlier limits stand: storage values are not checked against primary sources, G1-A has no separate owner comment, and per-stage equipment conflicts are not detected (Slice 6).
+- **Documentation delivered:** Product, planning, recipes, closed-loop, privacy, and gates documents; PLAN-0044 registry row.
+- **Validation performed:** See the Slice 6 entry in the progress log.
+- **Known failures or limitations:** See the Slice 6 entry. Earlier limits stand: storage values are not checked against primary sources, and G1-A has no separate owner comment.
 - **Working tree state:** Clean after this commit.
 
 ## Progress log
@@ -896,6 +896,40 @@ Migrations are additive, and rollback means deploying the earlier code with unus
   - Flag on in a browser; full local gates and smoke matrix; full integration suite; keyboard only and 320 px by hand.
 - **Result:** Ready for owner review.
 - **Next action:** See `Exact next action`.
+
+### 2026-11-05 — Claude Code (Slice 6)
+
+- **Run delivery target:** Slice 6, timed session route.
+- **Checkpoint:** Scheduler, route, progress, screen, entry points, and browser journey delivered in one draft pull request.
+- **Changes included in the commit:**
+  - **Scheduler and route.** Pure `PrepRouteScheduler` and `PrepRouteBuilder`; `ShoppingPlanRouteService`; `GET /{id}/route`, `PUT /{id}/route/progress`, `GET /route-link`; migration `AddShoppingPlanRoute` adds a nullable `RouteProgressJson`.
+  - **Screen.** `ShoppingPlanRoutePage` at `/app/compras/planejar/:sessionId/preparo`, `SessionRouteLink` on the menu page and "Hoje", and `?rota=&concluir=1` on `CookingPage`.
+  - **Regenerated.** OpenAPI and the API client.
+- **Deviations, keeping the slice's outcome:**
+  - A later stage that states no dependency follows the previous stage, because an empty `dependsOn` often means the writer left it out. Treating it as parallel could tell someone to serve before cooking. The cost is less parallel work for such recipes.
+  - A preparation's `minimumLeadMinutes` counts as passive time, so a marinade gets its lead. The plan did not mention it.
+  - The route opens only after acceptance, returning 422 before, because cooking uses the pantry and a draft must reserve nothing. The plan did not say.
+  - Added `GET /route-link` and the links on the menu page and "Hoje", because the plan named a screen but no way to reach it.
+  - Each task can show the dish's scaled ingredients, because stage text often has no quantities.
+- **Documentation and code-documentation delivered:** See "Documentation delivered"; XML docs and TSDoc on new members.
+- **Validation performed:**
+  - **Backend.** Unit 391/391, including 21 new for the scheduler and builder (parallel passive work, dependencies across base and dish, cycles, determinism). Architecture 14/14. `RecipeExecutionApiTests` and `PlanningApiTests` 38/38, including a new journey over HTTP (not before acceptance, resume, another owner gets 404, cooked tasks read as done). Over budget is covered by a frontend test, with the budget flag computed in the service.
+  - **Frontend.** 575/575, typecheck, lint, format, and build.
+  - **Contracts.** `export-openapi`, the client sync, and the drift check passed. `lint-openapi.sh` exited 0.
+  - **Browser.** `scripts/e2e/session-route-journey.mjs`, 15 checks at 390 px on the proxy replica, including a reload, focus moving to the new task, and no sideways scroll at 320 px. `shopping-plan-journey.mjs` still passes, 18 checks.
+- **Result:** G6 passed except the phone check. **Intermittent journey failures:** the session journey failed 4 of 15 runs, all while it was being run back to back with the other journey, and passed the last 6 in a row.
+  - The first failure is most likely earlier runs' dishes crowding the seeded ones out of the first five cards. The journey now archives them and stops if a dish is missing.
+  - The other three are most likely the 60-per-minute `mutation` limit, since they followed the heavier journey. That is not proven: no 429 was captured, because the check that reports it was added afterward and has not fired. Only the journey's seed reports it. A person on the route uses that limit only to start and finish dishes.
+- **Not run:** the phone check with wake lock (the owner's); a route with a base in a browser, because the replica has no AI (covered by unit tests only); a route using AI-written dependencies; screen reader; 200% zoom; one local gate run, because the owner decides when to rerun the gates; the full integration suite.
+- **Limitations:**
+  - Burner and oven conflicts are not detected, as planned, and the overview says so.
+  - The order does not adapt when someone runs late.
+  - A timer's alarm sounds only with the page open; push does not cover it.
+  - A dish with no date is not on the route, so a plan of only plain "Sim" dishes has no session.
+  - Two entries of one recipe on the same day share the first cooking session until it finishes; the finish step then starts the second.
+  - Skipping every task of a dish still leaves its finish step.
+- **Next action:** See `Exact next action`.
+- **Blockers or handoff notes:** See `Blockers`. The development database has this migration; production gets it on deploy. Dev Keycloak and the replica are stopped.
 
 ## Completion and handoff checklist
 

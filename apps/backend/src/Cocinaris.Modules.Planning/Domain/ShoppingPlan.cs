@@ -78,6 +78,17 @@ public sealed record ShoppingPlanSetup(DateOnly Today, int Days, IReadOnlyList<s
     public static string GroupOf(string mealType) => mealType is "lunch" or "dinner" ? "main" : mealType;
 }
 
+/// <summary>A background wait on a preparation session.</summary>
+/// <param name="TaskKey">Task whose passive part is running.</param>
+/// <param name="EndsAt">When it ends. It is a target time, so it stays right after a reload.</param>
+public sealed record ShoppingPlanRouteTimer(string TaskKey, DateTimeOffset EndsAt);
+
+/// <summary>How far a preparation session has come (PLAN-0062 Slice 6). It holds identifiers and times, no food text.</summary>
+/// <param name="Done">Tasks whose hands-on part is finished.</param>
+/// <param name="Skipped">Tasks the person chose not to do.</param>
+/// <param name="Timers">Background waits still shown.</param>
+public sealed record ShoppingPlanRouteProgress(IReadOnlyList<string> Done, IReadOnlyList<string> Skipped, IReadOnlyList<ShoppingPlanRouteTimer> Timers);
+
 /// <summary>Lifecycle of a shopping plan.</summary>
 public enum ShoppingPlanStatus
 {
@@ -122,6 +133,8 @@ public sealed class ShoppingPlanSession
     public Guid? LastDecidedCardId { get; set; }
     /// <summary>Gets whether a typed anchor shaped this plan, which keeps its recipes out of the shared library.</summary>
     public required bool PrivateDirection { get; init; }
+    /// <summary>Gets or sets the preparation session's progress; null until it starts.</summary>
+    public ShoppingPlanRouteProgress? RouteProgress { get; set; }
     /// <summary>Gets the UTC creation instant.</summary>
     public required DateTimeOffset CreatedAt { get; init; }
     /// <summary>Gets or sets the UTC instant of the last change.</summary>

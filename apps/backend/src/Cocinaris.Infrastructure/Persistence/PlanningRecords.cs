@@ -128,6 +128,8 @@ public sealed class ShoppingPlanSessionRecord
     public int BatchCount { get; set; }
     /// <summary>Gets or sets the key of the last batch.</summary>
     public Guid? LastBatchKey { get; set; }
+    /// <summary>Gets or sets the preparation session's progress as JSON; null until it starts.</summary>
+    public string? RouteProgressJson { get; set; }
     /// <summary>Gets or sets the rejections since the last acceptance.</summary>
     public int ConsecutiveRejections { get; set; }
     /// <summary>Gets or sets the card undo would restore.</summary>

@@ -27,6 +27,11 @@ export function ShoppingPlanProvider({
   );
 }
 
+/** Returns the repository, or null outside the provider, for links on pages that also work without plans. */
+export function useOptionalShoppingPlanRepository(): ShoppingPlanRepository | null {
+  return useContext(ShoppingPlanContext);
+}
+
 /** Returns the injected repository; throws outside {@link ShoppingPlanProvider}. */
 export function useShoppingPlanRepository(): ShoppingPlanRepository {
   const repo = useContext(ShoppingPlanContext);

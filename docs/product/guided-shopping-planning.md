@@ -84,6 +84,18 @@ A market often has no signal, so the list keeps working without it ([ADR-0012](.
 - **A line that changed.** A mark on a line no longer on the list is not sent: "N marcações não se aplicam mais", with the names and a dismiss.
 - **Leaving.** Logging out erases the device. Another person signing in erases the previous person's data, including unsent marks. An ended session goes to sign-in, keeps the unsent marks for the same person, and closes the offline list until then.
 
+## Preparation session ("Começar o preparo", Slice 6)
+
+After a plan is accepted, the dishes set for its preparation day merge into one route at `/app/compras/planejar/:sessionId/preparo`. The menu page and "Hoje" (on that day) link to it while a dish is still to finish.
+
+- **What is on the route.** Dishes dated on the preparation day, which are bases and dishes that yield several meals, unless the person dates another dish there. A plain "Sim" has no date, so it is cooked another day.
+- **Overview.** Every task with its minute, the total time, a note when it passes the time set aside, and: "Confira se dá para usar as bocas e o forno ao mesmo tempo." Recipes do not say which equipment each stage uses, so these conflicts are not detected.
+- **One task per screen.** Large text, the dish's scaled ingredients, a timer, and the screen kept awake. "Deixar N min e seguir" leaves a passive part running as a countdown while the next task opens, with "Enquanto isso: ..." when the two overlap. A task that depends on a wait says so, and does not block: the person decides.
+- **Skipping and going back.** "Pular" skips a task, and "Anterior" reopens the last one. Skipping a task does not skip its dish.
+- **Cooking sessions.** The first task of a dish starts its cooking session from the menu entry. At the end, each dish is finished in turn on its normal cooking screen, bases first, so what a base makes is in the pantry for the dishes that use it. Only those screens change the pantry.
+- **Resuming.** Progress and timers live on the server. A timer is a target time, so it stays right after a reload. Its alarm sounds only while the page is open.
+- **The order does not adapt.** The route is computed from the recipes' times. If the person runs late, the order stays and the countdowns stay true.
+
 ## Not yet (PLAN-0062 later slices)
 
-Cook-by limits and warnings (blocked until the owner reviews the storage table), the timed session route, and push notifications. Shelf-life dates and freezing advice need the owner-reviewed storage table.
+Cook-by limits and warnings (blocked until the owner reviews the storage table), and push notifications. Shelf-life dates and freezing advice need the owner-reviewed storage table.

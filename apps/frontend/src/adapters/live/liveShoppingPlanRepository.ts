@@ -2,6 +2,7 @@ import { createCocinarisClient, type components } from "@cocinaris/api-client";
 import type {
   ShoppingPlan,
   ShoppingPlanRepository,
+  ShoppingPlanRoute,
   ShoppingPlanSetup,
   ShoppingPlanStart,
 } from "@/contracts/shoppingPlan";
@@ -16,6 +17,57 @@ const text = (value: unknown): string | null =>
   typeof value === "string" ? value : null;
 const optionalNumber = (value: unknown): number | null =>
   value === null || value === undefined ? null : Number(value);
+
+function mapRoute(
+  dto: components["schemas"]["ShoppingPlanRouteView"],
+): ShoppingPlanRoute {
+  return {
+    sessionId: String(dto.sessionId),
+    menuId: String(dto.menuId),
+    prepDate: text(dto.prepDate),
+    totalMinutes: num(dto.totalMinutes),
+    budgetMinutes: optionalNumber(dto.budgetMinutes),
+    overBudget: dto.overBudget === true,
+    recipes: (dto.recipes ?? []).map((recipe) => ({
+      entryId: String(recipe.entryId),
+      recipeId: String(recipe.recipeId),
+      name: String(recipe.name),
+      servings: num(recipe.servings),
+      isComponent: recipe.isComponent === true,
+      producesName: text(recipe.producesName),
+      status: String(recipe.status),
+      executionId: text(recipe.executionId),
+      ingredients: (recipe.ingredients ?? []).map((item) => ({
+        name: String(item.name),
+        quantity: num(item.quantity),
+        unit: String(item.unit),
+        optional: item.optional === true,
+      })),
+    })),
+    tasks: (dto.tasks ?? []).map((task) => ({
+      taskKey: String(task.taskKey),
+      entryId: String(task.entryId),
+      kind: String(task.kind),
+      name: String(task.name),
+      instructions: String(task.instructions),
+      sensoryCues: (task.sensoryCues ?? []).map(String),
+      activeMinutes: num(task.activeMinutes),
+      passiveMinutes: num(task.passiveMinutes),
+      startMinute: num(task.startMinute),
+      activeEndMinute: num(task.activeEndMinute),
+      endMinute: num(task.endMinute),
+      dependsOn: (task.dependsOn ?? []).map(String),
+    })),
+    progress: {
+      done: (dto.progress?.done ?? []).map(String),
+      skipped: (dto.progress?.skipped ?? []).map(String),
+      timers: (dto.progress?.timers ?? []).map((timer) => ({
+        taskKey: String(timer.taskKey),
+        endsAt: String(timer.endsAt),
+      })),
+    },
+  };
+}
 
 function mapSetup(dto: SetupDto): ShoppingPlanSetup {
   return {
@@ -378,6 +430,46 @@ export function createLiveShoppingPlanRepository(options?: {
           }),
         "Unable to discard the plan.",
         mapPlan,
+      ),
+    getRoute: (sessionId, signal) =>
+      run(
+        () =>
+          client.GET("/api/v1/planning/shopping-plans/{sessionId}/route", {
+            params: { path: { sessionId } },
+            signal,
+            ...include,
+          }),
+        "Unable to load the preparation session.",
+        mapRoute,
+      ),
+    saveRouteProgress: (sessionId, progress, { csrfToken, signal }) =>
+      run(
+        () =>
+          client.PUT(
+            "/api/v1/planning/shopping-plans/{sessionId}/route/progress",
+            {
+              params: {
+                path: { sessionId },
+                header: { "X-CSRF-TOKEN": csrfToken },
+              },
+              body: progress,
+              signal,
+              ...include,
+            },
+          ),
+        "Unable to save the preparation session.",
+        () => undefined,
+      ),
+    findRouteLink: ({ menuId, date }, signal) =>
+      run(
+        () =>
+          client.GET("/api/v1/planning/shopping-plans/route-link", {
+            params: { query: { menuId, date } },
+            signal,
+            ...include,
+          }),
+        "Unable to find the preparation session.",
+        (dto) => text(dto.sessionId),
       ),
   };
 }

@@ -1,3 +1,4 @@
+import { SessionRouteLink } from "@/features/shopping-plan/SessionRouteLink";
 import {
   CalendarDays,
   ChevronLeft,
@@ -184,6 +185,9 @@ export function MenuPage() {
             {t("planning.shoppingLink")}
           </Link>
         </Button>
+        {menu.status === "accepted" ? (
+          <SessionRouteLink query={{ menuId: menu.menuId }} />
+        ) : null}
         {menu.status === "draft" ? (
           <Button
             type="button"

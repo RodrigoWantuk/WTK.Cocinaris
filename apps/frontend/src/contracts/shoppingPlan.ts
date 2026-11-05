@@ -118,6 +118,65 @@ export interface ShoppingPlan {
   canUndo: boolean;
 }
 
+/** One dish of a preparation session. */
+export interface ShoppingPlanRouteRecipe {
+  entryId: string;
+  recipeId: string;
+  name: string;
+  servings: number;
+  isComponent: boolean;
+  producesName: string | null;
+  /** `planned`, `cooking`, or `cooked`. */
+  status: string;
+  executionId: string | null;
+  /** Already for the portions being cooked. */
+  ingredients: Array<{
+    name: string;
+    quantity: number;
+    unit: string;
+    optional: boolean;
+  }>;
+}
+
+/** One task of a preparation session; minutes count from the start of the session. */
+export interface ShoppingPlanRouteTask {
+  taskKey: string;
+  entryId: string;
+  /** `preparation` or `stage`. */
+  kind: string;
+  name: string;
+  instructions: string;
+  sensoryCues: string[];
+  activeMinutes: number;
+  passiveMinutes: number;
+  startMinute: number;
+  activeEndMinute: number;
+  endMinute: number;
+  dependsOn: string[];
+}
+
+/** How far a preparation session has come. The whole state is saved each time. */
+export interface ShoppingPlanRouteProgress {
+  /** Tasks whose hands-on part is finished. */
+  done: string[];
+  skipped: string[];
+  /** Waits running in the background, as target times. */
+  timers: Array<{ taskKey: string; endsAt: string }>;
+}
+
+/** A preparation session's route: dishes with bases first, tasks in the order the cook starts them. */
+export interface ShoppingPlanRoute {
+  sessionId: string;
+  menuId: string;
+  prepDate: string | null;
+  totalMinutes: number;
+  budgetMinutes: number | null;
+  overBudget: boolean;
+  recipes: ShoppingPlanRouteRecipe[];
+  tasks: ShoppingPlanRouteTask[];
+  progress: ShoppingPlanRouteProgress;
+}
+
 /** "More options": closed codes only, never free text. */
 export interface ShoppingPlanBatchOptions {
   dishFamilies?: string[];
@@ -186,4 +245,17 @@ export interface ShoppingPlanRepository {
   ): Promise<ShoppingPlan>;
   accept(sessionId: string, options: Mutation): Promise<ShoppingPlan>;
   abandon(sessionId: string, options: Mutation): Promise<ShoppingPlan>;
+  /** Gets the preparation session of an accepted plan; a plan not yet accepted fails with 422. */
+  getRoute(sessionId: string, signal?: AbortSignal): Promise<ShoppingPlanRoute>;
+  /** Replaces the session's progress; safe to retry. */
+  saveRouteProgress(
+    sessionId: string,
+    progress: ShoppingPlanRouteProgress,
+    options: Mutation,
+  ): Promise<void>;
+  /** Finds the plan whose session is still to finish, for a menu or for a day; null when none. */
+  findRouteLink(
+    query: { menuId?: string; date?: string },
+    signal?: AbortSignal,
+  ): Promise<string | null>;
 }

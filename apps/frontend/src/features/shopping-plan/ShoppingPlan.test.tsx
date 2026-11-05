@@ -117,6 +117,11 @@ function repository(
     replace: unused,
     accept: unused,
     abandon: unused,
+    getRoute: vi.fn(async () => {
+      throw new Error("unused");
+    }),
+    saveRouteProgress: vi.fn(async () => undefined),
+    findRouteLink: vi.fn(async () => null),
     ...overrides,
   };
 }

@@ -1,3 +1,4 @@
+import { SessionRouteLink } from "@/features/shopping-plan/SessionRouteLink";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import type { InventoryLotView } from "@/adapters/live/inventoryTypes";
@@ -522,6 +523,8 @@ export function TodayPage() {
       <InstallAppBanner />
 
       {firstRun ? <WelcomeCard /> : null}
+
+      <SessionRouteLink query={{ date: localIsoDate() }} />
 
       {/* Resuming what is on the stove comes before anything new. */}
       {cooking.status === "ready" && cooking.items.length > 0 ? (

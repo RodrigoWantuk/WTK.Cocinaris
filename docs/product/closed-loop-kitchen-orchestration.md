@@ -290,7 +290,7 @@ Allergies, medical restrictions, and other sensitive constraints are never infer
 
 ## 8. Multi-day preparation route
 
-The preparation route coordinates dependencies across days and recipes.
+The preparation route coordinates dependencies across days and recipes. PLAN-0062 Slice 6 delivers the same-day part, a timed route for one session (`../domain/planning-and-shopping.md`). The days-ahead part stays with PLAN-0044.
 
 It may include:
 
