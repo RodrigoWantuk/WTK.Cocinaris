@@ -5,7 +5,7 @@
 - **Priority:** High (owner request)
 - **Owner:** Claude Code (claimed 2026-11-04)
 - **Created:** 2026-11-04
-- **Last updated:** 2026-11-04
+- **Last updated:** 2026-11-05
 - **Branch:** Plan publication `agent/plan-0062-guided-shopping-planning`; each slice uses the branch named in its section
 - **Pull request:** Plan publication draft PR, opened with this file
 - **Related issues:** None
@@ -737,15 +737,15 @@ Migrations are additive, and rollback means deploying the earlier code with unus
 
 ## Execution state
 
-- **Current run delivery target:** Slice 2, market and arrival.
-- **Current checkpoint:** Slice 2 implemented on `agent/plan-0062-s2-arrival`, in a draft pull request, with storage guidance off.
-- **Last completed step:** Browser journey on the proxy replica through arrival.
-- **Exact next action:** The owner reviews the pull request and merges it. Slice 3 (offline list) then starts from fresh `origin/main` on `agent/plan-0062-s3-offline-list`, with ADR-0012 first. The owner separately reviews `docs/domain/storage-guidance-review.md` (G2-A) whenever convenient; the slice does not wait for it.
-- **Blockers:** G2-A before storage guidance is enabled and before Slice 4 limits. G1-B (live AI evaluation) and G1-G and G2-F (full local gates) have not run: the first needs the provider key, and the host stopped the last gate run for low memory. Deploying `main` was refused by this agent's permission classifier, so the owner must run it.
+- **Current run delivery target:** Slice 3, offline list.
+- **Current checkpoint:** Slice 3 implemented on `agent/plan-0062-s3-offline-list`, in a draft pull request.
+- **Last completed step:** Offline browser journey on the proxy replica, and a one-off check of worker update and removal.
+- **Exact next action:** The owner reviews the pull request and merges it. Slice 4 (limits, warnings, and repeat) then starts from fresh `origin/main` on `agent/plan-0062-s4-limits-and-repeat`. Without G2-A it ships repeat only and records the limits work as blocked.
+- **Blockers:** G2-A before storage guidance is enabled and before Slice 4 limits. G1-B (live AI evaluation) needs the provider key. Deploying `main` was refused by this agent's permission classifier, so the owner must run it. The browser smoke matrix fails the same way on unmodified `main` on this host, so G3's gate run cannot pass here yet.
 - **Partially modified areas:** None.
-- **Documentation delivered:** `docs/domain/storage-guidance-review.md`, and updates to the product, planning, inventory, privacy, and runbook documents.
-- **Validation performed:** See the Slice 2 entry in the progress log.
-- **Known failures or limitations:** Storage values were not checked against primary sources, because USDA pages refused automated fetches; the review document says which are unverified. G1-A: the owner merged #84 and said "PR aprovado, pode seguir", with no separate comment on the restriction table. Per-stage equipment conflicts are not detected (Slice 6).
+- **Documentation delivered:** ADR-0012, and updates to the product, planning, privacy, testing, and runbook documents.
+- **Validation performed:** See the Slice 3 entry in the progress log.
+- **Known failures or limitations:** See the Slice 3 entry. Earlier limits stand: storage values are not checked against primary sources, G1-A has no separate owner comment, and per-stage equipment conflicts are not detected (Slice 6).
 - **Working tree state:** Clean after this commit.
 
 ## Progress log
@@ -812,6 +812,36 @@ Migrations are additive, and rollback means deploying the earlier code with unus
   - The journey needed two fixes of its own: this run's menu is counted alone, and the fixture user's pantry is cleared first.
 - **Not run:** the full local gates (G2-F), because the host has too little free memory (about 700 MB at the last check, and the earlier run was stopped for this). The full integration suite did not run. Flag on is covered by one integration test, not by the browser.
 - **Result:** Ready for owner review. G2-A remains open.
+- **Next action:** See `Exact next action`.
+
+### 2026-11-05 — Claude Code (Slice 3)
+
+- **Run delivery target:** Slice 3, offline list.
+- **Checkpoint:** The list opens and takes marks with no connection, and they reach the server afterward. Owner merged #85 before this run ("merge feito, continue").
+- **Changes included in the commit:**
+  - Frontend: precache-only service worker in the production build; `features/planning/offline` (store, outbox delivery, provider, notices, route gate); session state `offline` through `withOfflineSession`; `ShoppingPage` and `ShoppingHubPage` read the saved list and disable what needs the server.
+  - Operations: `sw-unregister.js`, installed by `--rollback` when the target release has no worker.
+  - Dependencies: `idb-keyval` 6.3.0 and `vite-plugin-pwa` 2.0.0 pinned; `resolutions` for `glob` 14.0.3 under `workbox-build` and `minimatch` 11.0.4 under `typescript-estree`, because the audit policy refused the vulnerable versions. The `minimatch` advisory also affected `main`.
+- **Documentation and code-documentation delivered:** ADR-0012 and its index row; `guided-shopping-planning.md`, `planning-and-shopping.md`, `privacy-and-data-protection.md`, `product-foundation-gates.md`, runbook; TSDoc on exported functions.
+- **Defects found and fixed:** The plugin's `autoUpdate` setting alone left a new worker waiting, so a deploy never reached a visitor with the app open; `skipWaiting` and `clientsClaim` are now explicit.
+- **Deviations from this plan, keeping the outcome:**
+  - Marks also retry when the page becomes visible and every 30 seconds while pending, because `navigator.onLine` stays true on a weak signal.
+  - A 401 also closes the offline list until the same owner signs in again, so an ended session does not keep opening private data. The outbox stays.
+  - "Comprei" and similar actions share one note at the top of the list instead of one per line.
+  - Places and package sizes are also disabled offline, since only check marks and "later" work.
+  - A rejected mark (400, 409, 422) is reported as a conflict, so one bad mark cannot block the queue.
+  - The registration script does not reload an open page, so a form is never discarded.
+  - The smoke matrix blocks service workers, because its API answers are simulated.
+- **Validation performed:**
+  - Frontend: typecheck, lint, and format clean; full test suite 555/555; production and prototype builds (the prototype has no `sw.js`); bundle inspection, third-party, build-mode, and isolation guards, and audit policy passed.
+  - Browser, proxy replica, 390 px: `offline-list-journey.mjs` 25/25, covering G3 (offline open, marks delivered, no `/api` in cache storage, logout erases, second owner sees nothing, 401 closes the list). `shopping-plan-journey.mjs` passed, confirming sign-in still works through the worker.
+  - One-off simulated deploy: the new `index.html` appears on the second load. One-off rollback: `sw-unregister.js` leaves no registration and no cache, and the page renders.
+- **Not run or failing:**
+  - **Browser smoke matrix fails:** `page.goto` on the prototype server times out at 15 s before any check runs, twice on this branch and once on unmodified `main`, so this branch did not cause it. Loaded alone, the same page takes 3.2 s. The cause is not established. Its production part, including the `serviceWorkers: "block"` change, has therefore not run.
+  - Full local gates (G3's gate run) and backend tests: not run. No backend code changed.
+  - By hand: keyboard only and 320 px. A real phone and a real installed app were not tested; "installed" in the journey is a browser with the worker active.
+  - `deploy-linux-host.sh --rollback` itself was not run; only the script it installs was exercised.
+- **Result:** Ready for owner review.
 - **Next action:** See `Exact next action`.
 
 ## Completion and handoff checklist

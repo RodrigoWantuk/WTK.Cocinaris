@@ -3,6 +3,8 @@ import { Link } from "react-router-dom";
 import { useProductionI18n } from "@/app/i18n/ProductionI18nProvider";
 import { Button } from "@/components/ui/button";
 import type { MenuSummary } from "@/contracts/planning";
+import { useOfflineList } from "./offline/OfflineListProvider";
+import { isUnreachable } from "./offline/offlineSync";
 import { localIsoDate } from "./planningDates";
 import { usePlanningRepository } from "./PlanningProvider";
 import { ShoppingPage } from "./ShoppingPage";
@@ -32,16 +34,40 @@ export function ShoppingHubPage() {
   const { t } = useProductionI18n();
   const [menus, setMenus] = useState<MenuSummary[] | null>(null);
   const [failed, setFailed] = useState(false);
+  const offlineList = useOfflineList();
+  const lastMenuId = offlineList?.lastMenuId;
+  const noteUnreachable = offlineList?.noteUnreachable;
+  // Without a connection the menus cannot be listed, so the list opened last stands in for them.
+  const [savedMenuId, setSavedMenuId] = useState<string | null | undefined>();
 
   useEffect(() => {
     const controller = new AbortController();
     repo.listMenus(controller.signal).then(
       (items) => !controller.signal.aborted && setMenus(items),
-      () => !controller.signal.aborted && setFailed(true),
+      async (error) => {
+        if (controller.signal.aborted) return;
+        if (isUnreachable(error) && lastMenuId) {
+          noteUnreachable?.();
+          const id = await lastMenuId();
+          if (!controller.signal.aborted) setSavedMenuId(id);
+          return;
+        }
+        setFailed(true);
+      },
     );
     return () => controller.abort();
+    // The callbacks change with the connection state, which must not list the menus again.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [repo]);
 
+  if (savedMenuId) return <ShoppingPage menuId={savedMenuId} />;
+  if (savedMenuId === null) {
+    return (
+      <p data-testid="shopping-hub-offline" className="text-muted-foreground">
+        {t("offline.noList")}
+      </p>
+    );
+  }
   if (failed) {
     return (
       <p role="alert" className="text-muted-foreground">

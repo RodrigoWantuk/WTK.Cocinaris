@@ -28,6 +28,7 @@ Do not rewrite accepted history. Add a note or superseding ADR.
 | [0009](0009-recipe-ai-provider-deepseek-v4-flash.md) | Recipe AI provider DeepSeek V4 Flash with one fallback model and a monthly spend ceiling | Accepted |
 | [0010](0010-ingredient-identity-catalog-embeddings-pgvector.md) | Ingredient identity: curated catalog, exact-text embedding cache, OpenRouter Qwen3 Embedding, pgvector | Accepted |
 | [0011](0011-shared-recipe-idea-library.md) | Shared recipe-idea library: reuse generic AI recipes across people without AI calls | Accepted |
+| [0012](0012-offline-shopping-list.md) | Offline shopping list: precache-only service worker and owner-scoped IndexedDB | Accepted |
 
 ## Future decision backlog
 

@@ -53,6 +53,17 @@ The owner's decisions and the full specification of later slices are in PLAN-006
 | Part of "Guardar tudo" fails | The screen says how many; trying again never counts anything twice |
 | Nothing to store | Explains and links back to the list |
 
+## Offline list
+
+A market often has no signal, so the list keeps working without it ([ADR-0012](../architecture/decisions/0012-offline-shopping-list.md)).
+
+- **What opens.** The application, and the last lists opened on this device (at most five menus). Other screens say "Precisa de internet" and link to the list. The list shows when it was saved.
+- **What works.** Checking a line, and "Comprar depois" and back. Marks reach the server by themselves when the connection returns, oldest first.
+- **What does not.** "Comprei", "Já tenho", "Cheguei do mercado", substitutes, places, and package sizes need the server, so they are disabled and the screen says so.
+- **Banner.** "Sem internet. Suas marcações serão enviadas depois."
+- **A line that changed.** A mark on a line no longer on the list is not sent: "N marcações não se aplicam mais", with the names and a dismiss.
+- **Leaving.** Logging out erases the device. Another person signing in erases the previous person's data, including unsent marks. An ended session goes to sign-in, keeps the unsent marks for the same person, and closes the offline list until then.
+
 ## Not yet (PLAN-0062 later slices)
 
-The offline list, cook-by limits and warnings, repeat or save a plan, reusable components, frozen whole dishes, the timed session route, and push notifications. Shelf-life dates and freezing advice need the owner-reviewed storage table.
+Cook-by limits and warnings, repeat or save a plan, reusable components, frozen whole dishes, the timed session route, and push notifications. Shelf-life dates and freezing advice need the owner-reviewed storage table.

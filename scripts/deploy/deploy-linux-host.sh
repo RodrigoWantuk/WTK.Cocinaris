@@ -89,6 +89,11 @@ if [[ $ROLLBACK -eq 1 ]]; then
   [[ -n "$previous" ]] || die "no previous release to roll back to"
   log "rolling back from $(basename "$current") to $(basename "$previous")"
   log "database migrations are forward-only; restore a backup if the newer schema is incompatible"
+  # A browser holding the worker would keep serving the newer application otherwise (ADR-0012).
+  if [[ ! -f "$previous/web/sw.js" ]]; then
+    log "the target release has no service worker; installing the one that removes it"
+    install -m 0644 "$REPO_ROOT/infrastructure/deploy/linux-host/sw-unregister.js" "$previous/web/sw.js"
+  fi
   systemctl stop "$SERVICE"
   switch_to "$previous"
   systemctl start "$SERVICE"

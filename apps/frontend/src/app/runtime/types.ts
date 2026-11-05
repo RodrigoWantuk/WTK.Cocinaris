@@ -7,6 +7,7 @@ import type { RecipeRepository } from "@/contracts/recipes";
 import type { PlanningRepository } from "@/contracts/planning";
 import type { AdultDeclarationPolicy } from "@/features/profile/adultDeclarationPolicy";
 import type { SessionAdapter } from "@/app/session/types";
+import type { OfflineListStore } from "@/features/planning/offline/offlineListStore";
 import type { FrontendMode } from "./mode";
 import type { ShoppingRequirementProjection } from "@/contracts/preparation";
 
@@ -26,6 +27,8 @@ export interface FrontendRuntime {
   recipeRepository: RecipeRepository;
   /** Live menu planning and shopping repository (PLAN-0029); prototype uses an unavailable stub. */
   planningRepository: PlanningRepository;
+  /** Device storage of the offline shopping list (ADR-0012); absent in the prototype. */
+  offlineListStore?: OfflineListStore;
   preparationRouteRepository: PreparationRouteRepository;
   /**
    * Contextual home sources. Production uses unavailable until PLAN-0021.

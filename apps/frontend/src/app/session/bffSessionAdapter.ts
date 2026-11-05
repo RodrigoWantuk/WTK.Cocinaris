@@ -13,6 +13,8 @@ export function createBffSessionAdapter(options?: {
   fetchImpl?: typeof fetch;
   /** Optional navigation hook for tests; defaults to form submit / location.assign. */
   navigate?: (url: string) => void;
+  /** Runs after the server ended the session and before leaving the page: local data is erased. */
+  onSignedOut?: () => Promise<void>;
 }): SessionAdapter {
   const fetchImpl =
     options?.fetchImpl ??
@@ -66,7 +68,13 @@ export function createBffSessionAdapter(options?: {
         if (err instanceof DOMException && err.name === "AbortError") {
           throw err;
         }
-        return { status: "unavailable", internalUserId: null, csrfToken: null };
+        return {
+          status: "unavailable",
+          internalUserId: null,
+          csrfToken: null,
+          // fetch rejects with TypeError only when no response arrived.
+          networkFailure: err instanceof TypeError,
+        };
       }
     },
 
@@ -92,6 +100,7 @@ export function createBffSessionAdapter(options?: {
         // Refresh once to obtain a request-specific CSRF before logout.
         const session = await this.getSession();
         if (session.status !== "authenticated" || !session.csrfToken) {
+          await options?.onSignedOut?.();
           if (options?.navigate) {
             options.navigate("/");
           } else {
@@ -113,6 +122,7 @@ export function createBffSessionAdapter(options?: {
         throw new Error("logout_csrf_failed");
       }
       lastCsrf = null;
+      await options?.onSignedOut?.();
       if (options?.navigate) {
         options.navigate("/");
       } else {

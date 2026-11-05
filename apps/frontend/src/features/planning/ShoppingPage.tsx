@@ -27,6 +27,8 @@ import type { ShoppingItem, ShoppingList } from "@/contracts/planning";
 import { RecipeApiError } from "@/contracts/recipes";
 import { useInventoryRepository } from "@/features/inventory/InventoryProvider";
 import { formatLocaleDecimal, parseLocaleDecimal } from "@/lib/localeDecimal";
+import { useOfflineList } from "./offline/OfflineListProvider";
+import { isUnreachable } from "./offline/offlineSync";
 import { formatMenuDay, localIsoDate } from "./planningDates";
 import { buildShoppingListText } from "./shoppingListText";
 import { usePlanningRepository } from "./PlanningProvider";
@@ -111,19 +113,58 @@ export function ShoppingPage({
   );
   const [copied, setCopied] = useState(false);
   const inventoryRepo = useInventoryRepository();
+  const offlineList = useOfflineList();
+  const offline = offlineList?.offline ?? false;
+  const syncVersion = offlineList?.syncVersion ?? 0;
+  // The latest functions, so a change in connection state alone does not reload the list.
+  const offlineRef = useRef(offlineList);
+  offlineRef.current = offlineList;
+  /** When the server sent the list on screen; set only for a list read from the device. */
+  const [savedAt, setSavedAt] = useState<string | null>(null);
+  const fetchedAtRef = useRef("");
 
   useEffect(() => {
     const controller = new AbortController();
+    const active = () => !controller.signal.aborted;
     repo.getShopping(menuId, localIsoDate(), controller.signal).then(
-      (value) => !controller.signal.aborted && setList(value),
-      () => !controller.signal.aborted && setFailed(true),
+      async (value) => {
+        fetchedAtRef.current = new Date().toISOString();
+        // Marks still in the outbox stay visible over what the server knows so far.
+        const shown = (await offlineRef.current?.withPending(value)) ?? value;
+        if (!active()) return;
+        setSavedAt(null);
+        setFailed(false);
+        setList(shown);
+      },
+      async (err) => {
+        if (!active()) return;
+        const saved = isUnreachable(err)
+          ? await offlineRef.current?.loadList(menuId)
+          : null;
+        if (isUnreachable(err)) offlineRef.current?.noteUnreachable();
+        if (!active()) return;
+        if (saved) {
+          fetchedAtRef.current = saved.savedAt;
+          setSavedAt(saved.savedAt);
+          setList(saved.list);
+        } else {
+          setFailed(true);
+        }
+      },
     );
     return () => controller.abort();
-  }, [repo, menuId, reload]);
+  }, [repo, menuId, reload, syncVersion]);
+
+  // What is on screen is what opens next time without a connection, marks included.
+  useEffect(() => {
+    if (list && fetchedAtRef.current) {
+      void offlineRef.current?.saveList(list, fetchedAtRef.current);
+    }
+  }, [list]);
 
   // The short hint on a line ("dividir em N porções"); the detail waits for the arrival screen.
   useEffect(() => {
-    if (!repo.getArrival) return;
+    if (!repo.getArrival || offline) return;
     const controller = new AbortController();
     repo
       .getArrival(menuId, localIsoDate(), controller.signal, { all: true })
@@ -142,10 +183,10 @@ export function ShoppingPage({
         () => undefined,
       );
     return () => controller.abort();
-  }, [repo, menuId, reload]);
+  }, [repo, menuId, reload, offline]);
 
   const toggle = async (item: ShoppingItem) => {
-    if (!session.csrfToken || !list) return;
+    if ((!session.csrfToken && !offlineList) || !list) return;
     setError(null);
     const checked = !item.checked;
     setList({
@@ -155,9 +196,13 @@ export function ShoppingPage({
       ),
     });
     try {
-      await repo.setChecked(menuId, item.itemKey, checked, {
-        csrfToken: session.csrfToken,
-      });
+      if (offlineList) {
+        await offlineList.sendCheck(menuId, item, checked);
+      } else {
+        await repo.setChecked(menuId, item.itemKey, checked, {
+          csrfToken: session.csrfToken ?? "",
+        });
+      }
     } catch {
       setError("planning.error.save");
       setReload((value) => value + 1);
@@ -251,20 +296,35 @@ export function ShoppingPage({
       (TO_BUY as readonly string[]).includes(item.category) && item.later,
   );
 
-  const bringBack = async (item: ShoppingItem) => {
-    if (!session.csrfToken || !repo.setLineMark) return;
+  /** "Buy later" and back. The only mark that works offline, because the server need not judge it. */
+  const setLater = async (item: ShoppingItem, later: boolean) => {
+    if ((!session.csrfToken && !offlineList) || !repo.setLineMark) return;
+    const mark = {
+      itemKey: item.markKey ?? item.itemKey,
+      state: later ? ("later" as const) : null,
+      substituteName: item.substituteFor ? item.displayName : null,
+      place: item.place ?? null,
+    };
     try {
-      await repo.setLineMark(
-        menuId,
-        {
-          itemKey: item.markKey ?? item.itemKey,
-          state: null,
-          substituteName: item.substituteFor ? item.displayName : null,
-          place: null,
-        },
-        { csrfToken: session.csrfToken },
-      );
-      refresh();
+      const outcome = offlineList
+        ? await offlineList.sendLater(menuId, item, mark)
+        : (await repo.setLineMark(menuId, mark, {
+            csrfToken: session.csrfToken ?? "",
+          }),
+          "sent");
+      if (outcome === "sent") {
+        refresh();
+      } else {
+        setList(
+          (current) =>
+            current && {
+              ...current,
+              items: current.items.map((line) =>
+                line.itemKey === item.itemKey ? { ...line, later } : line,
+              ),
+            },
+        );
+      }
     } catch {
       setError("planning.error.save");
     }
@@ -282,6 +342,27 @@ export function ShoppingPage({
         </Link>
         <h1 className="font-display text-3xl">{t("shopping.title")}</h1>
         <p className="text-sm text-muted-foreground">{t("shopping.hint")}</p>
+        {savedAt ? (
+          <p
+            className="text-sm text-muted-foreground"
+            data-testid="shopping-saved-at"
+          >
+            {t("offline.savedAt", {
+              time: new Date(savedAt).toLocaleString(locale, {
+                dateStyle: "short",
+                timeStyle: "short",
+              }),
+            })}
+          </p>
+        ) : null}
+        {offline && list.mealCount > 0 ? (
+          <p
+            className="text-sm text-muted-foreground"
+            data-testid="shopping-needs-internet"
+          >
+            {t("offline.needsInternet")}
+          </p>
+        ) : null}
       </div>
       {list.mealCount > 0 ? <ShoppingSummary items={list.items} /> : null}
       {list.mealCount > 0 ? (
@@ -346,11 +427,22 @@ export function ShoppingPage({
       ) : null}
       {repo.getArrival &&
       list.items.some((item) => item.checked && item.toBuyQuantity > 0) ? (
-        <Button asChild className="w-full" data-testid="shopping-arrival">
-          <Link to={`/app/cardapio/${menuId}/chegada`}>
+        offline ? (
+          <Button
+            type="button"
+            className="w-full"
+            data-testid="shopping-arrival"
+            disabled
+          >
             {t("shopping.arrival")}
-          </Link>
-        </Button>
+          </Button>
+        ) : (
+          <Button asChild className="w-full" data-testid="shopping-arrival">
+            <Link to={`/app/cardapio/${menuId}/chegada`}>
+              {t("shopping.arrival")}
+            </Link>
+          </Button>
+        )
       ) : null}
       {undoHave ? (
         <div
@@ -443,6 +535,8 @@ export function ShoppingPage({
                     showPlace={byPlace}
                     menuId={menuId}
                     onChanged={refresh}
+                    offline={offline}
+                    onLater={() => setLater(item, true)}
                     onAlreadyHave={(lot) => {
                       setUndoHave({ name: item.displayName, ...lot });
                       setImpact(null);
@@ -479,7 +573,7 @@ export function ShoppingPage({
                   size="sm"
                   variant="ghost"
                   data-testid="shopping-later-back"
-                  onClick={() => void bringBack(item)}
+                  onClick={() => void setLater(item, false)}
                 >
                   {t("shopping.later.back")}
                 </Button>
@@ -540,6 +634,7 @@ export function ShoppingPage({
                       onToggle={() => void toggle(item)}
                       onPurchased={(bought) => purchased(item, bought)}
                       onPackageChanged={refresh}
+                      offline={offline}
                     />
                   ))}
                 </ul>
@@ -725,6 +820,8 @@ function ShoppingRow({
   showPlace = false,
   menuId,
   onChanged,
+  offline = false,
+  onLater,
 }: {
   item: ShoppingItem;
   onToggle: () => void;
@@ -739,6 +836,10 @@ function ShoppingRow({
   menuId?: string;
   /** The line's mark changed; the list must reload. */
   onChanged?: () => void;
+  /** Without a connection, only the check box and "buy later" work (ADR-0012). */
+  offline?: boolean;
+  /** Leaves the line for a later purchase. */
+  onLater?: () => Promise<void>;
 }) {
   const { t, locale } = useProductionI18n();
   const { session } = useSession();
@@ -955,6 +1056,7 @@ function ShoppingRow({
                 type="button"
                 className="min-h-6 underline underline-offset-4"
                 data-testid="shopping-substitute-undo"
+                disabled={offline}
                 onClick={() => void saveMark({ substituteName: null })}
               >
                 {t("shopping.have.undo")}
@@ -985,7 +1087,7 @@ function ShoppingRow({
             variant="ghost"
             className="shrink-0"
             data-testid="shopping-item-have"
-            disabled={saving}
+            disabled={saving || offline}
             onClick={() => void alreadyHave()}
           >
             {t("shopping.have")}
@@ -998,6 +1100,7 @@ function ShoppingRow({
             variant="secondary"
             className="shrink-0"
             data-testid="shopping-item-buy"
+            disabled={offline}
             aria-expanded={buying}
             onClick={() => {
               if (!buying) setQuantity(suggested);
@@ -1043,6 +1146,7 @@ function ShoppingRow({
               <Input
                 maxLength={120}
                 data-testid="shopping-substitute"
+                disabled={offline}
                 value={substitute}
                 onChange={(event) => setSubstitute(event.target.value)}
               />
@@ -1052,12 +1156,17 @@ function ShoppingRow({
               size="sm"
               variant="secondary"
               data-testid="shopping-substitute-save"
+              disabled={offline}
             >
               {t("shopping.notFound.swapSave")}
             </Button>
           </form>
           <p className="text-xs text-muted-foreground">
-            {t("shopping.notFound.swapHint")}
+            {t(
+              offline
+                ? "offline.needsInternet.short"
+                : "shopping.notFound.swapHint",
+            )}
           </p>
           <div className="flex flex-wrap gap-2">
             <Button
@@ -1065,18 +1174,24 @@ function ShoppingRow({
               size="sm"
               variant="secondary"
               data-testid="shopping-later-save"
-              onClick={() => void saveMark({ state: "later" })}
+              onClick={() =>
+                void (onLater
+                  ? onLater().then(() => setNotFoundOpen(false))
+                  : saveMark({ state: "later" }))
+              }
             >
               {t("shopping.notFound.later")}
             </Button>
-            <Button asChild size="sm" variant="ghost">
-              <Link
-                to={`/app/cardapio/${menuId}`}
-                data-testid="shopping-swap-dish"
-              >
-                {t("shopping.notFound.dish")}
-              </Link>
-            </Button>
+            {offline ? null : (
+              <Button asChild size="sm" variant="ghost">
+                <Link
+                  to={`/app/cardapio/${menuId}`}
+                  data-testid="shopping-swap-dish"
+                >
+                  {t("shopping.notFound.dish")}
+                </Link>
+              </Button>
+            )}
           </div>
           {markError ? (
             <p role="alert" className="text-xs text-destructive">
@@ -1091,6 +1206,7 @@ function ShoppingRow({
           <select
             className="h-9 rounded-lg border border-input bg-background px-2 text-sm text-foreground"
             data-testid="shopping-place"
+            disabled={offline}
             value={item.place ?? "market"}
             onChange={(event) => void saveMark({ place: event.target.value })}
           >
@@ -1105,6 +1221,7 @@ function ShoppingRow({
       {/* The package size is offered where it matters: when buying, or to change a known size
           (review M7). */}
       {toBuy &&
+      !offline &&
       planning.setPackageSize &&
       (item.packageSize || buying || editingPackage) ? (
         editingPackage ? (
@@ -1201,7 +1318,7 @@ function ShoppingRow({
             type="submit"
             size="sm"
             data-testid="shopping-buy-confirm"
-            disabled={saving}
+            disabled={saving || offline}
           >
             {saving ? t("planning.saving") : t("shopping.addToPantry")}
           </Button>

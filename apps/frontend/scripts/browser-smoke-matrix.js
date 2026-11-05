@@ -488,6 +488,8 @@ async function run() {
 
   async function withPage(opts, name, fn) {
     const context = await browser.newContext({
+      // API answers here are simulated; offline-list-journey.mjs covers the worker.
+      serviceWorkers: "block",
       ...opts,
       recordVideo: process.env.SMOKE_VIDEO
         ? { dir: path.join(OUT_DIR, "videos") }
