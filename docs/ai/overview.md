@@ -156,7 +156,7 @@ Exact objectives are defined and load-tested per operation.
 
 ### Shopping plan cards (PLAN-0062)
 
-`recipe.suggest_plan_deck.v1` is interactive, but the first cards need no model: saved recipes and library ideas appear at once, and AI cards join in the background. Without AI, the flow continues on those.
+`recipe.suggest_plan_deck.v1` and its `.v2`, which adds reusable bases for plans that cook ahead, are interactive, but the first cards need no model: saved recipes and library ideas appear at once, and AI cards join in the background. Without AI, the flow continues on those.
 
 ## Validation layers
 

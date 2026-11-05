@@ -95,9 +95,13 @@ public static class RecipeProtocolValidator
         }
 
         var semanticErrors = RecipeSuggestSemantics.ValidatePlanDeck(response, request);
-        return semanticErrors.Count > 0
-            ? RecipeProtocolValidationResult<PlanDeckResponse>.Failure(semanticErrors)
-            : RecipeProtocolValidationResult<PlanDeckResponse>.Success(response);
+        if (semanticErrors.Count > 0)
+        {
+            return RecipeProtocolValidationResult<PlanDeckResponse>.Failure(semanticErrors);
+        }
+
+        response.Components = RecipeSuggestSemantics.ValidComponents(response, request);
+        return RecipeProtocolValidationResult<PlanDeckResponse>.Success(response);
     }
 
     /// <summary>Validates one raw <c>recipe.expand_selected.v1</c> provider response.</summary>

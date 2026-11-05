@@ -23,6 +23,7 @@ export const SCHEMA_FILES = {
   expand: "recipe-expand-selected.response.v0.3.json",
   revise: "recipe-revise.response.v0.3.json",
   planDeck: "recipe-plan-deck.response.v0.3.json",
+  planDeckV2: "recipe-plan-deck.response.v0.4.json",
 };
 
 /**
@@ -51,12 +52,16 @@ export function compileSchemas(ajv) {
   const planDeck = JSON.parse(
     readFileSync(join(schemasDir, SCHEMA_FILES.planDeck), "utf8"),
   );
+  const planDeckV2 = JSON.parse(
+    readFileSync(join(schemasDir, SCHEMA_FILES.planDeckV2), "utf8"),
+  );
   return {
     suggestSchema: suggest,
     expandSchema: expand,
     validateSuggest: ajv.compile(suggest),
     validateExpand: ajv.compile(expand),
     validatePlanDeck: ajv.compile(planDeck),
+    validatePlanDeckV2: ajv.compile(planDeckV2),
   };
 }
 
@@ -477,4 +482,38 @@ export function validateRequestFixture(request, fileName) {
     }
   }
   return { ok: errors.length === 0, errors };
+}
+
+/**
+ * Components of a `recipe.suggest_plan_deck.v2` response that satisfy their rules. Mirrors
+ * `RecipeSuggestSemantics.ValidComponents`: an invalid component is dropped, never a batch failure.
+ * @param {object} response schema-valid response
+ * @returns {object[]} the valid components, in order
+ */
+export function validPlanDeckComponents(response) {
+  const normalize = (name) =>
+    String(name)
+      .normalize("NFD")
+      .replace(/\p{Diacritic}/gu, "")
+      .trim()
+      .replace(/\s+/g, " ")
+      .toLowerCase();
+  const byId = new Map(
+    (response.candidates ?? []).map((item) => [item.candidateId, item]),
+  );
+  return (response.components ?? []).filter((component) => {
+    const users = component.usedBy.map((id) => byId.get(id));
+    if (users.some((user) => !user)) return false;
+    let total = 0;
+    for (const user of users) {
+      const uses = user.additionalIngredients.filter(
+        (item) =>
+          normalize(item.name) === normalize(component.output.name) &&
+          item.unit === component.output.unit,
+      );
+      if (uses.length === 0) return false;
+      total += uses.reduce((sum, item) => sum + item.requiredQuantity, 0);
+    }
+    return component.output.quantity >= total;
+  });
 }

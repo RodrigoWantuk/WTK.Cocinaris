@@ -71,7 +71,7 @@ public sealed class FakeAiProvider : IAiProvider
         request.Operation switch
         {
             AiOperationRegistry.SuggestCandidates => BuildSuggestResponse(request.Payload),
-            AiOperationRegistry.SuggestPlanDeck => BuildPlanDeckResponse(request.Payload),
+            AiOperationRegistry.SuggestPlanDeck or AiOperationRegistry.SuggestPlanDeckV2 => BuildPlanDeckResponse(request.Payload, request.Operation),
             AiOperationRegistry.ExpandSelected => BuildExpandResponse(request.Payload),
             AiOperationRegistry.ReviseRecipe => BuildReviseResponse(request.Payload),
             AiOperationRegistry.PantryListParse => """{"operation":"inventory.list_parse.v1","schemaVersion":"0.3","items":[{"name":"Batata","quantity":null,"unit":null,"storageLocation":"pantry","uncertain":true,"sourceText":"umas batatas"},{"name":"Arroz","quantity":1000,"unit":"g","storageLocation":"pantry","uncertain":false,"sourceText":"pacote de arroz 1kg"}]}""",
@@ -117,7 +117,7 @@ public sealed class FakeAiProvider : IAiProvider
 
     // Six different dishes that share some ingredients, so ranking and "+N" have something to work on.
     // Each batch uses the request id, so later batches do not repeat earlier dishes.
-    private static string BuildPlanDeckResponse(string payload)
+    private static string BuildPlanDeckResponse(string payload, string operation)
     {
         using var document = JsonDocument.Parse(payload);
         var root = document.RootElement;
@@ -142,7 +142,29 @@ public sealed class FakeAiProvider : IAiProvider
             candidates.Add(candidate);
         }
 
-        return new JsonObject { ["operation"] = AiOperationRegistry.SuggestPlanDeck, ["schemaVersion"] = "0.3", ["candidates"] = candidates }.ToJsonString();
+        if (operation == AiOperationRegistry.SuggestPlanDeck)
+        {
+            return new JsonObject { ["operation"] = operation, ["schemaVersion"] = "0.3", ["candidates"] = candidates }.ToJsonString();
+        }
+
+        // Two dishes share a base, so v2's cards, list, and cooking can be exercised without a provider.
+        var users = new JsonArray();
+        foreach (var index in new[] { 0, 2 })
+        {
+            var dish = candidates[index]!.AsObject();
+            dish["additionalIngredients"]!.AsArray().Add(new JsonObject { ["name"] = "Frango desfiado", ["requiredQuantity"] = 300, ["unit"] = "g", ["optional"] = false });
+            users.Add(dish["candidateId"]!.GetValue<string>());
+        }
+
+        var @base = BuildCandidate($"base-{batch}", "exploratory", $"Frango desfiado {batch}", meal, $"base-{batch}", "boil", ["ingredient-base"], "A base for two dishes.", servings, [], new JsonArray(), "easy");
+        @base["additionalIngredients"] = new JsonArray(new JsonObject { ["name"] = "Peito de frango", ["requiredQuantity"] = 800, ["unit"] = "g", ["optional"] = false });
+        var components = new JsonArray(new JsonObject
+        {
+            ["candidate"] = @base,
+            ["output"] = new JsonObject { ["name"] = "Frango desfiado", ["quantity"] = 700, ["unit"] = "g" },
+            ["usedBy"] = users
+        });
+        return new JsonObject { ["operation"] = operation, ["schemaVersion"] = "0.4", ["candidates"] = candidates, ["components"] = components }.ToJsonString();
     }
 
     private static JsonArray BuildInventoryUses(IReadOnlyList<JsonElement> inventory)

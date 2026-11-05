@@ -47,6 +47,9 @@ public sealed class AiOperationRegistry
     /// <summary>Stable registered name for one batch of shopping plan cards (PLAN-0062).</summary>
     public const string SuggestPlanDeck = "recipe.suggest_plan_deck.v1";
 
+    /// <summary>Stable registered name for a batch of cards with reusable components, for plans that cook ahead (PLAN-0062 Slice 5).</summary>
+    public const string SuggestPlanDeckV2 = "recipe.suggest_plan_deck.v2";
+
     /// <summary>Stable registered name for selected-candidate expansion.</summary>
     public const string ExpandSelected = "recipe.expand_selected.v1";
 
@@ -80,6 +83,8 @@ public sealed class AiOperationRegistry
         new AiOperationDefinition(SuggestCandidates, "recipe-suggest-candidates.v1", "0.3", PreferNonThinking: true, TimeoutSeconds: 30, MaxRepairAttempts: 2, EstimatedUsageUnits: 3, ContextBudgetCharacters: 12_000, MaxOutputTokens: 4096, EstimatedCostMicroUsd: 3_000, EstimatedTokens: 14_000),
         // Six candidates in one answer, about twice a suggestion's output, so the window and holds are larger.
         new AiOperationDefinition(SuggestPlanDeck, "recipe-suggest-plan-deck.v1", "0.3", PreferNonThinking: true, TimeoutSeconds: 60, MaxRepairAttempts: 1, EstimatedUsageUnits: 6, ContextBudgetCharacters: 12_000, MaxOutputTokens: 8192, EstimatedCostMicroUsd: 7_000, EstimatedTokens: 26_000),
+        // Up to two more candidates than v1, so the output, wait, and holds grow in proportion.
+        new AiOperationDefinition(SuggestPlanDeckV2, "recipe-suggest-plan-deck.v2", "0.4", PreferNonThinking: true, TimeoutSeconds: 75, MaxRepairAttempts: 1, EstimatedUsageUnits: 7, ContextBudgetCharacters: 12_000, MaxOutputTokens: 10_240, EstimatedCostMicroUsd: 9_000, EstimatedTokens: 32_000),
         new AiOperationDefinition(ExpandSelected, "recipe-expand-selected.v1", "0.3", PreferNonThinking: true, TimeoutSeconds: 45, MaxRepairAttempts: 1, EstimatedUsageUnits: 5, ContextBudgetCharacters: 12_000, MaxOutputTokens: 6144, EstimatedCostMicroUsd: 5_000, EstimatedTokens: 18_000),
         // The prompt also carries the whole recipe, so more tokens are held than for an expansion.
         new AiOperationDefinition(ReviseRecipe, "recipe-revise.v1", "0.3", PreferNonThinking: true, TimeoutSeconds: 45, MaxRepairAttempts: 1, EstimatedUsageUnits: 5, ContextBudgetCharacters: 12_000, MaxOutputTokens: 6144, EstimatedCostMicroUsd: 6_000, EstimatedTokens: 24_000),

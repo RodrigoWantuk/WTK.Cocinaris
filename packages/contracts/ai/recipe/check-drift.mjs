@@ -19,6 +19,8 @@ const required = [
   join(schemasDir, SCHEMA_FILES.expand),
   join(schemasDir, SCHEMA_FILES.revise),
   join(schemasDir, SCHEMA_FILES.planDeck),
+  join(schemasDir, SCHEMA_FILES.planDeckV2),
+  join(fixturesDir, "responses/positive/plan-deck-v2.valid.json"),
   join(fixturesDir, "responses/positive/plan-deck.valid.json"),
   join(fixturesDir, "responses/positive/suggest-candidates.valid.json"),
   join(fixturesDir, "responses/positive/expand-selected.valid.json"),

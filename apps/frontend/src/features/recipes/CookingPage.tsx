@@ -22,6 +22,13 @@ import {
 import { useRecipeRepository } from "./RecipeProvider";
 
 const STORAGE_PREFIX = "cocinaris.cooking.";
+/** Most portions one cooking stores; the backend enforces the same limit. */
+const MAX_OUTPUTS = 4;
+const OUTPUT_UNIT_KEYS: Record<string, string> = {
+  Gram: "recipes.unit.g",
+  Milliliter: "recipes.unit.ml",
+  Unit: "recipes.unit.unit",
+};
 
 /** Reads the per-execution checklist; browser storage may be unavailable (private mode). */
 function readChecked(executionId: string): Set<string> {
@@ -121,6 +128,13 @@ export function CookingPage() {
     storage: "Refrigerator",
     useBy: "",
   });
+  // What the plan proposes for this cooking; a person's edits stay until the page reloads.
+  const [outputs, setOutputs] = useState<Array<{
+    quantity: string;
+    unit: string;
+    storage: string;
+  }> | null>(null);
+  const plan = execution?.plan ?? null;
   const [rating, setRating] = useState("");
   const [notes, setNotes] = useState("");
   const [busy, setBusy] = useState(false);
@@ -128,6 +142,7 @@ export function CookingPage() {
   const [done, setDone] = useState<{
     consumed: number;
     leftover: number;
+    stored: number;
   } | null>(null);
   // One key per confirmation attempt: a network retry replays instead of deducting twice.
   const keyRef = useRef<string>(crypto.randomUUID());
@@ -138,6 +153,16 @@ export function CookingPage() {
         const value = await repo.getExecution(executionId, signal);
         setExecution(value);
         setStatus("ready");
+        setOutputs(
+          (current) =>
+            current ??
+            value.plan?.proposed.map((item) => ({
+              quantity: formatLocaleDecimal(item.quantity, locale),
+              unit: item.unit,
+              storage: item.storageLocation,
+            })) ??
+            null,
+        );
         if (value.proposal) {
           setLines(
             value.proposal.lines.map((line, index) => ({
@@ -234,6 +259,20 @@ export function CookingPage() {
         version: lot.version,
       });
     }
+    const stored = (plan ? (outputs ?? []) : [])
+      .map((item) => ({
+        parsed: parseLocaleDecimal(item.quantity, locale),
+        unit: item.unit,
+        storageLocation: item.storage,
+      }))
+      .map((item) => ({
+        ...item,
+        quantity: item.parsed.ok ? item.parsed.value : 0,
+      }));
+    if (stored.some((item) => !item.parsed.ok || item.quantity <= 0)) {
+      setMessage("cooking.outputs.invalid");
+      return;
+    }
     setBusy(true);
     setMessage(null);
     try {
@@ -241,13 +280,26 @@ export function CookingPage() {
         execution.executionId,
         {
           consumptions,
-          leftover: leftover.enabled
+          ...(plan
             ? {
-                portions: Number(leftover.portions),
-                storageLocation: leftover.storage,
-                useBy: leftover.useBy || null,
+                storedOutputs: stored.map(
+                  ({ quantity, unit, storageLocation }) => ({
+                    quantity,
+                    unit,
+                    storageLocation,
+                    useBy: null,
+                  }),
+                ),
               }
-            : null,
+            : {}),
+          leftover:
+            !plan && leftover.enabled
+              ? {
+                  portions: Number(leftover.portions),
+                  storageLocation: leftover.storage,
+                  useBy: leftover.useBy || null,
+                }
+              : null,
           rating: rating ? Number(rating) : null,
           notes: notes.trim() || null,
         },
@@ -259,6 +311,7 @@ export function CookingPage() {
       setDone({
         consumed: new Set(consumptions.map((item) => item.lotId)).size,
         leftover: leftover.enabled ? Number(leftover.portions) : 0,
+        stored: stored.length,
       });
     } catch (err) {
       keyRef.current = crypto.randomUUID();
@@ -352,6 +405,11 @@ export function CookingPage() {
                 </p>
                 {done.leftover > 0 ? (
                   <p>{t("cooking.done.leftover", { count: done.leftover })}</p>
+                ) : null}
+                {done.stored > 0 ? (
+                  <p data-testid="cooking-done-stored">
+                    {t("cooking.done.stored", { count: done.stored })}
+                  </p>
                 ) : null}
               </>
             ) : null}
@@ -462,6 +520,115 @@ export function CookingPage() {
     );
   }
 
+  // A plan's proposal replaces the single leftover, on the one-tap screen and in the full review.
+  const outputsEditor = plan ? (
+    <section
+      aria-labelledby="cooking-outputs-title"
+      data-testid="cooking-outputs"
+      className="space-y-2"
+    >
+      <h2 id="cooking-outputs-title" className="font-display text-xl">
+        {t("cooking.outputs.title")}
+      </h2>
+      <p className="text-sm text-muted-foreground">
+        {plan.isComponent
+          ? t("cooking.outputs.base", { name: plan.producesName ?? "" })
+          : t("cooking.outputs.dish")}
+      </p>
+      <ul className="space-y-2">
+        {(outputs ?? []).map((item, index) => (
+          <li
+            key={index}
+            data-testid="cooking-output"
+            className="flex flex-wrap items-end gap-2"
+          >
+            <label className="w-28 text-sm">
+              {t(
+                item.unit === "Unit"
+                  ? "cooking.leftover.portions"
+                  : "cooking.outputs.amount",
+                {
+                  unit: t(OUTPUT_UNIT_KEYS[item.unit] ?? "recipes.unit.unit"),
+                },
+              )}
+              <input
+                inputMode="decimal"
+                className="mt-1 block w-full rounded-md border bg-background p-2"
+                data-testid="cooking-output-quantity"
+                value={item.quantity}
+                onChange={(event) =>
+                  setOutputs(
+                    (outputs ?? []).map((other, at) =>
+                      at === index
+                        ? { ...other, quantity: event.target.value }
+                        : other,
+                    ),
+                  )
+                }
+              />
+            </label>
+            <label className="min-w-36 flex-1 text-sm">
+              {t("cooking.leftover.storage")}
+              <select
+                className="mt-1 block w-full rounded-md border bg-background p-2"
+                data-testid="cooking-output-storage"
+                value={item.storage}
+                onChange={(event) =>
+                  setOutputs(
+                    (outputs ?? []).map((other, at) =>
+                      at === index
+                        ? { ...other, storage: event.target.value }
+                        : other,
+                    ),
+                  )
+                }
+              >
+                {["Refrigerator", "Freezer", "Pantry"].map((value) => (
+                  <option key={value} value={value}>
+                    {t(`inventory.location.${value}`)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <Button
+              type="button"
+              variant="ghost"
+              data-testid="cooking-output-remove"
+              onClick={() =>
+                setOutputs((outputs ?? []).filter((_, at) => at !== index))
+              }
+            >
+              {t("cooking.outputs.remove")}
+            </Button>
+          </li>
+        ))}
+      </ul>
+      {(outputs ?? []).length < MAX_OUTPUTS ? (
+        <Button
+          type="button"
+          size="sm"
+          variant="secondary"
+          data-testid="cooking-output-add"
+          onClick={() =>
+            setOutputs([
+              ...(outputs ?? []),
+              {
+                quantity: "1",
+                unit: plan.isComponent ? (plan.producesUnit ?? "Unit") : "Unit",
+                storage: "Refrigerator",
+              },
+            ])
+          }
+        >
+          {t("cooking.outputs.add")}
+        </Button>
+      ) : null}
+      <p className="text-xs text-muted-foreground">
+        {t("cooking.outputs.advisory")}
+      </p>
+    </section>
+  ) : null;
+
   if (mode === "finish") {
     return (
       <div data-testid="cooking-guided" className="space-y-6">
@@ -471,6 +638,7 @@ export function CookingPage() {
             .filter((line) => line.include)
             .map((line) => line.name)}
           servings={execution.servings}
+          storage={outputsEditor}
           leftoverPortions={leftover.enabled ? Number(leftover.portions) : 0}
           onLeftover={(portions) =>
             setLeftover({
@@ -646,75 +814,77 @@ export function CookingPage() {
         </ul>
       </section>
 
-      <section aria-labelledby="cooking-leftover-title" className="space-y-2">
-        <h2 id="cooking-leftover-title" className="font-display text-xl">
-          {t("cooking.leftover.title")}
-        </h2>
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            className="h-4 w-4"
-            data-testid="cooking-leftover-toggle"
-            checked={leftover.enabled}
-            onChange={(event) =>
-              setLeftover({ ...leftover, enabled: event.target.checked })
-            }
-          />
-          {t("cooking.leftover.toggle")}
-        </label>
-        {leftover.enabled ? (
-          <div className="grid gap-2 sm:grid-cols-3">
-            <label className="text-sm">
-              {t("cooking.leftover.portions")}
-              <select
-                className="mt-1 block w-full rounded-md border bg-background p-2"
-                value={leftover.portions}
-                onChange={(event) =>
-                  setLeftover({ ...leftover, portions: event.target.value })
-                }
-              >
-                {Array.from({ length: execution.servings }, (_, index) =>
-                  String(index + 1),
-                ).map((value) => (
-                  <option key={value} value={value}>
-                    {value}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="text-sm">
-              {t("cooking.leftover.storage")}
-              <select
-                className="mt-1 block w-full rounded-md border bg-background p-2"
-                value={leftover.storage}
-                onChange={(event) =>
-                  setLeftover({ ...leftover, storage: event.target.value })
-                }
-              >
-                {["Refrigerator", "Freezer", "Pantry"].map((value) => (
-                  <option key={value} value={value}>
-                    {t(`inventory.location.${value}`)}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="text-sm">
-              {t("cooking.leftover.useBy")}
-              <input
-                type="date"
-                className="mt-1 block w-full rounded-md border bg-background p-2"
-                value={leftover.useBy}
-                onChange={(event) =>
-                  setLeftover({ ...leftover, useBy: event.target.value })
-                }
-              />
-            </label>
-            <p className="text-xs text-muted-foreground sm:col-span-3">
-              {t("cooking.leftover.useByHint")}
-            </p>
-          </div>
-        ) : null}
-      </section>
+      {outputsEditor ?? (
+        <section aria-labelledby="cooking-leftover-title" className="space-y-2">
+          <h2 id="cooking-leftover-title" className="font-display text-xl">
+            {t("cooking.leftover.title")}
+          </h2>
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              className="h-4 w-4"
+              data-testid="cooking-leftover-toggle"
+              checked={leftover.enabled}
+              onChange={(event) =>
+                setLeftover({ ...leftover, enabled: event.target.checked })
+              }
+            />
+            {t("cooking.leftover.toggle")}
+          </label>
+          {leftover.enabled ? (
+            <div className="grid gap-2 sm:grid-cols-3">
+              <label className="text-sm">
+                {t("cooking.leftover.portions")}
+                <select
+                  className="mt-1 block w-full rounded-md border bg-background p-2"
+                  value={leftover.portions}
+                  onChange={(event) =>
+                    setLeftover({ ...leftover, portions: event.target.value })
+                  }
+                >
+                  {Array.from({ length: execution.servings }, (_, index) =>
+                    String(index + 1),
+                  ).map((value) => (
+                    <option key={value} value={value}>
+                      {value}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="text-sm">
+                {t("cooking.leftover.storage")}
+                <select
+                  className="mt-1 block w-full rounded-md border bg-background p-2"
+                  value={leftover.storage}
+                  onChange={(event) =>
+                    setLeftover({ ...leftover, storage: event.target.value })
+                  }
+                >
+                  {["Refrigerator", "Freezer", "Pantry"].map((value) => (
+                    <option key={value} value={value}>
+                      {t(`inventory.location.${value}`)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="text-sm">
+                {t("cooking.leftover.useBy")}
+                <input
+                  type="date"
+                  className="mt-1 block w-full rounded-md border bg-background p-2"
+                  value={leftover.useBy}
+                  onChange={(event) =>
+                    setLeftover({ ...leftover, useBy: event.target.value })
+                  }
+                />
+              </label>
+              <p className="text-xs text-muted-foreground sm:col-span-3">
+                {t("cooking.leftover.useByHint")}
+              </p>
+            </div>
+          ) : null}
+        </section>
+      )}
 
       <section className="grid gap-2 sm:grid-cols-2">
         <label className="text-sm">

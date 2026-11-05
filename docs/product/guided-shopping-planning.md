@@ -62,6 +62,17 @@ The setup screen lists the last accepted plans (at most five) with their dishes.
 - **"Dar nome"** names the plan's menu, so it is easy to find. Finished plans stay available with or without a name.
 - **The old plan does not change,** and nothing reserves the pantry until the new plan is accepted.
 
+## Bases and portions
+
+For plans that cook ahead, a card may suggest a base after a dish that uses it is chosen: "Base sugerida: Frango desfiado, 700 g. Serve para: Wrap, Escondidinho."
+
+- **"Sim"** adds the base to the menu, on the session day, first in the order. It fills no meal. What it makes leaves the list ("Vem do pré-preparo"), and what it needs joins the list.
+- **"Não"** keeps the item on the list as a required line; it can be bought ready-made.
+- **When a base is cooked,** the finished screen proposes one portion per later use, named for what it makes, so later dishes find them in the pantry.
+- **When a dish covers several meals,** the finished screen proposes a portion per later meal. "Hoje" shows the portions until they are eaten, with "Comer uma porção".
+- **Storage.** Everything is a proposal the person can change. With the storage table off, it proposes the refrigerator only and states no date. Freezer proposals need the owner-reviewed table.
+- **Repeating a plan** brings its dishes, not its bases. The items then stay on the list, and new bases may be offered.
+
 ## Offline list
 
 A market often has no signal, so the list keeps working without it ([ADR-0012](../architecture/decisions/0012-offline-shopping-list.md)).
@@ -75,4 +86,4 @@ A market often has no signal, so the list keeps working without it ([ADR-0012](.
 
 ## Not yet (PLAN-0062 later slices)
 
-Cook-by limits and warnings (blocked until the owner reviews the storage table), reusable components, frozen whole dishes, the timed session route, and push notifications. Shelf-life dates and freezing advice need the owner-reviewed storage table.
+Cook-by limits and warnings (blocked until the owner reviews the storage table), the timed session route, and push notifications. Shelf-life dates and freezing advice need the owner-reviewed storage table.

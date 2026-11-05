@@ -551,6 +551,7 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
                 table.HasCheckConstraint("ck_menu_entries_status", "\"Status\" IN ('Planned', 'Skipped')");
                 table.HasCheckConstraint("ck_menu_entries_servings", "\"Servings\" BETWEEN 1 AND 24");
                 table.HasCheckConstraint("ck_menu_entries_meals_covered", "\"MealsCovered\" BETWEEN 1 AND 4");
+                table.HasCheckConstraint("ck_menu_entries_kind", "(\"Kind\" = 'meal' AND \"ProducesName\" IS NULL AND \"ProducesQuantity\" IS NULL AND \"ProducesUnit\" IS NULL) OR (\"Kind\" = 'component' AND \"ProducesName\" IS NOT NULL AND \"ProducesQuantity\" > 0 AND \"ProducesUnit\" IN ('Gram', 'Milliliter', 'Unit'))");
                 table.HasCheckConstraint("ck_menu_entries_meal_type", "\"MealType\" IS NULL OR \"MealType\" IN ('breakfast', 'lunch', 'dinner', 'snack')");
                 table.HasCheckConstraint("ck_menu_entries_pinned_revision", "\"PinnedRevisionNumber\" IS NULL OR \"PinnedRevisionNumber\" >= 1");
             });
@@ -559,6 +560,10 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             entity.Property(x => x.MealType).HasMaxLength(20);
             entity.Property(x => x.ReserveIngredients).HasDefaultValue(true);
             entity.Property(x => x.MealsCovered).HasDefaultValue(1);
+            entity.Property(x => x.Kind).HasMaxLength(20).HasDefaultValue("meal").IsRequired();
+            entity.Property(x => x.ProducesName).HasMaxLength(120);
+            entity.Property(x => x.ProducesQuantity).HasPrecision(18, 3);
+            entity.Property(x => x.ProducesUnit).HasMaxLength(20);
             // Both foreign keys include the owner, so an entry can only point at the owner's plan and recipe.
             entity.HasOne<MenuPlanRecord>().WithMany().HasForeignKey(x => new { x.MenuPlanId, x.OwnerUserId }).HasPrincipalKey(x => new { x.Id, x.OwnerUserId }).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne<RecipeRecord>().WithMany().HasForeignKey(x => new { x.RecipeId, x.OwnerUserId }).HasPrincipalKey(x => new { x.Id, x.OwnerUserId }).OnDelete(DeleteBehavior.Restrict);

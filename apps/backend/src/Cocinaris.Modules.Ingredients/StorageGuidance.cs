@@ -31,6 +31,7 @@ public sealed class StorageGuidance
     private readonly IngredientCatalog _catalog;
     private readonly IReadOnlyDictionary<string, StorageRule> _categories;
     private readonly IReadOnlyDictionary<string, StorageRule> _slugs;
+    private int? _cookedFridgeDays;
 
     private StorageGuidance(bool enabled, IngredientCatalog catalog, IReadOnlyDictionary<string, StorageRule> categories, IReadOnlyDictionary<string, StorageRule> slugs)
     {
@@ -79,8 +80,11 @@ public sealed class StorageGuidance
             throw new InvalidOperationException($"Storage guidance names unknown location '{rule.Location}'.");
         }
 
-        return new StorageGuidance(enabled, catalog, document.Categories ?? [], document.Slugs ?? []);
+        return new StorageGuidance(enabled, catalog, document.Categories ?? [], document.Slugs ?? []) { _cookedFridgeDays = document.Cooked?.FridgeDays };
     }
+
+    /// <summary>Days a cooked dish keeps in the refrigerator, or null when the guidance is off or has no such rule.</summary>
+    public int? CookedFridgeDays => Enabled ? _cookedFridgeDays : null;
 
     /// <summary>The rule for a catalog item, or null when the guidance is off or has no rule.</summary>
     /// <param name="item">Catalog item, or null for a name outside the catalog.</param>
@@ -101,5 +105,8 @@ public sealed class StorageGuidance
 
     private sealed record Document(
         [property: JsonPropertyName("categories")] Dictionary<string, StorageRule>? Categories,
-        [property: JsonPropertyName("slugs")] Dictionary<string, StorageRule>? Slugs);
+        [property: JsonPropertyName("slugs")] Dictionary<string, StorageRule>? Slugs,
+        [property: JsonPropertyName("cooked")] CookedRule? Cooked = null);
+
+    private sealed record CookedRule([property: JsonPropertyName("fridgeDays")] int? FridgeDays);
 }

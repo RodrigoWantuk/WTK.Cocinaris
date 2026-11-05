@@ -289,6 +289,154 @@ public sealed partial class RecipeExecutionApiTests
         Assert.Equal(3, (await client.GetFromJsonAsync<JsonElement>($"/api/v1/planning/menus/{newMenu}")).GetProperty("entries").GetArrayLength());
     }
 
+    [Fact]
+    public async Task ABasePreparedAheadCoversTheDishesThatUseIt()
+    {
+        var (host, _) = PlanHost();
+        await using var _host = host;
+        using var client = PlanClient(host, "plan-base");
+        var csrf = await CsrfAsync(client);
+        var today = new DateOnly(2026, 11, 4);
+        var day = today.ToString("yyyy-MM-dd");
+        var plan = await JsonOf(await PostAsync(client, csrf, Plans, PlanBody(today, "mix"), Guid.NewGuid()));
+        var sessionId = plan.GetProperty("sessionId").GetGuid();
+        var menuId = plan.GetProperty("menuId").GetGuid();
+        plan = await JsonOf(await PostAsync(client, csrf, $"{Plans}/{sessionId}/batches", new { }, Guid.NewGuid()));
+
+        // The base stays out of sight until a dish that uses it is chosen.
+        Assert.DoesNotContain(plan.GetProperty("queue").EnumerateArray(), card => card.GetProperty("component").ValueKind == JsonValueKind.Object);
+        var cards = plan.GetProperty("queue").EnumerateArray().ToList();
+        var dish = cards.First(card => card.GetProperty("ingredients").EnumerateArray().Any(item => item.GetProperty("name").GetString() == "Frango desfiado"));
+        var dishId = dish.GetProperty("cardId").GetGuid();
+        plan = await JsonOf(await PostAsync(client, csrf, $"{Plans}/{sessionId}/cards/{dishId}/decision", new { decision = "accept" }));
+        var offered = plan.GetProperty("queue")[0];
+        Assert.Equal("Frango desfiado", offered.GetProperty("component").GetProperty("outputName").GetString());
+        Assert.Equal(700m, offered.GetProperty("component").GetProperty("outputQuantity").GetDecimal());
+        Assert.Equal("Gram", offered.GetProperty("component").GetProperty("outputUnit").GetString());
+        var baseId = offered.GetProperty("cardId").GetGuid();
+
+        // A base is prepared once, fills no meal, and takes its item off the estimate.
+        Assert.Equal(HttpStatusCode.BadRequest, (await PostAsync(client, csrf, $"{Plans}/{sessionId}/cards/{baseId}/decision", new { decision = "accept", mode = "yield", repeats = 2 })).StatusCode);
+        var filled = plan.GetProperty("progress").GetProperty("mealsFilled").GetInt32();
+        plan = await JsonOf(await PostAsync(client, csrf, $"{Plans}/{sessionId}/cards/{baseId}/decision", new { decision = "accept" }));
+        Assert.Equal(filled, plan.GetProperty("progress").GetProperty("mealsFilled").GetInt32());
+        Assert.Contains(plan.GetProperty("accepted").EnumerateArray(), card => card.GetProperty("isComponent").GetBoolean());
+
+        foreach (var id in new[] { dishId, baseId })
+        {
+            plan = await JsonOf(await PostAsync(client, csrf, $"{Plans}/{sessionId}/cards/{id}/expansion", new { }));
+        }
+
+        var menu = await client.GetFromJsonAsync<JsonElement>($"/api/v1/planning/menus/{menuId}");
+        var component = menu.GetProperty("entries").EnumerateArray().Single(entry => entry.GetProperty("kind").GetString() == "component");
+        Assert.Equal(("Frango desfiado", 700m, "Gram"), (component.GetProperty("producesName").GetString(), component.GetProperty("producesQuantity").GetDecimal(), component.GetProperty("producesUnit").GetString()));
+        Assert.Equal(today, component.GetProperty("plannedDate").Deserialize<DateOnly>());
+        Assert.Equal(JsonValueKind.Null, component.GetProperty("mealType").ValueKind);
+
+        // It is cooked first, and the dish's item comes from it instead of the store.
+        await PostAsync(client, csrf, $"{Plans}/{sessionId}/review", new { });
+        menu = await client.GetFromJsonAsync<JsonElement>($"/api/v1/planning/menus/{menuId}");
+        Assert.Equal(1, menu.GetProperty("entries").EnumerateArray().Single(entry => entry.GetProperty("kind").GetString() == "component").GetProperty("suggestedOrder").GetInt32());
+        JsonElement Line(JsonElement list, string name) => list.GetProperty("items").EnumerateArray().Single(item => item.GetProperty("displayName").GetString() == name);
+        var list = await client.GetFromJsonAsync<JsonElement>($"/api/v1/planning/menus/{menuId}/shopping?from={day}");
+        Assert.Equal(("from_prep", 0m), (Line(list, "Frango desfiado").GetProperty("category").GetString(), Line(list, "Frango desfiado").GetProperty("toBuyQuantity").GetDecimal()));
+
+        Assert.True((await PostAsync(client, csrf, $"{Plans}/{sessionId}/acceptance", new { })).IsSuccessStatusCode);
+        var entryId = component.GetProperty("entryId").GetGuid();
+        var recipeId = component.GetProperty("recipeId").GetGuid();
+
+        // Nothing tells the person to buy what the base will make.
+        var prep = await client.GetFromJsonAsync<JsonElement>($"/api/v1/planning/preparation?from={day}&days=7");
+        Assert.DoesNotContain(prep.GetProperty("reminders").EnumerateArray(), item => item.GetProperty("kind").GetString() == "buy" && item.GetProperty("itemName").GetString() == "Frango desfiado");
+
+        var execution = await JsonOf(await PostAsync(client, csrf, $"/api/v1/recipes/{recipeId}/executions", new { menuEntryId = entryId }));
+        var executionId = execution.GetProperty("executionId").GetGuid();
+        var proposed = execution.GetProperty("plan");
+        Assert.True(proposed.GetProperty("isComponent").GetBoolean());
+        Assert.Equal(700m, proposed.GetProperty("proposed").EnumerateArray().Sum(item => item.GetProperty("quantity").GetDecimal()));
+        Assert.All(proposed.GetProperty("proposed").EnumerateArray(), item => Assert.Equal("Refrigerator", item.GetProperty("storageLocation").GetString()));
+
+        // Bad outputs are refused and change nothing: too many, the wrong unit, or with a leftover.
+        var completion = $"/api/v1/recipes/executions/{executionId}/completion";
+        var part = new { quantity = 350m, unit = "Gram", storageLocation = "Refrigerator" };
+        Assert.Equal(HttpStatusCode.BadRequest, (await PostAsync(client, csrf, completion, new { storedOutputs = Enumerable.Repeat(part, 5) }, Guid.NewGuid())).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await PostAsync(client, csrf, completion, new { storedOutputs = new[] { new { quantity = 2m, unit = "Unit", storageLocation = "Refrigerator" } } }, Guid.NewGuid())).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await PostAsync(client, csrf, completion, new { storedOutputs = new[] { part }, leftover = new { portions = 1, storageLocation = "Refrigerator" } }, Guid.NewGuid())).StatusCode);
+
+        // A stale lot rolls everything back: the execution stays open and no portion appears.
+        var chicken = await CreateLotAsync(client, csrf, "Peito de frango", 800m);
+        var lots = await client.GetFromJsonAsync<JsonElement>("/api/v1/inventory/lots?pageSize=50");
+        Assert.Single(lots.GetProperty("items").EnumerateArray());
+        var stale = await PostAsync(client, csrf, completion, new { consumptions = new[] { new { lotId = chicken, quantity = 100m, unit = "Gram", version = Guid.NewGuid() } }, storedOutputs = new[] { part, part } }, Guid.NewGuid());
+        Assert.False(stale.IsSuccessStatusCode);
+        Assert.Equal("InProgress", (await client.GetFromJsonAsync<JsonElement>($"/api/v1/recipes/executions/{executionId}")).GetProperty("status").GetString());
+        Assert.Single((await client.GetFromJsonAsync<JsonElement>("/api/v1/inventory/lots?pageSize=50")).GetProperty("items").EnumerateArray());
+
+        // Two portions in one batch, named for what the base makes, frozen or not as chosen.
+        var key = Guid.NewGuid();
+        var body = new { storedOutputs = new[] { part, new { quantity = 350m, unit = "Gram", storageLocation = "Freezer" } } };
+        var done = await PostAsync(client, csrf, completion, body, key);
+        Assert.True(done.IsSuccessStatusCode, await done.Content.ReadAsStringAsync());
+        Assert.True((await PostAsync(client, csrf, completion, body, key)).IsSuccessStatusCode);
+        var stored = (await client.GetFromJsonAsync<JsonElement>("/api/v1/inventory/lots?pageSize=50")).GetProperty("items").EnumerateArray().Where(lot => lot.GetProperty("productName").GetString() == "Frango desfiado").ToList();
+        Assert.Equal(2, stored.Count);
+        Assert.Contains(stored, lot => lot.GetProperty("storageLocation").GetString() == "Freezer");
+
+        // The base left the plan, and its real lots now cover the dish.
+        list = await client.GetFromJsonAsync<JsonElement>($"/api/v1/planning/menus/{menuId}/shopping?from={day}");
+        Assert.Equal(0m, Line(list, "Frango desfiado").GetProperty("toBuyQuantity").GetDecimal());
+        Assert.NotEqual("from_prep", Line(list, "Frango desfiado").GetProperty("category").GetString());
+        Assert.Equal(700m, Line(list, "Frango desfiado").GetProperty("availableQuantity").GetDecimal());
+    }
+
+    [Fact]
+    public async Task ADishThatCoversSeveralMealsStoresPortionsAndRemindsUntilEaten()
+    {
+        var provider = new FakeAiProvider(useProtocolDefaultsWhenUnscripted: false);
+        await using var host = _factory.WithWebHostBuilder(builder => builder.ConfigureTestServices(services => services.AddSingleton<IAiProvider>(provider)));
+        using var client = PlanClient(host, "plan-portions");
+        var csrf = await CsrfAsync(client);
+        var today = new DateOnly(2026, 11, 4);
+        var recipe = await CreateRecipeAsync(client, csrf, "Lasanha", ("Massa", 200m, "g"));
+        var plan = await JsonOf(await PostAsync(client, csrf, Plans, PlanBody(today, "mix"), Guid.NewGuid()));
+        var sessionId = plan.GetProperty("sessionId").GetGuid();
+        var menuId = plan.GetProperty("menuId").GetGuid();
+        var card = plan.GetProperty("queue")[0].GetProperty("cardId").GetGuid();
+        await PostAsync(client, csrf, $"{Plans}/{sessionId}/cards/{card}/decision", new { decision = "accept", mode = "yield", repeats = 3 });
+        Assert.True((await PostAsync(client, csrf, $"{Plans}/{sessionId}/acceptance", new { })).IsSuccessStatusCode);
+        var entry = (await client.GetFromJsonAsync<JsonElement>($"/api/v1/planning/menus/{menuId}")).GetProperty("entries")[0];
+
+        var execution = await JsonOf(await PostAsync(client, csrf, $"/api/v1/recipes/{recipe}/executions", new { servings = 6, menuEntryId = entry.GetProperty("entryId").GetGuid() }));
+        var proposed = execution.GetProperty("plan");
+        Assert.False(proposed.GetProperty("isComponent").GetBoolean());
+        // With the table off, every proposal is the refrigerator and no date is claimed.
+        Assert.Equal([2m, 2m], proposed.GetProperty("proposed").EnumerateArray().Select(item => item.GetProperty("quantity").GetDecimal()));
+        Assert.All(proposed.GetProperty("proposed").EnumerateArray(), item => Assert.Equal("Refrigerator", item.GetProperty("storageLocation").GetString()));
+
+        var completion = $"/api/v1/recipes/executions/{execution.GetProperty("executionId").GetGuid()}/completion";
+        Assert.Equal(HttpStatusCode.BadRequest, (await PostAsync(client, csrf, completion, new { storedOutputs = new[] { new { quantity = 7m, unit = "Unit", storageLocation = "Freezer" } } }, Guid.NewGuid())).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await PostAsync(client, csrf, completion, new { storedOutputs = new[] { new { quantity = 1.5m, unit = "Unit", storageLocation = "Freezer" } } }, Guid.NewGuid())).StatusCode);
+        var parts = new[] { new { quantity = 2m, unit = "Unit", storageLocation = "Refrigerator" }, new { quantity = 2m, unit = "Unit", storageLocation = "Freezer" } };
+        Assert.True((await PostAsync(client, csrf, completion, new { storedOutputs = parts }, Guid.NewGuid())).IsSuccessStatusCode);
+
+        async Task<List<JsonElement>> Ready() => (await client.GetFromJsonAsync<JsonElement>($"/api/v1/planning/preparation?from={today:yyyy-MM-dd}&days=2")).GetProperty("reminders").EnumerateArray().Where(item => item.GetProperty("kind").GetString() == "ready_portions").ToList();
+        var ready = await Ready();
+        Assert.Equal(2, ready.Count);
+        Assert.All(ready, item => Assert.Equal("Lasanha", item.GetProperty("itemName").GetString()));
+
+        // Eating the last portions of a lot makes its reminder go away by itself.
+        var lotId = ready[0].GetProperty("lotId").GetGuid();
+        var lot = await client.GetAsync($"/api/v1/inventory/lots/{lotId}");
+        var etag = lot.Headers.ETag!.Tag;
+        using var adjust = new HttpRequestMessage(HttpMethod.Post, $"/api/v1/inventory/lots/{lotId}/adjustments") { Content = JsonContent.Create(new { type = "Consume", value = 2m, reasonCode = "ui_consume" }) };
+        adjust.Headers.Add("X-CSRF-TOKEN", csrf);
+        adjust.Headers.Add("Idempotency-Key", Guid.NewGuid().ToString());
+        adjust.Headers.TryAddWithoutValidation("If-Match", etag);
+        var eaten = await client.SendAsync(adjust);
+        Assert.True(eaten.IsSuccessStatusCode, await eaten.Content.ReadAsStringAsync());
+        Assert.Single(await Ready());
+    }
+
     private static async Task SetVegetarianAsync(HttpClient client, string csrf)
     {
         using var bootstrap = new HttpRequestMessage(HttpMethod.Patch, "/api/v1/profile") { Content = JsonContent.Create(new { displayName = new { action = "confirm", value = "Alex", durability = "durable" } }) };

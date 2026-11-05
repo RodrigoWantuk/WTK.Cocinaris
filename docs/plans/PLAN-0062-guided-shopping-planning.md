@@ -730,22 +730,22 @@ Migrations are additive, and rollback means deploying the earlier code with unus
 - [ ] **S2:** Arrival records all purchases with one confirmation, portions follow the advisor, freezer portions are frozen, and a retry never double counts. "Não achei" and store grouping work.
 - [ ] **S3:** The list opens and takes marks with no signal, then syncs; no other owner's data appears.
 - [ ] **S4:** Limits and warnings appear only from curated rules, with the three options. A plan can be repeated.
-- [ ] **S5:** A component reduces purchases and is cooked into stored portions atomically. Frozen dishes are proposed and consumed by portion.
+- [ ] **S5 (code delivered; G5-A pending):** A component reduces purchases and is cooked into stored portions atomically. Frozen dishes are proposed and consumed by portion.
 - [ ] **S6:** A session route merges recipes with parallel passive work, can be resumed, and completes executions.
 - [ ] **S7:** Opt-in push arrives at most once a day with no food data.
 - [ ] Every slice: documentation, XML docs, TSDoc, contracts, and gates are current. No unsupported claim remains.
 
 ## Execution state
 
-- **Current run delivery target:** Slice 4, repeat only, because G2-A has not been approved.
-- **Current checkpoint:** Repeat and naming implemented on `agent/plan-0062-s4-limits-and-repeat`, in a draft pull request. Limits and warnings are blocked.
-- **Last completed step:** Browser journey on the proxy replica through repeating a named plan.
-- **Exact next action:** The owner reviews the pull request and merges it. Then, from fresh `origin/main`, start Slice 5 on `agent/plan-0062-s5-components`. Its gate G5-A needs a live evaluation with the provider key. When the owner approves `docs/domain/storage-guidance-review.md`, deliver the rest of Slice 4 (cook-by limits, the `cook_by` reminder, "Congelar hoje", "Trocar de prato" on accepted menus, "Deixar como está") in its own pull request.
-- **Blockers:** G2-A for the Slice 4 limits and warnings and for enabling storage guidance. G1-B and G5-A need the provider key. Deploying `main` was refused by this agent's permission classifier, so the owner must run it. The browser smoke matrix fails on unmodified `main` on this host, and full local gates have not run.
-- **Partially modified areas:** Slice 4 is partial by design: see "Exact next action".
-- **Documentation delivered:** Updates to the product and planning documents.
-- **Validation performed:** See the Slice 4 entry in the progress log.
-- **Known failures or limitations:** See the Slice 4 entry. Earlier limits stand: storage values are not checked against primary sources, G1-A has no separate owner comment, and per-stage equipment conflicts are not detected (Slice 6).
+- **Current run delivery target:** Slice 5, bases and frozen dishes.
+- **Current checkpoint:** Slice 5 implemented on `agent/plan-0062-s5-components`, in a draft pull request. G5-A has not run.
+- **Last completed step:** Browser journey on the proxy replica through cooking a dish that yields two meals and eating a stored portion.
+- **Exact next action:** The owner reviews the pull request and decides whether to merge before G5-A. Slice 6 (timed session route) then starts from fresh `origin/main` on `agent/plan-0062-s6-session-route`. When the owner approves `docs/domain/storage-guidance-review.md`, deliver the rest of Slice 4 in its own pull request.
+- **Blockers:** G5-A and G1-B need the provider key (a stop condition of this plan for the slice's gate, not for its code). G2-A for the Slice 4 limits and for storage guidance. Deploying `main` was refused by this agent's permission classifier, so the owner must run it. The browser smoke matrix fails on unmodified `main` on this host, and full local gates have not run.
+- **Partially modified areas:** Slice 4 limits and warnings are not delivered.
+- **Documentation delivered:** Protocol, AI overview and governance, product, planning, recipes, and closed-loop documents; contract README.
+- **Validation performed:** See the Slice 5 entry in the progress log.
+- **Known failures or limitations:** See the Slice 5 entry. Earlier limits stand: storage values are not checked against primary sources, G1-A has no separate owner comment, and per-stage equipment conflicts are not detected (Slice 6).
 - **Working tree state:** Clean after this commit.
 
 ## Progress log
@@ -865,6 +865,36 @@ Migrations are additive, and rollback means deploying the earlier code with unus
 - **Host incident:** The host killed the development Keycloak container for lack of memory (OOM, exit 137) while this run was building and testing, which failed two journey attempts. I restarted that container; the journey then passed. The production service was not touched.
 - **Not run:** Full local gates and the smoke matrix (it fails on unmodified `main` here). The full integration suite. Keyboard only and 320 px by hand.
 - **Result:** Ready for owner review. Slice 4 limits and warnings are not delivered.
+- **Next action:** See `Exact next action`.
+
+### 2026-11-05 — Claude Code (Slice 5)
+
+- **Run delivery target:** Slice 5. Owner merged #87 before this run ("ja fiz o merge").
+- **Checkpoint:** Bases and stored portions work end to end with the fake provider. The real model has not produced a base yet.
+- **Changes included in the commit:**
+  - AI: `recipe.suggest_plan_deck.v2` and schema v0.4, `RecipeSuggestSemantics.ValidComponents`, its JavaScript mirror, fixtures, and the fake provider. `daily` plans keep v1.
+  - Planning: migration `AddMenuEntryComponents`; base cards; projection, ranking, and sequencing; `StoredOutputAdvisor`; `ExecutionPlanLookup`; reminder `ready_portions`.
+  - Recipes: completion takes `storedOutputs` through a port Planning answers, since Recipes does not read Planning's tables.
+  - Inventory: `ListOutputBatchesAsync`; a prepared lot in the freezer ages from its creation.
+  - Frontend: base card, review label, `from_prep`, storage editor on both finish screens, "Comer uma porção".
+- **Documentation and code-documentation delivered:** See `Documentation delivered`; XML docs and TSDoc.
+- **Deviations from this plan, keeping the outcome:**
+  - The limit `MaxOutputTokens` is 10,240 and the estimates are 7 units, US$ 0.009, and 32,000 tokens, because v2 returns up to two more candidates. The plan did not set these.
+  - With guidance on, a dish freezes past the table's `cooked.fridgeDays`. It uses no per-dish rule, since a dish has no catalog category.
+  - A repeated plan brings dishes but not bases, because a base has no meal type to copy. Its item stays on the list.
+  - A reminder for what a base makes is hidden by matching key; the plan named only the list.
+  - A base with an output name the real expansion spells differently would leave both on the list. The expanded recipe is not checked against the output name.
+  - "Comer uma porção" uses one unit, as the plan says, even though a stored meal for two people holds two portions.
+- **Validation performed:**
+  - Backend: unit suite 370/370 (20 new); architecture 14/14; the `RecipeExecutionApiTests` and `PlanningApiTests` classes 37/37, whose 2 new tests cover atomic completion, rollback on a stale lot, retry, limits, a base lot matching a later dish, and portions counted down.
+  - Frontend: typecheck, lint, and format clean; see the pull request for the final suite count.
+  - Contracts: recipe AI tests and drift check passed; OpenAPI exported and client regenerated.
+  - Browser journey on the proxy replica, flag off, 390 px: passed through cooking, storing, and eating a portion.
+- **Not run or not covered:**
+  - **G5-A:** the real model was never asked for components; the valid-component rate is unknown. Without the key, the 80% criterion is unverified.
+  - **The base card in a browser:** the replica has no AI, so it is covered by frontend tests and the API test, not by the journey.
+  - Flag on in a browser; full local gates and smoke matrix; full integration suite; keyboard only and 320 px by hand.
+- **Result:** Ready for owner review.
 - **Next action:** See `Exact next action`.
 
 ## Completion and handoff checklist

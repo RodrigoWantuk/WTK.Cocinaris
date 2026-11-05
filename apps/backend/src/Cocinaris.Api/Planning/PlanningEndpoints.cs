@@ -269,7 +269,7 @@ public sealed class PlanningApiService(MenuPlanningApplicationService applicatio
 
     private static MenuPlanResponse ToResponse(MenuPlanView view) => new(view.PlanId, view.Name, view.StartDate, view.EndDate, view.Status, view.AcceptedAt, view.UpdatedAt, view.Entries.Select(ToResponse).ToList());
 
-    private static MenuEntryResponse ToResponse(MenuEntryView view) => new(view.EntryId, view.RecipeId, view.RecipeName, view.RevisionNumber, view.RevisionPinned, view.PlannedDate, view.MealType, view.Servings, view.Status, view.ExecutionId, view.ReserveIngredients, view.Readiness is null ? null : ToResponse(view.Readiness), view.MealsCovered, view.SuggestedOrder);
+    private static MenuEntryResponse ToResponse(MenuEntryView view) => new(view.EntryId, view.RecipeId, view.RecipeName, view.RevisionNumber, view.RevisionPinned, view.PlannedDate, view.MealType, view.Servings, view.Status, view.ExecutionId, view.ReserveIngredients, view.Readiness is null ? null : ToResponse(view.Readiness), view.MealsCovered, view.SuggestedOrder, view.Kind, view.ProducesName, view.ProducesQuantity, view.ProducesUnit);
 
     private static IResult ToResult<TApp, THttp>(RecipeApplicationResult<TApp> result, string traceId, Func<TApp, THttp> map)
     {
@@ -361,7 +361,7 @@ public sealed record MenuPlanResponse(Guid MenuId, string Name, DateOnly StartDa
 /// (<paramref name="ExecutionId"/>).
 /// </summary>
 /// <remarks><c>Readiness</c> is present for meals still to cook that reserve ingredients.</remarks>
-public sealed record MenuEntryResponse(Guid EntryId, Guid RecipeId, string RecipeName, int RevisionNumber, bool RevisionPinned, DateOnly? PlannedDate, string? MealType, int Servings, string Status, Guid? ExecutionId, bool ReserveIngredients, MealReadinessResponse? Readiness, int MealsCovered, int? SuggestedOrder);
+public sealed record MenuEntryResponse(Guid EntryId, Guid RecipeId, string RecipeName, int RevisionNumber, bool RevisionPinned, DateOnly? PlannedDate, string? MealType, int Servings, string Status, Guid? ExecutionId, bool ReserveIngredients, MealReadinessResponse? Readiness, int MealsCovered, int? SuggestedOrder, string Kind = "meal", string? ProducesName = null, decimal? ProducesQuantity = null, string? ProducesUnit = null);
 
 /// <summary>A meal of an accepted menu for the requested day.</summary>
 public sealed record TodayMenuEntryResponse(Guid MenuId, string MenuName, MenuEntryResponse Entry);

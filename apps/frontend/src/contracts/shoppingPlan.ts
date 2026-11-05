@@ -70,6 +70,13 @@ export interface ShoppingPlanCard {
     unit: string;
     optional: boolean;
   }>;
+  /** Present when the card is a reusable base rather than a dish. */
+  component?: {
+    outputName: string;
+    outputQuantity: number;
+    outputUnit: string;
+    usedBy: string[];
+  } | null;
 }
 
 /** An accepted card. */
@@ -85,6 +92,8 @@ export interface ShoppingPlanAccepted {
   recipeId: string | null;
   guardCode: string | null;
   guardIngredient: string | null;
+  /** Whether it is a base, which fills no meal. */
+  isComponent?: boolean;
 }
 
 /** The state every plan route returns. */

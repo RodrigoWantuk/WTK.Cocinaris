@@ -13,14 +13,15 @@ public sealed record ReminderMeal(Guid PlanId, Guid EntryId, string RecipeName, 
 /// <summary>
 /// Something to do before a planned meal (PLAN-0029 Phase 4). <paramref name="Kind"/> is
 /// <c>buy</c> (a required ingredient the pantry does not cover), <c>thaw</c> (a reserved lot is
-/// frozen), or <c>use_by</c> (a reserved lot's date falls before the meal).
+/// frozen), <c>use_by</c> (a reserved lot's date falls before the meal), or <c>ready_portions</c>
+/// (portions cooked ahead are waiting to be eaten, PLAN-0062).
 /// </summary>
 /// <param name="PlanId">Menu.</param>
 /// <param name="EntryId">Menu entry.</param>
 /// <param name="RecipeName">Recipe name.</param>
 /// <param name="PlannedDate">Day of the meal.</param>
 /// <param name="MealType">Meal, if set.</param>
-/// <param name="Kind"><c>buy</c>, <c>thaw</c>, or <c>use_by</c>.</param>
+/// <param name="Kind"><c>buy</c>, <c>thaw</c>, <c>use_by</c>, or <c>ready_portions</c>.</param>
 /// <param name="ItemName">Ingredient or product name.</param>
 /// <param name="Unit">Unit of <paramref name="Quantity"/>, when there is one.</param>
 /// <param name="Quantity">Quantity missing (<c>buy</c>) or reserved from the lot (<c>thaw</c>, <c>use_by</c>).</param>
@@ -46,6 +47,20 @@ public sealed record PreparationReminderView(Guid PlanId, Guid EntryId, string R
 public static class PreparationReminders
 {
     private static readonly string[] KindOrder = ["use_by", "thaw", "buy"];
+
+    /// <summary>Portions a cooking stored for later meals, until they are eaten. Derived, so each disappears once its lot is used up.</summary>
+    /// <param name="lotBatches">The preparation batch of each output lot.</param>
+    /// <param name="cooked">Menu entries that covered several meals, by the batch their cooking made.</param>
+    /// <param name="lots">The owner's active lots.</param>
+    /// <param name="today">The owner's current day.</param>
+    public static IReadOnlyList<PreparationReminderView> ReadyPortions(IReadOnlyDictionary<Guid, Guid> lotBatches, IReadOnlyDictionary<Guid, Domain.MenuEntry> cooked, IReadOnlyList<InventoryLotReadModel> lots, DateOnly today) =>
+        lots.Where(lot => lot.MeasuredUnit == "Unit" && lot.MeasuredValue is > 0 && lotBatches.TryGetValue(lot.LotId, out var batch) && cooked.ContainsKey(batch))
+            .Select(lot =>
+            {
+                var entry = cooked[lotBatches[lot.LotId]];
+                return new PreparationReminderView(entry.MenuPlanId, entry.Id, lot.ProductName, entry.PlannedDate ?? today, entry.MealType, "ready_portions", lot.ProductName, lot.MeasuredUnit, lot.MeasuredValue, today, lot.LotId, null);
+            })
+            .ToList();
 
     /// <summary>Builds the reminders, earliest due first.</summary>
     /// <param name="meals">Dated meals to check.</param>

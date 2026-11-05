@@ -4,7 +4,7 @@
  * The replica has no AI provider, so this also proves the plan works on saved recipes alone (gate
  * G1-E). It seeds two recipes, then in the browser: answers the setup, accepts cards (one with
  * "yields 2 meals"), reviews, marks "I have it" on the list, accepts the plan, leaves a line for
- * later, splits the list by place, records the arrival, checks "Hoje", names the plan, and repeats it. It prints how long the first card took (gate G1-C). Names are unique per run.
+ * later, splits the list by place, records the arrival, checks "Hoje", cooks a dish that yields two meals, eats the stored portion, names the plan, and repeats it. It prints how long the first card took (gate G1-C). Names are unique per run.
  *
  * Usage: COCINARIS_SMOKE_PASSWORD_A=<development-fixture-password> \
  *          node scripts/e2e/shopping-plan-journey.mjs [username]
@@ -147,6 +147,35 @@ try {
   const entries = await page.evaluate(async (date) => (await fetch(`/api/v1/planning/today?date=${date}`, { credentials: "include" })).json(), day);
   const planned = entries.filter((item) => item.menuId === menuId).length;
   check("Hoje shows this plan without every flexible meal", planned >= 1 && planned <= 2, `${planned} meals`);
+
+  // Cooking the dish that yields two meals proposes storing the other one, which "Hoje" then offers.
+  const yielding = await page.evaluate(async (id) => {
+    const session = await (await fetch("/api/v1/session", { credentials: "include" })).json();
+    const menu = await (await fetch(`/api/v1/planning/menus/${id}`, { credentials: "include" })).json();
+    const entry = menu.entries.find((item) => item.mealsCovered > 1);
+    const started = await fetch(`/api/v1/recipes/${entry.recipeId}/executions`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json", "X-CSRF-TOKEN": session.csrfToken },
+      body: JSON.stringify({ menuEntryId: entry.entryId, servings: entry.servings }),
+    });
+    return (await started.json()).executionId;
+  }, menuId);
+  await page.goto(`${BASE}/app/receitas/cozinhar/${yielding}`, { waitUntil: "networkidle" });
+  await page.getByTestId("cooking-overview").click();
+  await page.getByTestId("cooking-finish").click();
+  await page.getByTestId("cooking-outputs").waitFor({ timeout: 10000 });
+  check("cooking proposes the refrigerator for the later meal", (await page.getByTestId("cooking-output-storage").first().inputValue()) === "Refrigerator");
+  await page.getByTestId("cooking-done").click();
+  await page.getByTestId("cooking-done-stored").waitFor({ timeout: 15000 });
+  await page.goto(`${BASE}/app/hoje`, { waitUntil: "networkidle" });
+  const eat = page.getByTestId("today-eat-portion");
+  await eat.first().waitFor({ timeout: 10000 });
+  const readyRow = page.getByTestId("today-preparation-item").filter({ has: eat }).first();
+  const before = await readyRow.textContent();
+  await eat.first().click();
+  await page.waitForFunction((text) => !document.querySelector('[data-testid="today-preparation"]')?.textContent?.includes(text), before.trim().slice(0, 40), { timeout: 10000 });
+  check("eating a portion counts it down", true);
 
   // Repeat: name the finished plan, then start again with its dishes already on the new draft.
   await page.goto(`${BASE}/app/compras/planejar`, { waitUntil: "networkidle" });

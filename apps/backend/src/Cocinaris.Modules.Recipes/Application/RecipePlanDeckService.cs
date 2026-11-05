@@ -16,6 +16,11 @@ namespace Cocinaris.Modules.Recipes.Application;
 /// <param name="RequestLanguage">Interface language of the request, used when the profile declares none.</param>
 public sealed record PlanDeckRequest(int Servings, PlanDeckBrief Brief, RecipeSuggestionGuidance? Guidance, string? RequestLanguage);
 
+/// <summary>One validated batch of cards.</summary>
+/// <param name="Candidates">Six dishes.</param>
+/// <param name="Components">Valid reusable components; none for a plan that does not cook ahead.</param>
+public sealed record PlanDeckBatch(IReadOnlyList<SuggestCandidate> Candidates, IReadOnlyList<PlanDeckComponent> Components);
+
 /// <summary>
 /// AI generation and expansion for shopping plan cards (PLAN-0062). It holds no plan state: the
 /// Planning module owns sessions and ranking and calls this service through its public methods.
@@ -60,17 +65,18 @@ public sealed class RecipePlanDeckService(
     /// <param name="request">Plan requirements.</param>
     /// <param name="correlationId">Request correlation identifier.</param>
     /// <param name="cancellationToken">Cancellation.</param>
-    /// <returns>Six validated candidates, or a stable failure code.</returns>
-    public async Task<RecipeApplicationResult<IReadOnlyList<SuggestCandidate>>> GenerateBatchAsync(Guid ownerUserId, PlanDeckRequest request, string correlationId, CancellationToken cancellationToken)
+    /// <returns>Six validated candidates and any valid components, or a stable failure code.</returns>
+    public async Task<RecipeApplicationResult<PlanDeckBatch>> GenerateBatchAsync(Guid ownerUserId, PlanDeckRequest request, string correlationId, CancellationToken cancellationToken)
     {
-        if (!operationRegistry.TryGet(AiOperationRegistry.SuggestPlanDeck, out var definition))
+        var operation = request.Brief.CookingStyle == "daily" ? AiOperationRegistry.SuggestPlanDeck : AiOperationRegistry.SuggestPlanDeckV2;
+        if (!operationRegistry.TryGet(operation, out var definition))
         {
             return Failure("ai_capability_unavailable", "The plan card capability is not registered.");
         }
 
         if (request.Guidance?.Validate() is { Count: > 0 } invalid)
         {
-            return RecipeApplicationResult<IReadOnlyList<SuggestCandidate>>.Failure("validation_failed", "The options are invalid.", invalid);
+            return RecipeApplicationResult<PlanDeckBatch>.Failure("validation_failed", "The options are invalid.", invalid);
         }
 
         var context = await ContextAsync(ownerUserId, request, definition, cancellationToken);
@@ -103,7 +109,7 @@ public sealed class RecipePlanDeckService(
         }
 
         await usageGovernor.SettleAsync(reservation.ReservationId!.Value, definition.EstimatedUsageUnits, invocation.Usage, cancellationToken);
-        return RecipeApplicationResult<IReadOnlyList<SuggestCandidate>>.Succeeded(invocation.Response.Candidates);
+        return RecipeApplicationResult<PlanDeckBatch>.Succeeded(new PlanDeckBatch(invocation.Response.Candidates, invocation.Response.Components ?? []));
     }
 
     /// <summary>
@@ -145,6 +151,6 @@ public sealed class RecipePlanDeckService(
         return context with { Presets = RecipeCookNowApplicationService.WithOutputLanguage(context.Presets, request.RequestLanguage) };
     }
 
-    private static RecipeApplicationResult<IReadOnlyList<SuggestCandidate>> Failure(string code, string detail) =>
-        RecipeApplicationResult<IReadOnlyList<SuggestCandidate>>.Failure(code, detail);
+    private static RecipeApplicationResult<PlanDeckBatch> Failure(string code, string detail) =>
+        RecipeApplicationResult<PlanDeckBatch>.Failure(code, detail);
 }

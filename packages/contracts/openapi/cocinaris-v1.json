@@ -615,6 +615,7 @@
         "description": "Completion body. Every field is the user's confirmed choice; none is inferred server-side.",
         "properties": {
           "consumptions": {
+            "description": "Lot quantities confirmed as used.",
             "items": {
               "$ref": "#/components/schemas/RecipeExecutionConsumptionRequest"
             },
@@ -629,23 +630,36 @@
                 "type": "null"
               },
               {
-                "$ref": "#/components/schemas/RecipeExecutionLeftoverRequest"
+                "$ref": "#/components/schemas/RecipeExecutionLeftoverRequest",
+                "description": "One leftover lot; not allowed with StoredOutputs."
               }
             ]
           },
           "notes": {
+            "description": "Notes.",
             "type": [
               "null",
               "string"
             ]
           },
           "rating": {
+            "description": "Rating, 1 to 5.",
             "format": "int32",
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "null",
               "integer",
               "string"
+            ]
+          },
+          "storedOutputs": {
+            "description": "Up to four portions to store, in one batch.",
+            "items": {
+              "$ref": "#/components/schemas/RecipeExecutionStoredOutputRequest"
+            },
+            "type": [
+              "null",
+              "array"
             ]
           }
         },
@@ -1913,6 +1927,10 @@
               "string"
             ]
           },
+          "kind": {
+            "default": "meal",
+            "type": "string"
+          },
           "mealType": {
             "type": [
               "null",
@@ -1929,6 +1947,27 @@
           },
           "plannedDate": {
             "format": "date",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "producesName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "producesQuantity": {
+            "format": "double",
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ]
+          },
+          "producesUnit": {
             "type": [
               "null",
               "string"
@@ -4093,6 +4132,34 @@
         ],
         "type": "object"
       },
+      "RecipeExecutionOutputProposalResponse": {
+        "description": "A storage the finished screen proposes.",
+        "properties": {
+          "quantity": {
+            "description": "Quantity.",
+            "format": "double",
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ]
+          },
+          "storageLocation": {
+            "description": "Location.",
+            "type": "string"
+          },
+          "unit": {
+            "description": "Unit.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "quantity",
+          "unit",
+          "storageLocation"
+        ],
+        "type": "object"
+      },
       "RecipeExecutionPantryLotResponse": {
         "description": "An active measured pantry lot the user can pick.",
         "properties": {
@@ -4154,6 +4221,54 @@
           "protectedQuantity",
           "reservedQuantity",
           "reservedFor"
+        ],
+        "type": "object"
+      },
+      "RecipeExecutionPlanResponse": {
+        "description": "What the plan says about this cooking.",
+        "properties": {
+          "isComponent": {
+            "description": "Whether it is a base.",
+            "type": "boolean"
+          },
+          "producesName": {
+            "description": "What a base makes.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "producesQuantity": {
+            "description": "Quantity it makes.",
+            "format": "double",
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ]
+          },
+          "producesUnit": {
+            "description": "Its unit.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "proposed": {
+            "description": "Proposed storage.",
+            "items": {
+              "$ref": "#/components/schemas/RecipeExecutionOutputProposalResponse"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "isComponent",
+          "producesName",
+          "producesQuantity",
+          "producesUnit",
+          "proposed"
         ],
         "type": "object"
       },
@@ -4334,6 +4449,16 @@
               "string"
             ]
           },
+          "plan": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/RecipeExecutionPlanResponse"
+              }
+            ]
+          },
           "proposal": {
             "oneOf": [
               {
@@ -4408,6 +4533,43 @@
           "normalizedRecipeJson",
           "proposal",
           "adjustments"
+        ],
+        "type": "object"
+      },
+      "RecipeExecutionStoredOutputRequest": {
+        "description": "One portion to store.",
+        "properties": {
+          "quantity": {
+            "description": "Quantity: portions for a dish, measured for a base.",
+            "format": "double",
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ]
+          },
+          "storageLocation": {
+            "description": "`Pantry`, `Refrigerator`, or `Freezer`.",
+            "type": "string"
+          },
+          "unit": {
+            "description": "`Unit` for a dish; the base's unit for a base.",
+            "type": "string"
+          },
+          "useBy": {
+            "description": "Date the person chose, if any.",
+            "format": "date",
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "required": [
+          "quantity",
+          "unit",
+          "storageLocation",
+          "useBy"
         ],
         "type": "object"
       },
@@ -5525,6 +5687,11 @@
               "string"
             ]
           },
+          "isComponent": {
+            "default": false,
+            "description": "Whether it is a base, which fills no meal.",
+            "type": "boolean"
+          },
           "mealType": {
             "description": "Meal.",
             "type": "string"
@@ -5657,6 +5824,17 @@
             "format": "uuid",
             "type": "string"
           },
+          "component": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ShoppingPlanComponentView",
+                "description": "Present when the card is a reusable base."
+              }
+            ]
+          },
           "guardCode": {
             "description": "Restriction that could not be verified, if any.",
             "type": [
@@ -5772,6 +5950,42 @@
           "guardIngredient",
           "leadIngredient",
           "ingredients"
+        ],
+        "type": "object"
+      },
+      "ShoppingPlanComponentView": {
+        "description": "What a base card makes and which accepted or offered dishes use it.",
+        "properties": {
+          "outputName": {
+            "description": "Ingredient it makes.",
+            "type": "string"
+          },
+          "outputQuantity": {
+            "description": "Quantity it makes.",
+            "format": "double",
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ]
+          },
+          "outputUnit": {
+            "description": "`Gram`, `Milliliter`, or `Unit`.",
+            "type": "string"
+          },
+          "usedBy": {
+            "description": "Dish names.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "outputName",
+          "outputQuantity",
+          "outputUnit",
+          "usedBy"
         ],
         "type": "object"
       },

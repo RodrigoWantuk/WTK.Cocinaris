@@ -58,8 +58,49 @@ public sealed record ExecutionConsumptionCommand(Guid LotId, decimal Quantity, s
 /// <summary>Leftover portions to store as one prepared lot.</summary>
 public sealed record ExecutionLeftoverCommand(int Portions, string StorageLocation, DateOnly? UseBy);
 
+/// <summary>One portion to store from what was cooked (PLAN-0062).</summary>
+/// <param name="Quantity">Quantity: portions for a dish, measured for a base.</param>
+/// <param name="Unit"><c>Unit</c> for a dish; the base's own unit for a base.</param>
+/// <param name="StorageLocation"><c>Pantry</c>, <c>Refrigerator</c>, or <c>Freezer</c>.</param>
+/// <param name="UseBy">Date the person chose, if any.</param>
+public sealed record ExecutionStoredOutputCommand(decimal Quantity, string Unit, string StorageLocation, DateOnly? UseBy);
+
 /// <summary>Completes an execution and reconciles inventory atomically.</summary>
-public sealed record CompleteRecipeExecutionCommand(Guid ExecutionId, IReadOnlyList<ExecutionConsumptionCommand>? Consumptions, ExecutionLeftoverCommand? Leftover, int? Rating, string? Notes, Guid? IdempotencyKey, string CorrelationId);
+/// <param name="ExecutionId">Execution.</param>
+/// <param name="Consumptions">Lot quantities confirmed as used.</param>
+/// <param name="Leftover">One leftover lot; not allowed with <paramref name="StoredOutputs"/>.</param>
+/// <param name="Rating">Rating, 1 to 5.</param>
+/// <param name="Notes">Notes.</param>
+/// <param name="IdempotencyKey">Request key.</param>
+/// <param name="CorrelationId">Request correlation identifier.</param>
+/// <param name="StoredOutputs">Up to four portions, all in the same preparation batch and transaction.</param>
+public sealed record CompleteRecipeExecutionCommand(Guid ExecutionId, IReadOnlyList<ExecutionConsumptionCommand>? Consumptions, ExecutionLeftoverCommand? Leftover, int? Rating, string? Notes, Guid? IdempotencyKey, string CorrelationId, IReadOnlyList<ExecutionStoredOutputCommand>? StoredOutputs = null);
+
+/// <summary>A storage the finished screen proposes; the person may change everything.</summary>
+/// <param name="Quantity">Quantity.</param>
+/// <param name="Unit">Unit.</param>
+/// <param name="StorageLocation">Location.</param>
+public sealed record ExecutionOutputProposal(decimal Quantity, string Unit, string StorageLocation);
+
+/// <summary>What the plan says about a cooking: what a base makes, and how to store it.</summary>
+/// <param name="IsComponent">Whether it is a base, whose lots take the name of what it makes.</param>
+/// <param name="ProducesName">What a base makes.</param>
+/// <param name="ProducesQuantity">Quantity a base makes.</param>
+/// <param name="ProducesUnit">Its unit.</param>
+/// <param name="Proposed">Proposed storage.</param>
+public sealed record ExecutionPlanContext(bool IsComponent, string? ProducesName, decimal? ProducesQuantity, string? ProducesUnit, IReadOnlyList<ExecutionOutputProposal> Proposed);
+
+/// <summary>Reads what a menu entry makes. Recipes does not read Planning's tables, so Planning answers through this port.</summary>
+public interface IExecutionPlanLookup
+{
+    /// <summary>The context of a cooking started from a menu entry, or null when it is an ordinary meal or not the owner's.</summary>
+    /// <param name="ownerUserId">Owner.</param>
+    /// <param name="menuEntryId">Menu entry.</param>
+    /// <param name="servings">Portions being cooked.</param>
+    /// <param name="normalizedRecipeJson">Revision content.</param>
+    /// <param name="cancellationToken">Cancellation.</param>
+    Task<ExecutionPlanContext?> FindAsync(Guid ownerUserId, Guid menuEntryId, int servings, string normalizedRecipeJson, CancellationToken cancellationToken);
+}
 
 /// <summary>
 /// One recipe ingredient matched against the pantry. <see cref="Status"/> is <c>ready</c>,
@@ -112,7 +153,7 @@ public sealed record RecipeReadinessView(Guid RecipeId, int Available, int Parti
 public sealed record ExecutionProposalView(IReadOnlyList<ExecutionProposalLineView> Lines, IReadOnlyList<ExecutionPantryLotView> PantryLots);
 
 /// <summary>Owner-visible execution state; <see cref="Proposal"/> is present while in progress.</summary>
-public sealed record RecipeExecutionView(Guid ExecutionId, Guid RecipeId, int RevisionNumber, string RecipeName, int Servings, int RecipeServings, string Status, DateTimeOffset StartedAt, DateTimeOffset? FinishedAt, Guid? InventoryBatchId, int? Rating, string? Notes, string NormalizedRecipeJson, ExecutionProposalView? Proposal, IReadOnlyList<RecipeExecutionAdjustment>? Adjustments = null);
+public sealed record RecipeExecutionView(Guid ExecutionId, Guid RecipeId, int RevisionNumber, string RecipeName, int Servings, int RecipeServings, string Status, DateTimeOffset StartedAt, DateTimeOffset? FinishedAt, Guid? InventoryBatchId, int? Rating, string? Notes, string NormalizedRecipeJson, ExecutionProposalView? Proposal, IReadOnlyList<RecipeExecutionAdjustment>? Adjustments = null, ExecutionPlanContext? Plan = null);
 
 /// <summary>Compact in-progress execution for the home and recipe pages.</summary>
 public sealed record RecipeExecutionSummaryView(Guid ExecutionId, Guid RecipeId, string RecipeName, int Servings, DateTimeOffset StartedAt);
@@ -133,11 +174,13 @@ public sealed class RecipeExecutionApplicationService(
     IPrepareComponentsUseCase prepare,
     IPantryCommitmentLookup commitments,
     IIngredientMatching matching,
-    TimeProvider timeProvider)
+    TimeProvider timeProvider,
+    IExecutionPlanLookup? planLookup = null)
 {
     private const int MaxPantryLots = 200;
     private const int MaxReadinessRecipes = 200;
     private const int MaxConsumptions = 32;
+    private const int MaxStoredOutputs = 4;
     private static readonly HashSet<string> StorageLocations = ["Pantry", "Refrigerator", "Freezer"];
 
     /// <summary>Starts cooking, or returns the recipe's execution already in progress.</summary>
@@ -384,6 +427,12 @@ public sealed class RecipeExecutionApplicationService(
             return Failure<RecipeExecutionView>("validation_failed", "Leftover portions must be between 1 and the portions cooked, stored in the pantry, refrigerator, or freezer.", "leftover");
         }
 
+        var stored = command.StoredOutputs ?? [];
+        if (stored.Count > MaxStoredOutputs || (stored.Count > 0 && command.Leftover is not null) || stored.Any(item => item.Quantity <= 0 || !StorageLocations.Contains(item.StorageLocation)))
+        {
+            return Failure<RecipeExecutionView>("validation_failed", "Store up to four positive portions in the pantry, refrigerator, or freezer, without a separate leftover.", "storedOutputs");
+        }
+
         // Two ingredients may come from the same lot; the inventory contract takes one line per lot.
         var grouped = consumptions.GroupBy(item => item.LotId).ToList();
         if (grouped.Any(group => group.Select(item => (item.Unit, item.Version)).Distinct().Count() > 1))
@@ -397,16 +446,26 @@ public sealed class RecipeExecutionApplicationService(
             return Failure<RecipeExecutionView>("resource_not_found", "The recipe was not found.");
         }
 
+        var plan = execution.MenuEntryId is { } entryId && planLookup is not null ? await planLookup.FindAsync(user.Id, entryId, execution.Servings, revision.NormalizedRecipeJson, cancellationToken) : null;
+        // A base's lots are measured and named for what it makes, so later dishes match them. A dish's are portions.
+        var storedUnit = plan is { IsComponent: true } ? plan.ProducesUnit! : "Unit";
+        if (stored.Any(item => item.Unit != storedUnit) || (storedUnit == "Unit" && stored.Any(item => item.Quantity != decimal.Truncate(item.Quantity))) || (plan is not { IsComponent: true } && stored.Sum(item => item.Quantity) > execution.Servings))
+        {
+            return Failure<RecipeExecutionView>("validation_failed", "Portions of a dish are whole units and cannot exceed the portions cooked; a base is stored in its own unit.", "storedOutputs");
+        }
+
         var now = timeProvider.GetUtcNow();
         await using var transaction = await unitOfWork.BeginAsync(cancellationToken);
         Guid? batchId = null;
-        if (grouped.Count > 0 || command.Leftover is not null)
+        if (grouped.Count > 0 || command.Leftover is not null || stored.Count > 0)
         {
             var inputs = grouped.Select(group => new PreparationInputCommand(group.Key, group.Sum(item => item.Quantity), group.First().Unit, InventoryVersionPrecondition.Valid(group.First().Version))).ToList();
-            var outputs = command.Leftover is { } stored
-                ? new[] { new PreparationOutputCommand(stored.Portions, "Unit", null, stored.StorageLocation, null, null, stored.UseBy, stored.UseBy is null ? null : "UserEntered", stored.UseBy is null ? null : "Medium", null) }
-                : [];
-            var result = await prepare.PrepareAsync(new PrepareComponentsCommand(null, revision.Name, execution.Servings, "Unit", null, inputs, outputs, now, key, command.CorrelationId, PreparationSourceType.RecipeExecution, execution.Id), cancellationToken);
+            var outputs = command.Leftover is { } single
+                ? new[] { new PreparationOutputCommand(single.Portions, "Unit", null, single.StorageLocation, null, null, single.UseBy, single.UseBy is null ? null : "UserEntered", single.UseBy is null ? null : "Medium", null) }
+                : stored.Select(item => new PreparationOutputCommand(item.Quantity, item.Unit, null, item.StorageLocation, null, null, item.UseBy, item.UseBy is null ? null : "UserEntered", item.UseBy is null ? null : "Medium", null)).ToArray();
+            // All portions share one batch, and the single reconciliation an execution may have.
+            var makesBase = plan is { IsComponent: true } && stored.Count > 0;
+            var result = await prepare.PrepareAsync(new PrepareComponentsCommand(null, makesBase ? plan!.ProducesName : revision.Name, makesBase ? Math.Max(plan!.ProducesQuantity!.Value, stored.Sum(item => item.Quantity)) : execution.Servings, makesBase ? storedUnit : "Unit", null, inputs, outputs, now, key, command.CorrelationId, PreparationSourceType.RecipeExecution, execution.Id), cancellationToken);
             if (result.Problem is { } problem)
             {
                 return RecipeApplicationResult<RecipeExecutionView>.Failure(problem.ErrorCode, problem.Detail, problem.Errors);
@@ -443,7 +502,10 @@ public sealed class RecipeExecutionApplicationService(
             proposal = BuildProposal(revision.NormalizedRecipeJson, revision.Servings, execution.Servings, lots, committed, execution.MenuEntryId, keys, execution.Adjustments);
         }
 
-        return new RecipeExecutionView(execution.Id, execution.RecipeId, execution.RevisionNumber, revision.Name, execution.Servings, revision.Servings, execution.Status.ToString(), execution.StartedAt, execution.FinishedAt, execution.InventoryBatchId, execution.Rating, execution.Notes, revision.NormalizedRecipeJson, proposal, execution.Adjustments);
+        var plan = execution.Status == RecipeExecutionStatus.InProgress && execution.MenuEntryId is { } entryId && planLookup is not null
+            ? await planLookup.FindAsync(ownerUserId, entryId, execution.Servings, revision.NormalizedRecipeJson, cancellationToken)
+            : null;
+        return new RecipeExecutionView(execution.Id, execution.RecipeId, execution.RevisionNumber, revision.Name, execution.Servings, revision.Servings, execution.Status.ToString(), execution.StartedAt, execution.FinishedAt, execution.InventoryBatchId, execution.Rating, execution.Notes, revision.NormalizedRecipeJson, proposal, execution.Adjustments, plan);
     }
 
     /// <summary>

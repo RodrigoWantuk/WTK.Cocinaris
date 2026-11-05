@@ -117,6 +117,39 @@ public static partial class RecipeSuggestSemantics
         return errors;
     }
 
+    /// <summary>
+    /// The components that satisfy their rules: every dish that uses one exists and lists its output as
+    /// an additional ingredient in the same unit, and the output covers what they all need. A bad
+    /// component is dropped here, because the six dishes are useful without it.
+    /// </summary>
+    /// <param name="response">Validated response.</param>
+    /// <param name="request">Original request, for the rules every candidate must pass.</param>
+    public static List<PlanDeckComponent> ValidComponents(PlanDeckResponse response, JsonElement? request)
+    {
+        var byId = response.Candidates.GroupBy(item => item.CandidateId, StringComparer.Ordinal).ToDictionary(group => group.Key, group => group.First(), StringComparer.Ordinal);
+        var valid = new List<PlanDeckComponent>();
+        foreach (var component in response.Components ?? [])
+        {
+            var errors = component.Validate();
+            ValidateCandidate(errors, "component", component.Candidate, request);
+            if (errors.Count > 0 || component.UsedBy.Any(id => !byId.ContainsKey(id)))
+            {
+                continue;
+            }
+
+            var name = Cocinaris.Modules.Ingredients.IngredientText.Normalize(component.Output.Name);
+            var uses = component.UsedBy.Distinct(StringComparer.Ordinal)
+                .Select(id => byId[id].AdditionalIngredients.Where(item => item.Unit == component.Output.Unit && Cocinaris.Modules.Ingredients.IngredientText.Normalize(item.Name) == name).ToList())
+                .ToList();
+            if (uses.All(items => items.Count > 0) && component.Output.Quantity >= uses.Sum(items => items.Sum(item => item.RequiredQuantity)))
+            {
+                valid.Add(component);
+            }
+        }
+
+        return valid;
+    }
+
     /// <summary>The semantic identity of a dish: format, technique, and main ingredients.</summary>
     /// <param name="candidate">Candidate.</param>
     public static string Fingerprint(SuggestCandidate candidate) =>

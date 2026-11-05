@@ -82,6 +82,11 @@ function mapEntry(dto: EntryDto): MenuEntry {
     reserveIngredients: dto.reserveIngredients !== false,
     readiness: dto.readiness ? mapReadiness(dto.readiness) : null,
     mealsCovered: dto.mealsCovered === undefined ? 1 : num(dto.mealsCovered),
+    kind: dto.kind ?? "meal",
+    producesName: dto.producesName ?? null,
+    producesQuantity:
+      dto.producesQuantity == null ? null : num(dto.producesQuantity),
+    producesUnit: dto.producesUnit ?? null,
     suggestedOrder:
       dto.suggestedOrder === null || dto.suggestedOrder === undefined
         ? null

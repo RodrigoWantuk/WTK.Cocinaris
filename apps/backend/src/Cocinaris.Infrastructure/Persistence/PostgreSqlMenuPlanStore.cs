@@ -162,6 +162,13 @@ public sealed class PostgreSqlMenuPlanStore(ApplicationDbContext database) : IMe
     }
 
     /// <inheritdoc />
+    public async Task<MenuEntry?> FindEntryAsync(Guid ownerUserId, Guid entryId, CancellationToken cancellationToken)
+    {
+        var record = await database.MenuEntries.AsNoTracking().SingleOrDefaultAsync(item => item.OwnerUserId == ownerUserId && item.Id == entryId, cancellationToken);
+        return record is null ? null : ToDomain(record);
+    }
+
+    /// <inheritdoc />
     public async Task SetCheckedAsync(Guid ownerUserId, Guid planId, string itemKey, bool isChecked, DateTimeOffset now, CancellationToken cancellationToken)
     {
         if (!isChecked)
@@ -257,7 +264,7 @@ public sealed class PostgreSqlMenuPlanStore(ApplicationDbContext database) : IMe
         record.Id, record.OwnerUserId, record.CreationKey, record.Name, record.StartDate, record.EndDate, Enum.Parse<MenuPlanStatus>(record.Status), record.CreatedAt, record.UpdatedAt, record.AcceptedAt);
 
     private static MenuEntry ToDomain(MenuEntryRecord record) => MenuEntry.Restore(
-        record.Id, record.MenuPlanId, record.OwnerUserId, record.CreationKey, record.RecipeId, record.PinnedRevisionNumber, record.PlannedDate, record.MealType, record.Servings, Enum.Parse<MenuEntryStatus>(record.Status), record.CreatedAt, record.UpdatedAt, record.ReserveIngredients, record.MealsCovered, record.SuggestedOrder);
+        record.Id, record.MenuPlanId, record.OwnerUserId, record.CreationKey, record.RecipeId, record.PinnedRevisionNumber, record.PlannedDate, record.MealType, record.Servings, Enum.Parse<MenuEntryStatus>(record.Status), record.CreatedAt, record.UpdatedAt, record.ReserveIngredients, record.MealsCovered, record.SuggestedOrder, production: record.ProducesName is { } name ? new MenuEntryProduction(name, record.ProducesQuantity!.Value, record.ProducesUnit!) : null);
 
     private static MenuPlanRecord ToRecord(MenuPlan plan) => new()
     {
@@ -288,6 +295,10 @@ public sealed class PostgreSqlMenuPlanStore(ApplicationDbContext database) : IMe
         ReserveIngredients = entry.ReserveIngredients,
         MealsCovered = entry.MealsCovered,
         SuggestedOrder = entry.SuggestedOrder,
+        Kind = entry.Kind == MenuEntryKind.Component ? "component" : "meal",
+        ProducesName = entry.Production?.Name,
+        ProducesQuantity = entry.Production?.Quantity,
+        ProducesUnit = entry.Production?.Unit,
         CreatedAt = entry.CreatedAt,
         UpdatedAt = entry.UpdatedAt
     };

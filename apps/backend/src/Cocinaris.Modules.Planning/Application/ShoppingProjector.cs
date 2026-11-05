@@ -12,7 +12,8 @@ namespace Cocinaris.Modules.Planning.Application;
 /// <param name="Servings">Portions planned.</param>
 /// <param name="RecipeServings">Portions the revision is written for.</param>
 /// <param name="NormalizedRecipeJson">Revision content.</param>
-public sealed record ShoppingMeal(Guid EntryId, string RecipeName, DateOnly? PlannedDate, int Servings, int RecipeServings, string NormalizedRecipeJson);
+/// <param name="Production">What a base makes, which later dishes use instead of buying it; null for a meal.</param>
+public sealed record ShoppingMeal(Guid EntryId, string RecipeName, DateOnly? PlannedDate, int Servings, int RecipeServings, string NormalizedRecipeJson, MenuEntryProduction? Production = null);
 
 /// <summary>One meal that needs an item.</summary>
 /// <param name="EntryId">Menu entry.</param>
@@ -30,7 +31,7 @@ public sealed record ShoppingUseView(Guid EntryId, string RecipeName, DateOnly? 
 /// <param name="ItemKey">Stable key (normalized name and unit) used to remember the check mark.</param>
 /// <param name="DisplayName">Name shown.</param>
 /// <param name="Unit"><c>Gram</c>, <c>Milliliter</c>, or <c>Unit</c>.</param>
-/// <param name="Category"><c>required</c>, <c>optional</c>, <c>assumed</c> (basics the recipe assumes you have), <c>runs_out</c> (covered, but the plan uses all of it), or <c>available</c>.</param>
+/// <param name="Category"><c>required</c>, <c>optional</c>, <c>assumed</c> (basics the recipe assumes you have), <c>from_prep</c> (a base in this plan makes it), <c>runs_out</c> (covered, but the plan uses all of it), or <c>available</c>.</param>
 /// <param name="RequiredQuantity">Total the remaining meals need.</param>
 /// <param name="AvailableQuantity">Total the pantry holds now.</param>
 /// <param name="ToBuyQuantity">Required minus what the pantry covers, never negative.</param>
@@ -102,7 +103,7 @@ public sealed record ShoppingLineMark(string ItemKey, string? State, string? Sub
 /// </remarks>
 public static class ShoppingProjector
 {
-    private static readonly string[] CategoryOrder = ["required", "assumed", "optional", "runs_out", "available"];
+    private static readonly string[] CategoryOrder = ["required", "assumed", "optional", "from_prep", "runs_out", "available"];
 
     /// <summary>Builds the shopping lines.</summary>
     /// <param name="meals">Meals still to cook, already in plan order.</param>
@@ -131,7 +132,10 @@ public static class ShoppingProjector
 
         var remaining = new Dictionary<string, decimal>(stock, StringComparer.Ordinal);
         var items = new Dictionary<string, Accumulator>(StringComparer.Ordinal);
-        foreach (var meal in meals)
+        var planned = new HashSet<string>(StringComparer.Ordinal);
+        // Bases come first, so what they make is there for the dishes that use it. Once a base is
+        // cooked it leaves this list, and the real lots it made take the place of its planned output.
+        foreach (var meal in meals.OrderByDescending(item => item.Production is not null))
         {
             var scale = (decimal)meal.Servings / Math.Max(1, meal.RecipeServings);
             foreach (var ingredient in RecipeIngredientReader.Read(meal.NormalizedRecipeJson))
@@ -172,6 +176,13 @@ public static class ShoppingProjector
                 item.IsBasic |= HouseholdBasics.Is(ingredient.Name);
                 item.Uses.Add(new ShoppingUseView(meal.EntryId, meal.RecipeName, meal.PlannedDate, need, ingredient.Optional, need - covered));
             }
+
+            if (meal.Production is { } production)
+            {
+                var made = Key(production.Name, production.Unit, matchKeys);
+                remaining[made] = remaining.GetValueOrDefault(made) + production.Quantity;
+                planned.Add(made);
+            }
         }
 
         // Salt and water are assumed in every home: never to buy, and never a warning that they run
@@ -183,7 +194,7 @@ public static class ShoppingProjector
                 var toBuy = item.Required - item.Covered;
                 var category = toBuy > 0
                     ? item.HasRequired ? "required" : item.HasAssumed ? "assumed" : "optional"
-                    : remaining.GetValueOrDefault(item.Key) <= 0 ? "runs_out" : "available";
+                    : planned.Contains(item.Key) ? "from_prep" : remaining.GetValueOrDefault(item.Key) <= 0 ? "runs_out" : "available";
                 var package = packageSizes?.GetValueOrDefault(item.Key);
                 var (count, remainder) = package?.Cover(toBuy) ?? (0, 0);
                 return new ShoppingItemView(item.Key, item.DisplayName, item.Unit, category, item.Required, stock.GetValueOrDefault(item.Key), toBuy, checkedKeys.Contains(item.Key), item.Uses, estimated.Contains(item.Key),
