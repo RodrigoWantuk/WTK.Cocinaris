@@ -20,7 +20,12 @@ interface SessionContextValue {
    * user is not ejected from protected routes, and reports `ok: false` for callers
    * that need a soft warning (profile post-save sync).
    */
-  refreshSoft: () => Promise<{ ok: boolean; session: SessionState }>;
+  refreshSoft: () => Promise<{
+    ok: boolean;
+    session: SessionState;
+    /** What the server just answered, which `session` may not reflect. */
+    latest: SessionState;
+  }>;
   beginLogin: (returnUrl?: string) => void;
   logout: () => Promise<void>;
   /** Convenience: true only for authenticated status. */
@@ -55,15 +60,15 @@ export function SessionProvider({
     const next = await adapter.getSession();
     if (next.status === "authenticated") {
       setSession(next);
-      return { ok: true, session: next };
+      return { ok: true, session: next, latest: next };
     }
     if (previous.status === "authenticated") {
       // Preserve the authenticated shell; callers surface a soft warning instead of
       // ejecting the user to /acesso mid-task.
-      return { ok: false, session: previous };
+      return { ok: false, session: previous, latest: next };
     }
     setSession(next);
-    return { ok: false, session: next };
+    return { ok: false, session: next, latest: next };
   }, [adapter]);
 
   useEffect(() => {

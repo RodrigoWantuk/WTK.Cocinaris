@@ -1,7 +1,8 @@
 /// <reference types="vitest/config" />
 import path from "node:path";
 import react from "@vitejs/plugin-react";
-import { defineConfig, type Plugin } from "vite";
+import { defineConfig, type Plugin, type PluginOption } from "vite";
+import { VitePWA } from "vite-plugin-pwa";
 
 /**
  * Frontend toolchain (ADR-0008, PLAN-0036). Replaces CRA/CRACO while keeping the
@@ -72,12 +73,48 @@ function productionIsolation(): Plugin {
   };
 }
 
+/**
+ * Service worker of the production build (ADR-0012). It precaches built assets and nothing else:
+ * with no runtime caching route, API responses never reach it, so it cannot hold personal data.
+ * New workers activate at once but the page is not reloaded, which could discard a form.
+ */
+function offlineShell(): PluginOption {
+  return VitePWA({
+    registerType: "autoUpdate",
+    injectRegister: "script",
+    filename: "sw.js",
+    // public/manifest.webmanifest is the manifest; the plugin must not generate another one.
+    manifest: false,
+    workbox: {
+      globPatterns: ["**/*.{js,css,html,woff2,png,svg,webmanifest}"],
+      // The application is one bundle; if it were skipped, the offline shell would silently break.
+      maximumFileSizeToCacheInBytes: 8 * 1024 * 1024,
+      navigateFallback: "/index.html",
+      navigateFallbackDenylist: [
+        /^\/api\//,
+        /^\/signin-oidc/,
+        /^\/signout-callback-oidc/,
+        /^\/health\//,
+      ],
+      cleanupOutdatedCaches: true,
+      // Set here because the plugin's `autoUpdate` alone left a new worker waiting, so a deploy
+      // never reached a person whose open tab kept the old worker alive (found by the G3 check).
+      skipWaiting: true,
+      clientsClaim: true,
+      runtimeCaching: [],
+    },
+  });
+}
+
 export default defineConfig(({ command }) => {
   const frontendMode = resolveFrontendMode(command);
   return {
     plugins: [
       react(),
       ...(frontendMode === "production" ? [productionIsolation()] : []),
+      ...(frontendMode === "production" && command === "build"
+        ? [offlineShell()]
+        : []),
     ],
     resolve: {
       alias: [

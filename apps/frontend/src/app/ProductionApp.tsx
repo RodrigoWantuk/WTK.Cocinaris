@@ -27,6 +27,14 @@ import { MenusPage } from "@/features/planning/MenusPage";
 import { ShoppingHubPage } from "@/features/planning/ShoppingHubPage";
 import { AccountMenu, LanguageChoice } from "@/app/shell/AccountMenu";
 import { AppNavigation } from "@/app/shell/AppNavigation";
+import {
+  OfflineListProvider,
+  useOfflineList,
+} from "@/features/planning/offline/OfflineListProvider";
+import {
+  OfflineGate,
+  OfflineNotices,
+} from "@/features/planning/offline/OfflineNotices";
 import { MenuPage } from "@/features/planning/MenuPage";
 import { ArrivalPage } from "@/features/planning/ArrivalPage";
 import { ShoppingPage } from "@/features/planning/ShoppingPage";
@@ -69,7 +77,7 @@ startInstallPromptCapture();
  */
 function EntryRoute() {
   const { session } = useSession();
-  if (session.status === "authenticated") {
+  if (session.status === "authenticated" || session.status === "offline") {
     return <Navigate to="/app/hoje" replace />;
   }
   return <PublicEntryPage />;
@@ -90,7 +98,7 @@ function ProductionAccess() {
     );
   }
 
-  if (session.status === "authenticated") {
+  if (session.status === "authenticated" || session.status === "offline") {
     return <Navigate to="/app/hoje" replace />;
   }
 
@@ -192,15 +200,19 @@ function ProductionAppShell({ children }: { children: ReactNode }) {
   const { t } = useProductionI18n();
   const { session, logout, isAuthenticated } = useSession();
   const coordinator = useOptionalUnsavedChangesCoordinator();
+  const offlineList = useOfflineList();
   const logoutInFlightRef = useRef(false);
 
   const performLogout = useCallback(() => {
     if (logoutInFlightRef.current) return;
     logoutInFlightRef.current = true;
-    void Promise.resolve(logout()).finally(() => {
-      logoutInFlightRef.current = false;
-    });
-  }, [logout]);
+    // Logging out erases what is on the device, so pending marks get one chance to go first.
+    void Promise.resolve(offlineList?.flushBeforeLogout())
+      .then(() => logout())
+      .finally(() => {
+        logoutInFlightRef.current = false;
+      });
+  }, [logout, offlineList]);
 
   const requestLogout = useCallback(() => {
     if (coordinator) {
@@ -255,7 +267,8 @@ function ProductionAppShell({ children }: { children: ReactNode }) {
         tabIndex={-1}
         className="mx-auto max-w-3xl px-4 pb-28 pt-6 focus:outline-none sm:px-8 md:pb-10 md:pt-8"
       >
-        {children}
+        <OfflineNotices />
+        <OfflineGate>{children}</OfflineGate>
       </main>
     </div>
   );
@@ -276,7 +289,8 @@ function RequireAuth({ children }: { children: ReactNode }) {
       </p>
     );
   }
-  if (session.status !== "authenticated") {
+  // The offline state authorizes nothing: it opens local data only, and OfflineGate limits the routes.
+  if (session.status !== "authenticated" && session.status !== "offline") {
     return (
       <Navigate to="/acesso" replace state={{ from: location.pathname }} />
     );
@@ -301,7 +315,15 @@ function SessionScopedRoutes({ children }: { children: ReactNode }) {
       <InventoryProvider repository={runtime.inventoryRepository}>
         <RecipeProvider repository={runtime.recipeRepository}>
           <PlanningProvider repository={runtime.planningRepository}>
-            <ShoppingPlanProvider>{children}</ShoppingPlanProvider>
+            <ShoppingPlanProvider>
+              {runtime.offlineListStore ? (
+                <OfflineListProvider store={runtime.offlineListStore}>
+                  {children}
+                </OfflineListProvider>
+              ) : (
+                children
+              )}
+            </ShoppingPlanProvider>
           </PlanningProvider>
         </RecipeProvider>
       </InventoryProvider>

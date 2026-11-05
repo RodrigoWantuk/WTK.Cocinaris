@@ -6,6 +6,11 @@ import { createLivePlanningRepository } from "@/adapters/live/livePlanningReposi
 import { createLiveProfileRepository } from "@/adapters/live/profile/liveProfileRepository";
 import { createUnavailableAdultDeclarationPolicy } from "@/features/profile/adultDeclarationPolicy";
 import { createBffSessionAdapter } from "@/app/session/bffSessionAdapter";
+import { withOfflineSession } from "@/app/session/offlineSessionAdapter";
+import {
+  createIdbBackend,
+  createOfflineListStore,
+} from "@/features/planning/offline/offlineListStore";
 import type { FrontendRuntime } from "./types";
 
 /**
@@ -14,9 +19,16 @@ import type { FrontendRuntime } from "./types";
  * unavailable; adult declaration stays unavailable until PLAN-0011 supplies legal copy.
  */
 export function createProductionRuntime(): FrontendRuntime {
+  const offlineListStore = createOfflineListStore(createIdbBackend());
   return {
     mode: "production",
-    sessionAdapter: createBffSessionAdapter(),
+    sessionAdapter: withOfflineSession(
+      createBffSessionAdapter({
+        onSignedOut: () => offlineListStore.clearAll(),
+      }),
+      offlineListStore,
+    ),
+    offlineListStore,
     inventoryRepository: createLiveInventoryRepository(),
     recipeRepository: createLiveRecipeRepository(),
     planningRepository: createLivePlanningRepository(),

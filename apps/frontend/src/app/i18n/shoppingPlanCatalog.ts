@@ -2,6 +2,20 @@ import type { ProductionLocale } from "./productionCatalog";
 
 /** Text of shopping plans (PLAN-0062). */
 const ptBR: Record<string, string> = {
+  "offline.banner": "Sem internet. Suas marcações serão enviadas depois.",
+  "offline.needsInternet":
+    "Sem internet, dá para marcar os itens e deixar para comprar depois. Comprei, Já tenho e Cheguei do mercado precisam de internet.",
+  "offline.needsInternet.short": "Precisa de internet.",
+  "offline.savedAt": "Lista salva em {{time}}.",
+  "offline.noList":
+    "Sem internet. Esta lista ainda não foi aberta neste aparelho.",
+  "offline.conflicts.one": "1 marcação não se aplica mais: {{names}}.",
+  "offline.conflicts.other":
+    "{{count}} marcações não se aplicam mais: {{names}}.",
+  "offline.conflicts.dismiss": "Entendi",
+  "offline.route.title": "Precisa de internet",
+  "offline.route.detail": "Sem internet, dá para usar só a lista de compras.",
+  "offline.route.action": "Abrir lista de compras",
   "page.title.arrival": "Cheguei do mercado",
   "arrival.title": "Cheguei do mercado",
   "arrival.subtitle":
@@ -183,6 +197,19 @@ const ptBR: Record<string, string> = {
 };
 
 const en: Record<string, string> = {
+  "offline.banner": "No internet. Your marks will be sent later.",
+  "offline.needsInternet":
+    "With no internet, you can check items and leave them for later. Bought it, I have it, and Back from the market need internet.",
+  "offline.needsInternet.short": "Needs internet.",
+  "offline.savedAt": "List saved on {{time}}.",
+  "offline.noList":
+    "No internet. This list has not been opened on this device yet.",
+  "offline.conflicts.one": "1 mark no longer applies: {{names}}.",
+  "offline.conflicts.other": "{{count}} marks no longer apply: {{names}}.",
+  "offline.conflicts.dismiss": "Got it",
+  "offline.route.title": "Needs internet",
+  "offline.route.detail": "With no internet, only the shopping list works.",
+  "offline.route.action": "Open shopping list",
   "page.title.arrival": "Back from the market",
   "arrival.title": "Back from the market",
   "arrival.subtitle":
@@ -362,6 +389,19 @@ const en: Record<string, string> = {
 };
 
 const es: Record<string, string> = {
+  "offline.banner": "Sin internet. Tus marcas se enviarán después.",
+  "offline.needsInternet":
+    "Sin internet, puedes marcar los productos y dejarlos para después. Lo compré, Ya lo tengo y Volví del mercado necesitan internet.",
+  "offline.needsInternet.short": "Necesita internet.",
+  "offline.savedAt": "Lista guardada el {{time}}.",
+  "offline.noList":
+    "Sin internet. Esta lista aún no se abrió en este dispositivo.",
+  "offline.conflicts.one": "1 marca ya no se aplica: {{names}}.",
+  "offline.conflicts.other": "{{count}} marcas ya no se aplican: {{names}}.",
+  "offline.conflicts.dismiss": "Entendido",
+  "offline.route.title": "Necesita internet",
+  "offline.route.detail": "Sin internet, solo funciona la lista de compras.",
+  "offline.route.action": "Abrir lista de compras",
   "page.title.arrival": "Volví del mercado",
   "arrival.title": "Volví del mercado",
   "arrival.subtitle":

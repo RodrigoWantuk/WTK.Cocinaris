@@ -152,6 +152,15 @@ Restoring a backup on another server needs the same package; otherwise the resto
 - End every session immediately: `rm -r /var/lib/wtk-cocinaris/session-keys && systemctl restart wtk-cocinaris`.
 - Third-party content: `index.html` must not load external scripts, styles or fonts. A CDN in front of the host may inject its own analytics script (for example Cloudflare Web Analytics). Disable that in the CDN when user-session privacy requires it.
 
+## Service worker (ADR-0012)
+
+The production build publishes `sw.js`, which precaches application files only. Nothing needs configuring.
+
+- **After a deploy,** a returning visitor gets the previous files on the first load; the new worker activates at once and the next load is current. Nobody needs to clear anything.
+- **Rollback to a release without a worker.** `--rollback` installs `infrastructure/deploy/linux-host/sw-unregister.js` as that release's `sw.js`, because otherwise browsers would keep serving the newer application forever. It clears the caches, removes the worker, and reloads open pages.
+- **Removing the worker by hand,** for example if it misbehaves: `sudo install -m 0644 infrastructure/deploy/linux-host/sw-unregister.js /srv/wtk-cocinaris/web/sw.js`. Do not simply delete `sw.js`: Caddy would answer the update check with `index.html`, the check would fail, and the old worker would stay. A later deploy publishes a real `sw.js` again.
+- **One browser only:** site settings, clear site data. This also erases unsent marks on that device.
+
 ## Storage guidance flag (PLAN-0062)
 
 `Planning__StorageGuidance__Enabled` in `api.env` defaults to `false`. Set it to `true` only after the owner approves `docs/domain/storage-guidance-review.md` in writing, then restart the service. Setting it back to `false` removes the advice at once and changes no stored data. Lots already frozen stay frozen.

@@ -61,7 +61,9 @@ Shopping plans (PLAN-0062) also require:
 - the same input always gives the same card order;
 - no reservation or home-page meal before the plan is accepted;
 - retrying a decision, batch, or expansion creates no duplicates;
-- the flow finishes with saved recipes when AI is off.
+- the flow finishes with saved recipes when AI is off;
+- offline, the saved list opens and only marks work, and marks reach the server once, in order, when the connection returns;
+- no API response reaches cache storage, logout erases the device, and a second owner sees nothing of the first (`scripts/e2e/offline-list-journey.mjs`).
 
 ## Recipe and cooking invariants
 

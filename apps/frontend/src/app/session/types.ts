@@ -7,7 +7,12 @@ export type SessionStatus =
   | "authenticated"
   | "signedOut"
   | "expired"
-  | "unavailable";
+  | "unavailable"
+  /**
+   * The device has no connection and an owner signed in here earlier (ADR-0012). Allows only the
+   * saved shopping list. It is not authentication: there is no CSRF token, and the server decides.
+   */
+  | "offline";
 
 /**
  * Safe session projection for production UI. Never includes OIDC tokens.
@@ -26,6 +31,8 @@ export interface SessionState {
   profilePercentComplete?: number | null;
   adultDeclarationState?: string | null;
   supportedLocales?: string[];
+  /** For `unavailable`: the request never got an answer, as opposed to a failing server. */
+  networkFailure?: boolean;
 }
 
 /**
