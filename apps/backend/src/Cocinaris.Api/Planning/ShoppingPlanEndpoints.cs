@@ -63,6 +63,12 @@ public static class ShoppingPlanEndpoints
             .Produces<ShoppingPlanView>()
             .ProducesProblem(404)
             .ProducesProblem(422);
+        group.MapPost("/{sessionId:guid}/reopen", (ShoppingPlanApiService service, Guid sessionId, HttpContext context, CancellationToken cancellationToken) => service.ReopenAsync(sessionId, context, cancellationToken))
+            .RequireRateLimiting("mutation")
+            .Produces<ShoppingPlanView>()
+            .ProducesProblem(400)
+            .ProducesProblem(404)
+            .ProducesProblem(422);
         group.MapPost("/{sessionId:guid}/review", (ShoppingPlanApiService service, Guid sessionId, HttpContext context, CancellationToken cancellationToken) => service.ReviewAsync(sessionId, context, cancellationToken))
             .RequireRateLimiting("mutation")
             .Produces<ShoppingPlanView>()
@@ -133,6 +139,10 @@ public sealed class ShoppingPlanApiService(ShoppingPlanApplicationService applic
     /// <summary>Gets one plan.</summary>
     public async Task<IResult> GetAsync(Guid sessionId, HttpContext context, CancellationToken cancellationToken) =>
         ToResult(await application.GetAsync(sessionId, cancellationToken), context.TraceIdentifier);
+
+    /// <summary>Goes back to choosing dishes from the review.</summary>
+    public async Task<IResult> ReopenAsync(Guid sessionId, HttpContext context, CancellationToken cancellationToken) =>
+        ToResult(await application.ReopenAsync(sessionId, cancellationToken), context.TraceIdentifier);
 
     /// <summary>Adds up to six AI cards; requires an Idempotency-Key.</summary>
     public async Task<IResult> AddBatchAsync(Guid sessionId, ShoppingPlanBatchRequest? body, HttpRequest request, CancellationToken cancellationToken) =>

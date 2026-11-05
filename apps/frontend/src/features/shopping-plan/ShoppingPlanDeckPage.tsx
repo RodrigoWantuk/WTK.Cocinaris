@@ -100,7 +100,6 @@ export function ShoppingPlanDeckPage() {
 
   const stopped = useExpansionQueue(
     plan,
-    repo,
     { csrfToken, language: locale },
     setPlan,
   );
@@ -276,11 +275,16 @@ export function ShoppingPlanDeckPage() {
     <div data-testid="plan-deck" className="space-y-4">
       <div role="status" data-testid="plan-progress" className="space-y-0.5">
         <p className="font-semibold">
-          {t("shoppingPlan.progress", {
-            current: Math.min(progress.mealsFilled + 1, progress.mealsTotal),
-            total: progress.mealsTotal,
-            items: progress.listItemCount,
-          })}
+          {t(
+            progress.listItemCount === 1
+              ? "shoppingPlan.progress.one"
+              : "shoppingPlan.progress",
+            {
+              current: Math.min(progress.mealsFilled + 1, progress.mealsTotal),
+              total: progress.mealsTotal,
+              items: progress.listItemCount,
+            },
+          )}
         </p>
         {budget ? (
           <p
@@ -404,7 +408,12 @@ export function ShoppingPlanDeckPage() {
           <p data-testid="plan-card-new-items" className="font-semibold">
             {card.newItemCount === 0
               ? t("shoppingPlan.card.noNewItems")
-              : t("shoppingPlan.card.newItems", { count: card.newItemCount })}
+              : t(
+                  card.newItemCount === 1
+                    ? "shoppingPlan.card.newItems.one"
+                    : "shoppingPlan.card.newItems",
+                  { count: card.newItemCount },
+                )}
           </p>
           {card.reusedNames.length > 0 ? (
             <p className="text-sm">

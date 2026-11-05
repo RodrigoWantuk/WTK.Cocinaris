@@ -7,13 +7,14 @@ import {
   Croissant,
   CupSoda,
   Milk,
+  MoreHorizontal,
   Package,
   PackageCheck,
   Share2,
   ShoppingCart,
   Wheat,
 } from "lucide-react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useLocation, useParams } from "react-router-dom";
 import type {
   MeasuredUnit,
   StorageLocation,
@@ -96,6 +97,9 @@ export function ShoppingPage({
   const repo = usePlanningRepository();
   const { t, locale } = useProductionI18n();
   const { session } = useSession();
+  // Set when the list was opened from a plan under review, which is where "back" belongs.
+  const backToPlan = (useLocation().state as { backToPlan?: string } | null)
+    ?.backToPlan;
   const [list, setList] = useState<ShoppingList | null>(null);
   const [failed, setFailed] = useState(false);
   const [reload, setReload] = useState(0);
@@ -334,11 +338,16 @@ export function ShoppingPage({
     <div data-testid="shopping-page" className="space-y-6">
       <div className="space-y-2">
         <Link
-          to={`/app/cardapio/${menuId}`}
-          className="inline-flex items-center gap-1 text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+          to={
+            backToPlan
+              ? `/app/compras/planejar/${backToPlan}/revisar`
+              : `/app/cardapio/${menuId}`
+          }
+          data-testid="shopping-back"
+          className="inline-flex min-h-11 items-center gap-1 text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
         >
           <ChevronLeft aria-hidden="true" className="h-4 w-4" />
-          {t("shopping.back")}
+          {t(backToPlan ? "shopping.backToPlan" : "shopping.back")}
         </Link>
         <h1 className="font-display text-3xl">{t("shopping.title")}</h1>
         <p className="text-sm text-muted-foreground">{t("shopping.hint")}</p>
@@ -671,7 +680,12 @@ function ShoppingSummary({ items }: { items: ShoppingItem[] }) {
         <p className="font-semibold">
           {toBuy.length === 0
             ? t("shopping.summary.none")
-            : t("shopping.summary.toBuy", { count: toBuy.length })}
+            : t(
+                toBuy.length === 1
+                  ? "shopping.summary.toBuy.one"
+                  : "shopping.summary.toBuy",
+                { count: toBuy.length },
+              )}
         </p>
         <p className="text-sm text-muted-foreground">
           {t("shopping.summary.checked", { done, total: toBuy.length })}
@@ -905,6 +919,7 @@ function ShoppingRow({
 
   // The person says they have it, not how much, so the amount is an estimate of what the plan
   // needs. The pantry shows it as approximate, and it covers the line like any other stock.
+  const [actionsOpen, setActionsOpen] = useState(false);
   const [notFoundOpen, setNotFoundOpen] = useState(false);
   const [substitute, setSubstitute] = useState("");
   const [markError, setMarkError] = useState<string | null>(null);
@@ -995,110 +1010,119 @@ function ShoppingRow({
   };
 
   return (
-    <li data-testid="shopping-item" className="space-y-3 px-4 py-3.5">
-      <div className="flex items-start gap-3">
-        <input
-          type="checkbox"
-          className="mt-0.5 h-6 w-6 shrink-0 cursor-pointer accent-primary"
-          data-testid="shopping-item-check"
-          aria-label={item.displayName}
-          checked={item.checked}
-          onChange={onToggle}
-        />
-        <div className="min-w-0 flex-1 space-y-1">
-          <p className="flex items-baseline justify-between gap-3">
-            <span
-              className={`text-[16px] font-semibold ${item.checked ? "text-muted-foreground line-through" : ""}`}
-            >
-              {item.displayName}
-              {item.category === "assumed" || item.category === "optional" ? (
-                <span className="ml-2 rounded-full bg-secondary px-2 py-0.5 align-middle text-xs font-medium text-secondary-foreground">
-                  {t(`shopping.badge.${item.category}`)}
+    <li data-testid="shopping-item" className="space-y-2 px-3 py-1.5">
+      <div className="flex items-start gap-1">
+        <label className="flex min-h-11 min-w-0 flex-1 cursor-pointer items-start gap-3 py-1">
+          <input
+            type="checkbox"
+            className="mt-0.5 h-6 w-6 shrink-0 cursor-pointer accent-primary"
+            data-testid="shopping-item-check"
+            aria-label={item.displayName}
+            checked={item.checked}
+            onChange={onToggle}
+          />
+          <span className="min-w-0 flex-1 space-y-0.5">
+            <span className="flex items-baseline justify-between gap-3">
+              <span
+                className={`min-w-0 break-words text-[16px] font-semibold ${item.checked ? "text-muted-foreground line-through" : ""}`}
+              >
+                {item.displayName}
+                {item.category === "assumed" || item.category === "optional" ? (
+                  <span className="ml-2 rounded-full bg-secondary px-2 py-0.5 align-middle text-xs font-medium text-secondary-foreground">
+                    {t(`shopping.badge.${item.category}`)}
+                  </span>
+                ) : null}
+              </span>
+              {toBuy ? (
+                <span
+                  data-testid="shopping-item-amount"
+                  className="tabular shrink-0 font-semibold"
+                >
+                  {amount(item.toBuyQuantity)}
                 </span>
               ) : null}
             </span>
-            {toBuy ? (
-              <span
-                data-testid="shopping-item-amount"
-                className="tabular shrink-0 font-semibold"
-              >
-                {amount(item.toBuyQuantity)}
+            {/* "Tem 0" says nothing, and space on a line in a market matters. */}
+            {item.availableQuantity > 0 ? (
+              <span className="block text-xs text-muted-foreground">
+                {t("shopping.need", {
+                  need: amount(item.requiredQuantity),
+                  have:
+                    (item.availableIsEstimate ? "~" : "") +
+                    amount(item.availableQuantity),
+                })}
               </span>
             ) : null}
-          </p>
-          <p className="text-xs text-muted-foreground">
-            {t("shopping.need", {
-              need: amount(item.requiredQuantity),
-              have:
-                (item.availableIsEstimate ? "~" : "") +
-                amount(item.availableQuantity),
-            })}
-          </p>
-          {toBuy && item.packageCount && item.packageSize ? (
-            <p
-              className="text-xs text-muted-foreground"
-              data-testid="shopping-item-package"
-            >
-              {t("shopping.package.summary", {
-                count: item.packageCount,
-                size: amount(item.packageSize),
-                remainder: amount(item.expectedRemainder ?? 0),
-              })}
-            </p>
-          ) : null}
-          {item.substituteFor ? (
-            <p
-              className="text-xs text-muted-foreground"
-              data-testid="shopping-item-substitute"
-            >
-              {t("shopping.notFound.instead", { item: item.substituteFor })}{" "}
-              <button
-                type="button"
-                className="min-h-6 underline underline-offset-4"
-                data-testid="shopping-substitute-undo"
-                disabled={offline}
-                onClick={() => void saveMark({ substituteName: null })}
+            {toBuy && item.packageCount && item.packageSize ? (
+              <span
+                className="block text-xs text-muted-foreground"
+                data-testid="shopping-item-package"
               >
-                {t("shopping.have.undo")}
-              </button>
-            </p>
-          ) : null}
-          {toBuy && portions > 1 ? (
-            <p
-              className="text-xs font-medium"
-              data-testid="shopping-item-portions"
-            >
-              {t("shopping.portions", { count: portions })}
-            </p>
-          ) : null}
-          <p className="text-xs text-muted-foreground">
-            {item.uses
-              .map(
-                (use) =>
-                  `${use.recipeName}${use.plannedDate ? ` (${formatMenuDay(use.plannedDate, locale)})` : ""}`,
-              )
-              .join(" · ")}
-          </p>
-        </div>
-        {toBuy && onAlreadyHave ? (
+                {t("shopping.package.summary", {
+                  count: item.packageCount,
+                  size: amount(item.packageSize),
+                  remainder: amount(item.expectedRemainder ?? 0),
+                })}
+              </span>
+            ) : null}
+            {toBuy && portions > 1 ? (
+              <span
+                className="block text-xs font-medium"
+                data-testid="shopping-item-portions"
+              >
+                {t("shopping.portions", { count: portions })}
+              </span>
+            ) : null}
+            <span className="block truncate text-xs text-muted-foreground">
+              {item.uses
+                .map(
+                  (use) =>
+                    `${use.recipeName}${use.plannedDate ? ` (${formatMenuDay(use.plannedDate, locale)})` : ""}`,
+                )
+                .join(" · ")}
+            </span>
+          </span>
+        </label>
+        {toBuy ? (
           <Button
             type="button"
-            size="sm"
             variant="ghost"
-            className="shrink-0"
-            data-testid="shopping-item-have"
-            disabled={saving || offline}
-            onClick={() => void alreadyHave()}
+            className="h-11 w-11 shrink-0 px-0"
+            data-testid="shopping-item-more"
+            aria-expanded={actionsOpen}
+            aria-label={t("shopping.line.actions", { item: item.displayName })}
+            onClick={() => setActionsOpen((value) => !value)}
           >
-            {t("shopping.have")}
+            <MoreHorizontal aria-hidden="true" className="h-5 w-5" />
           </Button>
         ) : null}
-        {toBuy ? (
+      </div>
+      {item.substituteFor ? (
+        <p
+          className="ml-9 text-xs text-muted-foreground"
+          data-testid="shopping-item-substitute"
+        >
+          {t("shopping.notFound.instead", { item: item.substituteFor })}{" "}
+          <button
+            type="button"
+            className="min-h-11 underline underline-offset-4"
+            data-testid="shopping-substitute-undo"
+            disabled={offline}
+            onClick={() => void saveMark({ substituteName: null })}
+          >
+            {t("shopping.have.undo")}
+          </button>
+        </p>
+      ) : null}
+      {toBuy && actionsOpen ? (
+        <div
+          className="ml-9 flex flex-wrap gap-2"
+          data-testid="shopping-item-actions"
+        >
           <Button
             type="button"
             size="sm"
             variant="secondary"
-            className="shrink-0"
             data-testid="shopping-item-buy"
             disabled={offline}
             aria-expanded={buying}
@@ -1109,18 +1133,31 @@ function ShoppingRow({
           >
             {t("shopping.bought")}
           </Button>
-        ) : null}
-      </div>
-      {toBuy && planning.setLineMark && menuId ? (
-        <button
-          type="button"
-          className="ml-9 min-h-6 text-xs underline underline-offset-4"
-          data-testid="shopping-not-found"
-          aria-expanded={notFoundOpen}
-          onClick={() => setNotFoundOpen((value) => !value)}
-        >
-          {t("shopping.notFound")}
-        </button>
+          {onAlreadyHave ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              data-testid="shopping-item-have"
+              disabled={saving || offline}
+              onClick={() => void alreadyHave()}
+            >
+              {t("shopping.have")}
+            </Button>
+          ) : null}
+          {planning.setLineMark && menuId ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              data-testid="shopping-not-found"
+              aria-expanded={notFoundOpen}
+              onClick={() => setNotFoundOpen((value) => !value)}
+            >
+              {t("shopping.notFound")}
+            </Button>
+          ) : null}
+        </div>
       ) : null}
       {notFoundOpen ? (
         <div
@@ -1204,7 +1241,7 @@ function ShoppingRow({
         <label className="ml-9 flex items-center gap-2 text-xs text-muted-foreground">
           {t("shopping.place")}
           <select
-            className="h-9 rounded-lg border border-input bg-background px-2 text-sm text-foreground"
+            className="h-11 rounded-lg border border-input bg-background px-2 text-sm text-foreground md:h-9"
             data-testid="shopping-place"
             disabled={offline}
             value={item.place ?? "market"}
@@ -1221,6 +1258,7 @@ function ShoppingRow({
       {/* The package size is offered where it matters: when buying, or to change a known size
           (review M7). */}
       {toBuy &&
+      actionsOpen &&
       !offline &&
       planning.setPackageSize &&
       (item.packageSize || buying || editingPackage) ? (
@@ -1267,7 +1305,7 @@ function ShoppingRow({
         ) : (
           <button
             type="button"
-            className="ml-8 text-xs underline underline-offset-4"
+            className="ml-9 min-h-11 text-xs underline underline-offset-4"
             data-testid="shopping-package-edit"
             onClick={() => setEditingPackage(true)}
           >

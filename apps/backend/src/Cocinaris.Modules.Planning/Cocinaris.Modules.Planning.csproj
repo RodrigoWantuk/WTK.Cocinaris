@@ -14,5 +14,8 @@
     <ProjectReference Include="../Cocinaris.Modules.Recipes/Cocinaris.Modules.Recipes.csproj" />
     <ProjectReference Include="../Cocinaris.SharedKernel/Cocinaris.SharedKernel.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Catalog/meal-fit-rules.json" LogicalName="Cocinaris.Modules.Planning.meal-fit-rules.json" />
+  </ItemGroup>
 
 </Project>

@@ -268,7 +268,8 @@ describe("shopping marks (PLAN-0062)", () => {
     const setLineMark = vi.fn(async () => undefined);
     renderList({ getShopping: vi.fn(async () => LIST([ITEM])), setLineMark });
 
-    await user.click(await screen.findByTestId("shopping-not-found"));
+    await user.click(await screen.findByTestId("shopping-item-more"));
+    await user.click(screen.getByTestId("shopping-not-found"));
     expect(screen.getByTestId("shopping-not-found-sheet")).toHaveTextContent(
       "Moqueca",
     );
@@ -293,7 +294,8 @@ describe("shopping marks (PLAN-0062)", () => {
       }),
     });
 
-    await user.click(await screen.findByTestId("shopping-not-found"));
+    await user.click(await screen.findByTestId("shopping-item-more"));
+    await user.click(screen.getByTestId("shopping-not-found"));
     await user.type(screen.getByTestId("shopping-substitute"), "Frango");
     await user.click(screen.getByTestId("shopping-substitute-save"));
 

@@ -137,12 +137,14 @@ try {
   await page.getByTestId("shopping-page").waitFor({ timeout: 15000 });
   check("the saved list opens with no connection", (await row(kept).count()) === 1);
   check("the banner explains marks go later", (await page.getByTestId("offline-banner").textContent()).includes("enviadas depois"));
+  await row(kept).getByTestId("shopping-item-more").click();
   check("purchases are disabled offline", await row(kept).getByTestId("shopping-item-buy").isDisabled());
   check("'I have it' is disabled offline", await row(kept).getByTestId("shopping-item-have").isDisabled());
   const hScroll = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
   check("no horizontal scroll at phone width", !hScroll);
 
   await row(kept).getByTestId("shopping-item-check").check();
+  await row(later).getByTestId("shopping-item-more").click();
   await row(later).getByTestId("shopping-not-found").click();
   check("substitutes are disabled offline", await page.getByTestId("shopping-substitute").isDisabled());
   await page.getByTestId("shopping-later-save").click();
@@ -178,6 +180,7 @@ try {
   check("the 'buy later' mark reached the server", line(later)?.later === true);
   // The tab opens the planning page when online, so the list is opened by its own address.
   await page.goto(listUrl, { waitUntil: "networkidle" });
+  await row(kept).getByTestId("shopping-item-more").click();
   check("online again, purchases work", await row(kept).getByTestId("shopping-item-buy").isEnabled());
   check("no mark is left waiting", !(await page.getByTestId("offline-conflicts").count()));
 

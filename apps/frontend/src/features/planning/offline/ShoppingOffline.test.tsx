@@ -139,9 +139,10 @@ describe("offline shopping list", () => {
       "Suas marcações serão enviadas depois",
     );
     expect(screen.getByTestId("shopping-saved-at")).toBeInTheDocument();
+    const user = userEvent.setup();
+    await user.click(screen.getByTestId("shopping-item-more"));
     expect(screen.getByTestId("shopping-item-buy")).toBeDisabled();
 
-    const user = userEvent.setup();
     await user.click(screen.getByTestId("shopping-item-check"));
     expect(screen.getByTestId("shopping-item-check")).toBeChecked();
     await waitFor(async () =>

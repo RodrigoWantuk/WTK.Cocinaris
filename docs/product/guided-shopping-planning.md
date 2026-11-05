@@ -17,8 +17,8 @@ The "Planejar" tab, the "Planejar" action on the main button, and the "Planejar"
 
 1. **Setup (`/app/compras/planejar`).** One screen with the last answers preselected: days, meals, meals eaten out, how to cook, what matters most, and, unless the person cooks a dish each day, when to prepare and for how long. An optional starting ingredient. People and restrictions come from the profile. People can change for this plan; restrictions change only in the profile.
 2. **Cards (`/app/compras/planejar/:sessionId`).** One dish at a time, with "+N itens novos" and what it reuses. "Sim", "Sim, 2 vezes", "Não" with an optional reason, "Desfazer", "Quero outras opções", and "Já está bom, ver a lista".
-3. **Review (`.../revisar`).** Dishes in a suggested order, what spoils first coming first. Any dish can be given a date, changed, swapped, or removed. "Usar este plano" accepts the menu.
-4. **List.** The existing list, with "Já tenho" and "Não achei este item" on each line, "Compartilhar lista", and "Separar por lugar".
+3. **Review (`.../revisar`).** Dishes in a suggested order, what spoils first coming first. Any dish can be given a date, changed, swapped, or removed. "Escolher mais pratos" goes back to the cards while meals are missing. "Usar este plano" accepts the menu, asking first when meals are missing.
+4. **List.** One line per item: check, name, amount, and the dishes it is for. "Comprei", "Já tenho", and "Não achei" sit behind the "⋯" on the line. "Compartilhar lista" and "Separar por lugar" are at the top. Opened from a review, "Voltar" returns to it.
 5. **Arrival (`/app/cardapio/:menuId/chegada`).** "Cheguei do mercado": where each purchase goes and how to divide it, recorded with one confirmation.
 
 ## "Quero outras opções" (PLAN-0064)
@@ -60,7 +60,7 @@ While it searches, a wait takes the dish's place, and the dishes that answer com
 | Profile incomplete | Two people by default; no restriction is assumed |
 | Guard blocks every card | Other options are offered; the rule is never relaxed |
 | AI unavailable or budget exhausted | Saved recipes and library ideas keep working, with one notice |
-| No cards left (5 batches used, or 60 cards) | "Não há mais opções agora"; finish with what was chosen |
+| No cards left (12 batches used, or 120 cards) | "Não há mais opções agora"; finish with what was chosen |
 | Left mid-flow | Everything is saved; resume from setup |
 | Discard | The menu is archived and cards deleted; recipes already created stay |
 | Undo after a recipe was created | The meals leave the menu; the recipe stays in the library |

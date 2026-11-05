@@ -1901,7 +1901,7 @@ namespace Cocinaris.Infrastructure.Persistence.Migrations
 
                     b.ToTable("shopping_plan_sessions", "planning", t =>
                         {
-                            t.HasCheckConstraint("ck_shopping_plan_sessions_batches", "\"BatchCount\" BETWEEN 0 AND 5");
+                            t.HasCheckConstraint("ck_shopping_plan_sessions_batches", "\"BatchCount\" BETWEEN 0 AND 12");
 
                             t.HasCheckConstraint("ck_shopping_plan_sessions_status", "\"Status\" IN ('Building', 'Reviewing', 'Finished', 'Abandoned')");
                         });

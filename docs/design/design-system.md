@@ -57,12 +57,13 @@ The success green and the emerald accent are different hues and roles. Success a
 ## Components
 
 - **Button** (`components/ui/button.tsx`): `rounded-xl` with an emerald focus ring offset from the page, and `motion-safe:active:scale-[0.98]` on press.
-  - Sizes: default 44px, large 56px for the main action of a screen, small 36px for secondary actions inside rows.
+  - Sizes: default 44px, large 56px for the main action of a screen. Small is 44px on phones and 36px from `md` up, for secondary actions inside rows. A width rule is used because headless and some real browsers do not report a coarse pointer reliably.
   - `default`: the emerald primary, once per view.
   - `secondary`: a quiet surface button with a border.
   - `ghost`: tertiary actions.
   - `destructive`: only inside confirmations. A delete entry point is a ghost button with destructive text at the bottom of the page.
 - **ChoiceChips** (`components/choice/ChoiceChips.tsx`): one choice among up to about six short options. It is a labelled group of toggle buttons with `aria-pressed`, and the chosen chip carries the accent. Use it instead of a native select for action types, places, and states. Longer or open lists stay in a select or combobox.
+- **Phone audit:** `scripts/e2e/mobile-audit.mjs` fails on sideways scrolling, overlap, clipped text, and controls under 44px on the planning screens at 320, 360, and 390px.
 - **Inputs and selects:** 44px high, `rounded-xl`, on the `card` surface with an `input` border. On focus, the border turns `ring` and a soft ring halo appears.
 - **Rows:** lists use `divide-y` rows, with the name in 17px semibold and the detail in muted 14px.
 - **Empty fields:** hidden. A page never lists "Nenhum" for data that was not entered.

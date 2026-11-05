@@ -1,0 +1,27 @@
+{
+  "snack": {
+    "maxTotalMinutes": 60,
+    "blockedWords": [
+      "macarrao", "espaguete", "lasanha", "nhoque", "risoto", "ensopado", "feijoada", "strogonoff", "estrogonofe",
+      "moqueca", "escondidinho", "tigela", "prato", "picadinho", "parmegiana", "salteado", "massa em molho", "assadeira", "sopa", "caldo", "canja",
+      "spaghetti", "lasagna", "gnocchi", "risotto", "stew", "casserole", "stir fry", "stir-fry", "curry", "bowl", "soup",
+      "espagueti", "guiso", "cazuela", "plato"
+    ]
+  },
+  "breakfast": {
+    "maxTotalMinutes": 60,
+    "blockedWords": [
+      "macarrao", "espaguete", "lasanha", "nhoque", "risoto", "ensopado", "feijoada", "strogonoff", "estrogonofe",
+      "moqueca", "escondidinho", "picadinho", "parmegiana", "salteado", "massa em molho", "assadeira", "sopa", "caldo", "canja",
+      "spaghetti", "lasagna", "gnocchi", "risotto", "stew", "casserole", "stir fry", "stir-fry", "curry", "soup",
+      "espagueti", "guiso", "cazuela"
+    ]
+  },
+  "main": {
+    "blockedWords": [
+      "pipoca", "biscoito", "bolacha", "cookie", "cookies", "barrinha",
+      "popcorn", "biscuit", "cracker",
+      "palomitas", "galleta", "galletas"
+    ]
+  }
+}

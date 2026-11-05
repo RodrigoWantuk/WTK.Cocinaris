@@ -464,6 +464,19 @@ export function createLiveShoppingPlanRepository(options?: {
         "Unable to save the preparation session.",
         () => undefined,
       ),
+    reopen: (sessionId, { csrfToken }) =>
+      run(
+        () =>
+          client.POST("/api/v1/planning/shopping-plans/{sessionId}/reopen", {
+            params: {
+              path: { sessionId },
+              header: { "X-CSRF-TOKEN": csrfToken },
+            },
+            ...include,
+          }),
+        "Unable to go back to the dishes.",
+        mapPlan,
+      ),
     findRouteLink: ({ menuId, date }, signal) =>
       run(
         () =>

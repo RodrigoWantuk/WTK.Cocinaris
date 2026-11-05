@@ -75,6 +75,17 @@ public static class RecipeAiRequestEnvelopes
     public static string BuildPlanDeckRepairRequest(RecipeSuggestRequestContext context, PlanDeckBrief brief, IReadOnlyList<string> validationErrors, string previousInvalidOutput) =>
         BuildPlanDeckEnvelope(context, brief, new RepairPayload(validationErrors, previousInvalidOutput));
 
+    // A profile taste applied to every dish gave 23 spicy dishes out of 31 in real use (PLAN-0065).
+    private const string TasteRule = "userPresets.preferences are tastes, not requirements: at most 2 of the 6 dishes may lead with any one taste or flavor, and vary cuisines and main ingredients. userPresets.restrictions remain absolute.";
+
+    // The model labels dishes itself and once called spaghetti a snack, so the label needs a meaning.
+    private static string MealGuide(string meal) => meal switch
+    {
+        "snack" => "A small bite between meals: finger food, baked goods, a small sandwich, something to nibble. Never a plated main course, a pasta dish, a stew, or a bowl.",
+        "breakfast" => "What people eat in the morning: bread, eggs, fruit, cereal, tapioca, cuscuz. Never a lunch or dinner main.",
+        _ => "A complete main meal. Never only a snack or a dessert."
+    };
+
     private static string PantryRule(string? pantry) => pantry switch
     {
         "free" => "The person asked not to plan around what they have, so use any ingredients and do not favor earlier dishes.",
@@ -117,7 +128,7 @@ public static class RecipeAiRequestEnvelopes
             ["shoppingListIngredients"] = ToStringArray(brief.Pantry == "free" ? [] : brief.ShoppingListIngredients.Take(40)),
             ["rejectedDishes"] = ToStringArray(brief.RejectedDishes.Take(30)),
             ["avoidIngredients"] = ToStringArray(brief.AvoidIngredients.Take(10)),
-            ["rule"] = "Return six dishes a home cook would recognize. " + PantryRule(brief.Pantry) + " Make dishes differ in format, technique, and flavor. Rice, chicken, and tomato may repeat if the dishes do not feel the same. Never use avoidIngredients. List everything to buy, with quantities for userPresets.servings, in additionalIngredients. userPresets.restrictions always win."
+            ["rule"] = "Return six dishes a home cook would recognize. " + PantryRule(brief.Pantry) + " " + TasteRule + " Make dishes differ in format, technique, and flavor. Rice, chicken, and tomato may repeat if the dishes do not feel the same. Never use avoidIngredients. List everything to buy, with quantities for userPresets.servings, in additionalIngredients. userPresets.restrictions always win."
         };
         if (withComponents)
         {
@@ -129,6 +140,7 @@ public static class RecipeAiRequestEnvelopes
             plan["maxActiveMinutes"] = minutes;
         }
 
+        plan["mealGuide"] = new JsonObject(brief.MealTypes.Distinct(StringComparer.Ordinal).Select(meal => KeyValuePair.Create<string, JsonNode?>(meal, MealGuide(meal))));
         if (brief.Pantry == "free")
         {
             // What the model cannot see it cannot build on, which holds better than asking it not to.

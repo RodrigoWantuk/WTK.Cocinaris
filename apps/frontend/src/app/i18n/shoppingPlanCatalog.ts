@@ -2,6 +2,17 @@ import type { ProductionLocale } from "./productionCatalog";
 
 /** Text of shopping plans (PLAN-0062). */
 const ptBR: Record<string, string> = {
+  "shopping.summary.toBuy.one": "1 item para comprar",
+  "shoppingPlan.progress.one":
+    "Refeição {{current}} de {{total}} · lista: {{items}} item",
+  "shoppingPlan.card.newItems.one": "+{{count}} item novo",
+  "shoppingPlan.review.missing.one": "Falta 1 refeição. Usar assim?",
+  "shoppingPlan.review.missing": "Faltam {{count}} refeições. Usar assim?",
+  "shoppingPlan.review.useAnyway": "Usar assim",
+  "shoppingPlan.review.keepChoosing": "Continuar escolhendo",
+  "shopping.backToPlan": "Voltar para o plano",
+  "shopping.line.actions": "Ações de {{item}}",
+  "planning.emptyDays": "Dias sem nada planejado",
   "push.title": "Avisos do plano",
   "push.explain":
     "Um aviso por dia, às 9h, quando houver algo do seu plano para resolver. O aviso não diz o que é: só pede para abrir o Cocinaris.",
@@ -260,7 +271,7 @@ const ptBR: Record<string, string> = {
   "shoppingPlan.review.swap": "Trocar",
   "shoppingPlan.review.remove": "Remover",
   "shoppingPlan.review.onDay": "Em {{day}}",
-  "shoppingPlan.review.position": "{{position}}º a cozinhar",
+  "shoppingPlan.review.position": "Sugestão de ordem: {{position}}º",
   "shoppingPlan.review.covers": "rende {{count}} refeições",
   "shoppingPlan.review.servings": "Porções",
   "shoppingPlan.review.date": "Marcar dia (opcional)",
@@ -284,6 +295,18 @@ const ptBR: Record<string, string> = {
 };
 
 const en: Record<string, string> = {
+  "shopping.summary.toBuy.one": "1 item to buy",
+  "shoppingPlan.progress.one":
+    "Meal {{current}} of {{total}} · list: {{items}} item",
+  "shoppingPlan.card.newItems.one": "+{{count}} new item",
+  "shoppingPlan.review.missing.one": "1 meal is missing. Use it like this?",
+  "shoppingPlan.review.missing":
+    "{{count}} meals are missing. Use it like this?",
+  "shoppingPlan.review.useAnyway": "Use it like this",
+  "shoppingPlan.review.keepChoosing": "Keep choosing",
+  "shopping.backToPlan": "Back to the plan",
+  "shopping.line.actions": "Actions for {{item}}",
+  "planning.emptyDays": "Days with nothing planned",
   "push.title": "Plan reminders",
   "push.explain":
     "One reminder a day, at 9 AM, when something in your plan needs attention. It does not say what: it only asks you to open Cocinaris.",
@@ -541,7 +564,7 @@ const en: Record<string, string> = {
   "shoppingPlan.review.swap": "Swap",
   "shoppingPlan.review.remove": "Remove",
   "shoppingPlan.review.onDay": "On {{day}}",
-  "shoppingPlan.review.position": "Number {{position}} to cook",
+  "shoppingPlan.review.position": "Suggested order: {{position}}",
   "shoppingPlan.review.covers": "yields {{count}} meals",
   "shoppingPlan.review.servings": "Portions",
   "shoppingPlan.review.date": "Set a day (optional)",
@@ -563,6 +586,17 @@ const en: Record<string, string> = {
 };
 
 const es: Record<string, string> = {
+  "shopping.summary.toBuy.one": "1 artículo por comprar",
+  "shoppingPlan.progress.one":
+    "Comida {{current}} de {{total}} · lista: {{items}} artículo",
+  "shoppingPlan.card.newItems.one": "+{{count}} artículo nuevo",
+  "shoppingPlan.review.missing.one": "Falta 1 comida. ¿Usarlo así?",
+  "shoppingPlan.review.missing": "Faltan {{count}} comidas. ¿Usarlo así?",
+  "shoppingPlan.review.useAnyway": "Usarlo así",
+  "shoppingPlan.review.keepChoosing": "Seguir eligiendo",
+  "shopping.backToPlan": "Volver al plan",
+  "shopping.line.actions": "Acciones de {{item}}",
+  "planning.emptyDays": "Días sin nada planificado",
   "push.title": "Avisos del plan",
   "push.explain":
     "Un aviso al día, a las 9, cuando haya algo de tu plan por resolver. El aviso no dice qué es: solo pide abrir Cocinaris.",
@@ -821,7 +855,7 @@ const es: Record<string, string> = {
   "shoppingPlan.review.swap": "Cambiar",
   "shoppingPlan.review.remove": "Quitar",
   "shoppingPlan.review.onDay": "El {{day}}",
-  "shoppingPlan.review.position": "N.º {{position}} para cocinar",
+  "shoppingPlan.review.position": "Orden sugerido: {{position}}.º",
   "shoppingPlan.review.covers": "rinde {{count}} comidas",
   "shoppingPlan.review.servings": "Porciones",
   "shoppingPlan.review.date": "Marcar día (opcional)",

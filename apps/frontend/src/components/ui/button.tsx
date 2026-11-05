@@ -27,7 +27,8 @@ export const buttonVariants = cva(
       },
       size: {
         default: "h-11 px-5",
-        sm: "h-9 px-3.5 text-sm",
+        // Small only where a mouse is likely: a phone needs a 44 px target (PLAN-0065).
+        sm: "h-11 px-3.5 text-sm md:h-9",
         lg: "h-14 px-7 text-base",
         icon: "h-11 w-11",
       },

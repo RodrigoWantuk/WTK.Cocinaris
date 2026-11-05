@@ -156,18 +156,187 @@ export function MenuPage() {
     },
   ];
 
+  const planned = groups.filter((group) => group.entries.length > 0);
+  const empty = groups.filter((group) => group.entries.length === 0);
+  const renderGroup = (group: (typeof groups)[number]) => (
+    <li
+      key={group.key}
+      data-testid={`menu-day-${group.key}`}
+      className="space-y-2 p-4"
+    >
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="flex items-center gap-3 font-display text-lg">
+          {/* A calendar leaf per day; today carries the accent. */}
+          <span
+            aria-hidden="true"
+            className={`flex h-11 w-11 shrink-0 flex-col items-center justify-center rounded-xl ${
+              group.key === today
+                ? "bg-primary text-primary-foreground"
+                : "bg-secondary text-secondary-foreground"
+            }`}
+          >
+            {group.key === FLEXIBLE ? (
+              <CalendarDays className="h-5 w-5" />
+            ) : (
+              <>
+                <span className="text-[10px] font-semibold uppercase leading-none">
+                  {new Intl.DateTimeFormat(locale, { weekday: "short" })
+                    .format(new Date(`${group.key}T12:00:00`))
+                    .replace(".", "")}
+                </span>
+                <span className="tabular text-base font-bold leading-tight">
+                  {Number(group.key.slice(8, 10))}
+                </span>
+              </>
+            )}
+          </span>
+          {group.title}
+        </h2>
+        {editable ? (
+          <div className="ml-auto flex gap-1">
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              aria-expanded={addingTo === group.key}
+              data-testid={`menu-add-${group.key}`}
+              onClick={() => {
+                setSuggestingFor(null);
+                setAddingTo((current) =>
+                  current === group.key ? null : group.key,
+                );
+              }}
+            >
+              <Plus aria-hidden="true" />
+              <span className="sr-only sm:not-sr-only">
+                {t("planning.addMeal")}
+              </span>
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              aria-expanded={suggestingFor === group.key}
+              data-testid={`menu-ai-${group.key}`}
+              onClick={() => {
+                setAddingTo(null);
+                setSuggestingFor((current) =>
+                  current === group.key ? null : group.key,
+                );
+              }}
+            >
+              <Sparkles aria-hidden="true" />
+              <span className="sr-only sm:not-sr-only">
+                {t("planning.ai.open")}
+              </span>
+            </Button>
+          </div>
+        ) : null}
+      </div>
+      {group.entries.length === 0 &&
+      addingTo !== group.key &&
+      suggestingFor !== group.key ? (
+        <p className="text-sm text-muted-foreground">
+          {t(
+            group.key === FLEXIBLE
+              ? "planning.flexibleHint"
+              : "planning.emptyDay",
+          )}
+        </p>
+      ) : null}
+      <ul className="space-y-2">
+        {group.entries.map((entry) => (
+          <EntryRow
+            key={entry.entryId}
+            entry={entry}
+            thumbnail={thumbnails.get(entry.recipeId)}
+            menu={menu}
+            editable={editable}
+            busy={busy}
+            editing={editing === entry.entryId}
+            onEdit={() =>
+              setEditing((current) =>
+                current === entry.entryId ? null : entry.entryId,
+              )
+            }
+            onCook={() => void cook(entry)}
+            onChange={async (input) => {
+              if (
+                await mutate((csrfToken) =>
+                  repo.changeEntry(menu.menuId, entry.entryId, input, {
+                    csrfToken,
+                  }),
+                )
+              )
+                setEditing(null);
+            }}
+            onRemove={() =>
+              void mutate((csrfToken) =>
+                repo.removeEntry(menu.menuId, entry.entryId, {
+                  csrfToken,
+                }),
+              )
+            }
+          />
+        ))}
+      </ul>
+      {suggestingFor === group.key ? (
+        <AiMealSuggestion
+          menuId={menu.menuId}
+          plannedDate={group.key === FLEXIBLE ? null : group.key}
+          initialServings={2}
+          onCancel={() => setSuggestingFor(null)}
+          onChosen={async (input) => {
+            const added = await mutate((csrfToken) =>
+              repo.addEntry(
+                menu.menuId,
+                {
+                  recipeId: input.recipeId,
+                  plannedDate: group.key === FLEXIBLE ? null : group.key,
+                  mealType: input.mealType,
+                  servings: input.servings,
+                },
+                { csrfToken, idempotencyKey: crypto.randomUUID() },
+              ),
+            );
+            if (added) setSuggestingFor(null);
+            return added;
+          }}
+        />
+      ) : null}
+      {addingTo === group.key ? (
+        <AddMeal
+          plannedDate={group.key === FLEXIBLE ? null : group.key}
+          busy={busy}
+          onCancel={() => setAddingTo(null)}
+          onAdd={async (input, idempotencyKey) => {
+            if (
+              await mutate((csrfToken) =>
+                repo.addEntry(menu.menuId, input, {
+                  csrfToken,
+                  idempotencyKey,
+                }),
+              )
+            )
+              setAddingTo(null);
+          }}
+        />
+      ) : null}
+    </li>
+  );
+
   return (
     <div data-testid="menu-page" className="space-y-6">
       <div className="space-y-2">
         <Link
           to="/app/cardapio"
-          className="inline-flex items-center gap-1 text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+          className="inline-flex min-h-11 items-center gap-1 text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
         >
           <ChevronLeft aria-hidden="true" className="h-4 w-4" />
           {t("planning.back")}
         </Link>
         <h1 className="font-display text-3xl">
-          {menu.name || formatMenuPeriod(menu.startDate, menu.endDate, locale)}
+          {menu.name || t("planning.title")}
         </h1>
         <p className="text-muted-foreground">
           {formatMenuPeriod(menu.startDate, menu.endDate, locale)} ·{" "}
@@ -229,175 +398,32 @@ export function MenuPage() {
         </p>
       ) : null}
 
-      {/* One surface with a row per day instead of a card per day (review M2). */}
-      <ol className="surface divide-y divide-border overflow-hidden">
-        {groups.map((group) => (
-          <li
-            key={group.key}
-            data-testid={`menu-day-${group.key}`}
-            className="space-y-2 p-4"
-          >
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <h2 className="flex items-center gap-3 font-display text-lg">
-                {/* A calendar leaf per day; today carries the accent. */}
-                <span
-                  aria-hidden="true"
-                  className={`flex h-11 w-11 shrink-0 flex-col items-center justify-center rounded-xl ${
-                    group.key === today
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-secondary text-secondary-foreground"
-                  }`}
-                >
-                  {group.key === FLEXIBLE ? (
-                    <CalendarDays className="h-5 w-5" />
-                  ) : (
-                    <>
-                      <span className="text-[10px] font-semibold uppercase leading-none">
-                        {new Intl.DateTimeFormat(locale, { weekday: "short" })
-                          .format(new Date(`${group.key}T12:00:00`))
-                          .replace(".", "")}
-                      </span>
-                      <span className="tabular text-base font-bold leading-tight">
-                        {Number(group.key.slice(8, 10))}
-                      </span>
-                    </>
-                  )}
-                </span>
-                {group.title}
-              </h2>
-              {editable ? (
-                <div className="flex gap-1">
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="ghost"
-                    aria-expanded={addingTo === group.key}
-                    data-testid={`menu-add-${group.key}`}
-                    onClick={() => {
-                      setSuggestingFor(null);
-                      setAddingTo((current) =>
-                        current === group.key ? null : group.key,
-                      );
-                    }}
-                  >
-                    <Plus aria-hidden="true" />
-                    <span className="sr-only sm:not-sr-only">
-                      {t("planning.addMeal")}
-                    </span>
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="ghost"
-                    aria-expanded={suggestingFor === group.key}
-                    data-testid={`menu-ai-${group.key}`}
-                    onClick={() => {
-                      setAddingTo(null);
-                      setSuggestingFor((current) =>
-                        current === group.key ? null : group.key,
-                      );
-                    }}
-                  >
-                    <Sparkles aria-hidden="true" />
-                    <span className="sr-only sm:not-sr-only">
-                      {t("planning.ai.open")}
-                    </span>
-                  </Button>
-                </div>
-              ) : null}
-            </div>
-            {group.entries.length === 0 &&
-            addingTo !== group.key &&
-            suggestingFor !== group.key ? (
-              <p className="text-sm text-muted-foreground">
-                {t(
-                  group.key === FLEXIBLE
-                    ? "planning.flexibleHint"
-                    : "planning.emptyDay",
-                )}
-              </p>
-            ) : null}
-            <ul className="space-y-2">
-              {group.entries.map((entry) => (
-                <EntryRow
-                  key={entry.entryId}
-                  entry={entry}
-                  thumbnail={thumbnails.get(entry.recipeId)}
-                  menu={menu}
-                  editable={editable}
-                  busy={busy}
-                  editing={editing === entry.entryId}
-                  onEdit={() =>
-                    setEditing((current) =>
-                      current === entry.entryId ? null : entry.entryId,
-                    )
-                  }
-                  onCook={() => void cook(entry)}
-                  onChange={async (input) => {
-                    if (
-                      await mutate((csrfToken) =>
-                        repo.changeEntry(menu.menuId, entry.entryId, input, {
-                          csrfToken,
-                        }),
-                      )
-                    )
-                      setEditing(null);
-                  }}
-                  onRemove={() =>
-                    void mutate((csrfToken) =>
-                      repo.removeEntry(menu.menuId, entry.entryId, {
-                        csrfToken,
-                      }),
-                    )
-                  }
-                />
-              ))}
-            </ul>
-            {suggestingFor === group.key ? (
-              <AiMealSuggestion
-                menuId={menu.menuId}
-                plannedDate={group.key === FLEXIBLE ? null : group.key}
-                initialServings={2}
-                onCancel={() => setSuggestingFor(null)}
-                onChosen={async (input) => {
-                  const added = await mutate((csrfToken) =>
-                    repo.addEntry(
-                      menu.menuId,
-                      {
-                        recipeId: input.recipeId,
-                        plannedDate: group.key === FLEXIBLE ? null : group.key,
-                        mealType: input.mealType,
-                        servings: input.servings,
-                      },
-                      { csrfToken, idempotencyKey: crypto.randomUUID() },
-                    ),
-                  );
-                  if (added) setSuggestingFor(null);
-                  return added;
-                }}
-              />
-            ) : null}
-            {addingTo === group.key ? (
-              <AddMeal
-                plannedDate={group.key === FLEXIBLE ? null : group.key}
-                busy={busy}
-                onCancel={() => setAddingTo(null)}
-                onAdd={async (input, idempotencyKey) => {
-                  if (
-                    await mutate((csrfToken) =>
-                      repo.addEntry(menu.menuId, input, {
-                        csrfToken,
-                        idempotencyKey,
-                      }),
-                    )
-                  )
-                    setAddingTo(null);
-                }}
-              />
-            ) : null}
-          </li>
-        ))}
-      </ol>
+      {/* What is planned comes first; a person with dishes and no days must not scroll past empty days. */}
+      {planned.length > 0 ? (
+        <ol
+          className="surface divide-y divide-border overflow-hidden"
+          data-testid="menu-planned"
+        >
+          {planned.map(renderGroup)}
+        </ol>
+      ) : null}
+      {empty.length > 0 ? (
+        <details
+          className="surface group overflow-hidden"
+          data-testid="menu-empty-days"
+          open={planned.length === 0}
+        >
+          <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 p-4 font-medium">
+            {t("planning.emptyDays")}
+            <span className="tabular rounded-full bg-secondary px-2 text-xs">
+              {empty.length}
+            </span>
+          </summary>
+          <ol className="divide-y divide-border border-t border-border">
+            {empty.map(renderGroup)}
+          </ol>
+        </details>
+      ) : null}
     </div>
   );
 }
@@ -466,11 +492,6 @@ function EntryRow({
                 entry.mealsCovered > 1
                   ? t("shoppingPlan.review.covers", {
                       count: entry.mealsCovered,
-                    })
-                  : null,
-                entry.suggestedOrder !== null && !entry.plannedDate
-                  ? t("shoppingPlan.review.position", {
-                      position: entry.suggestedOrder,
                     })
                   : null,
                 t(`planning.entryStatus.${entry.status}`),

@@ -105,22 +105,30 @@ try {
   if ((await line.count()) === 0) {
     check("the list has the plan's ingredient", (await page.getByTestId("shopping-item").count()) > 0);
   }
-  const lines = await page.getByTestId("shopping-item-have").count();
+  const lines = await page.getByTestId("shopping-item-more").count();
   check("lines can be marked as already at home", lines > 0, `${lines} lines`);
+  await page.getByTestId("shopping-item-more").first().click();
   await page.getByTestId("shopping-item-have").first().click();
   await page.getByTestId("shopping-have-notice").waitFor({ timeout: 10000 });
   await page.getByTestId("shopping-have-undo").click();
   await page.getByTestId("shopping-have-notice").waitFor({ state: "detached", timeout: 10000 });
-  await page.waitForFunction((count) => document.querySelectorAll('[data-testid="shopping-item-have"]').length === count, lines, { timeout: 10000 });
+  await page.waitForFunction((count) => document.querySelectorAll('[data-testid="shopping-item-more"]').length === count, lines, { timeout: 10000 });
   check("undo puts the line back", true);
 
+  await page.getByTestId("shopping-back").click();
+  await page.getByTestId("plan-review").waitFor({ timeout: 10000 });
+  check("from a draft's list, back returns to the review", true);
   await page.goto(review, { waitUntil: "networkidle" });
   await page.getByTestId("plan-use").click();
+  // A plan with meals still open asks first.
+  await page.getByTestId("plan-use-anyway").or(page.getByTestId("menu-page")).first().waitFor({ timeout: 15000 });
+  if (await page.getByTestId("plan-use-anyway").count()) await page.getByTestId("plan-use-anyway").click();
   await page.getByTestId("menu-page").waitFor({ timeout: 15000 });
   await page.getByText("Em uso", { exact: true }).waitFor({ timeout: 10000 });
 
   const menuUrl = page.url();
   await page.goto(`${menuUrl}/compras`, { waitUntil: "networkidle" });
+  await page.getByTestId("shopping-item-more").first().click();
   await page.getByTestId("shopping-not-found").first().click();
   await page.getByTestId("shopping-later-save").click();
   await page.getByTestId("shopping-later").waitFor({ timeout: 10000 });

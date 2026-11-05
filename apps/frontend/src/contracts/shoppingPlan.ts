@@ -200,6 +200,11 @@ interface Mutation {
 /** Shopping plan repository. Every method is owner-scoped by the backend session. */
 export interface ShoppingPlanRepository {
   getStart(signal?: AbortSignal): Promise<ShoppingPlanStart>;
+  /** Goes back to choosing dishes from the review. */
+  reopen(
+    sessionId: string,
+    options: { csrfToken: string },
+  ): Promise<ShoppingPlan>;
   /** Creates a plan; a retry with the same key returns the same plan. */
   create(
     input: Omit<ShoppingPlanSetup, "anchorIngredient"> & {

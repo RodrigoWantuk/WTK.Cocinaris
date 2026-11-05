@@ -143,6 +143,10 @@ public sealed class PostgreSqlShoppingPlanStore(ApplicationDbContext database) :
                 cancellationToken) == 1;
 
     /// <inheritdoc />
+    public Task DeleteCardsByIdAsync(Guid ownerUserId, Guid sessionId, IReadOnlyCollection<Guid> cardIds, CancellationToken cancellationToken) =>
+        database.ShoppingPlanCards.Where(item => item.OwnerUserId == ownerUserId && item.SessionId == sessionId && cardIds.Contains(item.Id)).ExecuteDeleteAsync(cancellationToken);
+
+    /// <inheritdoc />
     public async Task DeleteCardsAsync(Guid ownerUserId, Guid sessionId, IReadOnlyCollection<ShoppingPlanCardState> states, CancellationToken cancellationToken)
     {
         var names = states.Select(state => state.ToString()).ToList();
