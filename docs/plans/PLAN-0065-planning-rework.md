@@ -7,7 +7,7 @@
 - **Created:** 2026-11-05
 - **Last updated:** 2026-11-05
 - **Branch:** Plan publication `agent/plan-0065-planning-rework`; each slice uses the branch named in its section
-- **Pull request:** #94 (plan publication, draft)
+- **Pull request:** #94 (plan publication, merged); #95 (Slice 0, draft)
 - **Related issues:** None
 - **Related ADRs:** ADR-0009, ADR-0012, ADR-0013
 - **Dependencies:** PLAN-0062, PLAN-0063, PLAN-0064 (all merged). This plan replaces the deck and review screens of PLAN-0062 Slice 1 and the panel of PLAN-0064.
@@ -462,7 +462,7 @@ Prices and budgets, curated pack sizes, loose list items (a decision of PLAN-006
 
 ### 2026-11-05 — Claude Code (Slice 0)
 
-- **Run delivery target:** Slice 0, after the owner said to begin. This branch carries the plan's two commits, because #94 is still open; #94 can be closed or merged first.
+- **Run delivery target:** Slice 0, after the owner said to begin. This branch started with the plan's two commits while #94 was open; #94 has since merged, and `main` was merged in.
 - **Changes:**
   - **Backend:** `MealFit` with `Catalog/meal-fit-rules.json`, `DishSimilarity`, `planDeck.mealGuide`, the taste rule, one retry when fewer than 3 dishes survive, `POST /{id}/reopen`, deletion of earlier unseen AI and library dishes after an answer, 12 batches and 120 cards, order numbers that survive deletions, and migration `RaiseShoppingPlanBatchLimit`.
   - **Frontend:** `PlanExpansionRunner` (one queue for the app), the new list line, the menu with planned dishes first and empty days folded, the confirmation when meals are missing, "Escolher mais pratos" through `reopen`, "Voltar" from a draft's list, 44 px small buttons and chips on phones, and plurals.
