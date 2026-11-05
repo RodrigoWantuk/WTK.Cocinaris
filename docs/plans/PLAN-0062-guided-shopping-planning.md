@@ -841,6 +841,7 @@ Migrations are additive, and rollback means deploying the earlier code with unus
   - Full local gates (G3's gate run) and backend tests: not run. No backend code changed.
   - By hand: keyboard only and 320 px. A real phone and a real installed app were not tested; "installed" in the journey is a browser with the worker active.
   - `deploy-linux-host.sh --rollback` itself was not run; only the script it installs was exercised.
+- **Correction:** The first Slice 3 commit deleted `browser-smoke-report.schema.example.json` by mistake, through a cleanup of smoke output. The next commit restores it unchanged.
 - **Result:** Ready for owner review.
 - **Next action:** See `Exact next action`.
 
