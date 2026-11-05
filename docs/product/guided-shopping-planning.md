@@ -81,7 +81,7 @@ For plans that cook ahead, a card may suggest a base after a dish that uses it i
 
 A market often has no signal, so the list keeps working without it ([ADR-0012](../architecture/decisions/0012-offline-shopping-list.md)).
 
-- **What opens.** The application, and the last lists opened on this device (at most five menus). Other screens say "Precisa de internet" and link to the list. The list shows when it was saved.
+- **What opens.** The application, and the last lists opened or loaded on this device (at most five menus); the planning and home pages load the current one. Other screens say "Precisa de internet" and link to the list. The list shows when it was saved.
 - **What works.** Checking a line, and "Comprar depois" and back. Marks reach the server by themselves when the connection returns, oldest first.
 - **What does not.** "Comprei", "Já tenho", "Cheguei do mercado", substitutes, places, and package sizes need the server, so they are disabled and the screen says so.
 - **Banner.** "Sem internet. Suas marcações serão enviadas depois."

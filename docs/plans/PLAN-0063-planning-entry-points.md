@@ -83,7 +83,7 @@ This replaces part of the navigation approved in PLAN-0054 direction 2: menu pag
   - The guided flow's button says "Começar um plano", and its title says "Novo plano". The result is still called a "cardápio".
   - `today.quick.plan` hints at the next step on phones too, so the tile's detail line is now visible at every width.
 - **Validation performed:**
-  - Frontend: typecheck, lint, format, and tests.
+  - Local gates `frontend,secrets` on `d6c5dc2`: all 19 steps passed, with 620 frontend tests. The next commit changes only documentation.
   - `planning-entry-journey.mjs` on the proxy replica: 16 of 16, including 320 px and the list opening offline without having been opened.
   - `shopping-plan-journey.mjs`: 18 of 18, before the offline save was added.
   - `offline-list-journey.mjs`: 25 checks passed, none failed.
