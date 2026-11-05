@@ -296,7 +296,7 @@ describe("PlanningHubPage", () => {
     show();
     expect(await screen.findByTestId("planning-hub-resume")).toHaveAttribute(
       "href",
-      "/app/compras/planejar/s1/revisar",
+      "/app/compras/planejar/s1",
     );
     expect(screen.queryByTestId("planning-hub-new")).toBeNull();
   });

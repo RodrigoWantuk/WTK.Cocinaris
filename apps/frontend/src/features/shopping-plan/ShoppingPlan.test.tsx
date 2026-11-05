@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -8,10 +8,11 @@ import {
   REQUIRED_SHOPPING_PLAN_I18N_KEYS,
 } from "@/app/i18n/shoppingPlanCatalog";
 import { SessionProvider } from "@/app/session/SessionProvider";
-import { RecipeApiError } from "@/contracts/recipes";
+import { RecipeApiError, type RecipeRepository } from "@/contracts/recipes";
 import type { ShoppingItem } from "@/contracts/planning";
 import type {
   ShoppingPlan,
+  ShoppingPlanAccepted,
   ShoppingPlanCard,
   ShoppingPlanRepository,
   ShoppingPlanStart,
@@ -24,23 +25,27 @@ import {
 import { buildShoppingListText } from "@/features/planning/shoppingListText";
 import { createUnavailablePlanningRepository } from "@/adapters/live/livePlanningRepository";
 import { PlanningProvider } from "@/features/planning/PlanningProvider";
-import { ShoppingPlanDeckPage } from "./ShoppingPlanDeckPage";
-import { ShoppingPlanReviewPage } from "./ShoppingPlanReviewPage";
+import { RecipeProvider } from "@/features/recipes/RecipeProvider";
+import { localIsoDate, addDays } from "@/features/planning/planningDates";
+import { ShoppingPlanBoardPage } from "./ShoppingPlanBoardPage";
 import { ShoppingPlanProvider } from "./ShoppingPlanProvider";
 import { ShoppingPlanSetupPage } from "./ShoppingPlanSetupPage";
 import { UNDO_WINDOW_MS, useExpansionQueue } from "./useExpansionQueue";
 
 const SETUP = {
   today: "2026-11-04",
-  days: 5,
-  mealTypes: ["dinner"],
+  days: 14,
+  mealTypes: ["snack"],
   mealsOut: 0,
   cookingStyle: "mix",
-  priority: "waste",
-  prepDate: "2026-11-04",
-  prepMinutes: 120,
+  priority: "none",
+  prepDate: null,
+  prepMinutes: null,
   anchorIngredient: null,
-  people: 2,
+  people: 1,
+  mealCounts: { snack: 7 },
+  startDate: "2026-11-04",
+  endDate: "2026-11-17",
 };
 
 const card = (
@@ -49,12 +54,12 @@ const card = (
 ): ShoppingPlanCard => ({
   cardId: id,
   source: "ai",
-  name: `Prato ${id}`,
-  summary: "Um prato simples.",
-  mealType: "dinner",
-  servings: 2,
-  totalMinutes: 30,
-  activeMinutes: 20,
+  name: `Lanche ${id}`,
+  summary: "Um lanche simples.",
+  mealType: "snack",
+  servings: 1,
+  totalMinutes: 20,
+  activeMinutes: 10,
   newItemCount: 2,
   reusedNames: ["Tomate"],
   reasonCode: null,
@@ -62,12 +67,33 @@ const card = (
   overBudget: false,
   guardCode: null,
   guardIngredient: null,
-  leadIngredient: "Frango",
+  leadIngredient: "Queijo",
   ingredients: [
-    { name: "Frango", quantity: 300, unit: "Gram", optional: false },
+    { name: "Queijo", quantity: 100, unit: "Gram", optional: false },
   ],
   ...extra,
 });
+
+const chosen = (
+  id: string,
+  extra: Partial<ShoppingPlanAccepted> = {},
+): ShoppingPlanAccepted => ({
+  cardId: id,
+  name: `Lanche ${id}`,
+  mealType: "snack",
+  repeats: 1,
+  mode: null,
+  expansionState: "ready",
+  failureCode: null,
+  recipeId: `r-${id}`,
+  guardCode: null,
+  guardIngredient: null,
+  plannedDate: null,
+  totalMinutes: 25,
+  ...extra,
+});
+
+const OPTIONS = ["a", "b", "c", "d", "e", "f"].map((id) => card(id));
 
 const plan = (extra: Partial<ShoppingPlan> = {}): ShoppingPlan => ({
   sessionId: "s1",
@@ -75,24 +101,47 @@ const plan = (extra: Partial<ShoppingPlan> = {}): ShoppingPlan => ({
   status: "building",
   setup: SETUP,
   progress: {
-    mealsTotal: 5,
+    mealsTotal: 7,
     mealsFilled: 0,
     listItemCount: 0,
     sessionMinutesUsed: 0,
-    sessionMinutesBudget: 120,
+    sessionMinutesBudget: null,
   },
-  queue: [card("a"), card("b")],
+  queue: [],
   accepted: [],
   needsBatch: false,
   offerMoreOptions: false,
   exhausted: false,
   canUndo: false,
+  groups: [{ mealType: "snack", wanted: 7, filled: 0, options: OPTIONS }],
+  preferences: { usePreferences: true, usePantry: false, goal: null },
   ...extra,
 });
 
+/** A menu with some snacks chosen. */
+const withChosen = (count: number, wanted = 7): ShoppingPlan =>
+  plan({
+    accepted: Array.from({ length: count }, (_, index) => chosen(`x${index}`)),
+    progress: {
+      mealsTotal: wanted,
+      mealsFilled: count,
+      listItemCount: 3,
+      sessionMinutesUsed: 0,
+      sessionMinutesBudget: null,
+    },
+    groups: [
+      {
+        mealType: "snack",
+        wanted,
+        filled: count,
+        options: count >= wanted ? [] : OPTIONS,
+      },
+    ],
+  });
+
 const START: ShoppingPlanStart = {
   lastSetup: null,
-  people: 3,
+  people: 2,
   restrictions: [{ code: "peanut_allergy", category: "Allergy" }],
   unverifiableRestrictions: ["keto"],
   hasFreezer: true,
@@ -110,6 +159,9 @@ function repository(
     get: unused,
     addBatch: unused,
     decide: unused,
+    chooseRecipe: unused,
+    setPreferences: unused,
+    setMealCounts: unused,
     setReason: unused,
     undo: unused,
     expand: unused,
@@ -128,63 +180,44 @@ function repository(
   };
 }
 
-function renderReview(
-  repo: ShoppingPlanRepository,
-  planning: ReturnType<typeof createUnavailablePlanningRepository>,
-) {
-  return render(
-    <ProductionI18nProvider initialLocale="pt-BR">
-      <SessionProvider adapter={createSessionAdapter()}>
-        <InventoryProvider repository={createMockInventoryRepo()}>
-          <PlanningProvider repository={planning}>
-            <ShoppingPlanProvider repository={repo}>
-              <MemoryRouter
-                initialEntries={["/app/compras/planejar/s1/revisar"]}
-              >
-                <Routes>
-                  <Route
-                    path="/app/compras/planejar/:sessionId/revisar"
-                    element={<ShoppingPlanReviewPage />}
-                  />
-                  <Route path="*" element={<p>outra tela</p>} />
-                </Routes>
-              </MemoryRouter>
-            </ShoppingPlanProvider>
-          </PlanningProvider>
-        </InventoryProvider>
-      </SessionProvider>
-    </ProductionI18nProvider>,
-  );
+const SAVED = [
+  { recipeId: "r-pq", name: "Pão de queijo da vó", mealTypes: ["dinner"] },
+  { recipeId: "r-bolo", name: "Bolo de fubá", mealTypes: ["snack"] },
+];
+
+function recipeRepository(): RecipeRepository {
+  return {
+    listRecipes: vi.fn(async () => SAVED),
+  } as unknown as RecipeRepository;
 }
 
-function renderAt(
-  repo: ShoppingPlanRepository,
-  path: string,
-  planning = createUnavailablePlanningRepository(),
-) {
+function renderAt(repo: ShoppingPlanRepository, path: string) {
   return render(
     <ProductionI18nProvider initialLocale="pt-BR">
       <SessionProvider adapter={createSessionAdapter()}>
         <InventoryProvider repository={createMockInventoryRepo()}>
-          <PlanningProvider repository={planning}>
-            <ShoppingPlanProvider repository={repo}>
-              <MemoryRouter initialEntries={[path]}>
-                <Routes>
-                  <Route
-                    path="/app/compras/planejar"
-                    element={<ShoppingPlanSetupPage />}
-                  />
-                  <Route
-                    path="/app/compras/planejar/:sessionId"
-                    element={<ShoppingPlanDeckPage />}
-                  />
-                  <Route
-                    path="/app/compras/planejar/:sessionId/revisar"
-                    element={<p>revisão</p>}
-                  />
-                </Routes>
-              </MemoryRouter>
-            </ShoppingPlanProvider>
+          <PlanningProvider repository={createUnavailablePlanningRepository()}>
+            <RecipeProvider repository={recipeRepository()}>
+              <ShoppingPlanProvider repository={repo}>
+                <MemoryRouter initialEntries={[path]}>
+                  <Routes>
+                    <Route
+                      path="/app/compras/planejar"
+                      element={<ShoppingPlanSetupPage />}
+                    />
+                    <Route
+                      path="/app/compras/planejar/:sessionId"
+                      element={<ShoppingPlanBoardPage />}
+                    />
+                    <Route
+                      path="/app/cardapio/:menuId"
+                      element={<p>cardápio aceito</p>}
+                    />
+                    <Route path="*" element={<p>outra tela</p>} />
+                  </Routes>
+                </MemoryRouter>
+              </ShoppingPlanProvider>
+            </RecipeProvider>
           </PlanningProvider>
         </InventoryProvider>
       </SessionProvider>
@@ -194,649 +227,426 @@ function renderAt(
 
 afterEach(() => vi.useRealTimers());
 
-describe("shopping plan setup (PLAN-0062)", () => {
-  it("uses defaults, updates the total, and sends the answers", async () => {
-    const user = userEvent.setup();
+describe("first screen of a menu (PLAN-0065)", () => {
+  it("counts meals apart from the days, and an untouched counter follows the days", async () => {
     const create = vi.fn(async () => plan());
     renderAt(repository({ create }), "/app/compras/planejar");
+    const user = userEvent.setup();
 
-    expect(await screen.findByTestId("plan-meal-total")).toHaveTextContent(
-      "10 refeições",
-    );
-    expect(screen.getByTestId("plan-people")).toHaveTextContent("3");
-    expect(screen.getByTestId("plan-restrictions")).toHaveTextContent(
-      "Alergia a amendoim",
-    );
-    expect(screen.getByTestId("plan-unverifiable")).toBeInTheDocument();
+    await screen.findByTestId("plan-setup");
+    expect(screen.getByTestId("plan-count-dinner")).toHaveTextContent("7");
+    await user.click(screen.getByTestId("plan-days-14"));
+    expect(screen.getByTestId("plan-count-dinner")).toHaveTextContent("14");
 
-    await user.click(screen.getByTestId("plan-meals-out-more"));
+    // Seven snacks and no dinners, within fourteen days.
+    for (let index = 0; index < 14; index += 1)
+      await user.click(screen.getByTestId("plan-count-dinner-less"));
+    for (let index = 0; index < 7; index += 1)
+      await user.click(screen.getByTestId("plan-count-snack-more"));
+    await user.click(screen.getByTestId("plan-days-7"));
+    expect(screen.getByTestId("plan-count-snack")).toHaveTextContent("7");
     expect(screen.getByTestId("plan-meal-total")).toHaveTextContent(
-      "9 refeições",
+      "7 em 7 dias",
     );
-    await waitFor(() => expect(screen.getByTestId("plan-begin")).toBeEnabled());
+
     await user.click(screen.getByTestId("plan-begin"));
-
-    await waitFor(() => expect(create).toHaveBeenCalledTimes(1));
-    expect((create.mock.calls[0] as unknown[])[0]).toMatchObject({
-      days: 5,
-      mealsOut: 1,
-      mealTypes: ["lunch", "dinner"],
-      cookingStyle: "mix",
-      people: 3,
-    });
-  });
-
-  it("hides the session questions for a dish each day and refuses too many meals", async () => {
-    const user = userEvent.setup();
-    renderAt(repository(), "/app/compras/planejar");
-
-    expect(await screen.findByTestId("plan-prep-day")).toBeInTheDocument();
-    await user.click(screen.getByTestId("plan-style-daily"));
-    expect(screen.queryByTestId("plan-prep-day")).toBeNull();
-
-    await user.click(screen.getByTestId("plan-days-other"));
-    for (let index = 0; index < 9; index += 1)
-      await user.click(screen.getByTestId("plan-days-count-more"));
-    await user.click(screen.getByTestId("plan-meal-snack"));
-    expect(screen.getByTestId("plan-meal-total")).toHaveTextContent("até 40");
-    expect(screen.getByTestId("plan-begin")).toBeDisabled();
-  });
-
-  it("offers to continue a plan in progress", async () => {
-    renderAt(
-      repository({
-        getStart: vi.fn(async () => ({
-          ...START,
-          current: { sessionId: "s9", menuId: "m9", status: "reviewing" },
-        })),
-      }),
-      "/app/compras/planejar",
-    );
-
-    expect(await screen.findByTestId("plan-continue")).toHaveAttribute(
-      "href",
-      "/app/compras/planejar/s9/revisar",
-    );
-    expect(screen.queryByTestId("plan-begin")).toBeNull();
-  });
-
-  const RECENT = {
-    menuId: "old",
-    name: "",
-    startDate: "2026-10-01",
-    endDate: "2026-10-05",
-    mealsTotal: 5,
-    dishes: ["Sopa", "Arroz"],
-  };
-
-  it("repeats a finished plan from its menu and opens the deck", async () => {
-    const user = userEvent.setup();
-    const create = vi.fn(async () => plan());
-    renderAt(
-      repository({
-        getStart: vi.fn(async () => ({ ...START, recent: [RECENT] })),
-        create,
-      }),
-      "/app/compras/planejar",
-    );
-
-    expect(await screen.findByTestId("plan-recent-name")).toHaveTextContent(
-      "Sopa, Arroz",
-    );
-    await user.click(screen.getByTestId("plan-repeat"));
-    await screen.findByTestId("plan-card");
+    await screen.findByTestId("plan-board");
     expect(create).toHaveBeenCalledWith(
-      expect.objectContaining({ fromMenuId: "old" }),
+      expect.objectContaining({
+        days: 7,
+        people: 2,
+        mealCounts: { breakfast: 0, lunch: 0, dinner: 0, snack: 7 },
+        startDate: localIsoDate(),
+      }),
       expect.objectContaining({ idempotencyKey: expect.any(String) }),
     );
   });
 
-  it("starts from the answers, not from a plan, with the main button", async () => {
+  it("asks nothing about cooking and refuses no meals or too many", async () => {
+    renderAt(repository(), "/app/compras/planejar");
     const user = userEvent.setup();
-    const create = vi.fn(async () => plan());
-    renderAt(
-      repository({
-        getStart: vi.fn(async () => ({ ...START, recent: [RECENT] })),
-        create,
-      }),
-      "/app/compras/planejar",
+    await screen.findByTestId("plan-setup");
+    expect(screen.queryByTestId("plan-style")).toBeNull();
+    expect(screen.queryByTestId("plan-priority")).toBeNull();
+    expect(screen.getByTestId("plan-begin")).toHaveTextContent(
+      "Montar cardápio (7)",
     );
 
-    await user.click(await screen.findByTestId("plan-begin"));
-    await screen.findByTestId("plan-card");
-    expect(create).toHaveBeenCalledWith(
-      expect.objectContaining({ fromMenuId: null }),
-      expect.anything(),
-    );
+    for (let index = 0; index < 7; index += 1)
+      await user.click(screen.getByTestId("plan-count-dinner-less"));
+    expect(screen.getByTestId("plan-begin")).toBeDisabled();
+
+    for (let index = 0; index < 40; index += 1)
+      await user.click(screen.getByTestId("plan-count-lunch-more"));
+    await user.click(screen.getByTestId("plan-count-snack-more"));
+    expect(screen.getByRole("alert")).toHaveTextContent("até 40");
+    expect(screen.getByTestId("plan-begin")).toBeDisabled();
   });
 
-  it("names a finished plan through its menu, and says when that fails", async () => {
-    const user = userEvent.setup();
+  it("starts on another day chosen from chips, never in the past", async () => {
     const create = vi.fn(async () => plan());
-    const changeMenu = vi
-      .fn()
-      .mockRejectedValueOnce(new Error("down"))
-      .mockResolvedValue({ name: "Semana boa" });
-    renderAt(
-      repository({
-        getStart: vi.fn(async () => ({ ...START, recent: [RECENT] })),
-        create,
-      }),
-      "/app/compras/planejar",
-      { ...createUnavailablePlanningRepository(), changeMenu },
-    );
-
-    await user.click(await screen.findByTestId("plan-recent-name-edit"));
-    await user.type(screen.getByTestId("plan-recent-name-input"), "Semana boa");
-    await user.click(screen.getByTestId("plan-recent-name-save"));
-    await screen.findByRole("alert");
-    expect(create).not.toHaveBeenCalled();
-
-    await user.click(screen.getByTestId("plan-recent-name-save"));
+    renderAt(repository({ create }), "/app/compras/planejar");
+    const user = userEvent.setup();
+    await screen.findByTestId("plan-setup");
+    await user.click(screen.getByTestId("plan-start-other"));
+    const later = addDays(localIsoDate(), 3);
+    await user.click(screen.getByTestId(`plan-start-day-${later}`));
+    await user.click(screen.getByTestId("plan-begin"));
     await waitFor(() =>
-      expect(screen.getByTestId("plan-recent-name")).toHaveTextContent(
-        "Semana boa",
+      expect(create).toHaveBeenCalledWith(
+        expect.objectContaining({ startDate: later }),
+        expect.anything(),
       ),
     );
-    expect(changeMenu).toHaveBeenLastCalledWith(
-      "old",
-      { name: "Semana boa", startDate: "2026-10-01", endDate: "2026-10-05" },
-      expect.anything(),
+  });
+
+  it("starts from the last menu's counts and people", async () => {
+    renderAt(
+      repository({
+        getStart: vi.fn(async () => ({
+          ...START,
+          lastSetup: {
+            ...SETUP,
+            days: 14,
+            people: 1,
+            mealCounts: { snack: 7, lunch: 3 },
+          },
+        })),
+      }),
+      "/app/compras/planejar",
+    );
+    await screen.findByTestId("plan-setup");
+    expect(screen.getByTestId("plan-count-snack")).toHaveTextContent("7");
+    expect(screen.getByTestId("plan-count-lunch")).toHaveTextContent("3");
+    expect(screen.getByTestId("plan-count-dinner")).toHaveTextContent("0");
+    expect(screen.getByTestId("plan-people-line")).toHaveTextContent(
+      "Para 1 pessoa",
+    );
+  });
+
+  it("continues a menu in progress on its board", async () => {
+    renderAt(
+      repository({
+        getStart: vi.fn(async () => ({
+          ...START,
+          current: { sessionId: "s1", menuId: "m1", status: "reviewing" },
+        })),
+      }),
+      "/app/compras/planejar",
+    );
+    expect(await screen.findByTestId("plan-continue")).toHaveAttribute(
+      "href",
+      "/app/compras/planejar/s1",
+    );
+  });
+
+  it("repeats a menu from the disclosure", async () => {
+    const create = vi.fn(async () => plan());
+    renderAt(
+      repository({
+        create,
+        getStart: vi.fn(async () => ({
+          ...START,
+          recent: [
+            {
+              menuId: "old",
+              name: "",
+              startDate: "2026-10-01",
+              endDate: "2026-10-07",
+              mealsTotal: 7,
+              dishes: ["Bolo"],
+            },
+          ],
+        })),
+      }),
+      "/app/compras/planejar",
+    );
+    const user = userEvent.setup();
+    await user.click(
+      (await screen.findByTestId("plan-recent-disclosure")).querySelector(
+        "summary",
+      )!,
+    );
+    await user.click(screen.getByRole("button", { name: "Repetir" }));
+    await waitFor(() =>
+      expect(create).toHaveBeenCalledWith(
+        expect.objectContaining({ fromMenuId: "old" }),
+        expect.anything(),
+      ),
     );
   });
 });
 
-describe("shopping plan cards (PLAN-0062)", () => {
-  const BASE = card("base", {
-    name: "Frango desfiado para a semana",
-    component: {
-      outputName: "Frango desfiado",
-      outputQuantity: 700,
-      outputUnit: "Gram",
-      usedBy: ["Wrap", "Escondidinho"],
-    },
-  });
-
-  it("offers a base as a single decision and says what it is for", async () => {
+describe("menu board (PLAN-0065)", () => {
+  it("shows each meal type with what is chosen and one row for what is missing", async () => {
+    const value = withChosen(2);
+    value.accepted[0] = chosen("x0", { plannedDate: "2026-11-06", repeats: 2 });
     renderAt(
-      repository({ get: vi.fn(async () => plan({ queue: [BASE] })) }),
+      repository({ get: vi.fn(async () => value) }),
       "/app/compras/planejar/s1",
     );
 
-    const base = await screen.findByTestId("plan-card-base");
-    expect(base).toHaveTextContent("Base sugerida: Frango desfiado, 700 g.");
-    expect(base).toHaveTextContent("Serve para: Wrap, Escondidinho.");
-    expect(screen.getByTestId("plan-yes-twice")).toBeDisabled();
-  });
-
-  it("waits for the answer about a base even when every meal is filled", async () => {
-    const filled = {
-      mealsTotal: 5,
-      mealsFilled: 5,
-      listItemCount: 1,
-      sessionMinutesUsed: 0,
-      sessionMinutesBudget: 120,
-    };
-    const user = userEvent.setup();
-    const decide = vi.fn(async () => plan({ queue: [], progress: filled }));
-    renderAt(
-      repository({
-        get: vi.fn(async () => plan({ queue: [BASE], progress: filled })),
-        decide,
-      }),
-      "/app/compras/planejar/s1",
+    const group = await screen.findByTestId("board-group-snack");
+    expect(within(group).getByRole("heading")).toHaveTextContent(
+      "Lanches · 2 de 7",
     );
-
-    await screen.findByTestId("plan-card-base");
-    expect(screen.queryByText("revisão")).toBeNull();
-    await user.click(screen.getByTestId("plan-yes"));
-    await screen.findByText("revisão");
+    expect(within(group).getAllByTestId("board-dish")).toHaveLength(2);
+    expect(within(group).getByTestId("board-choose-snack")).toHaveTextContent(
+      /Escolher lanche · faltam 5/,
+    );
+    expect(within(group).getAllByTestId("board-dish")[0]).toHaveTextContent(
+      "rende 2 refeições",
+    );
+    // A dish without a day has no tag and no warning.
+    expect(within(group).getAllByTestId("board-dish")[1]).not.toHaveTextContent(
+      "nov",
+    );
+    expect(screen.getByTestId("board-progress")).toHaveTextContent(
+      "2 de 7 · 3 itens",
+    );
   });
 
-  it("moves on at once, takes a reason, and undoes", async () => {
-    const user = userEvent.setup();
-    const rejected = plan({ queue: [card("b")], canUndo: true });
-    const decide = vi.fn(async () => rejected);
-    const setReason = vi.fn(async () => rejected);
+  it("chooses an option for its meal, offers undo, and keeps the sheet open", async () => {
+    const decide = vi.fn(async () => withChosen(1));
     const undo = vi.fn(async () => plan());
     renderAt(
-      repository({ get: vi.fn(async () => plan()), decide, setReason, undo }),
+      repository({ get: vi.fn(async () => plan()), decide, undo }),
       "/app/compras/planejar/s1",
     );
-
-    expect(await screen.findByTestId("plan-card-name")).toHaveTextContent(
-      "Prato a",
-    );
-    expect(screen.getByTestId("plan-card-new-items")).toHaveTextContent(
-      "+2 itens novos",
-    );
-    expect(screen.getByTestId("plan-progress")).toHaveTextContent(
-      "Refeição 1 de 5",
-    );
-    expect(screen.getByTestId("plan-card-name")).toHaveFocus();
-
-    await user.click(screen.getByTestId("plan-no"));
-    expect(await screen.findByTestId("plan-card-name")).toHaveTextContent(
-      "Prato b",
-    );
-    expect(decide).toHaveBeenCalledWith(
-      "s1",
-      "a",
-      expect.objectContaining({ decision: "reject" }),
-      expect.anything(),
-    );
-
-    await user.click(screen.getByTestId("plan-reason-tired"));
-    expect(setReason).toHaveBeenCalledWith(
-      "s1",
-      "a",
-      "tired_of",
-      expect.anything(),
-    );
-
-    await user.click(screen.getByTestId("plan-undo"));
-    await waitFor(() => expect(undo).toHaveBeenCalled());
-    expect(await screen.findByTestId("plan-card-name")).toHaveTextContent(
-      "Prato a",
-    );
-  });
-
-  it("asks how a repeat is cooked, with the style's choice preselected", async () => {
     const user = userEvent.setup();
-    const decide = vi.fn(async () => plan({ queue: [card("b")] }));
-    renderAt(
-      repository({ get: vi.fn(async () => plan()), decide }),
-      "/app/compras/planejar/s1",
+    await user.click(await screen.findByTestId("board-choose-snack"));
+    const sheet = await screen.findByTestId("meal-sheet");
+    expect(within(sheet).getByRole("heading", { level: 2 })).toHaveTextContent(
+      "Lanche · faltam 7",
     );
-
-    await user.click(await screen.findByTestId("plan-yes-twice"));
-    expect(screen.getByTestId("plan-repeat-yield")).toBeChecked();
-    await user.click(screen.getByTestId("plan-repeat-more"));
-    await user.click(screen.getByTestId("plan-repeat-again"));
-    await user.click(screen.getByTestId("plan-repeat-confirm"));
+    await user.click(
+      within(sheet).getByRole("button", {
+        name: "Escolher Lanche a para Lanche",
+      }),
+    );
 
     expect(decide).toHaveBeenCalledWith(
       "s1",
       "a",
-      { decision: "accept", mode: "again", repeats: 3 },
+      { decision: "accept", mealType: "snack" },
       expect.anything(),
     );
+    expect(await within(sheet).findByTestId("board-undo")).toHaveTextContent(
+      "Lanche a escolhido.",
+    );
+    expect(screen.getByTestId("meal-sheet")).toBeInTheDocument();
+    await user.click(within(sheet).getByTestId("board-undo-action"));
+    expect(undo).toHaveBeenCalled();
   });
 
-  it("puts the card back and says so when saving a decision fails", async () => {
-    const user = userEvent.setup();
+  it("closes the sheet when the meal type is complete and returns focus to the group", async () => {
+    const decide = vi.fn(async () => withChosen(7));
     renderAt(
-      repository({
-        get: vi.fn(async () => plan()),
-        decide: vi.fn(async () => {
-          throw new RecipeApiError("unavailable", "x", 503);
+      repository({ get: vi.fn(async () => withChosen(6)), decide }),
+      "/app/compras/planejar/s1",
+    );
+    const user = userEvent.setup();
+    await user.click(await screen.findByTestId("board-choose-snack"));
+    const sheet = await screen.findByTestId("meal-sheet");
+    await user.click(within(sheet).getAllByTestId("meal-option-choose")[0]);
+    await waitFor(() => expect(screen.queryByTestId("meal-sheet")).toBeNull());
+    await waitFor(() =>
+      expect(document.activeElement).toHaveAttribute(
+        "id",
+        "board-heading-snack",
+      ),
+    );
+    expect(screen.getByTestId("board-undo")).toBeInTheDocument();
+  });
+
+  it("finds the person's own recipes while typing and asks the AI for exactly what was typed", async () => {
+    const chooseRecipe = vi.fn(async () => withChosen(1));
+    const addBatch = vi.fn(async () => plan());
+    renderAt(
+      repository({ get: vi.fn(async () => plan()), chooseRecipe, addBatch }),
+      "/app/compras/planejar/s1",
+    );
+    const user = userEvent.setup();
+    await user.click(await screen.findByTestId("board-choose-snack"));
+    const sheet = await screen.findByTestId("meal-sheet");
+    await user.type(
+      within(sheet).getByTestId("meal-sheet-text"),
+      "pao de queijo",
+    );
+
+    // Saved as a dinner, it still shows: it is the person's own recipe.
+    const saved = await within(sheet).findByTestId("meal-sheet-saved");
+    expect(saved).toHaveTextContent("Pão de queijo da vó");
+    expect(within(sheet).getByTestId("meal-sheet-ask-ai")).toHaveTextContent(
+      "Pedir à IA: pao de queijo",
+    );
+    await user.click(within(sheet).getByTestId("meal-sheet-ask-ai"));
+    await waitFor(() =>
+      expect(addBatch).toHaveBeenCalledWith(
+        "s1",
+        expect.objectContaining({
+          mealType: "snack",
+          request: "pao de queijo",
+          replaceOffers: false,
         }),
-      }),
-      "/app/compras/planejar/s1",
+        expect.objectContaining({ idempotencyKey: expect.any(String) }),
+      ),
     );
-
-    await user.click(await screen.findByTestId("plan-yes"));
-
-    expect(await screen.findByRole("alert")).toHaveTextContent(
-      "Não consegui salvar",
+    await user.click(within(sheet).getByTestId("meal-sheet-saved"));
+    expect(chooseRecipe).toHaveBeenCalledWith(
+      "s1",
+      "r-pq",
+      "snack",
+      expect.anything(),
     );
-    expect(screen.getByTestId("plan-card-name")).toHaveTextContent("Prato a");
   });
 
-  it("asks for cards when low, and keeps working when AI is unavailable", async () => {
+  it("names the restriction a request conflicts with, and offers no way around it", async () => {
     const addBatch = vi.fn(async () => {
-      throw new RecipeApiError("ai_budget_exhausted", "x", 503);
+      throw new RecipeApiError("request_blocked", "x", 422, {
+        fieldErrors: { restriction: ["peanut_allergy"] },
+      });
     });
     renderAt(
-      repository({
-        get: vi.fn(async () => plan({ needsBatch: true, queue: [card("a")] })),
-        addBatch,
-      }),
+      repository({ get: vi.fn(async () => plan()), addBatch }),
       "/app/compras/planejar/s1",
     );
-
-    expect(await screen.findByTestId("plan-ai-notice")).toBeInTheDocument();
-    expect(addBatch).toHaveBeenCalledTimes(1);
-    expect(screen.getByTestId("plan-card-name")).toHaveTextContent("Prato a");
-  });
-
-  describe("Quero outras opções (PLAN-0064)", () => {
-    const sentOptions = (addBatch: ReturnType<typeof vi.fn>) =>
-      (addBatch.mock.calls[0] as unknown[])[1];
-
-    async function openPanel(addBatch: ReturnType<typeof vi.fn>) {
-      const user = userEvent.setup();
-      renderAt(
-        repository({
-          get: vi.fn(async () => plan({ queue: [card("a")] })),
-          addBatch,
-        } as never),
-        "/app/compras/planejar/s1",
-      );
-      await user.click(await screen.findByTestId("plan-more"));
-      return user;
-    }
-
-    it("asks first, and sends nothing until the person confirms", async () => {
-      const addBatch = vi.fn(async () => plan({ queue: [card("b")] }));
-      const user = await openPanel(addBatch);
-
-      expect(screen.getByTestId("plan-more-pantry")).toBeInTheDocument();
-      expect(screen.getByTestId("plan-more-similarity")).toBeInTheDocument();
-      expect(screen.queryByTestId("plan-more-hint")).toBeNull();
-      expect(addBatch).not.toHaveBeenCalled();
-
-      await user.click(screen.getByTestId("plan-more-submit"));
-
-      await waitFor(() =>
-        expect(screen.getByTestId("plan-card-name")).toHaveTextContent(
-          "Prato b",
-        ),
-      );
-      expect(sentOptions(addBatch)).toEqual({
-        pantry: "free",
-        similarity: "different",
-        referenceCardId: card("a").cardId,
-        hint: null,
-      });
-    });
-
-    it("sends the answers and a hint limited to 40 characters", async () => {
-      const addBatch = vi.fn(async () => plan({ queue: [card("b")] }));
-      const user = await openPanel(addBatch);
-
-      await user.click(screen.getByTestId("plan-more-pantry-use"));
-      await user.click(screen.getByTestId("plan-more-similarity-similar"));
-      await user.click(screen.getByTestId("plan-more-hint-open"));
-      await user.type(
-        screen.getByTestId("plan-more-hint"),
-        "  a".padEnd(50, "x"),
-      );
-      expect(screen.getByTestId("plan-more-hint")).toHaveValue(
-        "  a".padEnd(40, "x"),
-      );
-      await user.click(screen.getByTestId("plan-more-submit"));
-
-      await waitFor(() => expect(addBatch).toHaveBeenCalledTimes(1));
-      expect(sentOptions(addBatch)).toEqual({
-        pantry: "use",
-        similarity: "similar",
-        referenceCardId: card("a").cardId,
-        hint: "a".padEnd(38, "x"),
-      });
-    });
-
-    it("does not compare when the person does not care", async () => {
-      const addBatch = vi.fn(async () => plan({ queue: [card("b")] }));
-      const user = await openPanel(addBatch);
-      await user.click(screen.getByTestId("plan-more-similarity-any"));
-      await user.click(screen.getByTestId("plan-more-submit"));
-      await waitFor(() => expect(addBatch).toHaveBeenCalledTimes(1));
-      expect(sentOptions(addBatch)).toMatchObject({
-        similarity: "any",
-        referenceCardId: null,
-      });
-    });
-
-    it("replaces the dish with a wait, so the click visibly did something", async () => {
-      let finish!: (value: unknown) => void;
-      const addBatch = vi.fn(
-        () => new Promise((resolve) => (finish = resolve)),
-      );
-      const user = await openPanel(addBatch);
-      await user.click(screen.getByTestId("plan-more-submit"));
-
-      expect(screen.queryByTestId("plan-card-name")).toBeNull();
-      expect(screen.getByText(/Procurando pratos/)).toBeInTheDocument();
-
-      finish(plan({ queue: [card("b")] }));
-      await waitFor(() =>
-        expect(screen.getByTestId("plan-card-name")).toHaveTextContent(
-          "Prato b",
-        ),
-      );
-    });
-
-    it("does not lose a request made during an automatic batch", async () => {
-      const calls: unknown[] = [];
-      let finishAutomatic!: (value: unknown) => void;
-      const addBatch = vi.fn((_id: string, options: unknown) => {
-        calls.push(options);
-        return calls.length === 1
-          ? new Promise((resolve) => (finishAutomatic = resolve))
-          : Promise.resolve(plan({ queue: [card("c")] }));
-      });
-      const user = userEvent.setup();
-      renderAt(
-        repository({
-          get: vi.fn(async () =>
-            plan({ needsBatch: true, queue: [card("a")] }),
-          ),
-          addBatch,
-        } as never),
-        "/app/compras/planejar/s1",
-      );
-      await user.click(await screen.findByTestId("plan-more"));
-      await user.click(screen.getByTestId("plan-more-submit"));
-      expect(addBatch).toHaveBeenCalledTimes(1);
-
-      finishAutomatic(plan({ needsBatch: false, queue: [card("b")] }));
-
-      await waitFor(() => expect(addBatch).toHaveBeenCalledTimes(2));
-      expect(calls[1]).toMatchObject({ pantry: "free" });
-      await waitFor(() =>
-        expect(screen.getByTestId("plan-card-name")).toHaveTextContent(
-          "Prato c",
-        ),
-      );
-    });
-
-    it("says so when there is nothing new, and brings the dish back", async () => {
-      const addBatch = vi.fn(async () => {
-        throw new RecipeApiError("no_more_options", "x", 422);
-      });
-      const user = await openPanel(addBatch);
-      await user.click(screen.getByTestId("plan-more-submit"));
-
-      expect(await screen.findByTestId("plan-ai-notice")).toHaveTextContent(
-        /outras opções novas/,
-      );
-      expect(screen.getByTestId("plan-card-name")).toHaveTextContent("Prato a");
-    });
-
-    it("keeps the filters, using the same answers", async () => {
-      const addBatch = vi.fn(async () => plan({ queue: [card("b")] }));
-      const user = await openPanel(addBatch);
-      await user.click(screen.getByTestId("plan-more-pantry-use"));
-      await user.click(screen.getByTestId("plan-more-pasta"));
-      await waitFor(() => expect(addBatch).toHaveBeenCalledTimes(1));
-      expect(sentOptions(addBatch)).toMatchObject({
-        dishFamilies: ["pasta"],
-        pantry: "use",
-      });
-    });
-  });
-
-  it("shows why a card is flagged", async () => {
-    const flagged = card("a", {
-      overBudget: true,
-      reasonCode: "uses_attention_item",
-      reasonIngredient: "Iogurte",
-      guardCode: "peanut_allergy",
-      guardIngredient: "Tempero",
-    });
-    renderAt(
-      repository({ get: vi.fn(async () => plan({ queue: [flagged] })) }),
-      "/app/compras/planejar/s1",
+    const user = userEvent.setup();
+    await user.click(await screen.findByTestId("board-choose-snack"));
+    const sheet = await screen.findByTestId("meal-sheet");
+    await user.type(
+      within(sheet).getByTestId("meal-sheet-text"),
+      "paçoca{Enter}",
     );
-
     expect(
-      await screen.findByTestId("plan-card-over-budget"),
-    ).toBeInTheDocument();
-    expect(screen.getByTestId("plan-card-reason")).toHaveTextContent("Iogurte");
-    expect(screen.getByTestId("plan-card-guard")).toHaveTextContent("Tempero");
-    expect(screen.getByTestId("plan-card-guard")).toHaveTextContent(
-      "Alergia a amendoim",
+      await within(sheet).findByTestId("meal-sheet-failure"),
+    ).toHaveTextContent("Essa receita conflita com");
+    // The options already there stay usable.
+    expect(within(sheet).getAllByTestId("meal-option-choose")[0]).toBeEnabled();
+  });
+
+  it("sends only the last state of quick switch taps, then asks for new dishes", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const setPreferences = vi.fn(async () =>
+      plan({
+        preferences: { usePreferences: false, usePantry: true, goal: null },
+      }),
+    );
+    const addBatch = vi.fn(async () => plan());
+    renderAt(
+      repository({ get: vi.fn(async () => plan()), setPreferences, addBatch }),
+      "/app/compras/planejar/s1",
+    );
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    await user.click(await screen.findByTestId("board-choose-snack"));
+    const sheet = await screen.findByTestId("meal-sheet");
+    const pantry = within(sheet).getByTestId("meal-sheet-pantry");
+    expect(pantry).toHaveAttribute("role", "switch");
+    await user.click(within(sheet).getByTestId("meal-sheet-preferences"));
+    await user.click(pantry);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(700);
+    });
+    expect(setPreferences).toHaveBeenCalledTimes(1);
+    expect(setPreferences).toHaveBeenCalledWith(
+      "s1",
+      { usePreferences: false, usePantry: true, goal: null },
+      expect.anything(),
+    );
+    await waitFor(() =>
+      expect(addBatch).toHaveBeenCalledWith(
+        "s1",
+        expect.objectContaining({ mealType: "snack", replaceOffers: true }),
+        expect.anything(),
+      ),
     );
   });
 
-  it("goes to review when every meal is filled", async () => {
+  it("asks for dishes on its own once when a meal type has few options", async () => {
+    const few = plan({
+      groups: [
+        {
+          mealType: "snack",
+          wanted: 7,
+          filled: 0,
+          options: OPTIONS.slice(0, 4),
+        },
+      ],
+    });
+    const addBatch = vi.fn(async () => few);
+    renderAt(
+      repository({ get: vi.fn(async () => few), addBatch }),
+      "/app/compras/planejar/s1",
+    );
+    const user = userEvent.setup();
+    await user.click(await screen.findByTestId("board-choose-snack"));
+    await waitFor(() => expect(addBatch).toHaveBeenCalledTimes(1));
+    await user.click(screen.getByRole("button", { name: "Fechar" }));
+    await user.click(screen.getByTestId("board-choose-snack"));
+    await screen.findByTestId("meal-sheet");
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(addBatch).toHaveBeenCalledTimes(1);
+  });
+
+  it("says when the AI is off and keeps the options usable", async () => {
+    const addBatch = vi.fn(async () => {
+      throw new RecipeApiError("ai_capability_unavailable", "x", 503);
+    });
+    const few = plan({
+      groups: [
+        {
+          mealType: "snack",
+          wanted: 7,
+          filled: 0,
+          options: OPTIONS.slice(0, 2),
+        },
+      ],
+    });
+    renderAt(
+      repository({ get: vi.fn(async () => few), addBatch }),
+      "/app/compras/planejar/s1",
+    );
+    const user = userEvent.setup();
+    await user.click(await screen.findByTestId("board-choose-snack"));
+    const sheet = await screen.findByTestId("meal-sheet");
+    expect(
+      await within(sheet).findByTestId("meal-sheet-failure"),
+    ).toHaveTextContent("A IA não está disponível agora");
+    expect(within(sheet).getAllByTestId("meal-option-choose")).toHaveLength(2);
+  });
+
+  it("asks before using a menu with meals still open, then opens it", async () => {
+    const accept = vi.fn(async () => withChosen(5));
+    renderAt(
+      repository({ get: vi.fn(async () => withChosen(5)), accept }),
+      "/app/compras/planejar/s1",
+    );
+    const user = userEvent.setup();
+    await user.click(await screen.findByTestId("board-use"));
+    expect(screen.getByTestId("board-use-confirm")).toHaveTextContent(
+      "Faltam 2 refeições. Usar assim?",
+    );
+    expect(accept).not.toHaveBeenCalled();
+    await user.click(screen.getByTestId("board-use-anyway"));
+    expect(await screen.findByText("cardápio aceito")).toBeInTheDocument();
+  });
+
+  it("waits while recipes are being prepared", async () => {
+    const value = withChosen(7);
+    value.accepted[0] = chosen("x0", {
+      expansionState: "pending",
+      recipeId: null,
+    });
     renderAt(
       repository({
-        get: vi.fn(async () =>
-          plan({
-            progress: {
-              mealsTotal: 2,
-              mealsFilled: 2,
-              listItemCount: 3,
-              sessionMinutesUsed: 0,
-              sessionMinutesBudget: null,
-            },
-            queue: [],
-          }),
-        ),
+        get: vi.fn(async () => value),
+        expand: vi.fn(() => new Promise<ShoppingPlan>(() => undefined)),
       }),
       "/app/compras/planejar/s1",
     );
-
-    expect(await screen.findByText("revisão")).toBeInTheDocument();
-  });
-});
-
-describe("review (PLAN-0065)", () => {
-  const entry = (id: string) => ({
-    entryId: id,
-    recipeId: `r-${id}`,
-    recipeName: `Prato ${id}`,
-    plannedDate: null,
-    mealType: "dinner",
-    servings: 2,
-    status: "planned",
-    mealsCovered: 1,
-    suggestedOrder: 1,
-    kind: "meal",
-    producesName: null,
-    reserveIngredients: true,
-    readiness: null,
-    executionId: null,
-  });
-  const reviewing = (overrides: Partial<ShoppingPlan> = {}) =>
-    plan({
-      status: "reviewing",
-      progress: {
-        mealsTotal: 7,
-        mealsFilled: 3,
-        listItemCount: 2,
-        sessionMinutesUsed: 0,
-        sessionMinutesBudget: null,
-      },
-      ...overrides,
-    });
-  const planningRepo = {
-    ...createUnavailablePlanningRepository(),
-    getMenu: vi.fn(async () => ({
-      menuId: "m1",
-      name: "",
-      startDate: "2026-11-05",
-      endDate: "2026-11-11",
-      status: "draft",
-      version: 1,
-      entries: [entry("a")],
-    })),
-  } as never;
-
-  it("asks before using a plan with meals still open, and can go back to choosing", async () => {
-    const user = userEvent.setup();
-    const accept = vi.fn(async () => reviewing());
-    const reopen = vi.fn(async () => plan({ status: "building" }));
-    const get = vi.fn(async () => reviewing());
-    renderReview(
-      repository({
-        get,
-        review: vi.fn(async () => reviewing()),
-        accept,
-        reopen,
-      }),
-      planningRepo,
-    );
-
-    await user.click(await screen.findByTestId("plan-use"));
-    expect(accept).not.toHaveBeenCalled();
-    expect(screen.getByTestId("plan-use-confirm")).toHaveTextContent("4");
-
-    await user.click(screen.getByTestId("plan-keep-choosing"));
-    await waitFor(() => expect(reopen).toHaveBeenCalledOnce());
-    expect(accept).not.toHaveBeenCalled();
-  });
-
-  it("uses a plan with meals open only after the answer", async () => {
-    const user = userEvent.setup();
-    const accept = vi.fn(async () => reviewing());
-    renderReview(
-      repository({
-        get: vi.fn(async () => reviewing()),
-        review: vi.fn(async () => reviewing()),
-        accept,
-      }),
-      planningRepo,
-    );
-    await user.click(await screen.findByTestId("plan-use"));
-    await user.click(screen.getByTestId("plan-use-anyway"));
-    await waitFor(() => expect(accept).toHaveBeenCalledOnce());
-  });
-
-  it("does not ask when every meal is filled, and offers no more dishes", async () => {
-    const user = userEvent.setup();
-    const accept = vi.fn(async () => reviewing());
-    const full = reviewing({
-      progress: {
-        mealsTotal: 3,
-        mealsFilled: 3,
-        listItemCount: 2,
-        sessionMinutesUsed: 0,
-        sessionMinutesBudget: null,
-      },
-    });
-    renderReview(
-      repository({
-        get: vi.fn(async () => full),
-        review: vi.fn(async () => full),
-        accept,
-      }),
-      planningRepo,
-    );
-    const use = await screen.findByTestId("plan-use");
-    expect(screen.queryByTestId("plan-more-dishes")).toBeNull();
-    await user.click(use);
-    await waitFor(() => expect(accept).toHaveBeenCalledOnce());
-  });
-
-  it("reopens the plan for 'Escolher mais pratos', because the cards send a reviewed plan back here", async () => {
-    const user = userEvent.setup();
-    const reopen = vi.fn(async () => plan({ status: "building" }));
-    renderReview(
-      repository({
-        get: vi.fn(async () => reviewing()),
-        review: vi.fn(async () => reviewing()),
-        reopen,
-      }),
-      planningRepo,
-    );
-    await user.click(await screen.findByTestId("plan-more-dishes"));
-    await waitFor(() => expect(reopen).toHaveBeenCalledOnce());
-  });
-
-  it("opens the list knowing where to come back to", async () => {
-    renderReview(
-      repository({
-        get: vi.fn(async () => reviewing()),
-        review: vi.fn(async () => reviewing()),
-      }),
-      planningRepo,
-    );
-    expect(await screen.findByTestId("plan-see-list")).toHaveAttribute(
-      "href",
-      expect.stringContaining("/compras"),
+    expect(await screen.findByTestId("board-use")).toBeDisabled();
+    expect(screen.getByTestId("board-preparing")).toHaveTextContent(
+      "Preparando receitas: 6 de 7",
     );
   });
 });

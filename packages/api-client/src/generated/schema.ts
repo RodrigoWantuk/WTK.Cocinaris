@@ -845,6 +845,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/planning/shopping-plans/{sessionId}/recipes/{recipeId}/choice": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** POST /api/v1/planning/shopping-plans/{sessionId}/recipes/{recipeId}/choice */
+        post: operations["postApiV1PlanningShopping-plansSessionIdRecipesRecipeIdChoice"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/planning/shopping-plans/{sessionId}/reopen": {
         parameters: {
             query?: never;
@@ -3445,6 +3462,11 @@ export interface components {
             /** @description Dish name. */
             name: string;
             /**
+             * Format: date
+             * @description The day the person gave it, if any.
+             */
+            plannedDate?: null | string;
+            /**
              * Format: uuid
              * @description Recipe, once it exists.
              */
@@ -3454,6 +3476,12 @@ export interface components {
              * @description Meals it fills.
              */
             repeats: number | string;
+            /**
+             * Format: int32
+             * @description Total time of the dish.
+             * @default 0
+             */
+            totalMinutes: number | string;
         };
         /** @description Body for asking for more cards. */
         ShoppingPlanBatchRequest: {
@@ -3736,6 +3764,11 @@ export interface components {
              * @description First day of the menu.
              */
             startDate: string;
+        };
+        /** @description Body for choosing a saved recipe. */
+        ShoppingPlanRecipeChoiceRequest: {
+            /** @description The meal it fills. */
+            mealType: null | string;
         };
         /** @description Body for replacing a meal. */
         ShoppingPlanReplacementRequest: {
@@ -8083,6 +8116,90 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["ShoppingPlanPreferencesRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShoppingPlanView"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description The request content type is not supported. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    "postApiV1PlanningShopping-plansSessionIdRecipesRecipeIdChoice": {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Required CSRF token issued by GET /api/v1/session. */
+                "X-CSRF-TOKEN": string;
+            };
+            path: {
+                sessionId: string;
+                recipeId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ShoppingPlanRecipeChoiceRequest"];
             };
         };
         responses: {

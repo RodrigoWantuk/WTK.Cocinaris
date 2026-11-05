@@ -63,6 +63,12 @@ public static class ShoppingPlanEndpoints
             .Produces<ShoppingPlanView>()
             .ProducesProblem(404)
             .ProducesProblem(422);
+        group.MapPost("/{sessionId:guid}/recipes/{recipeId:guid}/choice", (ShoppingPlanApiService service, Guid sessionId, Guid recipeId, ShoppingPlanRecipeChoiceRequest body, HttpContext context, CancellationToken cancellationToken) => service.ChooseRecipeAsync(sessionId, recipeId, body, context, cancellationToken))
+            .RequireRateLimiting("shopping-plan-decision")
+            .Produces<ShoppingPlanView>()
+            .ProducesProblem(400)
+            .ProducesProblem(404)
+            .ProducesProblem(422);
         group.MapPut("/{sessionId:guid}/preferences", (ShoppingPlanApiService service, Guid sessionId, ShoppingPlanPreferencesRequest body, HttpContext context, CancellationToken cancellationToken) => service.SetPreferencesAsync(sessionId, body, context, cancellationToken))
             .RequireRateLimiting("shopping-plan-decision")
             .Produces<ShoppingPlanView>()
@@ -163,6 +169,10 @@ public sealed class ShoppingPlanApiService(ShoppingPlanApplicationService applic
     /// <summary>Gets one plan.</summary>
     public async Task<IResult> GetAsync(Guid sessionId, HttpContext context, CancellationToken cancellationToken) =>
         ToResult(await application.GetAsync(sessionId, cancellationToken), context.TraceIdentifier);
+
+    /// <summary>Chooses one of the person's saved recipes for a meal.</summary>
+    public async Task<IResult> ChooseRecipeAsync(Guid sessionId, Guid recipeId, ShoppingPlanRecipeChoiceRequest body, HttpContext context, CancellationToken cancellationToken) =>
+        ToResult(await application.ChooseRecipeAsync(sessionId, recipeId, body.MealType, cancellationToken), context.TraceIdentifier);
 
     /// <summary>Sets the switches above the options.</summary>
     public async Task<IResult> SetPreferencesAsync(Guid sessionId, ShoppingPlanPreferencesRequest body, HttpContext context, CancellationToken cancellationToken) =>
@@ -311,6 +321,10 @@ public sealed record ShoppingPlanBatchRequest(IReadOnlyList<string>? DishFamilie
 /// <param name="MealType">The meal this dish fills; the card's own when null.</param>
 /// <param name="PlannedDate">An optional day inside the period.</param>
 public sealed record ShoppingPlanDecisionRequest(string? Decision, string? Mode, int? Repeats, string? MealType = null, DateOnly? PlannedDate = null);
+
+/// <summary>Body for choosing a saved recipe.</summary>
+/// <param name="MealType">The meal it fills.</param>
+public sealed record ShoppingPlanRecipeChoiceRequest(string? MealType);
 
 /// <summary>Body for the switches above the options.</summary>
 /// <param name="UsePreferences">Whether the profile's tastes count. Restrictions and dislikes always do.</param>

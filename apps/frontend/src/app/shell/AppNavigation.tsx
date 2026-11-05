@@ -63,7 +63,9 @@ export function AppNavigation() {
   const active = activeTabFor(pathname);
   // Guided cooking is a focused task: on phones the tab bar would compete with the step controls
   // and a stray tap could leave the session (PLAN-0057 review M6). The header stays.
-  const focused = pathname.startsWith("/app/receitas/cozinhar/");
+  const cooking = pathname.startsWith("/app/receitas/cozinhar/");
+  // Building a menu is also a focused task on phones, with its own fixed bar (PLAN-0065).
+  const building = /^\/app\/compras\/planejar\/[^/]+$/.test(pathname);
   const labels: Record<ItemKey, string> = {
     home: t("nav.home"),
     inventory: t("inventory.title"),
@@ -77,7 +79,7 @@ export function AppNavigation() {
       aria-label={t("nav.primary")}
       data-testid="production-primary-nav"
       className={`safe-b fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 px-2 pt-2 md:static md:block md:border-0 md:bg-transparent md:p-0 ${
-        focused ? "hidden" : ""
+        cooking ? "hidden" : building ? "hidden md:block" : ""
       }`}
     >
       <ul className="mx-auto flex max-w-md items-center justify-between md:max-w-none md:justify-start md:gap-1">

@@ -13,36 +13,23 @@ The owner's decisions and the full specification of later slices are in PLAN-006
 
 The "Planejar" tab, the "Planejar" action on the main button, and the "Planejar" tile on the home page all open one page, "Planejamento" (`/app/compras`). It shows the current menu and leads with the next step: start a plan, continue one, what to buy, "Cheguei do mercado", "Começar o preparo", or the menu. The list is called "O que comprar". Loading this page or the home page keeps the current list on the device, so it opens at the market without ever having been opened.
 
-## The flow today
+## The flow today (PLAN-0065)
 
-1. **Setup (`/app/compras/planejar`).** One screen with the last answers preselected: days, meals, meals eaten out, how to cook, what matters most, and, unless the person cooks a dish each day, when to prepare and for how long. An optional starting ingredient. People and restrictions come from the profile. People can change for this plan; restrictions change only in the profile.
-2. **Cards (`/app/compras/planejar/:sessionId`).** One dish at a time, with "+N itens novos" and what it reuses. "Sim", "Sim, 2 vezes", "Não" with an optional reason, "Desfazer", "Quero outras opções", and "Já está bom, ver a lista".
-3. **Review (`.../revisar`).** Dishes in a suggested order, what spoils first coming first. Any dish can be given a date, changed, swapped, or removed. "Escolher mais pratos" goes back to the cards while meals are missing. "Usar este plano" accepts the menu, asking first when meals are missing.
-4. **List.** One line per item: check, name, amount, and the dishes it is for. "Comprei", "Já tenho", and "Não achei" sit behind the "⋯" on the line. "Compartilhar lista" and "Separar por lugar" are at the top. Opened from a review, "Voltar" returns to it.
+A menu is how many of each meal within a period, with no fixed days unless the person gives one. Seven snacks within fourteen days is a valid menu.
+
+1. **First screen (`/app/compras/planejar`).** "Por quantos dias?" (3, 5, 7, 14, or another number up to 14), "Começando" (today, tomorrow, or one of the next days, as chips), and four counters: breakfast, lunch, dinner, and snack, each 0 to 40 and at most 40 in all. The counters do not depend on the days; a counter not yet touched follows the days. "Para 2 pessoas · Alterar" changes people for this menu only. Nothing about cooking is asked. The main action says how many meals: "Montar cardápio (7)". Earlier menus can be repeated from "Repetir um cardápio", which is folded. The last answers come preselected. The screen fits a 360 × 740 phone without scrolling.
+2. **Board (`/app/compras/planejar/:sessionId`).** One surface per meal type with a count, such as "Lanches · 3 de 7". Each chosen dish shows its time, "rende N refeições" when it covers more than one, a small day tag only when it has a day, and whether its recipe is still being prepared. One row says what is missing: "Escolher lanche · faltam 4". On phones the tab bar is hidden; "Sair (fica salvo)" leaves. A fixed bar shows "3 de 7 · 9 itens", "O que comprar", and "Usar este cardápio", which asks first when meals are missing and waits while recipes are being prepared. Tapping a chosen dish offers "Ver receita", "Tentar de novo" when its recipe failed, and "Remover". Menus started before PLAN-0065 open here too, read as their days for each meal type. The old review address leads here.
+3. **Options of a meal type (a sheet).** A text box first, "O que você quer?", up to 120 characters. Typing shows the person's own recipes that match, whatever meal they were saved for, and always "Pedir à IA: {texto}", which asks for that dish and close alternatives; they come first, under "Para “{texto}”". Then two switches, "Minhas preferências" and "O que tenho e já escolhi", and a filter: "Rápido", "Menos compras", or "Econômico". Changing a switch replaces the options with new ones after a short pause, so quick taps send only the last state; the filter only reorders. Six options, each with time, "+N itens novos", and what it reuses. "Ver ingredientes" opens a dish's ingredients with "Quero parecido" and "Não sugerir isso". "Já neste cardápio" repeats a dish. "Ver outras" asks for six more. Choosing keeps the sheet open, with "Desfazer" for five seconds, until the meal type is complete. When a meal type has few options, the sheet asks for more once by itself. A request that breaks a restriction is refused by naming the restriction, with no way around it. Without AI, the sheet says so once and the person's recipes and the options stay usable.
+4. **List.** One line per item: check, name, amount, and the dishes it is for. "Comprei", "Já tenho", and "Não achei" sit behind the "⋯" on the line. "Compartilhar lista" and "Separar por lugar" are at the top. Opened from a board, "Voltar" returns to it.
 5. **Arrival (`/app/cardapio/:menuId/chegada`).** "Cheguei do mercado": where each purchase goes and how to divide it, recorded with one confirmation.
 
-## Plans by meal counts (PLAN-0065, engine only)
+A menu whose dishes have no day raises no buy reminder, because reminders come from dated meals. The list and the hub still show what to buy.
 
-The server now accepts a plan as how many of each meal, for example seven snacks within fourteen days and no fixed day. Nothing about cooking is asked first. Each meal type has its options, and the person can ask for a specific dish, for something like a dish already offered, or switch tastes, pantry, and a goal on or off for this plan. A dish can get a day and cover several meals after being chosen. The screens that use this arrive in PLAN-0065 Slice 2; until then the flow below is what people see.
-
-A plan whose dishes have no day raises no buy reminder, because reminders come from dated meals. The list and the hub still show what to buy.
-
-## "Quero outras opções" (PLAN-0064)
-
-The button opens quick questions, and nothing is sent until "Ver outras opções":
-
-- **O que usar?** "Pode ser qualquer coisa" (the default) or "Só o que tenho e já escolhi".
-- **Comparado com {dish}:** "Bem diferente" (the default), "Parecido", or "Tanto faz".
-- **Adicionar uma dica:** optional text of up to 40 characters, opened on request.
-- **Mais filtros:** family, cuisine, and time, using the same answers.
-
-While it searches, a wait takes the dish's place, and the dishes that answer come first. The answers keep applying to this plan and never change the profile or relax a restriction. If nothing new comes, the person is told and the previous dishes return.
-
-"Não" also has an effect without any answer: each refusal in a row reduces the weight of the pantry and the list by a third, and after three the model stops receiving them. Accepting a dish restores them.
+Still to come in PLAN-0065: actions on a chosen dish (day, "Rende mais", portions, swap) and "Completar" (Slice 3), and the menu in use with "Quando quiser" (Slice 4).
 
 ## Rules
 
-- **Answers are the plan's.** They never update the profile. The next plan only reuses them as defaults.
+- **Answers are the menu's.** They never update the profile. The next menu only reuses them as defaults, including the switches.
 - **Restrictions are hard rules.** The goal, ranking, options, and starting ingredient cannot relax them. See [`restriction-rules-review.md`](../domain/restriction-rules-review.md).
 - **Drafts reserve nothing.** A plan reaches "Hoje" and reserves pantry stock only after "Usar este plano". The list works before that, as a simulation.
 - **Pack sizes are never invented.** "+N" counts lines, not packages.

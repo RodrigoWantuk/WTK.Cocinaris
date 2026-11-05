@@ -91,9 +91,9 @@ export function ShoppingPlanRoutePage() {
       },
       (err: unknown) => {
         if (controller.signal.aborted) return;
-        // A plan not yet accepted has no session: its place is the review.
+        // A menu not yet accepted has no session: its place is the board.
         if (err instanceof RecipeApiError && err.status === 422) {
-          navigate(`/app/compras/planejar/${sessionId}/revisar`, {
+          navigate(`/app/compras/planejar/${sessionId}`, {
             replace: true,
           });
           return;

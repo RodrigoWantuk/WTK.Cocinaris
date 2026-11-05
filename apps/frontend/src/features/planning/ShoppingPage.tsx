@@ -340,7 +340,7 @@ export function ShoppingPage({
         <Link
           to={
             backToPlan
-              ? `/app/compras/planejar/${backToPlan}/revisar`
+              ? `/app/compras/planejar/${backToPlan}`
               : `/app/cardapio/${menuId}`
           }
           data-testid="shopping-back"

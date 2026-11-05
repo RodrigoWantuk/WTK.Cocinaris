@@ -145,7 +145,7 @@ export function usePlanningOverview(): PlanningOverviewState {
         overview: {
           menu,
           resumePath: current
-            ? `/app/compras/planejar/${current.sessionId}${current.status === "reviewing" ? "/revisar" : ""}`
+            ? `/app/compras/planejar/${current.sessionId}`
             : null,
           prepareSessionId,
           boughtCount: countShoppingLines(list).bought,

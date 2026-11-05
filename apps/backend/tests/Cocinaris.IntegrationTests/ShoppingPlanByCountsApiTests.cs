@@ -475,6 +475,39 @@ public sealed partial class RecipeExecutionApiTests
         Assert.Equal(["lunch", "snack"], day.EnumerateArray().Select(item => item.GetProperty("entry").GetProperty("mealType").GetString()!).Order());
     }
 
+    [Fact]
+    public async Task ASavedRecipeFoundByNameCanFillAnyMealButNeverBreaksARestriction()
+    {
+        var (host, _) = PlanHost();
+        await using var _host = host;
+        using var client = PlanClient(host, "counts-choose");
+        using var other = PlanClient(host, "counts-choose-other");
+        var csrf = await CsrfAsync(client);
+        var otherCsrf = await CsrfAsync(other);
+        await SetVegetarianAsync(client, csrf);
+        // Saved as a dinner, chosen as a snack: it is the person's own recipe, so no meal rule applies.
+        var mine = await CreateRecipeAsync(client, csrf, "Escondidinho da Casa", ("Mandioca", 500m, "g"));
+        var meat = await CreateRecipeAsync(client, csrf, "Frango Assado", ("Peito de frango", 500m, "g"));
+        var theirs = await CreateRecipeAsync(other, otherCsrf, "Receita Alheia", ("Arroz", 200m, "g"));
+        var plan = await JsonOf(await PostAsync(client, csrf, Plans, CountsPlan(snack: 2, days: 7), Guid.NewGuid()));
+        var sessionId = plan.GetProperty("sessionId").GetGuid();
+
+        plan = await JsonOf(await PostAsync(client, csrf, $"{Plans}/{sessionId}/recipes/{mine}/choice", new { mealType = "snack" }));
+        Assert.Equal(1, Group(plan, "snack").GetProperty("filled").GetInt32());
+        var chosen = plan.GetProperty("accepted")[0];
+        Assert.Equal(("Escondidinho da Casa", "snack"), (chosen.GetProperty("name").GetString(), chosen.GetProperty("mealType").GetString()));
+        Assert.True(plan.GetProperty("canUndo").GetBoolean());
+
+        var blocked = await PostAsync(client, csrf, $"{Plans}/{sessionId}/recipes/{meat}/choice", new { mealType = "snack" });
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, blocked.StatusCode);
+        var problem = await JsonOf(blocked);
+        Assert.Equal(("request_blocked", "vegetarian"), (Code(problem), problem.GetProperty("errors").GetProperty("restriction")[0].GetString()));
+
+        Assert.Equal(HttpStatusCode.NotFound, (await PostAsync(client, csrf, $"{Plans}/{sessionId}/recipes/{theirs}/choice", new { mealType = "snack" })).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await PostAsync(client, csrf, $"{Plans}/{sessionId}/recipes/{mine}/choice", new { mealType = "lunch" })).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await PostAsync(other, otherCsrf, $"{Plans}/{sessionId}/recipes/{theirs}/choice", new { mealType = "snack" })).StatusCode);
+    }
+
     /// <summary>A taste and a dislike, which travel apart: only the taste is optional.</summary>
     private static async Task SetTastesAsync(HttpClient client, string csrf)
     {

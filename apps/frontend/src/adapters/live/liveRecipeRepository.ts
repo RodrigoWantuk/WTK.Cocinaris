@@ -38,6 +38,8 @@ const KNOWN_ERROR_CODES = new Set<RecipeApiErrorCode>([
   "restriction_blocked",
   "expansions_pending",
   "no_more_options",
+  "request_blocked",
+  "meal_count_below_chosen",
   "authentication_required",
   "validation_failed",
   "not_found",
