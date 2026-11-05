@@ -737,10 +737,10 @@ Migrations are additive, and rollback means deploying the earlier code with unus
 
 ## Execution state
 
-- **Current run delivery target:** Slice 6, timed session route.
-- **Current checkpoint:** Slice 6 implemented on `agent/plan-0062-s6-session-route`, in a draft pull request. The G6 phone check has not run.
-- **Last completed step:** Browser journey on the proxy replica through a route with two recipes, a reload, and finishing both dishes.
-- **Exact next action:** The owner reviews and merges the pull request. Slice 7 (web push) then starts from fresh `origin/main` on `agent/plan-0062-s7-web-push`, writing ADR-0013 first. When the owner approves `docs/domain/storage-guidance-review.md`, deliver the rest of Slice 4 in its own pull request.
+- **Current run delivery target:** Publish merged `main` on the test host, repair what the first full gate run found, then Slice 7.
+- **Current checkpoint:** `main` at `8ddec16` deployed on 2026-11-05 at the owner's request. Worker cache header applied to the installed Caddy block; template, runbook, gate script, and a migration encoding fix on `agent/plan-0062-sw-cache-header`.
+- **Last completed step:** Deploy of `8ddec16` with migrations through `AddShoppingPlanRoute`; first full gate run on that commit, which failed for the causes in the log.
+- **Exact next action:** Rerun full local gates on this branch, record the result in the pull request, open it as a draft, then start Slice 7 (web push) from fresh `origin/main` on `agent/plan-0062-s7-web-push`, writing ADR-0013 first.
 - **Blockers:** The G6 phone check with wake lock needs the owner's phone. G5-A and G1-B need the provider key. G2-A for the Slice 4 limits and for storage guidance. Deploying `main` was refused by this agent's permission classifier, so the owner must run it. The browser smoke matrix fails on unmodified `main` on this host, and full local gates have not run.
 - **Partially modified areas:** Slice 4 limits and warnings are not delivered.
 - **Documentation delivered:** Product, planning, recipes, closed-loop, privacy, and gates documents; PLAN-0044 registry row.
@@ -930,6 +930,19 @@ Migrations are additive, and rollback means deploying the earlier code with unus
   - Skipping every task of a dish still leaves its finish step.
 - **Next action:** See `Exact next action`.
 - **Blockers or handoff notes:** See `Blockers`. The development database has this migration; production gets it on deploy. Dev Keycloak and the replica are stopped.
+
+### 2026-11-05 — Claude Code (deploy and first full gate run)
+
+- **Run delivery target:** Publish `main` on the test host at the owner's request, and repair what the first full gate run found.
+- **Deploy:** `8ddec16` active as release `20261105T102018Z-8ddec165110f`. Migration history went from 28 to 32 rows, `cocinaris_app` has access to the new tables, `/health/ready` returns 200, and the service log shows no errors in the first minutes. Sign-in, the new screens, and any plan on the deployed site were not exercised, because the agent has no account there.
+- **Worker caching:** the CDN cached `/sw.js` because of its extension. The agent's own check, made before the first release with a worker, stored the `index.html` fallback there, and that copy still answered after the deploy. The Caddy block now sends `Cache-Control: no-cache` on the path, and a fresh URL at the CDN answered `REVALIDATED` on its second read. The CDN still rewrites the browser header to `max-age=14400`, which does not delay worker updates because browsers skip the HTTP cache for the worker script by default. The stale copy stays until it expires or the owner purges it; the agent has no CDN credentials.
+- **First full gate run on `8ddec16`, result Failed:**
+  - `backend-format`: a real defect. `AddShoppingPlanRoute.cs` had a UTF-8 BOM that `.editorconfig` rejects. Repaired here. No effect on behavior.
+  - `backend-dependencies`: the agent's development PostgreSQL held port 55432, so the gate's PostgreSQL and Keycloak did not start.
+  - `backend-tests`: 14 architecture and 391 unit tests passed; integration 217 of 228. The 11 failures are login and logout routes answering 500, which fits the missing Keycloak; this is confirmed only if they pass on the rerun.
+  - Every remaining frontend, contract, and OpenAPI step failed on `ENOSPC`, because the gate worktree lived in the 2 GB RAM-backed `/tmp`. The script now builds in `/var/tmp`, as the deploy script does.
+- **Changes included in the commit:** `Caddyfile.cocinaris`, the runbook, `run-local-gates.sh`, the migration's encoding, this plan, and the registry.
+- **Next action:** See "Exact next action".
 
 ## Completion and handoff checklist
 

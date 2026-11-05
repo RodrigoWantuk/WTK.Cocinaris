@@ -156,6 +156,7 @@ Restoring a backup on another server needs the same package; otherwise the resto
 
 The production build publishes `sw.js`, which precaches application files only. Nothing needs configuring.
 
+- **CDN caching.** A CDN may cache `/sw.js` because of its extension, which would delay every worker update and the rollback's removal worker. The Caddy block therefore sends `Cache-Control: no-cache` on that path. A host that adopted the worker before this header existed must add the same lines from `Caddyfile.cocinaris`, run `caddy validate`, and reload Caddy. A copy the CDN already holds stays until it expires or is purged; requesting `/sw.js` before the first release with a worker caches the `index.html` fallback in the same way.
 - **After a deploy,** a returning visitor gets the previous files on the first load; the new worker activates at once and the next load is current. Nobody needs to clear anything.
 - **Rollback to a release without a worker.** `--rollback` installs `infrastructure/deploy/linux-host/sw-unregister.js` as that release's `sw.js`, because otherwise browsers would keep serving the newer application forever. It clears the caches, removes the worker, and reloads open pages.
 - **Removing the worker by hand,** for example if it misbehaves: `sudo install -m 0644 infrastructure/deploy/linux-host/sw-unregister.js /srv/wtk-cocinaris/web/sw.js`. Do not simply delete `sw.js`: Caddy would answer the update check with `index.html`, the check would fail, and the old worker would stay. A later deploy publishes a real `sw.js` again.
