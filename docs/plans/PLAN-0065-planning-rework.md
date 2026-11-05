@@ -502,8 +502,8 @@ Prices and budgets, curated pack sizes, loose list items (a decision of PLAN-006
   - **Day and yield are per card, not per entry,** because a dish chosen and not yet expanded has no entry. Each route updates the entry too when it exists.
   - **Counts are checked per group.** Lunch and dinner are interchangeable, so lowering lunches below the lunches chosen is accepted while the main meals still fit, and a dish yielding more than its meal fills the other. Choosing still needs room in the named meal.
   - **Hint persistence stays** until Slice 2 removes the old panel, because the current screens still send it.
-- **Defect the tests caught:** a new plan's switches were not written on creation, so the first batch still sent the pantry. The store now writes them.
-- **Validation performed:** Unit `ShoppingPlanTests` (63) and the planning integration tests (34, of which 16 are new) pass. OpenAPI exported, client regenerated and mirrored, drift check passed, lint with the same 9 warnings as `main`. The live evaluation script builds. Local gates run on the pull request head; results are in the pull request.
+- **Defects caught:** a new plan's switches were not written on creation, so the first batch still sent the pantry; the store now writes them. The first gate run (`78451e2`) failed `frontend-typecheck` because `replaceOffers` had a default and became required in the contract; it is now optional (`bool?`, false when absent). Every other step of that run passed: 14 architecture, 487 unit, 263 integration, and 633 frontend tests.
+- **Validation performed:** Unit `ShoppingPlanTests` (63) and the planning integration tests (34, of which 16 are new) pass, and the 18 affected ones again after the contract fix. OpenAPI exported, client regenerated and mirrored, drift check passed, frontend typecheck passed, lint with the same 9 warnings as `main`. The live evaluation script builds. One more local gate run on the pull request head; results are in the pull request.
 - **Not run:** the live evaluation (needs the provider key); browser journeys, because no screen changed.
 - **Next action:** See "Exact next action".
 

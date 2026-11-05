@@ -5885,9 +5885,11 @@
             ]
           },
           "replaceOffers": {
-            "default": false,
-            "description": "Whether earlier unseen dishes of this meal give way.",
-            "type": "boolean"
+            "description": "Whether earlier unseen dishes of this meal give way; false when absent.",
+            "type": [
+              "null",
+              "boolean"
+            ]
           },
           "request": {
             "description": "A specific dish in the person's words, at most 120 characters; untrusted.",

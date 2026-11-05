@@ -186,7 +186,7 @@ public sealed class ShoppingPlanApiService(ShoppingPlanApplicationService applic
 
     /// <summary>Adds up to six AI cards; requires an Idempotency-Key.</summary>
     public async Task<IResult> AddBatchAsync(Guid sessionId, ShoppingPlanBatchRequest? body, HttpRequest request, CancellationToken cancellationToken) =>
-        ToResult(await application.AddBatchAsync(sessionId, Key(request), body?.DishFamilies, body?.Cuisine, body?.Time, body is null ? null : new ShoppingPlanDirection(body.Pantry, body.Similarity, body.ReferenceCardId, body.Hint), body?.MealType is { } mealType ? new ShoppingPlanBatchAsk(mealType, body.Request, body.LikeCardId, body.ReplaceOffers) : null, request.HttpContext.TraceIdentifier, Language(request), cancellationToken), request.HttpContext.TraceIdentifier);
+        ToResult(await application.AddBatchAsync(sessionId, Key(request), body?.DishFamilies, body?.Cuisine, body?.Time, body is null ? null : new ShoppingPlanDirection(body.Pantry, body.Similarity, body.ReferenceCardId, body.Hint), body?.MealType is { } mealType ? new ShoppingPlanBatchAsk(mealType, body.Request, body.LikeCardId, body.ReplaceOffers ?? false) : null, request.HttpContext.TraceIdentifier, Language(request), cancellationToken), request.HttpContext.TraceIdentifier);
 
     /// <summary>Accepts or rejects a card.</summary>
     public async Task<IResult> DecideAsync(Guid sessionId, Guid cardId, ShoppingPlanDecisionRequest body, HttpContext context, CancellationToken cancellationToken) =>
@@ -301,8 +301,8 @@ public sealed record CreateShoppingPlanRequest(DateOnly? Today, int Days, IReadO
 /// <param name="MealType">One meal type to suggest for. When given, the next three fields apply and the four before them are ignored.</param>
 /// <param name="Request">A specific dish in the person's words, at most 120 characters; untrusted.</param>
 /// <param name="LikeCardId">A card to offer dishes close to.</param>
-/// <param name="ReplaceOffers">Whether earlier unseen dishes of this meal give way.</param>
-public sealed record ShoppingPlanBatchRequest(IReadOnlyList<string>? DishFamilies, string? Cuisine, string? Time, string? Pantry = null, string? Similarity = null, Guid? ReferenceCardId = null, string? Hint = null, string? MealType = null, string? Request = null, Guid? LikeCardId = null, bool ReplaceOffers = false);
+/// <param name="ReplaceOffers">Whether earlier unseen dishes of this meal give way; false when absent.</param>
+public sealed record ShoppingPlanBatchRequest(IReadOnlyList<string>? DishFamilies, string? Cuisine, string? Time, string? Pantry = null, string? Similarity = null, Guid? ReferenceCardId = null, string? Hint = null, string? MealType = null, string? Request = null, Guid? LikeCardId = null, bool? ReplaceOffers = null);
 
 /// <summary>Body for deciding a card.</summary>
 /// <param name="Decision"><c>accept</c> or <c>reject</c>.</param>

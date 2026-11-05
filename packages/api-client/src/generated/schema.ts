@@ -3477,11 +3477,8 @@ export interface components {
              * @description The card on screen; required to compare.
              */
             referenceCardId?: null | string;
-            /**
-             * @description Whether earlier unseen dishes of this meal give way.
-             * @default false
-             */
-            replaceOffers: boolean;
+            /** @description Whether earlier unseen dishes of this meal give way; false when absent. */
+            replaceOffers?: null | boolean;
             /** @description A specific dish in the person's words, at most 120 characters; untrusted. */
             request?: null | string;
             /** @description `any`, `similar`, or `different`, compared with the card on screen. */
