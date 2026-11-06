@@ -173,9 +173,14 @@ export interface PreparationReminder {
   menuId: string;
   entryId: string;
   recipeName: string;
+  /** Day of the meal; for `cook_by`, whose meal has no day, the day to cook it by. */
   plannedDate: string;
   mealType: string | null;
-  /** `buy` (not covered), `thaw` (a reserved lot is frozen), or `use_by` (a reserved lot's date is before the meal). */
+  /**
+   * `buy` (not covered), `thaw` (a reserved lot is frozen), `use_by` (a reserved lot's date is before
+   * the meal), `ready_portions`, or `cook_by` (a meal with no day should be cooked by `useByDate`;
+   * advisory, PLAN-0062 Slice 4).
+   */
   kind: string;
   itemName: string;
   unit: string | null;
@@ -184,6 +189,8 @@ export interface PreparationReminder {
   dueDate: string;
   lotId: string | null;
   useByDate: string | null;
+  /** For `cook_by`: reserved quantities the storage table says can be frozen; empty without it. */
+  freezeLots?: Array<{ lotId: string; quantity: number; unit: string | null }>;
 }
 
 /** A menu's derived shopping list; reading it never changes the pantry. */
@@ -385,4 +392,14 @@ export interface PlanningRepository {
     days: number,
     signal?: AbortSignal,
   ): Promise<PreparationReminder[]>;
+  /**
+   * "Deixar como está" on a `cook_by` reminder: it stays hidden until the day it names changes.
+   * Optional: without it the action is not offered.
+   */
+  dismissReminder?(
+    entryId: string,
+    kind: "cook_by",
+    date: string,
+    options: Mutation,
+  ): Promise<void>;
 }

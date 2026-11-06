@@ -351,6 +351,14 @@ const ptBR: Record<string, string> = {
   "shopping.split.section": "Por seção",
   "shopping.split.place": "Por lugar",
   "shopping.arrival.count": "Cheguei do mercado ({{count}})",
+  // PLAN-0062 Slice 4: cook-by reminders.
+  "today.prep.cookBy": "Fazer {{recipe}} até {{date}}",
+  "today.prep.cookBy.why":
+    "Por causa de {{item}}. É uma estimativa: confira o alimento.",
+  "today.prep.freeze": "Congelar hoje",
+  "today.prep.swap": "Trocar de prato",
+  "today.prep.leave": "Deixar como está",
+  "today.prep.actionError": "Não deu certo. Tente de novo.",
 };
 
 const en: Record<string, string> = {
@@ -701,6 +709,14 @@ const en: Record<string, string> = {
   "shopping.split.section": "By section",
   "shopping.split.place": "By place",
   "shopping.arrival.count": "Back from the market ({{count}})",
+  // PLAN-0062 Slice 4: cook-by reminders.
+  "today.prep.cookBy": "Make {{recipe}} by {{date}}",
+  "today.prep.cookBy.why":
+    "Because of {{item}}. It is an estimate: check the food.",
+  "today.prep.freeze": "Freeze today",
+  "today.prep.swap": "Swap the dish",
+  "today.prep.leave": "Leave it as it is",
+  "today.prep.actionError": "That did not work. Try again.",
 };
 
 const es: Record<string, string> = {
@@ -1050,6 +1066,14 @@ const es: Record<string, string> = {
   "shopping.split.section": "Por sección",
   "shopping.split.place": "Por lugar",
   "shopping.arrival.count": "Volví del mercado ({{count}})",
+  // PLAN-0062 Slice 4: cook-by reminders.
+  "today.prep.cookBy": "Preparar {{recipe}} antes del {{date}}",
+  "today.prep.cookBy.why":
+    "Por {{item}}. Es una estimación: revisa el alimento.",
+  "today.prep.freeze": "Congelar hoy",
+  "today.prep.swap": "Cambiar de plato",
+  "today.prep.leave": "Dejarlo así",
+  "today.prep.actionError": "No funcionó. Inténtalo de nuevo.",
 };
 
 /** Every key shopping plans require; the test checks each locale has them all. */

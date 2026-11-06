@@ -590,6 +590,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/planning/reminders/dismissal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** PUT /api/v1/planning/reminders/dismissal */
+        put: operations["putApiV1PlanningRemindersDismissal"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/planning/reservations": {
         parameters: {
             query?: never;
@@ -2231,9 +2248,11 @@ export interface components {
              * @description Menu entry.
              */
             entryId: string;
+            /** @description For `cook_by`: reserved quantities the storage table says can be frozen; empty without the table. */
+            freezeLots?: null | components["schemas"]["PreparationReminderLotResponse"][];
             /** @description Ingredient or product name. */
             itemName: string;
-            /** @description `buy` (a required ingredient is not covered), `thaw` (a reserved lot is frozen), or `use_by` (a reserved lot's date falls before the meal; advisory). */
+            /** @description `buy` (a required ingredient is not covered), `thaw` (a reserved lot is frozen), `use_by` (a reserved lot's date falls before the meal; advisory), `ready_portions`, or `cook_by` (a meal with no day should be cooked by UseByDate; advisory). */
             kind: string;
             /**
              * Format: uuid
@@ -2249,7 +2268,7 @@ export interface components {
             menuId: string;
             /**
              * Format: date
-             * @description Day of the meal.
+             * @description Day of the meal; for `cook_by`, whose meal has no day, the day to cook it by.
              */
             plannedDate: string;
             /**
@@ -2263,7 +2282,7 @@ export interface components {
             unit: null | string;
             /**
              * Format: date
-             * @description The lot's earliest date, for `use_by`.
+             * @description The lot's earliest date, for `use_by`; the day to cook by, for `cook_by`.
              */
             useByDate: null | string;
         };
@@ -2509,6 +2528,21 @@ export interface components {
         PreparationOutputResponse: {
             lot: components["schemas"]["LotResponse"];
             preparedMetadata: components["schemas"]["PreparedLotMetadataResponse"];
+        };
+        /** @description Pantry quantity reserved for a meal that can be frozen today. */
+        PreparationReminderLotResponse: {
+            /**
+             * Format: uuid
+             * @description Pantry lot.
+             */
+            lotId: string;
+            /**
+             * Format: double
+             * @description Quantity the meal reserves from it.
+             */
+            quantity: number | string;
+            /** @description `Gram`, `Milliliter`, or `Unit`. */
+            unit: null | string;
         };
         /** @description Returns an owner-visible preparation batch and its immutable input/output provenance. */
         PreparationResponse: {
@@ -3316,6 +3350,21 @@ export interface components {
             state: string;
             /** @description Full-size (1024 × 576 WebP) image URL when ready; it changes when the image changes, so it may be cached. */
             url: null | string;
+        };
+        /** @description Body of "Deixar como está" on a reminder. */
+        ReminderDismissalRequest: {
+            /**
+             * Format: date
+             * @description The day the reminder named; the reminder comes back when that day changes.
+             */
+            date: null | string;
+            /**
+             * Format: uuid
+             * @description Menu entry the reminder is about.
+             */
+            entryId: string;
+            /** @description `cook_by`. */
+            kind: null | string;
         };
         /** @description Optional body for requesting candidates; without it the request is cook-now. */
         RequestCandidatesRequest: {
@@ -7170,6 +7219,76 @@ export interface operations {
             };
             /** @description Authentication is required. */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    putApiV1PlanningRemindersDismissal: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Required CSRF token issued by GET /api/v1/session. */
+                "X-CSRF-TOKEN": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReminderDismissalRequest"];
+            };
+        };
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description The request content type is not supported. */
+            415: {
                 headers: {
                     [name: string]: unknown;
                 };

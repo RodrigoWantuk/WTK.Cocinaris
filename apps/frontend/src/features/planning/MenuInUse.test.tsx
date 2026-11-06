@@ -406,6 +406,24 @@ describe("the menu in use (PLAN-0065 Slice 4)", () => {
     expect(getMenu.mock.calls.length).toBeGreaterThan(1);
   });
 
+  it("opens the swap of a dish named in the address, from a reminder on Hoje", async () => {
+    const plans = plansRepo();
+    render_(
+      "/app/cardapio/menu-1?trocar=e-snack",
+      { getMenu: async () => IN_USE },
+      { plans },
+    );
+    await waitFor(() =>
+      expect(plans.openAmendment).toHaveBeenCalledWith(
+        "menu-1",
+        TODAY,
+        "e-snack",
+        expect.objectContaining({ csrfToken: expect.any(String) }),
+      ),
+    );
+    expect(await screen.findByTestId("meal-sheet")).toBeInTheDocument();
+  });
+
   it("undoes a swap by putting the same dish back", async () => {
     const user = userEvent.setup();
     const addEntry = vi.fn(async () => IN_USE);

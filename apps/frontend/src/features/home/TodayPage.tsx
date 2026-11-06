@@ -256,6 +256,7 @@ const PREP_ICON = {
   thaw: Snowflake,
   use_by: Clock,
   ready_portions: ChefHat,
+  cook_by: Clock,
 } as const;
 
 /**
@@ -275,8 +276,63 @@ function PreparationSection({
   const { t, locale } = useProductionI18n();
   const { session } = useSession();
   const inventory = useInventoryRepository();
+  const planning = usePlanningRepository();
   const [eating, setEating] = useState<string | null>(null);
   const [eatFailed, setEatFailed] = useState(false);
+  const [acting, setActing] = useState<string | null>(null);
+  const [actFailed, setActFailed] = useState(false);
+
+  // "Congelar hoje" (PLAN-0062 Slice 4): the quantity the meal reserves, through the ordinary freeze
+  // transition. A lot reserved whole is frozen whole; a part splits off as its own frozen lot.
+  const freezeToday = async (item: PreparationReminder) => {
+    if (!session.csrfToken) return;
+    setActing(item.entryId);
+    setActFailed(false);
+    try {
+      for (const part of item.freezeLots ?? []) {
+        const lot = await inventory.getLot(part.lotId);
+        const measured = lot.quantity.kind === "measured" ? lot.quantity : null;
+        await inventory.transitionLot(
+          part.lotId,
+          !measured || part.quantity >= measured.value
+            ? { kind: "Freeze" }
+            : {
+                kind: "Freeze",
+                partialValue: part.quantity,
+                unit: measured.unit,
+              },
+          {
+            csrfToken: session.csrfToken,
+            etag: lot.etag,
+            idempotencyKey: crypto.randomUUID(),
+          },
+        );
+      }
+      onChanged();
+    } catch {
+      setActFailed(true);
+    } finally {
+      setActing(null);
+    }
+  };
+
+  // "Deixar como está": hidden until the day it names changes.
+  const leaveAsItIs = async (item: PreparationReminder) => {
+    if (!session.csrfToken || !planning.dismissReminder || !item.useByDate)
+      return;
+    setActing(item.entryId);
+    setActFailed(false);
+    try {
+      await planning.dismissReminder(item.entryId, "cook_by", item.useByDate, {
+        csrfToken: session.csrfToken,
+      });
+      onChanged();
+    } catch {
+      setActFailed(true);
+    } finally {
+      setActing(null);
+    }
+  };
   // The ordinary consume adjustment, so the pantry history explains it like any other use.
   const eatPortion = async (lotId: string) => {
     if (!session.csrfToken) return;
@@ -308,6 +364,13 @@ function PreparationSection({
       : iso === addDays(today, 1)
         ? t("today.prep.dueTomorrow")
         : formatMenuDay(iso, locale);
+  // Mid-sentence: "Fazer Moqueca até amanhã".
+  const within = (iso: string) =>
+    iso <= today
+      ? t("today.menu.today")
+      : iso === addDays(today, 1)
+        ? t("menuUse.tomorrow")
+        : formatMenuDay(iso, locale);
   const amount = (item: PreparationReminder) =>
     item.quantity === null
       ? ""
@@ -322,10 +385,15 @@ function PreparationSection({
           })
         : item.kind === "thaw"
           ? t("today.prep.thaw", { item: item.itemName })
-          : t("today.prep.useBy", {
-              item: item.itemName,
-              date: formatMenuDay(item.useByDate ?? item.dueDate, locale),
-            });
+          : item.kind === "cook_by"
+            ? t("today.prep.cookBy", {
+                recipe: item.recipeName,
+                date: within(item.useByDate ?? item.dueDate),
+              })
+            : t("today.prep.useBy", {
+                item: item.itemName,
+                date: formatMenuDay(item.useByDate ?? item.dueDate, locale),
+              });
 
   // Whoever has something to buy may have just come back from the market (PLAN-0062).
   const buyMenu = items.find((item) => item.kind === "buy")?.menuId;
@@ -361,13 +429,16 @@ function PreparationSection({
                 <span className="min-w-0 flex-1">
                   <span className="block font-medium">{action(item)}</span>
                   <span className="block text-sm text-muted-foreground">
-                    {day(item.dueDate) !== day(item.plannedDate)
-                      ? `${day(item.dueDate)} · `
-                      : ""}
-                    {t("today.prep.for", {
-                      recipe: item.recipeName,
-                      day: day(item.plannedDate),
-                    })}
+                    {item.kind === "cook_by"
+                      ? t("today.prep.cookBy.why", { item: item.itemName })
+                      : `${
+                          day(item.dueDate) !== day(item.plannedDate)
+                            ? `${day(item.dueDate)} · `
+                            : ""
+                        }${t("today.prep.for", {
+                          recipe: item.recipeName,
+                          day: day(item.plannedDate),
+                        })}`}
                   </span>
                 </span>
                 <ChevronRight
@@ -375,6 +446,46 @@ function PreparationSection({
                   className="h-5 w-5 shrink-0 text-muted-foreground"
                 />
               </Link>
+              {item.kind === "cook_by" ? (
+                // Three ways out, none forced: the limit is advisory.
+                <div
+                  className="flex flex-wrap gap-2 px-4 pb-3"
+                  data-testid="today-cook-by-actions"
+                >
+                  {(item.freezeLots ?? []).length > 0 ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="secondary"
+                      data-testid="today-cook-by-freeze"
+                      disabled={acting !== null}
+                      onClick={() => void freezeToday(item)}
+                    >
+                      {t("today.prep.freeze")}
+                    </Button>
+                  ) : null}
+                  <Button asChild size="sm" variant="secondary">
+                    <Link
+                      to={`/app/cardapio/${item.menuId}?trocar=${item.entryId}`}
+                      data-testid="today-cook-by-swap"
+                    >
+                      {t("today.prep.swap")}
+                    </Link>
+                  </Button>
+                  {planning.dismissReminder ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      data-testid="today-cook-by-leave"
+                      disabled={acting !== null}
+                      onClick={() => void leaveAsItIs(item)}
+                    >
+                      {t("today.prep.leave")}
+                    </Button>
+                  ) : null}
+                </div>
+              ) : null}
               {item.kind === "ready_portions" && item.lotId ? (
                 <div className="px-4 pb-3">
                   <Button
@@ -396,6 +507,11 @@ function PreparationSection({
       {eatFailed ? (
         <p role="alert" className="text-sm text-destructive">
           {t("today.prep.eatError")}
+        </p>
+      ) : null}
+      {actFailed ? (
+        <p role="alert" className="text-sm text-destructive">
+          {t("today.prep.actionError")}
         </p>
       ) : null}
       {buyMenu ? (

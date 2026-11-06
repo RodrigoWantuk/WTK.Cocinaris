@@ -105,6 +105,11 @@ public static class PlanningEndpoints
             .RequireRateLimiting("mutation")
             .Produces<PackageSizeRequest>()
             .ProducesProblem(400);
+        group.MapPut("/reminders/dismissal", (PlanningApiService service, ReminderDismissalRequest body, HttpContext context, CancellationToken cancellationToken) => service.DismissReminderAsync(body, context, cancellationToken))
+            .RequireRateLimiting("mutation")
+            .Produces(StatusCodes.Status204NoContent)
+            .ProducesProblem(400)
+            .ProducesProblem(404);
         group.MapGet("/preparation", (PlanningApiService service, DateOnly? from, int? days, HttpContext context, CancellationToken cancellationToken) => service.GetPreparationAsync(from, days, context, cancellationToken))
             .Produces<MealPreparationResponse>()
             .ProducesProblem(400);
@@ -231,12 +236,19 @@ public sealed class PlanningApiService(MenuPlanningApplicationService applicatio
     public async Task<IResult> SetPackageSizeAsync(PackageSizeRequest body, HttpContext context, CancellationToken cancellationToken) =>
         ToResult(await application.SetPackageSizeAsync(body.ItemKey, body.Size, cancellationToken), context.TraceIdentifier, size => body with { Size = size });
 
+    /// <summary>"Deixar como está" on a reminder; it stays hidden until the day it names changes.</summary>
+    public async Task<IResult> DismissReminderAsync(ReminderDismissalRequest body, HttpContext context, CancellationToken cancellationToken)
+    {
+        var result = await application.DismissReminderAsync(body.EntryId, body.Kind, body.Date, cancellationToken);
+        return result.Problem is null ? Results.NoContent() : ToResult(result, context.TraceIdentifier, value => value);
+    }
+
     /// <summary>Gets pre-meal reminders for the dated meals of menus in use.</summary>
     public async Task<IResult> GetPreparationAsync(DateOnly? from, int? days, HttpContext context, CancellationToken cancellationToken) =>
         ToResult(await application.GetPreparationAsync(from, days, cancellationToken), context.TraceIdentifier, view => new MealPreparationResponse(
             view!.From,
             view.Days,
-            view.Reminders.Select(item => new MealPreparationReminderResponse(item.PlanId, item.EntryId, item.RecipeName, item.PlannedDate, item.MealType, item.Kind, item.ItemName, item.Unit, item.Quantity, item.DueDate, item.LotId, item.UseByDate)).ToList()));
+            view.Reminders.Select(item => new MealPreparationReminderResponse(item.PlanId, item.EntryId, item.RecipeName, item.PlannedDate, item.MealType, item.Kind, item.ItemName, item.Unit, item.Quantity, item.DueDate, item.LotId, item.UseByDate, (item.FreezeLots ?? []).Select(lot => new PreparationReminderLotResponse(lot.LotId, lot.Quantity, lot.Unit)).ToList())).ToList()));
 
     /// <summary>Checks or unchecks a shopping line.</summary>
     public async Task<IResult> SetCheckedAsync(Guid menuId, ShoppingCheckRequest body, HttpContext context, CancellationToken cancellationToken) =>
@@ -449,13 +461,26 @@ public sealed record MealPreparationResponse(DateOnly From, int Days, IReadOnlyL
 /// <param name="MenuId">Menu.</param>
 /// <param name="EntryId">Menu entry.</param>
 /// <param name="RecipeName">Recipe name.</param>
-/// <param name="PlannedDate">Day of the meal.</param>
+/// <param name="PlannedDate">Day of the meal; for <c>cook_by</c>, whose meal has no day, the day to cook it by.</param>
 /// <param name="MealType">Meal, if set.</param>
-/// <param name="Kind"><c>buy</c> (a required ingredient is not covered), <c>thaw</c> (a reserved lot is frozen), or <c>use_by</c> (a reserved lot's date falls before the meal; advisory).</param>
+/// <param name="Kind"><c>buy</c> (a required ingredient is not covered), <c>thaw</c> (a reserved lot is frozen), <c>use_by</c> (a reserved lot's date falls before the meal; advisory), <c>ready_portions</c>, or <c>cook_by</c> (a meal with no day should be cooked by <paramref name="UseByDate"/>; advisory).</param>
 /// <param name="ItemName">Ingredient or product name.</param>
 /// <param name="Unit"><c>Gram</c>, <c>Milliliter</c>, or <c>Unit</c>, when there is a quantity.</param>
 /// <param name="Quantity">Missing quantity (<c>buy</c>) or quantity reserved from the lot.</param>
 /// <param name="DueDate">Day to act by.</param>
 /// <param name="LotId">Pantry lot, for <c>thaw</c> and <c>use_by</c>.</param>
-/// <param name="UseByDate">The lot's earliest date, for <c>use_by</c>.</param>
-public sealed record MealPreparationReminderResponse(Guid MenuId, Guid EntryId, string RecipeName, DateOnly PlannedDate, string? MealType, string Kind, string ItemName, string? Unit, decimal? Quantity, DateOnly DueDate, Guid? LotId, DateOnly? UseByDate);
+/// <param name="UseByDate">The lot's earliest date, for <c>use_by</c>; the day to cook by, for <c>cook_by</c>.</param>
+/// <param name="FreezeLots">For <c>cook_by</c>: reserved quantities the storage table says can be frozen; empty without the table.</param>
+public sealed record MealPreparationReminderResponse(Guid MenuId, Guid EntryId, string RecipeName, DateOnly PlannedDate, string? MealType, string Kind, string ItemName, string? Unit, decimal? Quantity, DateOnly DueDate, Guid? LotId, DateOnly? UseByDate, IReadOnlyList<PreparationReminderLotResponse>? FreezeLots = null);
+
+/// <summary>Pantry quantity reserved for a meal that can be frozen today.</summary>
+/// <param name="LotId">Pantry lot.</param>
+/// <param name="Quantity">Quantity the meal reserves from it.</param>
+/// <param name="Unit"><c>Gram</c>, <c>Milliliter</c>, or <c>Unit</c>.</param>
+public sealed record PreparationReminderLotResponse(Guid LotId, decimal Quantity, string? Unit);
+
+/// <summary>Body of "Deixar como está" on a reminder.</summary>
+/// <param name="EntryId">Menu entry the reminder is about.</param>
+/// <param name="Kind"><c>cook_by</c>.</param>
+/// <param name="Date">The day the reminder named; the reminder comes back when that day changes.</param>
+public sealed record ReminderDismissalRequest(Guid EntryId, string? Kind, DateOnly? Date);

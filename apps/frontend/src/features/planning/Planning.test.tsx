@@ -496,6 +496,78 @@ describe("menu planning (PLAN-0029)", () => {
     expect(screen.getByText("Whenever you like")).toBeInTheDocument();
   });
 
+  it("says by when to cook a dish with no day, and freezes it or leaves it as it is (PLAN-0062 Slice 4)", async () => {
+    const user = userEvent.setup();
+    const today = localIsoDate();
+    const reminder = {
+      menuId: "menu-1",
+      entryId: "entry-9",
+      recipeName: "Moqueca",
+      plannedDate: addDays(today, 1),
+      mealType: "dinner",
+      kind: "cook_by",
+      itemName: "Peixe branco",
+      unit: "Gram",
+      quantity: 300,
+      dueDate: today,
+      lotId: "lot-9",
+      useByDate: addDays(today, 1),
+      freezeLots: [{ lotId: "lot-9", quantity: 300, unit: "Gram" }],
+    };
+    const getPreparation = vi.fn(async () => [reminder]);
+    const dismissReminder = vi.fn(async () => undefined);
+    const inventory = createMockInventoryRepo({
+      getLot: vi.fn(async () => ({
+        ...sampleLot,
+        lotId: "lot-9",
+        quantity: {
+          kind: "measured" as const,
+          value: 300,
+          unit: "Gram" as const,
+        },
+      })),
+      transitionLot: vi.fn(async () => sampleLot),
+    });
+    renderAt(
+      "/app",
+      { getToday: async () => [], getPreparation, dismissReminder },
+      { inventory },
+    );
+
+    const item = await screen.findByTestId("today-preparation-item");
+    expect(item).toHaveTextContent("Make Moqueca by tomorrow");
+    expect(item).toHaveTextContent(
+      "Because of Peixe branco. It is an estimate: check the food.",
+    );
+    expect(within(item).getByTestId("today-cook-by-swap")).toHaveAttribute(
+      "href",
+      "/app/cardapio/menu-1?trocar=entry-9",
+    );
+
+    // The meal reserves the whole lot, so the whole lot is frozen.
+    await user.click(within(item).getByTestId("today-cook-by-freeze"));
+    await waitFor(() =>
+      expect(inventory.transitionLot).toHaveBeenCalledWith(
+        "lot-9",
+        { kind: "Freeze" },
+        expect.objectContaining({ csrfToken: expect.any(String) }),
+      ),
+    );
+    await user.click(
+      within(await screen.findByTestId("today-preparation-item")).getByTestId(
+        "today-cook-by-leave",
+      ),
+    );
+    await waitFor(() =>
+      expect(dismissReminder).toHaveBeenCalledWith(
+        "entry-9",
+        "cook_by",
+        addDays(today, 1),
+        { csrfToken: expect.any(String) },
+      ),
+    );
+  });
+
   it("lists a lot's reservations and protects a minimum quantity", async () => {
     const user = userEvent.setup();
     const reservations = (

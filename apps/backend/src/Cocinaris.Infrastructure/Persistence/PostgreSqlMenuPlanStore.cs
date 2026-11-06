@@ -143,6 +143,29 @@ public sealed class PostgreSqlMenuPlanStore(ApplicationDbContext database) : IMe
     }
 
     /// <inheritdoc />
+    public async Task<IReadOnlyDictionary<(Guid EntryId, string Kind), DateOnly>> ListDismissalsAsync(Guid ownerUserId, CancellationToken cancellationToken) =>
+        await database.ReminderDismissals.AsNoTracking()
+            .Where(item => item.OwnerUserId == ownerUserId)
+            .ToDictionaryAsync(item => (item.MenuEntryId, item.Kind), item => item.ReminderDate, cancellationToken);
+
+    /// <inheritdoc />
+    public async Task SetDismissalAsync(Guid ownerUserId, Guid entryId, string kind, DateOnly reminderDate, DateTimeOffset now, CancellationToken cancellationToken)
+    {
+        var record = await database.ReminderDismissals.SingleOrDefaultAsync(item => item.OwnerUserId == ownerUserId && item.MenuEntryId == entryId && item.Kind == kind, cancellationToken);
+        if (record is null)
+        {
+            database.ReminderDismissals.Add(new ReminderDismissalRecord { OwnerUserId = ownerUserId, MenuEntryId = entryId, Kind = kind, ReminderDate = reminderDate, DismissedAt = now });
+        }
+        else
+        {
+            record.ReminderDate = reminderDate;
+            record.DismissedAt = now;
+        }
+
+        await SaveAndClearAsync(cancellationToken);
+    }
+
+    /// <inheritdoc />
     public async Task SetSuggestedOrdersAsync(Guid ownerUserId, Guid planId, IReadOnlyDictionary<Guid, int> orders, DateTimeOffset now, CancellationToken cancellationToken)
     {
         var records = await database.MenuEntries.Where(item => item.OwnerUserId == ownerUserId && item.MenuPlanId == planId).ToListAsync(cancellationToken);

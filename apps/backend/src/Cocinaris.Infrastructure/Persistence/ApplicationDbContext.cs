@@ -98,6 +98,8 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
 
     /// <summary>Gets package sizes the owner confirmed for shopping items.</summary>
     public DbSet<PackageSizeRecord> PackageSizes => Set<PackageSizeRecord>();
+    /// <summary>Gets reminders the owner chose to leave as they are (PLAN-0062 Slice 4).</summary>
+    public DbSet<ReminderDismissalRecord> ReminderDismissals => Set<ReminderDismissalRecord>();
 
     /// <summary>Gets generated recipe images and their generation jobs (PLAN-0030).</summary>
     public DbSet<RecipeThumbnailRecord> RecipeThumbnails => Set<RecipeThumbnailRecord>();
@@ -728,6 +730,17 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             entity.HasKey(x => new { x.OwnerUserId, x.ItemKey });
             entity.Property(x => x.ItemKey).HasMaxLength(200);
             entity.Property(x => x.Size).HasPrecision(12, 3);
+            entity.HasOne<InternalUser>().WithMany().HasForeignKey(x => x.OwnerUserId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<ReminderDismissalRecord>(entity =>
+        {
+            entity.ToTable("reminder_dismissals", "planning", table =>
+                table.HasCheckConstraint("ck_reminder_dismissals_kind", "\"Kind\" IN ('cook_by')"));
+            entity.HasKey(x => new { x.OwnerUserId, x.MenuEntryId, x.Kind });
+            entity.Property(x => x.Kind).HasMaxLength(20);
+            // A dismissal goes with its meal. Reads are owner-scoped, as for every planning table.
+            entity.HasOne<MenuEntryRecord>().WithMany().HasForeignKey(x => x.MenuEntryId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne<InternalUser>().WithMany().HasForeignKey(x => x.OwnerUserId).OnDelete(DeleteBehavior.Restrict);
         });
 

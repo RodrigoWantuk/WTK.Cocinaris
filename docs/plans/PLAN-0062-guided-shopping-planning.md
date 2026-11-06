@@ -1,6 +1,6 @@
 # PLAN-0062: Guided Shopping Planning ("Planejar compras")
 
-- **Status:** In Progress (owner approved this plan on 2026-11-04; Slice 1 underway)
+- **Status:** In Progress (owner approved this plan on 2026-11-04; all seven slices merged; Slice 4 limits and warnings in a draft PR, 2026-11-06)
 - **Type:** Implementation
 - **Priority:** High (owner request)
 - **Owner:** Claude Code (claimed 2026-11-04)
@@ -731,7 +731,7 @@ PLAN-0065 replaced parts of what these criteria describe; each criterion says wh
 - [ ] **S1 (screens replaced by PLAN-0065):** Someone with an empty pantry reaches a usable list. The setup screen and dish cards are replaced by the first screen with meal counts, the board, and the options sheet; "Sim, 2 vezes" by "Rende mais" on a chosen dish; the review by the board and the menu in use; "Quero outras opções" (PLAN-0064) by the switches, the filter, and typed requests. Chosen dishes show "+N itens". The goal, now a filter, changes order deterministically. Restrictions are enforced. AI off still works. Nothing reserves before acceptance. G1-B (live evaluation) is still pending, now as PLAN-0065's S1-AI.
 - [ ] **S2:** Arrival records all purchases with one confirmation, portions follow the advisor, freezer portions are frozen, and a retry never double counts. "Não achei" and store grouping work.
 - [ ] **S3:** The list opens and takes marks with no signal, then syncs; no other owner's data appears.
-- [ ] **S4 (repeat delivered; limits not):** Limits and warnings appear only from curated rules, with the three options. A plan can be repeated, now from "Repetir um cardápio" on the first screen. "Trocar de prato" on a menu in use is delivered by PLAN-0065 Slice 4 through the options sheet, not by extending `POST /replacements`, which PLAN-0065 Slice 5 removed.
+- [ ] **S4 (repeat delivered; limits in a draft PR, 2026-11-06):** Limits and warnings appear only from curated rules or recorded dates, with the three options; for dishes with no day as `cook_by`, while dated dishes keep `use_by`. A plan can be repeated, now from "Repetir um cardápio" on the first screen. "Trocar de prato" on a menu in use is delivered by PLAN-0065 Slice 4 through the options sheet, not by extending `POST /replacements`, which PLAN-0065 Slice 5 removed.
 - [ ] **S5 (code delivered; G5-A pending):** A component reduces purchases and is cooked into stored portions atomically. Frozen dishes are proposed and consumed by portion.
 - [x] **S6:** A session route merges recipes with parallel passive work, can be resumed, and completes executions. Its dishes are now chosen with "Preparar vários de uma vez" (PLAN-0065 Slice 4) instead of a preparation day asked at setup. (Phone check with wake lock pending.)
 - [ ] **S7:** Opt-in push arrives at most once a day with no food data.
@@ -739,12 +739,12 @@ PLAN-0065 replaced parts of what these criteria describe; each criterion says wh
 
 ## Execution state
 
-- **Current run delivery target:** None; all seven slices are merged (Slice 7 via #91). PLAN-0065 reworked the planning screens, and its Slice 5 restated this plan's acceptance criteria (2026-11-06).
-- **Current checkpoint:** G1-A and G2-A accepted by the owner on 2026-11-06 (see the log entry of that day).
-- **Last completed step:** Owner acceptance recorded in the review documents, the runbook, and the code comments of the storage flag.
-- **Exact next action:** The Slice 4 limits and warnings (`cook_by`, "Congelar hoje", "Deixar como está") are no longer blocked. Deliver them after PLAN-0065, or earlier if the owner asks. Separately, the owner decides when the test host turns `Planning__StorageGuidance__Enabled` on.
+- **Current run delivery target:** Slice 4's limits and warnings, after PLAN-0065 (merged through #100).
+- **Current checkpoint:** `cook_by` reminders, "Congelar hoje", "Trocar de prato", and "Deixar como está" implemented on `agent/plan-0062-s4-limits`, in a draft pull request.
+- **Last completed step:** Migration, reminder, routes, "Hoje" actions, tests, a browser journey, and documents; see the 2026-11-06 Slice 4 log entry.
+- **Exact next action:** The owner reviews and merges the Slice 4 limits pull request. Separately, the owner decides when the test host turns `Planning__StorageGuidance__Enabled` on; until then "Congelar hoje" is not offered and only printed or recorded dates set a "Faça até".
 - **Blockers:** G7 and G6 need the owner's phone. G5-A and G1-B need the provider key. The browser smoke matrix does not finish on this host.
-- **Partially modified areas:** Slice 4 limits and warnings are not delivered.
+- **Partially modified areas:** None.
 - **Documentation delivered:** ADR-0013 and its index row; runbook, `api.env.example`, privacy, product spec, planning, and gates documents; PLAN-0048 registry row; this plan.
 - **Validation performed:** See the Slice 7 entry in the progress log.
 - **Known failures or limitations:** See the Slice 7 entry. Storage values marked unverified are still not checked against a primary source; the owner's acceptance does not change that.
@@ -1012,6 +1012,23 @@ PLAN-0065 replaced parts of what these criteria describe; each criterion says wh
 
 - **Change:** the acceptance criteria now say what PLAN-0065 replaced: the setup screen, cards, review, and PLAN-0064 panel; `POST /replacements`, `review`, `reason`, and `reopen`, which PLAN-0065 Slice 5 removed; and the preparation day, replaced by "Preparar vários de uma vez". No criterion was ticked or unticked.
 - **Next action:** unchanged; see "Exact next action".
+
+### 2026-11-06 — Claude Code (Slice 4 limits and warnings)
+
+- **Run delivery target:** The rest of Slice 4, after PLAN-0065 merged (#100) and the owner wrote "Merge feito, pode seguir."
+- **Changes:**
+  - **Backend.** `PreparationReminders.CookBy`, pure: for each dish with no day on a menu in use, the earliest advisory use-by day among its reserved, not frozen lots, due the day before and on the day. `GET /preparation` adds these as `cook_by`, with `freezeLots` from the storage table. Migration `AddReminderDismissals` (table `planning.reminder_dismissals`), `PUT /reminders/dismissal`, and the store methods. `MenuPlanningApplicationService` reads the storage guidance.
+  - **Frontend.** "Prepare-se" on "Hoje" shows "Fazer {prato} até {dia}", why, and the actions: "Congelar hoje" (the reserved quantity through the ordinary freeze transition; a lot reserved whole is frozen whole), "Trocar de prato" (the menu page opens the swap from `?trocar=`), and "Deixar como está". Copy in three languages.
+  - **Tooling.** New `scripts/e2e/cook-by-journey.mjs`.
+- **Deviations from this plan:**
+  - **Dated dishes keep `use_by`.** It already says when a reserved lot's date falls before the meal; `cook_by` covers the dishes with no day, which PLAN-0065 made common and which had no reminder at all.
+  - **No "se comprar hoje" before purchase.** The review screen it was to appear on was replaced by PLAN-0065's board; a limit appears once the lots exist.
+  - **"Trocar de prato" uses PLAN-0065's swap** (`POST /shopping-plans/amendments`), not an extended `POST /replacements`, which PLAN-0065 removed.
+  - **"Congelar hoje" needs the storage table.** Without it nothing says a food can be frozen, so the action is not offered; the profile's freezer is not asked, as elsewhere.
+  - **The dismissal is kept per meal and kind** with the day it named, instead of per lot; the reminder comes back when that day changes.
+- **Validation performed:** Unit: a `CookBy` test (frozen lots wait, no rule gives no day, due days, dismissal by day). Integration: `AMealWithNoDaySaysByWhenToCookItAndCanBeLeftAsItIs` (draft says nothing; the reminder with its day; dismissal by day, kind, and owner; freezing removes it). Frontend: typecheck, lint, format, and 633 tests (2 new: the actions on "Hoje", and `?trocar=`). OpenAPI exported, client regenerated, drift check passed. Proxy replica: `cook-by-journey` passed; its first two runs right after the replica started failed on a transient proxy 502 and a failed fetch, then it passed three times. Those failures, and one each of `cook-by-journey` and `planning-board-journey` while the integration suite ran on the same host, came from the host being busy (the amendment request never got an answer); both passed once the suite was done. `planning-board-journey` passed; `mobile-audit` checked 69 screens with only the known 110 px fixture line at 320 px. Integration: the planning class, 75 tests. Unit: 489. While checking, the browser warned that the bottom sheet's title was not linked as Radix expects: `BottomSheet` set its own id, so Radix's check did not find it; the sheet now lets Radix link the title, and the warning is gone. The dismissal request shows as "aborted" in the browser because `openapi-fetch` drops the empty body of a 204; the server records it, as the reload check shows.
+- **Not run:** a phone; the storage table on (the freeze action is covered by unit and frontend tests only).
+- **Next action:** See "Exact next action".
 
 ## Completion and handoff checklist
 

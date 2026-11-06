@@ -1,6 +1,6 @@
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
-import { useId, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 /**
@@ -40,14 +40,12 @@ export function BottomSheet({
   testId?: string;
   onCloseAutoFocus?: (event: Event) => void;
 }) {
-  const titleId = useId();
   return (
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
       <DialogPrimitive.Portal>
         <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/60 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 motion-reduce:animate-none" />
         <DialogPrimitive.Content
           data-testid={testId}
-          aria-labelledby={titleId}
           aria-describedby={undefined}
           onCloseAutoFocus={onCloseAutoFocus}
           className={cn(
@@ -58,10 +56,8 @@ export function BottomSheet({
           )}
         >
           <div className="flex items-start gap-2 px-4 pb-2 pt-4">
-            <DialogPrimitive.Title
-              id={titleId}
-              className="min-w-0 flex-1 font-display text-xl leading-tight"
-            >
+            {/* Radix links the title to the dialog itself; a custom id would hide it from its check. */}
+            <DialogPrimitive.Title className="min-w-0 flex-1 font-display text-xl leading-tight">
               {title}
             </DialogPrimitive.Title>
             <DialogPrimitive.Close
