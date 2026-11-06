@@ -465,8 +465,6 @@ public sealed partial class RecipeExecutionApiTests
         }
 
         Assert.Equal(4, cards.Count);
-        var reviewed = await PostAsync(client, csrf, $"{Plans}/{sessionId}/review", new { });
-        Assert.True(reviewed.IsSuccessStatusCode, await reviewed.Content.ReadAsStringAsync());
         var accepted = await PostAsync(client, csrf, $"{Plans}/{sessionId}/acceptance", new { });
         Assert.True(accepted.IsSuccessStatusCode, await accepted.Content.ReadAsStringAsync());
 
@@ -496,7 +494,6 @@ public sealed partial class RecipeExecutionApiTests
         Assert.Equal(1, Group(plan, "snack").GetProperty("filled").GetInt32());
         var chosen = plan.GetProperty("accepted")[0];
         Assert.Equal(("Escondidinho da Casa", "snack"), (chosen.GetProperty("name").GetString(), chosen.GetProperty("mealType").GetString()));
-        Assert.True(plan.GetProperty("canUndo").GetBoolean());
 
         var blocked = await PostAsync(client, csrf, $"{Plans}/{sessionId}/recipes/{meat}/choice", new { mealType = "snack" });
         Assert.Equal(HttpStatusCode.UnprocessableEntity, blocked.StatusCode);

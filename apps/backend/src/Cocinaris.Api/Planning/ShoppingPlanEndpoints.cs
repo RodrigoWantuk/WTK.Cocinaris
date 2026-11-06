@@ -40,12 +40,6 @@ public static class ShoppingPlanEndpoints
             .ProducesProblem(400)
             .ProducesProblem(404)
             .ProducesProblem(422);
-        group.MapPut("/{sessionId:guid}/cards/{cardId:guid}/reason", (ShoppingPlanApiService service, Guid sessionId, Guid cardId, ShoppingPlanReasonRequest body, HttpContext context, CancellationToken cancellationToken) => service.SetReasonAsync(sessionId, cardId, body, context, cancellationToken))
-            .RequireRateLimiting("shopping-plan-decision")
-            .Produces<ShoppingPlanView>()
-            .ProducesProblem(400)
-            .ProducesProblem(404)
-            .ProducesProblem(422);
         group.MapPost("/{sessionId:guid}/undo", (ShoppingPlanApiService service, Guid sessionId, HttpContext context, CancellationToken cancellationToken) => service.UndoAsync(sessionId, context, cancellationToken))
             .RequireRateLimiting("shopping-plan-decision")
             .Produces<ShoppingPlanView>()
@@ -106,22 +100,6 @@ public static class ShoppingPlanEndpoints
             .ProducesProblem(404)
             .ProducesProblem(422);
         group.MapPost("/{sessionId:guid}/distribution", (ShoppingPlanApiService service, Guid sessionId, ShoppingPlanDistributionRequest? body, HttpContext context, CancellationToken cancellationToken) => service.DistributeAsync(sessionId, body, context, cancellationToken))
-            .RequireRateLimiting("mutation")
-            .Produces<ShoppingPlanView>()
-            .ProducesProblem(404)
-            .ProducesProblem(422);
-        group.MapPost("/{sessionId:guid}/reopen", (ShoppingPlanApiService service, Guid sessionId, HttpContext context, CancellationToken cancellationToken) => service.ReopenAsync(sessionId, context, cancellationToken))
-            .RequireRateLimiting("mutation")
-            .Produces<ShoppingPlanView>()
-            .ProducesProblem(400)
-            .ProducesProblem(404)
-            .ProducesProblem(422);
-        group.MapPost("/{sessionId:guid}/review", (ShoppingPlanApiService service, Guid sessionId, HttpContext context, CancellationToken cancellationToken) => service.ReviewAsync(sessionId, context, cancellationToken))
-            .RequireRateLimiting("mutation")
-            .Produces<ShoppingPlanView>()
-            .ProducesProblem(404)
-            .ProducesProblem(422);
-        group.MapPost("/{sessionId:guid}/replacements", (ShoppingPlanApiService service, Guid sessionId, ShoppingPlanReplacementRequest body, HttpContext context, CancellationToken cancellationToken) => service.ReplaceAsync(sessionId, body, context, cancellationToken))
             .RequireRateLimiting("mutation")
             .Produces<ShoppingPlanView>()
             .ProducesProblem(404)
@@ -227,21 +205,13 @@ public sealed class ShoppingPlanApiService(ShoppingPlanApplicationService applic
     public async Task<IResult> DistributeAsync(Guid sessionId, ShoppingPlanDistributionRequest? body, HttpContext context, CancellationToken cancellationToken) =>
         ToResult(await application.DistributeAsync(sessionId, body?.Clear ?? false, cancellationToken), context.TraceIdentifier);
 
-    /// <summary>Goes back to choosing dishes from the review.</summary>
-    public async Task<IResult> ReopenAsync(Guid sessionId, HttpContext context, CancellationToken cancellationToken) =>
-        ToResult(await application.ReopenAsync(sessionId, cancellationToken), context.TraceIdentifier);
-
     /// <summary>Adds up to six AI cards; requires an Idempotency-Key.</summary>
     public async Task<IResult> AddBatchAsync(Guid sessionId, ShoppingPlanBatchRequest? body, HttpRequest request, CancellationToken cancellationToken) =>
-        ToResult(await application.AddBatchAsync(sessionId, Key(request), body?.DishFamilies, body?.Cuisine, body?.Time, body is null ? null : new ShoppingPlanDirection(body.Pantry, body.Similarity, body.ReferenceCardId, body.Hint), body?.MealType is { } mealType ? new ShoppingPlanBatchAsk(mealType, body.Request, body.LikeCardId, body.ReplaceOffers ?? false) : null, request.HttpContext.TraceIdentifier, Language(request), cancellationToken), request.HttpContext.TraceIdentifier);
+        ToResult(await application.AddBatchAsync(sessionId, Key(request), body?.MealType is { } mealType ? new ShoppingPlanBatchAsk(mealType, body.Request, body.LikeCardId, body.ReplaceOffers ?? false) : null, request.HttpContext.TraceIdentifier, Language(request), cancellationToken), request.HttpContext.TraceIdentifier);
 
     /// <summary>Accepts or rejects a card.</summary>
     public async Task<IResult> DecideAsync(Guid sessionId, Guid cardId, ShoppingPlanDecisionRequest body, HttpContext context, CancellationToken cancellationToken) =>
         ToResult(await application.DecideAsync(sessionId, cardId, body.Decision, body.Mode, body.Repeats, body.MealType, body.PlannedDate, cancellationToken), context.TraceIdentifier);
-
-    /// <summary>Records why a card was refused.</summary>
-    public async Task<IResult> SetReasonAsync(Guid sessionId, Guid cardId, ShoppingPlanReasonRequest body, HttpContext context, CancellationToken cancellationToken) =>
-        ToResult(await application.SetReasonAsync(sessionId, cardId, body.Reason, cancellationToken), context.TraceIdentifier);
 
     /// <summary>Undoes the last decision.</summary>
     public async Task<IResult> UndoAsync(Guid sessionId, HttpContext context, CancellationToken cancellationToken) =>
@@ -254,14 +224,6 @@ public sealed class ShoppingPlanApiService(ShoppingPlanApplicationService applic
     /// <summary>Removes an accepted card.</summary>
     public async Task<IResult> RemoveCardAsync(Guid sessionId, Guid cardId, HttpContext context, CancellationToken cancellationToken) =>
         ToResult(await application.RemoveCardAsync(sessionId, cardId, cancellationToken), context.TraceIdentifier);
-
-    /// <summary>Moves to review and computes the order.</summary>
-    public async Task<IResult> ReviewAsync(Guid sessionId, HttpContext context, CancellationToken cancellationToken) =>
-        ToResult(await application.ReviewAsync(sessionId, cancellationToken), context.TraceIdentifier);
-
-    /// <summary>Removes one meal so another can be chosen.</summary>
-    public async Task<IResult> ReplaceAsync(Guid sessionId, ShoppingPlanReplacementRequest body, HttpContext context, CancellationToken cancellationToken) =>
-        ToResult(await application.ReplaceAsync(sessionId, body.EntryId, cancellationToken), context.TraceIdentifier);
 
     /// <summary>Accepts the menu.</summary>
     public async Task<IResult> AcceptAsync(Guid sessionId, HttpContext context, CancellationToken cancellationToken) =>
@@ -345,19 +307,12 @@ public sealed class ShoppingPlanApiService(ShoppingPlanApplicationService applic
 /// <param name="StartDate">First day of the period, when counts are given; today when null.</param>
 public sealed record CreateShoppingPlanRequest(DateOnly? Today, int Days, IReadOnlyList<string>? MealTypes, int MealsOut, string? CookingStyle, string? Priority, DateOnly? PrepDate, int? PrepMinutes, string? AnchorIngredient, int? People, Guid? FromMenuId = null, ShoppingPlanMealCountsRequest? MealCounts = null, DateOnly? StartDate = null);
 
-/// <summary>Body for asking for more cards.</summary>
-/// <param name="DishFamilies">Up to three family codes.</param>
-/// <param name="Cuisine">A cuisine code.</param>
-/// <param name="Time"><c>quick</c> or <c>medium</c>.</param>
-/// <param name="Pantry"><c>use</c> to stick to the pantry and chosen dishes, or <c>free</c> to ignore them.</param>
-/// <param name="Similarity"><c>any</c>, <c>similar</c>, or <c>different</c>, compared with the card on screen.</param>
-/// <param name="ReferenceCardId">The card on screen; required to compare.</param>
-/// <param name="Hint">Optional typed hint, at most 40 characters; untrusted.</param>
-/// <param name="MealType">One meal type to suggest for. When given, the next three fields apply and the four before them are ignored.</param>
+/// <summary>Body for asking for more cards. The "Quero outras opções" fields of PLAN-0064 were removed in PLAN-0065 Slice 5.</summary>
+/// <param name="MealType">One meal type to suggest for; without it, the cards are for whatever is still missing.</param>
 /// <param name="Request">A specific dish in the person's words, at most 120 characters; untrusted.</param>
 /// <param name="LikeCardId">A card to offer dishes close to.</param>
 /// <param name="ReplaceOffers">Whether earlier unseen dishes of this meal give way; false when absent.</param>
-public sealed record ShoppingPlanBatchRequest(IReadOnlyList<string>? DishFamilies, string? Cuisine, string? Time, string? Pantry = null, string? Similarity = null, Guid? ReferenceCardId = null, string? Hint = null, string? MealType = null, string? Request = null, Guid? LikeCardId = null, bool? ReplaceOffers = null);
+public sealed record ShoppingPlanBatchRequest(string? MealType = null, string? Request = null, Guid? LikeCardId = null, bool? ReplaceOffers = null);
 
 /// <summary>Body for deciding a card.</summary>
 /// <param name="Decision"><c>accept</c> or <c>reject</c>.</param>
@@ -421,10 +376,3 @@ public sealed record ShoppingPlanChoiceRequest(Guid CardId, string? MealType);
 /// <param name="Clear">Whether to remove every day instead; false when absent.</param>
 public sealed record ShoppingPlanDistributionRequest(bool? Clear = null);
 
-/// <summary>Body for the reason a card was refused.</summary>
-/// <param name="Reason"><c>dislike</c>, <c>too_much_work</c>, or <c>tired_of</c>.</param>
-public sealed record ShoppingPlanReasonRequest(string? Reason);
-
-/// <summary>Body for replacing a meal.</summary>
-/// <param name="EntryId">Menu entry to remove.</param>
-public sealed record ShoppingPlanReplacementRequest(Guid? EntryId);

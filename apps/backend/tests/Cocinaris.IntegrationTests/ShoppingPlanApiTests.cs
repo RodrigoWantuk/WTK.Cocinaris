@@ -52,7 +52,6 @@ public sealed partial class RecipeExecutionApiTests
         var sessionId = plan.GetProperty("sessionId").GetGuid();
         var menuId = plan.GetProperty("menuId").GetGuid();
         Assert.Equal(3, plan.GetProperty("progress").GetProperty("mealsTotal").GetInt32());
-        Assert.True(plan.GetProperty("needsBatch").GetBoolean());
 
         // The same key replays; a second plan is refused and names the one in progress.
         Assert.Equal(sessionId, (await JsonOf(await PostAsync(client, csrf, Plans, PlanBody(today), key))).GetProperty("sessionId").GetGuid());
@@ -80,10 +79,10 @@ public sealed partial class RecipeExecutionApiTests
         Assert.True(plan.GetProperty("progress").GetProperty("listItemCount").GetInt32() > 0);
         Assert.Equal("pending", plan.GetProperty("accepted")[0].GetProperty("expansionState").GetString());
 
-        // Repeating the decision changes nothing, and review waits for the recipe.
+        // Repeating the decision changes nothing, and acceptance waits for the recipe.
         plan = await JsonOf(await PostAsync(client, csrf, $"{Plans}/{sessionId}/cards/{cardId}/decision", decision));
         Assert.Equal(2, plan.GetProperty("progress").GetProperty("mealsFilled").GetInt32());
-        var waiting = await PostAsync(client, csrf, $"{Plans}/{sessionId}/review", new { });
+        var waiting = await PostAsync(client, csrf, $"{Plans}/{sessionId}/acceptance", new { });
         Assert.Equal("expansions_pending", (await JsonOf(waiting)).GetProperty("errorCode").GetString());
 
         plan = await JsonOf(await PostAsync(client, csrf, $"{Plans}/{sessionId}/cards/{cardId}/expansion", new { }));
@@ -95,14 +94,11 @@ public sealed partial class RecipeExecutionApiTests
         await PostAsync(client, csrf, $"{Plans}/{sessionId}/cards/{cardId}/expansion", new { });
         Assert.Equal(2, (await client.GetFromJsonAsync<JsonElement>($"/api/v1/planning/menus/{menuId}")).GetProperty("entries").GetArrayLength());
 
-        // A refused card takes a reason. Undo restores it, once.
+        // Undo restores a refused card.
         var refused = plan.GetProperty("queue")[0].GetProperty("cardId").GetGuid();
         plan = await JsonOf(await PostAsync(client, csrf, $"{Plans}/{sessionId}/cards/{refused}/decision", new { decision = "reject" }));
-        Assert.Equal(HttpStatusCode.OK, (await SendAsync(client, csrf, HttpMethod.Put, $"{Plans}/{sessionId}/cards/{refused}/reason", new { reason = "tired_of" })).StatusCode);
-        Assert.Equal(HttpStatusCode.BadRequest, (await SendAsync(client, csrf, HttpMethod.Put, $"{Plans}/{sessionId}/cards/{refused}/reason", new { reason = "because" })).StatusCode);
         plan = await JsonOf(await PostAsync(client, csrf, $"{Plans}/{sessionId}/undo", new { }));
         Assert.Contains(refused, plan.GetProperty("queue").EnumerateArray().Select(card => card.GetProperty("cardId").GetGuid()));
-        Assert.False(plan.GetProperty("canUndo").GetBoolean());
 
         // A saved-free accept of one more meal fills the plan.
         var last = plan.GetProperty("queue")[0].GetProperty("cardId").GetGuid();
@@ -117,13 +113,11 @@ public sealed partial class RecipeExecutionApiTests
         var list = await client.GetFromJsonAsync<JsonElement>($"/api/v1/planning/menus/{menuId}/shopping?from={today:yyyy-MM-dd}");
         Assert.True(list.GetProperty("items").GetArrayLength() > 0);
 
-        // Review sets an order. Accepting reserves, and "Hoje" shows only the next flexible meal.
-        plan = await JsonOf(await PostAsync(client, csrf, $"{Plans}/{sessionId}/review", new { }));
-        Assert.Equal("reviewing", plan.GetProperty("status").GetString());
-        menu = await client.GetFromJsonAsync<JsonElement>($"/api/v1/planning/menus/{menuId}");
-        Assert.Equal([1, 2, 3], menu.GetProperty("entries").EnumerateArray().Select(entry => entry.GetProperty("suggestedOrder").GetInt32()).Order());
+        // Accepting sets an order and reserves, and "Hoje" shows only the next flexible meal.
         plan = await JsonOf(await PostAsync(client, csrf, $"{Plans}/{sessionId}/acceptance", new { }));
         Assert.Equal("finished", plan.GetProperty("status").GetString());
+        menu = await client.GetFromJsonAsync<JsonElement>($"/api/v1/planning/menus/{menuId}");
+        Assert.Equal([1, 2, 3], menu.GetProperty("entries").EnumerateArray().Select(entry => entry.GetProperty("suggestedOrder").GetInt32()).Order());
         Assert.Equal("accepted", (await client.GetFromJsonAsync<JsonElement>($"/api/v1/planning/menus/{menuId}")).GetProperty("status").GetString());
         var day = await client.GetFromJsonAsync<JsonElement>($"/api/v1/planning/today?date={today:yyyy-MM-dd}");
         Assert.Equal(1, day.GetArrayLength());
@@ -200,7 +194,7 @@ public sealed partial class RecipeExecutionApiTests
         var failed = await PostAsync(client, csrf, $"{Plans}/{sessionId}/batches", new { }, Guid.NewGuid());
         Assert.False(failed.IsSuccessStatusCode);
         plan = await client.GetFromJsonAsync<JsonElement>($"{Plans}/{sessionId}");
-        Assert.True(plan.GetProperty("needsBatch").GetBoolean());
+        Assert.Equal("building", plan.GetProperty("status").GetString());
 
         // "Yields 2": one entry, double portions, two meals. No expansion is needed.
         plan = await JsonOf(await PostAsync(client, csrf, $"{Plans}/{sessionId}/cards/{card.GetProperty("cardId").GetGuid()}/decision", new { decision = "accept", mode = "yield", repeats = 2 }));
@@ -334,14 +328,13 @@ public sealed partial class RecipeExecutionApiTests
         Assert.Equal(JsonValueKind.Null, component.GetProperty("mealType").ValueKind);
 
         // It is cooked first, and the dish's item comes from it instead of the store.
-        await PostAsync(client, csrf, $"{Plans}/{sessionId}/review", new { });
+        Assert.True((await PostAsync(client, csrf, $"{Plans}/{sessionId}/acceptance", new { })).IsSuccessStatusCode);
         menu = await client.GetFromJsonAsync<JsonElement>($"/api/v1/planning/menus/{menuId}");
         Assert.Equal(1, menu.GetProperty("entries").EnumerateArray().Single(entry => entry.GetProperty("kind").GetString() == "component").GetProperty("suggestedOrder").GetInt32());
         JsonElement Line(JsonElement list, string name) => list.GetProperty("items").EnumerateArray().Single(item => item.GetProperty("displayName").GetString() == name);
         var list = await client.GetFromJsonAsync<JsonElement>($"/api/v1/planning/menus/{menuId}/shopping?from={day}");
         Assert.Equal(("from_prep", 0m), (Line(list, "Frango desfiado").GetProperty("category").GetString(), Line(list, "Frango desfiado").GetProperty("toBuyQuantity").GetDecimal()));
 
-        Assert.True((await PostAsync(client, csrf, $"{Plans}/{sessionId}/acceptance", new { })).IsSuccessStatusCode);
         var entryId = component.GetProperty("entryId").GetGuid();
         var recipeId = component.GetProperty("recipeId").GetGuid();
 

@@ -29,6 +29,19 @@ const iso = (date) => `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(d
 const today = iso(new Date());
 const tomorrow = iso(new Date(Date.now() + 86400000));
 
+
+/** Guided cooking (PLAN-0054) leads to the detailed review through its steps and "Ajustar". */
+async function toReview(page) {
+  await page.getByTestId("cooking-start").or(page.getByTestId("cooking-finish")).first().waitFor({ timeout: 15000 });
+  if (await page.getByTestId("cooking-start").count()) await page.getByTestId("cooking-start").click();
+  for (let step = 0; step < 30 && (await page.getByTestId("cooking-finish").count()) === 0; step += 1) {
+    await page.getByTestId("cooking-step-next").click();
+  }
+  await page.getByTestId("cooking-finish").click();
+  if (await page.getByTestId("cooking-adjust").count()) await page.getByTestId("cooking-adjust").click();
+  await page.getByTestId("cooking-review").waitFor({ timeout: 15000 });
+}
+
 const results = [];
 const check = (name, ok, detail = "") => results.push({ name, ok, detail });
 
@@ -107,7 +120,7 @@ try {
   await page.goto(`${BASE}/app/hoje`, { waitUntil: "networkidle" });
   await todayEntry.getByTestId("today-menu-cook").click();
   await page.waitForURL(/\/app\/receitas\/cozinhar\//, { timeout: 15000 });
-  await page.getByTestId("cooking-finish").click();
+  await toReview(page);
   const include = page.getByTestId("cooking-review-line").first().getByRole("checkbox");
   if (await include.isChecked()) await include.uncheck();
   await page.getByTestId("cooking-confirm").click();

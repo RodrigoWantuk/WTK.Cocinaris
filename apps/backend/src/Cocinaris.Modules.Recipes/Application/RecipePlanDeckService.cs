@@ -12,9 +12,8 @@ namespace Cocinaris.Modules.Recipes.Application;
 /// <summary>What a shopping plan needs from the Recipes module for one batch of cards.</summary>
 /// <param name="Servings">People in the plan.</param>
 /// <param name="Brief">The plan's requirements for the model.</param>
-/// <param name="Guidance">"More options" chips, closed codes only; null for none.</param>
 /// <param name="RequestLanguage">Interface language of the request, used when the profile declares none.</param>
-public sealed record PlanDeckRequest(int Servings, PlanDeckBrief Brief, RecipeSuggestionGuidance? Guidance, string? RequestLanguage);
+public sealed record PlanDeckRequest(int Servings, PlanDeckBrief Brief, string? RequestLanguage);
 
 /// <summary>One validated batch of cards.</summary>
 /// <param name="Candidates">Six dishes.</param>
@@ -41,9 +40,6 @@ public sealed class RecipePlanDeckService(
     /// <summary>Longest typed anchor ingredient, in characters.</summary>
     public const int MaxAnchorLength = 60;
 
-    /// <summary>Longest hint kept from "Quero outras opções" (PLAN-0064).</summary>
-    public const int MaxHintLength = 40;
-
     /// <summary>Cleans a typed anchor ingredient, so the model and the stored session see the same text.</summary>
     /// <param name="text">Text the person typed.</param>
     public static string? CleanAnchor(string? text) => UntrustedText.Normalize(text, MaxAnchorLength);
@@ -54,10 +50,6 @@ public sealed class RecipePlanDeckService(
     /// <summary>Cleans a typed request for a specific dish; null when nothing is left.</summary>
     /// <param name="text">Typed text; untrusted.</param>
     public static string? CleanRequest(string? text) => UntrustedText.Normalize(text, MaxRequestLength);
-
-    /// <summary>Cleans a hint typed under "Quero outras opções"; null when nothing is left.</summary>
-    /// <param name="text">Typed text; untrusted.</param>
-    public static string? CleanHint(string? text) => UntrustedText.Normalize(text, MaxHintLength);
 
     /// <summary>Library ideas that fit the plan, without an AI call; empty when none fit.</summary>
     /// <param name="ownerUserId">Owner.</param>
@@ -86,11 +78,6 @@ public sealed class RecipePlanDeckService(
         if (!operationRegistry.TryGet(operation, out var definition))
         {
             return Failure("ai_capability_unavailable", "The plan card capability is not registered.");
-        }
-
-        if (request.Guidance?.Validate() is { Count: > 0 } invalid)
-        {
-            return RecipeApplicationResult<PlanDeckBatch>.Failure("validation_failed", "The options are invalid.", invalid);
         }
 
         var context = await ContextAsync(ownerUserId, request, definition, cancellationToken);
@@ -160,8 +147,7 @@ public sealed class RecipePlanDeckService(
             Guid.NewGuid().ToString("n"),
             definition.ContextBudgetCharacters,
             cancellationToken,
-            new MenuPlanningTarget(null, null, request.Servings, request.Brief.ChosenDishes),
-            request.Guidance);
+            new MenuPlanningTarget(null, null, request.Servings, request.Brief.ChosenDishes));
         return context with { Presets = RecipeCookNowApplicationService.WithOutputLanguage(context.Presets, request.RequestLanguage) };
     }
 

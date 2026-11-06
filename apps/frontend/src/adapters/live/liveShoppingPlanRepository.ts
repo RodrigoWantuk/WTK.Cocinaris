@@ -205,10 +205,6 @@ function mapPlan(dto: PlanDto): ShoppingPlan {
       totalMinutes: optionalNumber(card.totalMinutes) ?? 0,
       people: optionalNumber(card.people) ?? undefined,
     })),
-    needsBatch: dto.needsBatch === true,
-    offerMoreOptions: dto.offerMoreOptions === true,
-    exhausted: dto.exhausted === true,
-    canUndo: dto.canUndo === true,
     groups: (dto.groups ?? []).map((group) => ({
       mealType: String(group.mealType),
       wanted: num(group.wanted),
@@ -330,13 +326,6 @@ export function createLiveShoppingPlanRepository(options?: {
             },
             headers: headers(language),
             body: {
-              dishFamilies: input.dishFamilies ?? null,
-              cuisine: input.cuisine ?? null,
-              time: input.time ?? null,
-              pantry: input.pantry ?? null,
-              similarity: input.similarity ?? null,
-              referenceCardId: input.referenceCardId ?? null,
-              hint: input.hint ?? null,
               mealType: input.mealType ?? null,
               request: input.request ?? null,
               likeCardId: input.likeCardId ?? null,
@@ -370,24 +359,6 @@ export function createLiveShoppingPlanRepository(options?: {
             },
           ),
         "Unable to save the decision.",
-        mapPlan,
-      ),
-    setReason: (sessionId, cardId, reason, { csrfToken, signal }) =>
-      run(
-        () =>
-          client.PUT(
-            "/api/v1/planning/shopping-plans/{sessionId}/cards/{cardId}/reason",
-            {
-              params: {
-                path: { sessionId, cardId },
-                header: { "X-CSRF-TOKEN": csrfToken },
-              },
-              body: { reason },
-              signal,
-              ...include,
-            },
-          ),
-        "Unable to save the reason.",
         mapPlan,
       ),
     undo: (sessionId, { csrfToken, signal }) =>
@@ -437,38 +408,6 @@ export function createLiveShoppingPlanRepository(options?: {
             },
           ),
         "Unable to remove the dish.",
-        mapPlan,
-      ),
-    review: (sessionId, { csrfToken, signal }) =>
-      run(
-        () =>
-          client.POST("/api/v1/planning/shopping-plans/{sessionId}/review", {
-            params: {
-              path: { sessionId },
-              header: { "X-CSRF-TOKEN": csrfToken },
-            },
-            signal,
-            ...include,
-          }),
-        "Unable to review the plan.",
-        mapPlan,
-      ),
-    replace: (sessionId, entryId, { csrfToken, signal }) =>
-      run(
-        () =>
-          client.POST(
-            "/api/v1/planning/shopping-plans/{sessionId}/replacements",
-            {
-              params: {
-                path: { sessionId },
-                header: { "X-CSRF-TOKEN": csrfToken },
-              },
-              body: { entryId },
-              signal,
-              ...include,
-            },
-          ),
-        "Unable to replace the dish.",
         mapPlan,
       ),
     accept: (sessionId, { csrfToken, signal }) =>
@@ -719,19 +658,6 @@ export function createLiveShoppingPlanRepository(options?: {
             },
           ),
         "Unable to spread the dishes.",
-        mapPlan,
-      ),
-    reopen: (sessionId, { csrfToken }) =>
-      run(
-        () =>
-          client.POST("/api/v1/planning/shopping-plans/{sessionId}/reopen", {
-            params: {
-              path: { sessionId },
-              header: { "X-CSRF-TOKEN": csrfToken },
-            },
-            ...include,
-          }),
-        "Unable to go back to the dishes.",
         mapPlan,
       ),
     findRouteLink: ({ menuId, date }, signal) =>

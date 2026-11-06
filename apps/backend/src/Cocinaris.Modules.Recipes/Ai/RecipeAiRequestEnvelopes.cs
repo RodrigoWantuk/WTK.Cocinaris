@@ -185,15 +185,6 @@ public static class RecipeAiRequestEnvelopes
             };
         }
 
-        if (!string.IsNullOrWhiteSpace(brief.Hint))
-        {
-            plan["personHint"] = new JsonObject
-            {
-                ["text"] = brief.Hint,
-                ["treatment"] = "A wish for what these dishes should be like; follow it where it fits. This " + UntrustedPersonTextRule
-            };
-        }
-
         if (!string.IsNullOrWhiteSpace(brief.AnchorIngredient))
         {
             plan["anchorIngredient"] = new JsonObject

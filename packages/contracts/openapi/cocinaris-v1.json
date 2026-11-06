@@ -5923,32 +5923,8 @@
         "type": "object"
       },
       "ShoppingPlanBatchRequest": {
-        "description": "Body for asking for more cards.",
+        "description": "Body for asking for more cards. The \"Quero outras opções\" fields of PLAN-0064 were removed in PLAN-0065 Slice 5.",
         "properties": {
-          "cuisine": {
-            "description": "A cuisine code.",
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "dishFamilies": {
-            "description": "Up to three family codes.",
-            "items": {
-              "type": "string"
-            },
-            "type": [
-              "null",
-              "array"
-            ]
-          },
-          "hint": {
-            "description": "Optional typed hint, at most 40 characters; untrusted.",
-            "type": [
-              "null",
-              "string"
-            ]
-          },
           "likeCardId": {
             "description": "A card to offer dishes close to.",
             "format": "uuid",
@@ -5958,22 +5934,7 @@
             ]
           },
           "mealType": {
-            "description": "One meal type to suggest for. When given, the next three fields apply and the four before them are ignored.",
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "pantry": {
-            "description": "`use` to stick to the pantry and chosen dishes, or `free` to ignore them.",
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "referenceCardId": {
-            "description": "The card on screen; required to compare.",
-            "format": "uuid",
+            "description": "One meal type to suggest for; without it, the cards are for whatever is still missing.",
             "type": [
               "null",
               "string"
@@ -5992,27 +5953,8 @@
               "null",
               "string"
             ]
-          },
-          "similarity": {
-            "description": "`any`, `similar`, or `different`, compared with the card on screen.",
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "time": {
-            "description": "`quick` or `medium`.",
-            "type": [
-              "null",
-              "string"
-            ]
           }
         },
-        "required": [
-          "dishFamilies",
-          "cuisine",
-          "time"
-        ],
         "type": "object"
       },
       "ShoppingPlanCardDayRequest": {
@@ -6679,22 +6621,6 @@
         ],
         "type": "object"
       },
-      "ShoppingPlanReasonRequest": {
-        "description": "Body for the reason a card was refused.",
-        "properties": {
-          "reason": {
-            "description": "`dislike`, `too_much_work`, or `tired_of`.",
-            "type": [
-              "null",
-              "string"
-            ]
-          }
-        },
-        "required": [
-          "reason"
-        ],
-        "type": "object"
-      },
       "ShoppingPlanRecentView": {
         "description": "An accepted plan that can be repeated.",
         "properties": {
@@ -6765,23 +6691,6 @@
         },
         "required": [
           "mealType"
-        ],
-        "type": "object"
-      },
-      "ShoppingPlanReplacementRequest": {
-        "description": "Body for replacing a meal.",
-        "properties": {
-          "entryId": {
-            "description": "Menu entry to remove.",
-            "format": "uuid",
-            "type": [
-              "null",
-              "string"
-            ]
-          }
-        },
-        "required": [
-          "entryId"
         ],
         "type": "object"
       },
@@ -7374,14 +7283,6 @@
             },
             "type": "array"
           },
-          "canUndo": {
-            "description": "Whether undo has a decision to restore.",
-            "type": "boolean"
-          },
-          "exhausted": {
-            "description": "Whether no card is left and no batch can be asked for.",
-            "type": "boolean"
-          },
           "groups": {
             "description": "Each meal type with what is wanted, chosen, and offered.",
             "items": {
@@ -7396,14 +7297,6 @@
             "description": "Its menu.",
             "format": "uuid",
             "type": "string"
-          },
-          "needsBatch": {
-            "description": "Whether the browser should ask for more AI cards.",
-            "type": "boolean"
-          },
-          "offerMoreOptions": {
-            "description": "Whether to highlight \"more options\", after three straight rejections.",
-            "type": "boolean"
           },
           "preferences": {
             "oneOf": [
@@ -7437,7 +7330,7 @@
             "description": "Setup answers."
           },
           "status": {
-            "description": "`building`, `reviewing`, `finished`, or `abandoned`.",
+            "description": "`building`, `reviewing`, `finished`, `amending`, or `abandoned`.",
             "type": "string"
           }
         },
@@ -7448,11 +7341,7 @@
           "setup",
           "progress",
           "queue",
-          "accepted",
-          "needsBatch",
-          "offerMoreOptions",
-          "exhausted",
-          "canUndo"
+          "accepted"
         ],
         "type": "object"
       },
@@ -15593,170 +15482,6 @@
         ]
       }
     },
-    "/api/v1/planning/shopping-plans/{sessionId}/cards/{cardId}/reason": {
-      "put": {
-        "operationId": "putApiV1PlanningShopping-plansSessionIdCardsCardIdReason",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "sessionId",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "type": "string"
-            }
-          },
-          {
-            "in": "path",
-            "name": "cardId",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "type": "string"
-            }
-          },
-          {
-            "description": "Required CSRF token issued by GET /api/v1/session.",
-            "in": "header",
-            "name": "X-CSRF-TOKEN",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ShoppingPlanReasonRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ShoppingPlanView"
-                }
-              }
-            },
-            "description": "OK"
-          },
-          "400": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Bad Request"
-          },
-          "401": {
-            "content": {
-              "application/problem+json": {
-                "examples": {
-                  "authenticationFailure": {
-                    "summary": "The backend-managed session is absent or invalid.",
-                    "value": {
-                      "detail": "Authentication is required.",
-                      "errorCode": "authentication_required",
-                      "status": 401,
-                      "title": "Unauthorized",
-                      "traceId": "00-00000000000000000000000000000000-0000000000000000-00",
-                      "type": "about:blank"
-                    }
-                  }
-                },
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Authentication is required."
-          },
-          "404": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Not Found"
-          },
-          "415": {
-            "content": {
-              "application/problem+json": {
-                "examples": {
-                  "unsupportedMediaType": {
-                    "summary": "The request content type is unsupported.",
-                    "value": {
-                      "detail": "The request content type is not supported.",
-                      "errorCode": "unsupported_media_type",
-                      "status": 415,
-                      "title": "Unsupported Media Type",
-                      "traceId": "00-00000000000000000000000000000000-0000000000000000-00",
-                      "type": "about:blank"
-                    }
-                  }
-                },
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "The request content type is not supported."
-          },
-          "422": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Unprocessable Entity"
-          },
-          "500": {
-            "content": {
-              "application/problem+json": {
-                "examples": {
-                  "unexpectedFailure": {
-                    "summary": "An unexpected error was safely redacted.",
-                    "value": {
-                      "detail": "An unexpected error occurred.",
-                      "errorCode": "unexpected_error",
-                      "status": 500,
-                      "title": "Internal Server Error",
-                      "traceId": "00-00000000000000000000000000000000-0000000000000000-00",
-                      "type": "about:blank"
-                    }
-                  }
-                },
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "An unexpected server error occurred."
-          }
-        },
-        "security": [
-          {
-            "cocinarisSession": []
-          }
-        ],
-        "summary": "PUT /api/v1/planning/shopping-plans/{sessionId}/cards/{cardId}/reason",
-        "tags": [
-          "Cocinaris.Api"
-        ]
-      }
-    },
     "/api/v1/planning/shopping-plans/{sessionId}/cards/{cardId}/removal": {
       "post": {
         "operationId": "postApiV1PlanningShopping-plansSessionIdCardsCardIdRemoval",
@@ -16837,405 +16562,6 @@
           }
         ],
         "summary": "POST /api/v1/planning/shopping-plans/{sessionId}/recipes/{recipeId}/choice",
-        "tags": [
-          "Cocinaris.Api"
-        ]
-      }
-    },
-    "/api/v1/planning/shopping-plans/{sessionId}/reopen": {
-      "post": {
-        "operationId": "postApiV1PlanningShopping-plansSessionIdReopen",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "sessionId",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "type": "string"
-            }
-          },
-          {
-            "description": "Required CSRF token issued by GET /api/v1/session.",
-            "in": "header",
-            "name": "X-CSRF-TOKEN",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ShoppingPlanView"
-                }
-              }
-            },
-            "description": "OK"
-          },
-          "400": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Bad Request"
-          },
-          "401": {
-            "content": {
-              "application/problem+json": {
-                "examples": {
-                  "authenticationFailure": {
-                    "summary": "The backend-managed session is absent or invalid.",
-                    "value": {
-                      "detail": "Authentication is required.",
-                      "errorCode": "authentication_required",
-                      "status": 401,
-                      "title": "Unauthorized",
-                      "traceId": "00-00000000000000000000000000000000-0000000000000000-00",
-                      "type": "about:blank"
-                    }
-                  }
-                },
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Authentication is required."
-          },
-          "404": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Not Found"
-          },
-          "422": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Unprocessable Entity"
-          },
-          "500": {
-            "content": {
-              "application/problem+json": {
-                "examples": {
-                  "unexpectedFailure": {
-                    "summary": "An unexpected error was safely redacted.",
-                    "value": {
-                      "detail": "An unexpected error occurred.",
-                      "errorCode": "unexpected_error",
-                      "status": 500,
-                      "title": "Internal Server Error",
-                      "traceId": "00-00000000000000000000000000000000-0000000000000000-00",
-                      "type": "about:blank"
-                    }
-                  }
-                },
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "An unexpected server error occurred."
-          }
-        },
-        "security": [
-          {
-            "cocinarisSession": []
-          }
-        ],
-        "summary": "POST /api/v1/planning/shopping-plans/{sessionId}/reopen",
-        "tags": [
-          "Cocinaris.Api"
-        ]
-      }
-    },
-    "/api/v1/planning/shopping-plans/{sessionId}/replacements": {
-      "post": {
-        "operationId": "postApiV1PlanningShopping-plansSessionIdReplacements",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "sessionId",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "type": "string"
-            }
-          },
-          {
-            "description": "Required CSRF token issued by GET /api/v1/session.",
-            "in": "header",
-            "name": "X-CSRF-TOKEN",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ShoppingPlanReplacementRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ShoppingPlanView"
-                }
-              }
-            },
-            "description": "OK"
-          },
-          "400": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "The request or CSRF token is invalid."
-          },
-          "401": {
-            "content": {
-              "application/problem+json": {
-                "examples": {
-                  "authenticationFailure": {
-                    "summary": "The backend-managed session is absent or invalid.",
-                    "value": {
-                      "detail": "Authentication is required.",
-                      "errorCode": "authentication_required",
-                      "status": 401,
-                      "title": "Unauthorized",
-                      "traceId": "00-00000000000000000000000000000000-0000000000000000-00",
-                      "type": "about:blank"
-                    }
-                  }
-                },
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Authentication is required."
-          },
-          "404": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Not Found"
-          },
-          "415": {
-            "content": {
-              "application/problem+json": {
-                "examples": {
-                  "unsupportedMediaType": {
-                    "summary": "The request content type is unsupported.",
-                    "value": {
-                      "detail": "The request content type is not supported.",
-                      "errorCode": "unsupported_media_type",
-                      "status": 415,
-                      "title": "Unsupported Media Type",
-                      "traceId": "00-00000000000000000000000000000000-0000000000000000-00",
-                      "type": "about:blank"
-                    }
-                  }
-                },
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "The request content type is not supported."
-          },
-          "422": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Unprocessable Entity"
-          },
-          "500": {
-            "content": {
-              "application/problem+json": {
-                "examples": {
-                  "unexpectedFailure": {
-                    "summary": "An unexpected error was safely redacted.",
-                    "value": {
-                      "detail": "An unexpected error occurred.",
-                      "errorCode": "unexpected_error",
-                      "status": 500,
-                      "title": "Internal Server Error",
-                      "traceId": "00-00000000000000000000000000000000-0000000000000000-00",
-                      "type": "about:blank"
-                    }
-                  }
-                },
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "An unexpected server error occurred."
-          }
-        },
-        "security": [
-          {
-            "cocinarisSession": []
-          }
-        ],
-        "summary": "POST /api/v1/planning/shopping-plans/{sessionId}/replacements",
-        "tags": [
-          "Cocinaris.Api"
-        ]
-      }
-    },
-    "/api/v1/planning/shopping-plans/{sessionId}/review": {
-      "post": {
-        "operationId": "postApiV1PlanningShopping-plansSessionIdReview",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "sessionId",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "type": "string"
-            }
-          },
-          {
-            "description": "Required CSRF token issued by GET /api/v1/session.",
-            "in": "header",
-            "name": "X-CSRF-TOKEN",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ShoppingPlanView"
-                }
-              }
-            },
-            "description": "OK"
-          },
-          "400": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "The request or CSRF token is invalid."
-          },
-          "401": {
-            "content": {
-              "application/problem+json": {
-                "examples": {
-                  "authenticationFailure": {
-                    "summary": "The backend-managed session is absent or invalid.",
-                    "value": {
-                      "detail": "Authentication is required.",
-                      "errorCode": "authentication_required",
-                      "status": 401,
-                      "title": "Unauthorized",
-                      "traceId": "00-00000000000000000000000000000000-0000000000000000-00",
-                      "type": "about:blank"
-                    }
-                  }
-                },
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Authentication is required."
-          },
-          "404": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Not Found"
-          },
-          "422": {
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "Unprocessable Entity"
-          },
-          "500": {
-            "content": {
-              "application/problem+json": {
-                "examples": {
-                  "unexpectedFailure": {
-                    "summary": "An unexpected error was safely redacted.",
-                    "value": {
-                      "detail": "An unexpected error occurred.",
-                      "errorCode": "unexpected_error",
-                      "status": 500,
-                      "title": "Internal Server Error",
-                      "traceId": "00-00000000000000000000000000000000-0000000000000000-00",
-                      "type": "about:blank"
-                    }
-                  }
-                },
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            },
-            "description": "An unexpected server error occurred."
-          }
-        },
-        "security": [
-          {
-            "cocinarisSession": []
-          }
-        ],
-        "summary": "POST /api/v1/planning/shopping-plans/{sessionId}/review",
         "tags": [
           "Cocinaris.Api"
         ]

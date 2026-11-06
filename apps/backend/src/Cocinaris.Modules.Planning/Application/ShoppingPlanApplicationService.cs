@@ -108,13 +108,6 @@ public sealed record ShoppingPlanMealGroupView(string MealType, int Wanted, int 
 /// <param name="MealCounts">How many of each meal the plan wants; empty without a plan.</param>
 public sealed record ShoppingPlanMenuLinkView(Guid? SessionId, string? Status, IReadOnlyDictionary<string, int> MealCounts);
 
-/// <summary>The answers under "Quero outras opções" (PLAN-0064).</summary>
-/// <param name="Pantry"><c>use</c>, <c>free</c>, or null.</param>
-/// <param name="Similarity"><c>any</c>, <c>similar</c>, <c>different</c>, or null.</param>
-/// <param name="ReferenceCardId">The card on screen, required to compare.</param>
-/// <param name="Hint">Optional typed hint, at most 40 characters; untrusted.</param>
-public sealed record ShoppingPlanDirection(string? Pantry, string? Similarity, Guid? ReferenceCardId, string? Hint);
-
 /// <summary>Creates a shopping plan from the setup screen.</summary>
 /// <param name="IdempotencyKey">Request key.</param>
 /// <param name="CorrelationId">Request correlation identifier.</param>
@@ -239,18 +232,14 @@ public sealed record ShoppingPlanChoicesView(ShoppingPlanView Plan, IReadOnlyLis
 /// <summary>The state every plan route returns.</summary>
 /// <param name="SessionId">Plan.</param>
 /// <param name="MenuId">Its menu.</param>
-/// <param name="Status"><c>building</c>, <c>reviewing</c>, <c>finished</c>, or <c>abandoned</c>.</param>
+/// <param name="Status"><c>building</c>, <c>reviewing</c>, <c>finished</c>, <c>amending</c>, or <c>abandoned</c>.</param>
 /// <param name="Setup">Setup answers.</param>
 /// <param name="Progress">Progress.</param>
 /// <param name="Queue">The next cards, best first, at most five.</param>
 /// <param name="Accepted">Accepted cards.</param>
-/// <param name="NeedsBatch">Whether the browser should ask for more AI cards.</param>
-/// <param name="OfferMoreOptions">Whether to highlight "more options", after three straight rejections.</param>
-/// <param name="Exhausted">Whether no card is left and no batch can be asked for.</param>
-/// <param name="CanUndo">Whether undo has a decision to restore.</param>
 /// <param name="Groups">Each meal type with what is wanted, chosen, and offered.</param>
 /// <param name="Preferences">The switches in force.</param>
-public sealed record ShoppingPlanView(Guid SessionId, Guid MenuId, string Status, ShoppingPlanSetup Setup, ShoppingPlanProgressView Progress, IReadOnlyList<ShoppingPlanCardView> Queue, IReadOnlyList<ShoppingPlanAcceptedView> Accepted, bool NeedsBatch, bool OfferMoreOptions, bool Exhausted, bool CanUndo, IReadOnlyList<ShoppingPlanMealGroupView>? Groups = null, ShoppingPlanPreferencesView? Preferences = null);
+public sealed record ShoppingPlanView(Guid SessionId, Guid MenuId, string Status, ShoppingPlanSetup Setup, ShoppingPlanProgressView Progress, IReadOnlyList<ShoppingPlanCardView> Queue, IReadOnlyList<ShoppingPlanAcceptedView> Accepted, IReadOnlyList<ShoppingPlanMealGroupView>? Groups = null, ShoppingPlanPreferencesView? Preferences = null);
 
 /// <summary>
 /// Shopping plans (PLAN-0062): a setup screen and dish cards that fill a draft menu. Restrictions are
@@ -277,8 +266,6 @@ public sealed class ShoppingPlanApplicationService(
     private const int MaxSavedCards = 12;
     private const int MaxIdeaCards = 6;
     private const int QueueSize = 5;
-    private const int LowQueue = 3;
-    private const int MoreOptionsAfterRejections = 3;
     private const int MaxRepeats = 4;
     private const int MaxEntryServings = 24;
     private const int AbandonedRetentionDays = 30;
@@ -286,7 +273,6 @@ public sealed class ShoppingPlanApplicationService(
     private const int MaxActiveRecipes = 200;
     private static readonly IReadOnlySet<string> MealTypes = MenuEntry.MealTypes;
     private static readonly HashSet<string> CostlyCategories = new(StringComparer.Ordinal) { "meat", "poultry", "fish", "seafood", "nut" };
-    private static readonly HashSet<string> RejectReasons = new(StringComparer.Ordinal) { "dislike", "too_much_work", "tired_of" };
     private static readonly JsonSerializerOptions SerializerOptions = new(JsonSerializerDefaults.Web);
     private static readonly Meter Meter = new("Cocinaris.ShoppingPlans", "1.0.0");
     private static readonly Counter<long> Started = Meter.CreateCounter<long>("cocinaris.shopping_plan.started");
@@ -294,6 +280,11 @@ public sealed class ShoppingPlanApplicationService(
     private static readonly Counter<long> Decisions = Meter.CreateCounter<long>("cocinaris.shopping_plan.card_decision");
     private static readonly Counter<long> Batches = Meter.CreateCounter<long>("cocinaris.shopping_plan.batch");
     private static readonly Counter<long> MealFitDropped = Meter.CreateCounter<long>("cocinaris.shopping_plan.meal_fit_dropped");
+    // PLAN-0065 Slice 5. Labels are closed codes only: never a dish name or typed words.
+    private static readonly Counter<long> MealsFilled = Meter.CreateCounter<long>("cocinaris.planning.meal_filled", "{meal}", "Meals filled by a chosen dish, by where the dish came from: saved, idea, ai, or requested.");
+    private static readonly Counter<long> Requests = Meter.CreateCounter<long>("cocinaris.planning.request", "{request}", "Typed requests for a dish, by outcome: answered, blocked, nothing_new, ai_unavailable, or failed.");
+    private static readonly Histogram<double> TimeToAcceptance = Meter.CreateHistogram<double>("cocinaris.planning.time_to_acceptance", "s", "Seconds from starting a plan to using its menu.");
+    private static readonly HashSet<string> AiUnavailableCodes = new(StringComparer.Ordinal) { "ai_capability_unavailable", "ai_budget_exhausted", "ai_budget_unavailable" };
     /// <summary>Below this many usable dishes from a batch, one more call is worth its cost.</summary>
     private const int MinUsefulBatch = 3;
     /// <summary>Goal of a plan with no goal chosen: it adds nothing to the ranking.</summary>
@@ -448,15 +439,11 @@ public sealed class ShoppingPlanApplicationService(
     /// <summary>Asks the model for more cards. With a repeated key or no batch left, it returns the plan as it is.</summary>
     /// <param name="sessionId">Plan.</param>
     /// <param name="key">Request key.</param>
-    /// <param name="dishFamilies">"More options" families; closed codes.</param>
-    /// <param name="cuisine">"More options" cuisine; closed code.</param>
-    /// <param name="time">"More options" time; closed code.</param>
-    /// <param name="direction">The answers under "Quero outras opções", if any. New dishes then come first.</param>
-    /// <param name="ask">A request for one meal type (PLAN-0065). New dishes then come first.</param>
+    /// <param name="ask">A request for one meal type (PLAN-0065). New dishes then come first; without it, the batch is for whatever is still missing.</param>
     /// <param name="correlationId">Request correlation identifier.</param>
     /// <param name="language">Interface language.</param>
     /// <param name="cancellationToken">Cancellation.</param>
-    public async Task<RecipeApplicationResult<ShoppingPlanView>> AddBatchAsync(Guid sessionId, Guid? key, IReadOnlyList<string>? dishFamilies, string? cuisine, string? time, ShoppingPlanDirection? direction, ShoppingPlanBatchAsk? ask, string correlationId, string? language, CancellationToken cancellationToken)
+    public async Task<RecipeApplicationResult<ShoppingPlanView>> AddBatchAsync(Guid sessionId, Guid? key, ShoppingPlanBatchAsk? ask, string correlationId, string? language, CancellationToken cancellationToken)
     {
         if (key is not Guid batchKey)
         {
@@ -475,26 +462,7 @@ public sealed class ShoppingPlanApplicationService(
             return NotOpen<ShoppingPlanView>();
         }
 
-        // The new way of asking replaces the old answers; they stay accepted only until the screen moves.
-        if (ask is not null)
-        {
-            direction = null;
-        }
-
-        var guidance = dishFamilies is { Count: > 0 } || cuisine is not null || time is not null
-            ? new RecipeSuggestionGuidance(null, dishFamilies ?? [], cuisine, time, [], [])
-            : null;
-        if (guidance?.Validate() is { Count: > 0 } invalid)
-        {
-            return RecipeApplicationResult<ShoppingPlanView>.Failure("validation_failed", "The options are invalid.", invalid);
-        }
-
         var existing = await store.ListCardsAsync(user.Id, session.Id, cancellationToken);
-        var (preference, invalidDirection) = ReadDirection(direction, existing);
-        if (invalidDirection is not null)
-        {
-            return invalidDirection;
-        }
 
         string? request = null;
         ShoppingPlanCard? like = null;
@@ -520,7 +488,7 @@ public sealed class ShoppingPlanApplicationService(
         }
 
         // Someone who asked for options must be told when there are none, never handed the same screen.
-        var asked = guidance is not null || preference is not null || ask is not null;
+        var asked = ask is not null;
         if (existing.Count >= ShoppingPlanSession.MaxCards || !await store.TryTakeBatchAsync(user.Id, session.Id, batchKey, cancellationToken))
         {
             return asked && session.LastBatchKey != batchKey ? NoMoreOptions() : await ResultAsync(user.Id, session, cancellationToken);
@@ -529,27 +497,29 @@ public sealed class ShoppingPlanApplicationService(
         session.BatchCount++;
         if (asked)
         {
-            // Answers without direction, such as a chip, keep the earlier answers and still come first.
-            session.DeckPreference = preference ?? (session.DeckPreference ?? new ShoppingPlanDeckPreference(null, null, null, null, NextOrder(existing))) with { FromOrder = NextOrder(existing) };
+            // The switches stay as they are; what answers this request comes first.
+            session.DeckPreference = (session.DeckPreference ?? new ShoppingPlanDeckPreference(null, null, null, null, NextOrder(existing))) with { FromOrder = NextOrder(existing) };
         }
 
         var context = await LoadRankContextAsync(user.Id, session, existing, cancellationToken);
-        var generated = await deck.GenerateBatchAsync(user.Id, BuildRequest(session, existing, context, guidance, language, null, ask, request, like), correlationId, cancellationToken);
+        var generated = await deck.GenerateBatchAsync(user.Id, BuildRequest(session, existing, context, language, null, ask, request, like), correlationId, cancellationToken);
         if (generated.Problem is { } problem)
         {
             await store.ReturnBatchAsync(user.Id, session.Id, cancellationToken);
             Batches.Add(1, new KeyValuePair<string, object?>("source", "ai"), new KeyValuePair<string, object?>("outcome", problem.ErrorCode));
+            CountRequest(request, AiUnavailableCodes.Contains(problem.ErrorCode) ? "ai_unavailable" : "failed");
             return RecipeApplicationResult<ShoppingPlanView>.Failure(problem.ErrorCode, problem.Detail, problem.Errors);
         }
 
         Batches.Add(1, new KeyValuePair<string, object?>("source", "ai"), new KeyValuePair<string, object?>("outcome", "succeeded"));
         var profile = await profiles.FindAsync(user.Id, cancellationToken);
         // What the person typed wins over the meal rules: asking for a pasta snack is their call.
-        var checkFit = string.IsNullOrWhiteSpace(direction?.Hint) && request is null;
+        var checkFit = request is null;
         var result = await AddCandidatesAsync(user.Id, session, existing, generated.Value!.Candidates, ShoppingPlanCardSource.Ai, profile, cancellationToken, generated.Value.Components, checkFit, request);
         if (request is not null && result.Added == 0 && result.Blocked.Count > 0)
         {
             // Never a way around: the person is told which restriction stands in the way.
+            CountRequest(request, "blocked");
             session.UpdatedAt = timeProvider.GetUtcNow();
             await store.SaveAsync(session, cancellationToken);
             return RecipeApplicationResult<ShoppingPlanView>.Failure("request_blocked", "This dish conflicts with a restriction.", new Dictionary<string, string[]> { ["restriction"] = result.Blocked.Distinct(StringComparer.Ordinal).ToArray() });
@@ -561,7 +531,7 @@ public sealed class ShoppingPlanApplicationService(
             // Mostly the wrong kind of dish: one more try, telling the model which ones. A failure here
             // only leaves fewer dishes, so it is not reported.
             var retryContext = await LoadRankContextAsync(user.Id, session, known, cancellationToken);
-            var retry = await deck.GenerateBatchAsync(user.Id, BuildRequest(session, known, retryContext, guidance, language, result.Unfit, ask, request, like), correlationId, cancellationToken);
+            var retry = await deck.GenerateBatchAsync(user.Id, BuildRequest(session, known, retryContext, language, result.Unfit, ask, request, like), correlationId, cancellationToken);
             if (retry.Problem is null)
             {
                 await AddCandidatesAsync(user.Id, session, known, retry.Value!.Candidates, ShoppingPlanCardSource.Ai, profile, cancellationToken, retry.Value.Components, checkFit, request);
@@ -576,6 +546,7 @@ public sealed class ShoppingPlanApplicationService(
             // Every new dish can repeat an old one or be blocked by a restriction.
             if (known.Count == existing.Count)
             {
+                CountRequest(request, "nothing_new");
                 return NoMoreOptions();
             }
 
@@ -593,30 +564,17 @@ public sealed class ShoppingPlanApplicationService(
             }
         }
 
+        CountRequest(request, "answered");
         return await ResultAsync(user.Id, session, cancellationToken);
     }
 
-    /// <summary>Goes back to choosing dishes from the review. Nothing else changes.</summary>
-    /// <param name="sessionId">Plan.</param>
-    /// <param name="cancellationToken">Cancellation.</param>
-    public async Task<RecipeApplicationResult<ShoppingPlanView>> ReopenAsync(Guid sessionId, CancellationToken cancellationToken)
+    // Only typed requests count; the words themselves never reach a label.
+    private static void CountRequest(string? request, string outcome)
     {
-        var user = await currentUser.GetCurrentAsync(cancellationToken);
-        var session = await store.FindAsync(user.Id, sessionId, cancellationToken);
-        if (session is null)
+        if (request is not null)
         {
-            return NotFound<ShoppingPlanView>();
+            Requests.Add(1, new KeyValuePair<string, object?>("outcome", outcome));
         }
-
-        if (!IsDraft(session))
-        {
-            return NotOpen<ShoppingPlanView>();
-        }
-
-        session.Status = ShoppingPlanStatus.Building;
-        session.UpdatedAt = timeProvider.GetUtcNow();
-        await store.SaveAsync(session, cancellationToken);
-        return await ResultAsync(user.Id, session, cancellationToken);
     }
 
     // Cards can be deleted, so a count would reuse an order and put old dishes among the new.
@@ -624,40 +582,6 @@ public sealed class ShoppingPlanApplicationService(
 
     private static RecipeApplicationResult<ShoppingPlanView> NoMoreOptions() =>
         Failure<ShoppingPlanView>("no_more_options", "No new dishes are available for this plan.");
-
-    // Reads "Quero outras opções". The hint is untrusted, is cleaned here, and is never logged.
-    private static (ShoppingPlanDeckPreference? Preference, RecipeApplicationResult<ShoppingPlanView>? Failure) ReadDirection(ShoppingPlanDirection? direction, IReadOnlyList<ShoppingPlanCard> cards)
-    {
-        if (direction is null || (direction.Pantry is null && direction.Similarity is null && string.IsNullOrWhiteSpace(direction.Hint)))
-        {
-            return (null, null);
-        }
-
-        if (direction.Pantry is not (null or "use" or "free"))
-        {
-            return (null, Failure<ShoppingPlanView>("validation_failed", "The pantry choice is not valid."));
-        }
-
-        if (direction.Similarity is not (null or "any" or "similar" or "different"))
-        {
-            return (null, Failure<ShoppingPlanView>("validation_failed", "The similarity choice is not valid."));
-        }
-
-        if (direction.Hint?.Trim().Length > ShoppingPlanDeckPreference.MaxHintLength)
-        {
-            return (null, Failure<ShoppingPlanView>("validation_failed", "The hint is too long."));
-        }
-
-        var compares = direction.Similarity is "similar" or "different";
-        // Only a card of this plan can be compared with, so another owner's dish name can never enter a prompt.
-        var reference = compares ? cards.FirstOrDefault(card => card.Id == direction.ReferenceCardId) : null;
-        if (compares && reference is null)
-        {
-            return (null, Failure<ShoppingPlanView>("validation_failed", "The dish to compare with is not part of this plan."));
-        }
-
-        return (new ShoppingPlanDeckPreference(direction.Pantry, compares ? direction.Similarity : null, reference?.Snapshot.Name, RecipePlanDeckService.CleanHint(direction.Hint), NextOrder(cards)), null);
-    }
 
     /// <summary>Accepts or rejects a card. Repeating a decision is a no-op.</summary>
     /// <param name="sessionId">Plan.</param>
@@ -758,6 +682,12 @@ public sealed class ShoppingPlanApplicationService(
         }
 
         Decisions.Add(1, new KeyValuePair<string, object?>("decision", decision), new KeyValuePair<string, object?>("reason", "none"));
+        if (decision != "reject" && card.Snapshot.Component is null)
+        {
+            var source = card.Snapshot.RequestText is not null ? "requested" : card.Source.ToString().ToLowerInvariant();
+            MealsFilled.Add(card.Repeats, new KeyValuePair<string, object?>("source", source));
+        }
+
         session!.ConsecutiveRejections = decision == "reject" ? session.ConsecutiveRejections + 1 : 0;
         session.LastDecidedCardId = card.Id;
         session.UpdatedAt = now;
@@ -1196,38 +1126,6 @@ public sealed class ShoppingPlanApplicationService(
             : (null, null, Failure<ShoppingPlanView>("domain_rule_violated", "Only a chosen dish can change this."));
     }
 
-    /// <summary>Records why a card was refused. The reason affects only this plan's ranking and never the profile.</summary>
-    /// <param name="sessionId">Plan.</param>
-    /// <param name="cardId">Card.</param>
-    /// <param name="reason"><c>dislike</c>, <c>too_much_work</c>, or <c>tired_of</c>.</param>
-    /// <param name="cancellationToken">Cancellation.</param>
-    public async Task<RecipeApplicationResult<ShoppingPlanView>> SetReasonAsync(Guid sessionId, Guid cardId, string? reason, CancellationToken cancellationToken)
-    {
-        if (reason is null || !RejectReasons.Contains(reason))
-        {
-            return Failure<ShoppingPlanView>("validation_failed", "The reason is not known.", "reason");
-        }
-
-        var user = await currentUser.GetCurrentAsync(cancellationToken);
-        var (session, card, failure) = await FindCardAsync(user.Id, sessionId, cardId, cancellationToken);
-        if (failure is not null)
-        {
-            return failure;
-        }
-
-        if (card!.State != ShoppingPlanCardState.Rejected)
-        {
-            return Failure<ShoppingPlanView>("domain_rule_violated", "Only a refused dish can have a reason.");
-        }
-
-        var keys = await matching.KeysAsync(user.Id, card.Snapshot.Ingredients.Select(item => item.Name), cancellationToken);
-        card.RejectReason = reason;
-        card.RejectIngredientKey = reason == "tired_of" ? ToRankCard(card, session!.Setup, keys, []).LeadKey : null;
-        await store.SaveCardAsync(card, cancellationToken);
-        Decisions.Add(1, new KeyValuePair<string, object?>("decision", "reject"), new KeyValuePair<string, object?>("reason", reason));
-        return await ResultAsync(user.Id, session!, cancellationToken);
-    }
-
     /// <summary>Undoes the last decision, once. A recipe already created stays in the library.</summary>
     /// <param name="sessionId">Plan.</param>
     /// <param name="cancellationToken">Cancellation.</param>
@@ -1402,86 +1300,6 @@ public sealed class ShoppingPlanApplicationService(
         return await ResultAsync(user.Id, session!, cancellationToken);
     }
 
-    /// <summary>Moves to review and computes the suggested order. Refused while an expansion is pending.</summary>
-    /// <param name="sessionId">Plan.</param>
-    /// <param name="cancellationToken">Cancellation.</param>
-    public async Task<RecipeApplicationResult<ShoppingPlanView>> ReviewAsync(Guid sessionId, CancellationToken cancellationToken)
-    {
-        var user = await currentUser.GetCurrentAsync(cancellationToken);
-        var session = await store.FindAsync(user.Id, sessionId, cancellationToken);
-        if (session is null)
-        {
-            return NotFound<ShoppingPlanView>();
-        }
-
-        if (!IsDraft(session))
-        {
-            return NotOpen<ShoppingPlanView>();
-        }
-
-        var cards = await store.ListCardsAsync(user.Id, session.Id, cancellationToken);
-        if (cards.Any(card => card.State == ShoppingPlanCardState.Accepted && card.ExpansionState == ShoppingPlanExpansionState.Pending))
-        {
-            return Failure<ShoppingPlanView>("expansions_pending", "Some recipes are still being prepared.");
-        }
-
-        await SequenceAsync(user.Id, session, cards, cancellationToken);
-        session.Status = ShoppingPlanStatus.Reviewing;
-        session.UpdatedAt = timeProvider.GetUtcNow();
-        await store.SaveAsync(session, cancellationToken);
-        return await ResultAsync(user.Id, session, cancellationToken);
-    }
-
-    /// <summary>Removes one meal from the plan so the person can choose another, back on the cards.</summary>
-    /// <param name="sessionId">Plan.</param>
-    /// <param name="entryId">Menu entry to replace.</param>
-    /// <param name="cancellationToken">Cancellation.</param>
-    public async Task<RecipeApplicationResult<ShoppingPlanView>> ReplaceAsync(Guid sessionId, Guid? entryId, CancellationToken cancellationToken)
-    {
-        var user = await currentUser.GetCurrentAsync(cancellationToken);
-        var session = await store.FindAsync(user.Id, sessionId, cancellationToken);
-        if (session is null)
-        {
-            return NotFound<ShoppingPlanView>();
-        }
-
-        if (!IsDraft(session))
-        {
-            return NotOpen<ShoppingPlanView>();
-        }
-
-        var entry = (await menus.ListEntriesAsync(user.Id, [session.MenuPlanId], cancellationToken)).FirstOrDefault(item => item.Id == entryId);
-        var plan = await menus.FindAsync(user.Id, session.MenuPlanId, cancellationToken);
-        if (entry is null || plan is null)
-        {
-            return NotFound<ShoppingPlanView>();
-        }
-
-        plan.Touch(timeProvider.GetUtcNow());
-        await menus.RemoveEntryAsync(plan, entry, cancellationToken);
-        var card = (await store.ListCardsAsync(user.Id, session.Id, cancellationToken)).FirstOrDefault(item => item.State == ShoppingPlanCardState.Accepted && item.RecipeId == entry.RecipeId);
-        if (card is not null)
-        {
-            if (card.AcceptMode == "again" && card.Repeats > 1)
-            {
-                card.Repeats--;
-            }
-            else
-            {
-                card.State = ShoppingPlanCardState.Rejected;
-                card.ExpansionState = ShoppingPlanExpansionState.None;
-            }
-
-            await store.SaveCardAsync(card, cancellationToken);
-        }
-
-        session.Status = ShoppingPlanStatus.Building;
-        session.LastDecidedCardId = null;
-        session.UpdatedAt = timeProvider.GetUtcNow();
-        await store.SaveAsync(session, cancellationToken);
-        return await ResultAsync(user.Id, session, cancellationToken);
-    }
-
     /// <summary>Accepts the menu: only now do meals reach the home page and reserve the pantry. Unused cards are deleted.</summary>
     /// <param name="sessionId">Plan.</param>
     /// <param name="cancellationToken">Cancellation.</param>
@@ -1539,6 +1357,7 @@ public sealed class ShoppingPlanApplicationService(
         session.UpdatedAt = timeProvider.GetUtcNow();
         await store.SaveAsync(session, cancellationToken);
         AcceptedPlans.Add(1);
+        TimeToAcceptance.Record(Math.Max(0, (session.UpdatedAt - session.CreatedAt).TotalSeconds));
         return await ResultAsync(user.Id, session, cancellationToken);
     }
 
@@ -1990,7 +1809,7 @@ public sealed class ShoppingPlanApplicationService(
 
         var existing = await store.ListCardsAsync(ownerUserId, session.Id, cancellationToken);
         var context = await LoadRankContextAsync(ownerUserId, session, existing, cancellationToken);
-        var ideas = await deck.FindIdeasAsync(ownerUserId, BuildRequest(session, existing, context, null, language), MaxIdeaCards, cancellationToken);
+        var ideas = await deck.FindIdeasAsync(ownerUserId, BuildRequest(session, existing, context, language), MaxIdeaCards, cancellationToken);
         Batches.Add(1, new KeyValuePair<string, object?>("source", "instant"), new KeyValuePair<string, object?>("outcome", "succeeded"));
         await AddCandidatesAsync(ownerUserId, session, existing, ideas, ShoppingPlanCardSource.Idea, profile, cancellationToken);
     }
@@ -2420,8 +2239,6 @@ public sealed class ShoppingPlanApplicationService(
                         .ToList()))
             .ToList();
         var projection = new ShoppingPlanProjection(loaded.Context.Accepted, loaded.Context.FreeStock);
-        var open = IsOpen(session);
-        var canAskBatch = open && session.BatchCount < ShoppingPlanSession.MaxBatches && cards.Count < ShoppingPlanSession.MaxCards && filled < setup.TotalMeals;
         return new ShoppingPlanView(
             session.Id,
             session.MenuPlanId,
@@ -2430,10 +2247,6 @@ public sealed class ShoppingPlanApplicationService(
             new ShoppingPlanProgressView(setup.TotalMeals, filled, projection.ListItemCount, ShoppingPlanRanker.SessionMinutesUsed(loaded.Context.Accepted), setup.PrepMinutes),
             queue,
             acceptedCards.Select(card => new ShoppingPlanAcceptedView(card.Id, card.Snapshot.Name, card.Snapshot.MealType, card.Repeats, card.AcceptMode, card.ExpansionState.ToString().ToLowerInvariant(), card.Snapshot.FailureCode, card.RecipeId, card.Snapshot.GuardCode, card.Snapshot.GuardIngredient, card.Snapshot.Component is not null, card.Snapshot.PlannedDate, card.Snapshot.TotalMinutes, PeopleOf(card, setup))).ToList(),
-            canAskBatch && eligible.Count < LowQueue,
-            session.ConsecutiveRejections >= MoreOptionsAfterRejections,
-            open && eligible.Count == 0 && !canAskBatch && filled < setup.TotalMeals,
-            open && session.LastDecidedCardId is not null,
             groups,
             PreferencesOf(session.DeckPreference));
     }
@@ -2465,7 +2278,7 @@ public sealed class ShoppingPlanApplicationService(
             snapshot.RequestText);
     }
 
-    private static PlanDeckRequest BuildRequest(ShoppingPlanSession session, IReadOnlyList<ShoppingPlanCard> cards, LoadedRank loaded, RecipeSuggestionGuidance? guidance, string? language, IReadOnlyList<string>? alsoRefused = null, ShoppingPlanBatchAsk? ask = null, string? request = null, ShoppingPlanCard? like = null)
+    private static PlanDeckRequest BuildRequest(ShoppingPlanSession session, IReadOnlyList<ShoppingPlanCard> cards, LoadedRank loaded, string? language, IReadOnlyList<string>? alsoRefused = null, ShoppingPlanBatchAsk? ask = null, string? request = null, ShoppingPlanCard? like = null)
     {
         var setup = session.Setup;
         var needs = new Dictionary<string, int>(setup.MealNeeds(), StringComparer.Ordinal);
@@ -2515,11 +2328,10 @@ public sealed class ShoppingPlanApplicationService(
             preference?.Pantry ?? (loaded.Context.PantryWeight == 0 ? "free" : null),
             ask is not null ? (like is null ? null : "similar") : preference?.Similarity,
             ask is not null ? like?.Snapshot.Name : preference?.ReferenceDish,
-            ask is not null ? null : preference?.Hint,
             preference?.UsePreferences ?? true,
             request,
             setup.MealCounts is not null);
-        return new PlanDeckRequest(setup.People, brief, guidance, language);
+        return new PlanDeckRequest(setup.People, brief, language);
     }
 
     private async Task FailCardAsync(ShoppingPlanCard card, string code, CancellationToken cancellationToken)

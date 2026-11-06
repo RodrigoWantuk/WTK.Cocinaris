@@ -171,10 +171,6 @@ export interface ShoppingPlan {
   };
   queue: ShoppingPlanCard[];
   accepted: ShoppingPlanAccepted[];
-  needsBatch: boolean;
-  offerMoreOptions: boolean;
-  exhausted: boolean;
-  canUndo: boolean;
   /** Each meal type with a count above zero, in meal order (PLAN-0065). */
   groups: ShoppingPlanMealGroup[];
   preferences: ShoppingPlanPreferences;
@@ -239,19 +235,9 @@ export interface ShoppingPlanRoute {
   progress: ShoppingPlanRouteProgress;
 }
 
-/** "More options": closed codes only, never free text. */
+/** A request for more dishes (PLAN-0065). */
 export interface ShoppingPlanBatchOptions {
-  dishFamilies?: string[];
-  cuisine?: string | null;
-  time?: string | null;
-  /** `use` sticks to the pantry and chosen dishes; `free` ignores them. */
-  pantry?: "use" | "free" | null;
-  /** Compared with `referenceCardId`. */
-  similarity?: "any" | "similar" | "different" | null;
-  referenceCardId?: string | null;
-  /** At most 40 characters. */
-  hint?: string | null;
-  /** One meal type to ask for (PLAN-0065); the fields above are then ignored by the server. */
+  /** One meal type to ask for; without it, the dishes are for whatever is still missing. */
   mealType?: string | null;
   /** A specific dish in the person's words, at most 120 characters; for this request only. */
   request?: string | null;
@@ -279,11 +265,6 @@ export interface ShoppingPlanMenuLink {
 /** Shopping plan repository. Every method is owner-scoped by the backend session. */
 export interface ShoppingPlanRepository {
   getStart(signal?: AbortSignal): Promise<ShoppingPlanStart>;
-  /** Goes back to choosing dishes from the review. */
-  reopen(
-    sessionId: string,
-    options: { csrfToken: string },
-  ): Promise<ShoppingPlan>;
   /** Creates a menu; a retry with the same key returns the same one. */
   create(
     input: CreateShoppingPlanInput,
@@ -380,12 +361,6 @@ export interface ShoppingPlanRepository {
     },
     options: Mutation,
   ): Promise<ShoppingPlan>;
-  setReason(
-    sessionId: string,
-    cardId: string,
-    reason: "dislike" | "too_much_work" | "tired_of",
-    options: Mutation,
-  ): Promise<ShoppingPlan>;
   undo(sessionId: string, options: Mutation): Promise<ShoppingPlan>;
   /** Expands an accepted card and puts its meals on the menu; safe to retry. */
   expand(
@@ -396,12 +371,6 @@ export interface ShoppingPlanRepository {
   removeCard(
     sessionId: string,
     cardId: string,
-    options: Mutation,
-  ): Promise<ShoppingPlan>;
-  review(sessionId: string, options: Mutation): Promise<ShoppingPlan>;
-  replace(
-    sessionId: string,
-    entryId: string,
     options: Mutation,
   ): Promise<ShoppingPlan>;
   accept(sessionId: string, options: Mutation): Promise<ShoppingPlan>;
