@@ -203,6 +203,7 @@ function mapPlan(dto: PlanDto): ShoppingPlan {
       isComponent: card.isComponent === true,
       plannedDate: text(card.plannedDate),
       totalMinutes: optionalNumber(card.totalMinutes) ?? 0,
+      people: optionalNumber(card.people) ?? undefined,
     })),
     needsBatch: dto.needsBatch === true,
     offerMoreOptions: dto.offerMoreOptions === true,
@@ -582,6 +583,96 @@ export function createLiveShoppingPlanRepository(options?: {
             },
           ),
         "Unable to change the meals.",
+        mapPlan,
+      ),
+    setCardDay: (sessionId, cardId, plannedDate, { csrfToken, signal }) =>
+      run(
+        () =>
+          client.PUT(
+            "/api/v1/planning/shopping-plans/{sessionId}/cards/{cardId}/day",
+            {
+              params: {
+                path: { sessionId, cardId },
+                header: { "X-CSRF-TOKEN": csrfToken },
+              },
+              body: { plannedDate },
+              signal,
+              ...include,
+            },
+          ),
+        "Unable to set the day.",
+        mapPlan,
+      ),
+    setCardYield: (sessionId, cardId, meals, { csrfToken, signal }) =>
+      run(
+        () =>
+          client.PUT(
+            "/api/v1/planning/shopping-plans/{sessionId}/cards/{cardId}/yield",
+            {
+              params: {
+                path: { sessionId, cardId },
+                header: { "X-CSRF-TOKEN": csrfToken },
+              },
+              body: { meals },
+              signal,
+              ...include,
+            },
+          ),
+        "Unable to change how much it makes.",
+        mapPlan,
+      ),
+    setCardPeople: (sessionId, cardId, people, { csrfToken, signal }) =>
+      run(
+        () =>
+          client.PUT(
+            "/api/v1/planning/shopping-plans/{sessionId}/cards/{cardId}/people",
+            {
+              params: {
+                path: { sessionId, cardId },
+                header: { "X-CSRF-TOKEN": csrfToken },
+              },
+              body: { people },
+              signal,
+              ...include,
+            },
+          ),
+        "Unable to change the portions.",
+        mapPlan,
+      ),
+    chooseMany: (sessionId, choices, { csrfToken, signal }) =>
+      run(
+        () =>
+          client.POST("/api/v1/planning/shopping-plans/{sessionId}/choices", {
+            params: {
+              path: { sessionId },
+              header: { "X-CSRF-TOKEN": csrfToken },
+            },
+            body: { choices },
+            signal,
+            ...include,
+          }),
+        "Unable to choose the dishes.",
+        (dto) => ({
+          plan: mapPlan(dto.plan as PlanDto),
+          failed: (dto.failed ?? []).map(String),
+        }),
+      ),
+    distribute: (sessionId, clear, { csrfToken, signal }) =>
+      run(
+        () =>
+          client.POST(
+            "/api/v1/planning/shopping-plans/{sessionId}/distribution",
+            {
+              params: {
+                path: { sessionId },
+                header: { "X-CSRF-TOKEN": csrfToken },
+              },
+              body: { clear },
+              signal,
+              ...include,
+            },
+          ),
+        "Unable to spread the dishes.",
         mapPlan,
       ),
     reopen: (sessionId, { csrfToken }) =>

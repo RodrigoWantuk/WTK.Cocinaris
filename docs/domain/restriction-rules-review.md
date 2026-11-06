@@ -1,8 +1,8 @@
 # Restriction Rules: Owner Review (Gate G1-A)
 
-- **Status:** Awaiting owner review. Slice 1 of [PLAN-0062](../plans/PLAN-0062-guided-shopping-planning.md) must not merge before the owner approves this table.
+- **Status:** Accepted by the owner on 2026-11-06, in a written instruction to the agent: "Assuma as revisões como aceitas e siga o trabalho." The owner accepted the pending reviews as a whole; no line of this table was changed. The rules have been in force since Slice 1 of [PLAN-0062](../plans/PLAN-0062-guided-shopping-planning.md).
 - **Source of truth:** `apps/backend/src/Cocinaris.Modules.Ingredients/Catalog/restriction-rules.json`. Change the rules there and update this document in the same pull request.
-- **Last updated:** 2026-11-04
+- **Last updated:** 2026-11-06
 
 ## What this does
 
@@ -71,4 +71,4 @@ A dislike only moves a dish down the deck. Curated dislikes: `cilantro`, `mushro
 
 ## Owner decision
 
-- [ ] Approved as written, or approved with the changes noted in the pull request. Record the owner's comment in the Slice 1 pull request.
+- [x] Accepted as written on 2026-11-06 ("Assuma as revisões como aceitas e siga o trabalho."), recorded in the PLAN-0065 Slice 3 pull request. The known limits above are accepted with it.

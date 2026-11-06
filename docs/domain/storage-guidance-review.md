@@ -1,8 +1,8 @@
 # Storage Guidance: Owner Review (Gate G2-A)
 
-- **Status:** Awaiting owner review. `Planning:StorageGuidance:Enabled` stays `false` until the owner approves this table in writing.
+- **Status:** Accepted by the owner on 2026-11-06, in a written instruction to the agent: "Assuma as revisões como aceitas e siga o trabalho." The owner accepted the pending reviews as a whole. **The values marked unverified below were not checked against a primary source by the owner or the agent**; acceptance does not change that, and the advice stays advisory. `Planning:StorageGuidance:Enabled` may now be set to `true` on a host, following the runbook.
 - **Source of truth:** `apps/backend/src/Cocinaris.Modules.Ingredients/Catalog/storage-guidance.json`. Change values there and update this document in the same pull request.
-- **Last updated:** 2026-11-04
+- **Last updated:** 2026-11-06
 
 ## What this controls
 
@@ -113,4 +113,4 @@ Where a source gives a range, the **shorter** time is used. `fridgeDays` counts 
 
 ## Owner decision
 
-- [ ] Approved as written, or with the changes noted in the pull request. Only then does an operator set `Planning__StorageGuidance__Enabled=true`, following the runbook.
+- [x] Accepted as written on 2026-11-06 ("Assuma as revisões como aceitas e siga o trabalho."), recorded in the PLAN-0065 Slice 3 pull request. An operator may now set `Planning__StorageGuidance__Enabled=true`, following the runbook. Checking the unverified values against FoodKeeper or ANVISA remains open.

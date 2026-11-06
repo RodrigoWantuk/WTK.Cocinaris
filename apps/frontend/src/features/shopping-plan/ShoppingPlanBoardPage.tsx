@@ -4,15 +4,19 @@ import { useProductionI18n } from "@/app/i18n/ProductionI18nProvider";
 import { useSession } from "@/app/session/SessionProvider";
 import { Button } from "@/components/ui/button";
 import { RecipeApiError, type RecipeSummary } from "@/contracts/recipes";
-import type {
-  ShoppingPlan,
-  ShoppingPlanAccepted,
-  ShoppingPlanCard,
-  ShoppingPlanPreferences,
+import {
+  MEAL_ORDER,
+  type MealCounts,
+  type ShoppingPlan,
+  type ShoppingPlanAccepted,
+  type ShoppingPlanCard,
+  type ShoppingPlanPreferences,
 } from "@/contracts/shoppingPlan";
 import { formatMenuDay } from "@/features/planning/planningDates";
 import { useRecipeRepository } from "@/features/recipes/RecipeProvider";
-import { BottomSheet } from "./BottomSheet";
+import { CompleteSheet } from "./CompleteSheet";
+import { Counter } from "./Counter";
+import { DishActionsSheet, type MealRaise } from "./DishActionsSheet";
 import { MealOptionsSheet } from "./MealOptionsSheet";
 import { restrictionLabel } from "./restrictionLabel";
 import { useShoppingPlanRepository } from "./ShoppingPlanProvider";
@@ -24,8 +28,21 @@ const FULL_OPTIONS = 6;
 const LOW_OPTIONS = 3;
 /** Automatic requests per meal type and visit; the person can always ask for more. */
 const MAX_AUTO = 2;
-/** Switches wait this long, so quick taps send only the last state. */
+/** Switches and counters wait this long, so quick taps send only the last state. */
 const SWITCH_DELAY_MS = 600;
+const MAX_MEALS = 40;
+/** How long a short confirmation stays on screen. */
+const NOTICE_MS = 5000;
+
+/** The menu's counts as the board shows them; a meal type without a group wants none. */
+function countsOf(plan: ShoppingPlan): MealCounts {
+  const counts: MealCounts = { breakfast: 0, lunch: 0, dinner: 0, snack: 0 };
+  for (const group of plan.groups) {
+    if (group.mealType in counts)
+      counts[group.mealType as keyof MealCounts] = group.wanted;
+  }
+  return counts;
+}
 
 /**
  * The board of a menu being built (PLAN-0065): one surface per meal type with its chosen dishes and
@@ -56,9 +73,21 @@ export function ShoppingPlanBoardPage() {
   const [dish, setDish] = useState<ShoppingPlanAccepted | null>(null);
   const [confirmUse, setConfirmUse] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [countDraft, setCountDraft] = useState<MealCounts | null>(null);
+  const [peopleDraft, setPeopleDraft] = useState<{
+    cardId: string;
+    people: number;
+  } | null>(null);
+  const [dishError, setDishError] = useState<string | null>(null);
+  const [completeOpen, setCompleteOpen] = useState(false);
+  const [completeFailed, setCompleteFailed] = useState<string[] | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const autoCount = useRef<Record<string, number>>({});
   const switchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const undoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const countTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const peopleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -82,8 +111,15 @@ export function ShoppingPlanBoardPage() {
 
   useEffect(
     () => () => {
-      if (switchTimer.current) clearTimeout(switchTimer.current);
-      if (undoTimer.current) clearTimeout(undoTimer.current);
+      for (const timer of [
+        switchTimer,
+        undoTimer,
+        countTimer,
+        peopleTimer,
+        noticeTimer,
+      ]) {
+        if (timer.current) clearTimeout(timer.current);
+      }
     },
     [],
   );
@@ -318,8 +354,39 @@ export function ShoppingPlanBoardPage() {
   );
   const items = plan.progress.listItemCount;
   const bases = plan.accepted.filter((card) => card.isComponent);
+  // A base appears once a dish that uses it is chosen; it is a quiet offer, never a step.
+  const suggestedBases = plan.queue.filter((card) => card.component);
+  const dishesOnly = plan.accepted.filter(
+    (card) => !card.isComponent && card.expansionState !== "failed",
+  );
+  const undated = dishesOnly.filter((card) => !card.plannedDate).length;
+  const dated = dishesOnly.filter((card) => card.plannedDate).length;
+  const listOf = (names: string[]) =>
+    new Intl.ListFormat(locale, { style: "long", type: "conjunction" }).format(
+      names,
+    );
   const start = plan.setup.startDate;
   const end = plan.setup.endDate;
+
+  const decideBase = (
+    card: ShoppingPlanCard,
+    decision: "accept" | "reject",
+  ) => {
+    if (!csrfToken || busyCardId) return;
+    setBusyCardId(card.cardId);
+    void run(
+      async () =>
+        setPlan(
+          await repo.decide(
+            sessionId,
+            card.cardId,
+            { decision },
+            { csrfToken },
+          ),
+        ),
+      () => setError("shoppingPlan.error.save"),
+    ).finally(() => setBusyCardId(null));
+  };
 
   const use = () => {
     if (!csrfToken || saving) return;
@@ -339,15 +406,196 @@ export function ShoppingPlanBoardPage() {
     ).finally(() => setSaving(false));
   };
 
-  const dishAction = (work: () => Promise<ShoppingPlan>) => {
+  // Changes to one dish keep its sheet open, showing the new state; removing or swapping closes it.
+  const dishAction = (
+    work: () => Promise<ShoppingPlan>,
+    after?: (updated: ShoppingPlan) => void,
+  ) => {
     if (saving) return;
     setSaving(true);
+    setDishError(null);
     void run(
       async () => {
-        setPlan(await work());
-        setDish(null);
+        const updated = await work();
+        setPlan(updated);
+        if (after) after(updated);
+        else
+          setDish(
+            updated.accepted.find((card) => card.cardId === dish?.cardId) ??
+              null,
+          );
       },
-      () => setError("shoppingPlan.error.save"),
+      () => setDishError("shoppingPlan.error.save"),
+    ).finally(() => setSaving(false));
+  };
+
+  const showNotice = (text: string) => {
+    setNotice(text);
+    if (noticeTimer.current) clearTimeout(noticeTimer.current);
+    noticeTimer.current = setTimeout(() => setNotice(null), NOTICE_MS);
+  };
+
+  const counts = countDraft ?? countsOf(plan);
+  const totalWanted = MEAL_ORDER.reduce((sum, meal) => sum + counts[meal], 0);
+  const canAddMeal =
+    totalWanted < MAX_MEALS &&
+    MEAL_ORDER.some(
+      (meal) => !plan.groups.some((item) => item.mealType === meal),
+    );
+
+  // Quick taps on a counter send only the last count; the server keeps it at or above what is chosen.
+  const changeCount = (mealType: string, value: number, wait = true) => {
+    if (!csrfToken) return;
+    const next = { ...counts, [mealType]: value };
+    setCountDraft(next);
+    setError(null);
+    if (countTimer.current) clearTimeout(countTimer.current);
+    const send = () =>
+      void run(
+        async () => {
+          setPlan(await repo.setMealCounts(sessionId, next, { csrfToken }));
+          setCountDraft(null);
+        },
+        (code) => {
+          setCountDraft(null);
+          setError(
+            code === "meal_count_below_chosen"
+              ? "menuBuild.group.belowChosen"
+              : "shoppingPlan.error.save",
+          );
+        },
+      );
+    if (wait) countTimer.current = setTimeout(send, SWITCH_DELAY_MS);
+    else send();
+  };
+
+  const dishPeople = (card: ShoppingPlanAccepted) =>
+    peopleDraft?.cardId === card.cardId
+      ? peopleDraft.people
+      : (card.people ?? plan.setup.people);
+
+  const dishActions = {
+    swap: (card: ShoppingPlanAccepted) =>
+      dishAction(
+        () =>
+          repo.removeCard(sessionId, card.cardId, { csrfToken: csrfToken! }),
+        () => {
+          setDish(null);
+          openSheet(card.mealType);
+        },
+      ),
+    setDay: (card: ShoppingPlanAccepted, day: string | null) =>
+      dishAction(() =>
+        repo.setCardDay(sessionId, card.cardId, day, { csrfToken: csrfToken! }),
+      ),
+    setYield: (card: ShoppingPlanAccepted, meals: number, raise?: MealRaise) =>
+      dishAction(async () => {
+        if (raise)
+          await repo.setMealCounts(
+            sessionId,
+            { ...countsOf(plan), [raise.mealType]: raise.count },
+            { csrfToken: csrfToken! },
+          );
+        return repo.setCardYield(sessionId, card.cardId, meals, {
+          csrfToken: csrfToken!,
+        });
+      }),
+    setPeople: (card: ShoppingPlanAccepted, people: number) => {
+      setPeopleDraft({ cardId: card.cardId, people });
+      if (peopleTimer.current) clearTimeout(peopleTimer.current);
+      peopleTimer.current = setTimeout(
+        () =>
+          void run(
+            async () => {
+              const updated = await repo.setCardPeople(
+                sessionId,
+                card.cardId,
+                people,
+                { csrfToken: csrfToken! },
+              );
+              setPlan(updated);
+              setDish(
+                (current) =>
+                  updated.accepted.find(
+                    (item) => item.cardId === current?.cardId,
+                  ) ?? null,
+              );
+              setPeopleDraft(null);
+            },
+            () => {
+              setPeopleDraft(null);
+              setDishError("shoppingPlan.error.save");
+            },
+          ),
+        SWITCH_DELAY_MS,
+      );
+    },
+    retry: (card: ShoppingPlanAccepted) =>
+      dishAction(() =>
+        repo.expand(sessionId, card.cardId, {
+          csrfToken: csrfToken!,
+          language: locale,
+        }),
+      ),
+    remove: (card: ShoppingPlanAccepted) =>
+      dishAction(
+        () =>
+          repo.removeCard(sessionId, card.cardId, { csrfToken: csrfToken! }),
+        () => setDish(null),
+      ),
+  };
+
+  const complete = (
+    choices: Array<{ cardId: string; mealType: string; name: string }>,
+  ) => {
+    if (!csrfToken || saving) return;
+    setSaving(true);
+    setCompleteFailed(null);
+    void run(
+      async () => {
+        const result = await repo.chooseMany(
+          sessionId,
+          choices.map(({ cardId, mealType }) => ({ cardId, mealType })),
+          { csrfToken },
+        );
+        setPlan(result.plan);
+        const added = choices.length - result.failed.length;
+        if (result.failed.length > 0) {
+          // The sheet stays open and says what is still missing; the rest is already chosen.
+          setCompleteFailed(
+            choices
+              .filter((choice) => result.failed.includes(choice.cardId))
+              .map((choice) => choice.name),
+          );
+          return;
+        }
+        setCompleteOpen(false);
+        showNotice(
+          t(
+            added === 1
+              ? "menuBuild.complete.done.one"
+              : "menuBuild.complete.done",
+            { count: added },
+          ),
+        );
+      },
+      () => setCompleteFailed([]),
+    ).finally(() => setSaving(false));
+  };
+
+  const distribute = (clear: boolean) => {
+    if (!csrfToken || saving) return;
+    setSaving(true);
+    setError(null);
+    void run(
+      async () =>
+        setPlan(await repo.distribute(sessionId, clear, { csrfToken })),
+      (code) =>
+        setError(
+          code === "expansions_pending"
+            ? "menuBuild.bar.wait"
+            : "shoppingPlan.error.save",
+        ),
     ).finally(() => setSaving(false));
   };
 
@@ -384,7 +632,7 @@ export function ShoppingPlanBoardPage() {
     : null;
 
   return (
-    <div data-testid="plan-board" className="space-y-6 pb-32">
+    <div data-testid="plan-board" className="space-y-6 pb-48">
       <header className="space-y-1">
         <div className="flex items-start justify-between gap-3">
           <h1 className="font-display text-3xl">
@@ -424,6 +672,15 @@ export function ShoppingPlanBoardPage() {
         </p>
       ) : null}
       {sheetMeal ? null : undoNotice}
+      {notice ? (
+        <p
+          role="status"
+          data-testid="board-notice"
+          className="rounded-xl bg-secondary px-3 py-2 text-sm"
+        >
+          {notice}
+        </p>
+      ) : null}
 
       {plan.groups.map((item) => {
         const dishes = plan.accepted.filter(
@@ -437,20 +694,38 @@ export function ShoppingPlanBoardPage() {
             aria-labelledby={`board-heading-${item.mealType}`}
             className="surface p-2"
           >
-            <h2
-              id={`board-heading-${item.mealType}`}
-              tabIndex={-1}
-              className="px-2 pb-1 pt-2 text-lg font-semibold outline-none"
-            >
-              {t(`menuBuild.meal.plural.${item.mealType}`)}{" "}
-              <span className="text-base font-normal text-muted-foreground">
-                ·{" "}
-                {t("menuBuild.group.count", {
-                  filled: item.filled,
-                  wanted: item.wanted,
-                })}
-              </span>
-            </h2>
+            <div className="flex items-center justify-between gap-2 px-2 pt-1">
+              <h2
+                id={`board-heading-${item.mealType}`}
+                tabIndex={-1}
+                className="min-w-0 text-lg font-semibold outline-none"
+              >
+                {t(`menuBuild.meal.plural.${item.mealType}`)}{" "}
+                <span className="text-base font-normal text-muted-foreground">
+                  ·{" "}
+                  {t("menuBuild.group.count", {
+                    filled: item.filled,
+                    wanted:
+                      counts[item.mealType as keyof MealCounts] ?? item.wanted,
+                  })}
+                </span>
+              </h2>
+              <Counter
+                compact
+                hideLabel
+                label={t(`menuBuild.meal.plural.${item.mealType}`)}
+                value={counts[item.mealType as keyof MealCounts] ?? item.wanted}
+                // A group never goes below what is chosen, and the menu keeps at least one meal.
+                min={Math.max(item.filled, totalWanted <= 1 ? 1 : 0)}
+                max={
+                  MAX_MEALS -
+                  totalWanted +
+                  (counts[item.mealType as keyof MealCounts] ?? item.wanted)
+                }
+                onChange={(next) => changeCount(item.mealType, next)}
+                testId={`board-count-${item.mealType}`}
+              />
+            </div>
             <ul>
               {dishes.map((card) => (
                 <li key={card.cardId}>
@@ -536,6 +811,43 @@ export function ShoppingPlanBoardPage() {
         );
       })}
 
+      {suggestedBases.map((card) => (
+        <section
+          key={card.cardId}
+          data-testid="board-base-suggestion"
+          className="space-y-2 rounded-xl border border-border p-3 text-sm"
+        >
+          <p>
+            {t("menuBuild.bases.suggested", {
+              base: card.name,
+              dishes: listOf(card.component?.usedBy ?? []),
+            })}
+          </p>
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              data-testid="board-base-add"
+              disabled={busyCardId !== null}
+              onClick={() => decideBase(card, "accept")}
+            >
+              {t("menuBuild.bases.add")}
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              data-testid="board-base-skip"
+              disabled={busyCardId !== null}
+              onClick={() => decideBase(card, "reject")}
+            >
+              {t("menuBuild.bases.skip")}
+            </Button>
+          </div>
+        </section>
+      ))}
+
       {bases.length > 0 ? (
         <section className="space-y-1" data-testid="board-bases">
           <h2 className="text-sm font-semibold text-muted-foreground">
@@ -547,6 +859,76 @@ export function ShoppingPlanBoardPage() {
             ))}
           </ul>
         </section>
+      ) : null}
+      {canAddMeal || undated > 0 || dated > 0 ? (
+        // Rare, optional changes to the whole menu stay folded, so the board keeps to its dishes.
+        <details data-testid="board-more" className="surface p-2">
+          <summary className="flex min-h-11 cursor-pointer items-center rounded-lg px-2 font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            {t("menuBuild.board.more")}
+          </summary>
+          <div className="space-y-4 px-2 pb-2 pt-2">
+            {canAddMeal ? (
+              <section className="space-y-2" data-testid="board-add-meal">
+                <h2 className="text-sm font-semibold text-muted-foreground">
+                  {t("menuBuild.addMeal")}
+                </h2>
+                <div className="flex flex-wrap gap-2">
+                  {MEAL_ORDER.filter(
+                    (meal) =>
+                      !plan.groups.some((item) => item.mealType === meal),
+                  ).map((meal) => (
+                    <Button
+                      key={meal}
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      data-testid={`board-add-${meal}`}
+                      onClick={() => changeCount(meal, 1, false)}
+                    >
+                      + {t(`shoppingPlan.meal.${meal}`)}
+                    </Button>
+                  ))}
+                </div>
+              </section>
+            ) : null}
+
+            {undated > 0 || dated > 0 ? (
+              <section className="space-y-1" data-testid="board-spread">
+                <div className="flex flex-wrap gap-2">
+                  {undated > 0 ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      data-testid="board-spread-action"
+                      disabled={saving || pending > 0}
+                      onClick={() => distribute(false)}
+                    >
+                      {t("menuBuild.spread")}
+                    </Button>
+                  ) : null}
+                  {dated > 0 ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      data-testid="board-spread-clear"
+                      disabled={saving}
+                      onClick={() => distribute(true)}
+                    >
+                      {t("menuBuild.spread.clear")}
+                    </Button>
+                  ) : null}
+                </div>
+                {undated > 0 ? (
+                  <p className="px-3 text-sm text-muted-foreground">
+                    {t("menuBuild.spread.hint")}
+                  </p>
+                ) : null}
+              </section>
+            ) : null}
+          </div>
+        </details>
       ) : null}
 
       <div
@@ -622,6 +1004,32 @@ export function ShoppingPlanBoardPage() {
                 </Button>
               </div>
             </div>
+          ) : missing > 0 ? (
+            // Something is missing: completing is the main way on, using it as it is stays possible.
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                size="lg"
+                data-testid="board-use"
+                disabled={saving || pending > 0 || plan.accepted.length === 0}
+                onClick={() => setConfirmUse(true)}
+              >
+                {t("menuBuild.bar.use")}
+              </Button>
+              <Button
+                type="button"
+                size="lg"
+                data-testid="board-complete"
+                disabled={saving}
+                onClick={() => {
+                  setCompleteFailed(null);
+                  setCompleteOpen(true);
+                }}
+              >
+                {t("menuBuild.bar.complete", { count: missing })}
+              </Button>
+            </div>
           ) : (
             <Button
               type="button"
@@ -629,7 +1037,7 @@ export function ShoppingPlanBoardPage() {
               className="w-full"
               data-testid="board-use"
               disabled={saving || pending > 0 || plan.accepted.length === 0}
-              onClick={() => (missing > 0 ? setConfirmUse(true) : use())}
+              onClick={use}
             >
               {t("menuBuild.bar.use")}
             </Button>
@@ -665,76 +1073,70 @@ export function ShoppingPlanBoardPage() {
         />
       ) : null}
 
-      <BottomSheet
+      <DishActionsSheet
+        plan={plan}
+        dish={dish}
         open={dish !== null}
         onOpenChange={(open) => {
-          if (!open) setDish(null);
+          if (!open) {
+            setDish(null);
+            setDishError(null);
+          }
         }}
-        testId="board-dish-sheet"
-        closeLabel={t("menuBuild.sheet.close")}
-        title={dish?.name ?? ""}
-      >
-        {dish ? (
-          <div className="space-y-2">
-            {dish.guardCode ? (
-              <p className="text-sm text-muted-foreground">
-                {t("shoppingPlan.card.guard", {
-                  ingredient:
-                    dish.guardIngredient ?? t("shoppingPlan.card.guardAny"),
-                  restriction: restrictionLabel(locale, dish.guardCode),
-                })}
-              </p>
-            ) : null}
-            {dish.recipeId ? (
-              <Button asChild variant="secondary" className="w-full">
-                <Link
-                  to={`/app/receitas/${dish.recipeId}`}
-                  data-testid="board-dish-recipe"
-                >
-                  {t("menuBuild.dish.recipe")}
-                </Link>
-              </Button>
-            ) : null}
-            {dish.expansionState === "failed" &&
-            dish.failureCode !== "restriction_blocked" &&
-            csrfToken ? (
-              <Button
-                type="button"
-                variant="secondary"
-                className="w-full"
-                data-testid="board-dish-retry"
-                disabled={saving}
-                onClick={() =>
-                  dishAction(() =>
-                    repo.expand(sessionId, dish.cardId, {
-                      csrfToken,
-                      language: locale,
-                    }),
-                  )
-                }
-              >
-                {t("shoppingPlan.review.retry")}
-              </Button>
-            ) : null}
-            {csrfToken ? (
-              <Button
-                type="button"
-                variant="ghost"
-                className="w-full text-destructive"
-                data-testid="board-dish-remove"
-                disabled={saving}
-                onClick={() =>
-                  dishAction(() =>
-                    repo.removeCard(sessionId, dish.cardId, { csrfToken }),
-                  )
-                }
-              >
-                {t("shoppingPlan.review.remove")}
-              </Button>
-            ) : null}
-          </div>
-        ) : null}
-      </BottomSheet>
+        people={dish ? dishPeople(dish) : plan.setup.people}
+        busy={saving}
+        canRetry={
+          dish?.expansionState === "failed" &&
+          dish.failureCode !== "restriction_blocked"
+        }
+        notice={
+          dishError ? (
+            <p role="alert" className="text-sm text-destructive">
+              {t(dishError)}
+            </p>
+          ) : null
+        }
+        actions={dishActions}
+      />
+
+      <CompleteSheet
+        plan={plan}
+        open={completeOpen}
+        onOpenChange={setCompleteOpen}
+        running={running !== null}
+        busy={saving}
+        onAsk={(mealType, kind) => ask({ mealType, kind })}
+        onConfirm={complete}
+        notice={
+          completeFailed ? (
+            <div
+              role="alert"
+              data-testid="complete-failed"
+              className="space-y-1 rounded-xl bg-secondary p-3 text-sm"
+            >
+              {completeFailed.length > 0 ? (
+                <p>
+                  {t("menuBuild.complete.partial", {
+                    dishes: listOf(completeFailed),
+                  })}
+                </p>
+              ) : (
+                <p>{t("shoppingPlan.error.save")}</p>
+              )}
+              {missing > 0 ? (
+                <p>
+                  {t(
+                    missing === 1
+                      ? "menuBuild.complete.left.one"
+                      : "menuBuild.complete.left",
+                    { count: missing },
+                  )}
+                </p>
+              ) : null}
+            </div>
+          ) : null
+        }
+      />
     </div>
   );
 }

@@ -84,16 +84,42 @@ const measure = () => {
     range.selectNodeContents(node);
     return range.getBoundingClientRect();
   };
-  const boxes = leaves.map((node) => ({ node, box: textBox(node) }));
+  // Content scrolling under a fixed bar is not lying on it, as long as the page leaves room to scroll
+  // it clear; that is checked below with the page at its end.
+  const fixedOf = (node) => {
+    for (let at = node; at && at !== document.body; at = at.parentElement) {
+      if (getComputedStyle(at).position === "fixed") return at;
+    }
+    return null;
+  };
+  const boxes = leaves.map((node) => ({ node, box: textBox(node), fixed: fixedOf(node) }));
   for (let i = 0; i < boxes.length; i += 1) {
     for (let j = i + 1; j < boxes.length; j += 1) {
       const a = boxes[i];
       const b = boxes[j];
       if (a.node.contains(b.node) || b.node.contains(a.node)) continue;
+      if (a.fixed !== b.fixed) continue;
       const wide = Math.min(a.box.right, b.box.right) - Math.max(a.box.left, b.box.left);
       const high = Math.min(a.box.bottom, b.box.bottom) - Math.max(a.box.top, b.box.top);
       if (wide > 2 && high > 2) problems.push(`overlap: ${label(a.node)} / ${label(b.node)}`);
     }
+  }
+  // With the page scrolled to its end, nothing in it may stay under a bar fixed to the bottom.
+  const bars = [...new Set(boxes.map((item) => item.fixed).filter(Boolean))].filter((bar) => {
+    const box = bar.getBoundingClientRect();
+    return box.bottom >= window.innerHeight - 1 && box.top > window.innerHeight / 2;
+  });
+  if (bars.length > 0) {
+    const before = window.scrollY;
+    window.scrollTo(0, document.documentElement.scrollHeight);
+    for (const bar of bars) {
+      const top = bar.getBoundingClientRect().top;
+      for (const item of boxes.filter((entry) => !entry.fixed)) {
+        const box = textBox(item.node);
+        if (box.bottom > top + 2 && box.top < window.innerHeight) problems.push(`under the bottom bar: ${label(item.node)}`);
+      }
+    }
+    window.scrollTo(0, before);
   }
   return [...new Set(problems)];
 };
@@ -204,6 +230,12 @@ async function walk(browserName, browserType, profile) {
       await page.getByTestId("board-dish-sheet").waitFor();
       await audit(browserName, page, width, "board-dish");
       await page.keyboard.press("Escape");
+      await page.getByTestId("board-dish-sheet").waitFor({ state: "detached" });
+      await page.getByTestId("board-complete").click();
+      await page.getByTestId("complete-sheet").waitFor();
+      await audit(browserName, page, width, "board-complete");
+      await page.keyboard.press("Escape");
+      await page.getByTestId("complete-sheet").waitFor({ state: "detached" });
       await page.getByTestId("board-use").click();
       await page.getByTestId("board-use-confirm").waitFor();
       await audit(browserName, page, width, "board-confirm");

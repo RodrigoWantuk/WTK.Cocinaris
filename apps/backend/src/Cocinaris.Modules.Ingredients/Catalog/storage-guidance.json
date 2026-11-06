@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "description": "Curated storage guidance (PLAN-0062). Awaiting owner review in docs/domain/storage-guidance-review.md. Inactive until Planning:StorageGuidance:Enabled is true. Where a source gives a range, the shorter time is used.",
+  "description": "Curated storage guidance (PLAN-0062). Accepted by the owner on 2026-11-06; see docs/domain/storage-guidance-review.md. Inactive until Planning:StorageGuidance:Enabled is true. Where a source gives a range, the shorter time is used.",
   "cooked": { "fridgeDays": 3, "freezerDays": 60 },
   "categories": {
     "poultry": { "location": "Refrigerator", "fridgeDays": 1, "freezable": true, "freezerDays": 270 },

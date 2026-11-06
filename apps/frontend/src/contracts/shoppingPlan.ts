@@ -145,6 +145,14 @@ export interface ShoppingPlanAccepted {
   /** The day it was given, if any; most dishes have none. */
   plannedDate?: string | null;
   totalMinutes?: number;
+  /** People each of its meals is for: the plan's people unless changed for this dish. */
+  people?: number;
+}
+
+/** What "Completar" chose; `failed` lists the cards that no longer fit, the others stay chosen. */
+export interface ShoppingPlanChoices {
+  plan: ShoppingPlan;
+  failed: string[];
 }
 
 /** The state every plan route returns. */
@@ -289,6 +297,39 @@ export interface ShoppingPlanRepository {
   setMealCounts(
     sessionId: string,
     counts: MealCounts,
+    options: Mutation,
+  ): Promise<ShoppingPlan>;
+  /** Sets or clears the day of a chosen dish; the day must fall inside the period. */
+  setCardDay(
+    sessionId: string,
+    cardId: string,
+    plannedDate: string | null,
+    options: Mutation,
+  ): Promise<ShoppingPlan>;
+  /** Sets how many meals one cooking of a chosen dish covers (1 to 4), within what its meal wants. */
+  setCardYield(
+    sessionId: string,
+    cardId: string,
+    meals: number,
+    options: Mutation,
+  ): Promise<ShoppingPlan>;
+  /** Sets how many people one chosen dish is for (1 to 12), never the plan's people. */
+  setCardPeople(
+    sessionId: string,
+    cardId: string,
+    people: number,
+    options: Mutation,
+  ): Promise<ShoppingPlan>;
+  /** Chooses several offered dishes at once; each is its own decision, so some may fail alone. */
+  chooseMany(
+    sessionId: string,
+    choices: Array<{ cardId: string; mealType: string }>,
+    options: Mutation,
+  ): Promise<ShoppingPlanChoices>;
+  /** Gives undated dishes days across the period, what spoils first first; `clear` removes every day. */
+  distribute(
+    sessionId: string,
+    clear: boolean,
     options: Mutation,
   ): Promise<ShoppingPlan>;
   get(sessionId: string, signal?: AbortSignal): Promise<ShoppingPlan>;

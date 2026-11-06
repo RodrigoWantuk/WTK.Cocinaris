@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using Cocinaris.Api.Observability;
 using Cocinaris.Api.Services;
 using Cocinaris.Modules.Planning.Application;
@@ -91,6 +91,23 @@ public static class ShoppingPlanEndpoints
             .RequireRateLimiting("shopping-plan-decision")
             .Produces<ShoppingPlanView>()
             .ProducesProblem(400)
+            .ProducesProblem(404)
+            .ProducesProblem(422);
+        group.MapPut("/{sessionId:guid}/cards/{cardId:guid}/people", (ShoppingPlanApiService service, Guid sessionId, Guid cardId, ShoppingPlanCardPeopleRequest body, HttpContext context, CancellationToken cancellationToken) => service.SetCardPeopleAsync(sessionId, cardId, body, context, cancellationToken))
+            .RequireRateLimiting("shopping-plan-decision")
+            .Produces<ShoppingPlanView>()
+            .ProducesProblem(400)
+            .ProducesProblem(404)
+            .ProducesProblem(422);
+        group.MapPost("/{sessionId:guid}/choices", (ShoppingPlanApiService service, Guid sessionId, ShoppingPlanChoicesRequest body, HttpContext context, CancellationToken cancellationToken) => service.ChooseManyAsync(sessionId, body, context, cancellationToken))
+            .RequireRateLimiting("shopping-plan-decision")
+            .Produces<ShoppingPlanChoicesView>()
+            .ProducesProblem(400)
+            .ProducesProblem(404)
+            .ProducesProblem(422);
+        group.MapPost("/{sessionId:guid}/distribution", (ShoppingPlanApiService service, Guid sessionId, ShoppingPlanDistributionRequest? body, HttpContext context, CancellationToken cancellationToken) => service.DistributeAsync(sessionId, body, context, cancellationToken))
+            .RequireRateLimiting("mutation")
+            .Produces<ShoppingPlanView>()
             .ProducesProblem(404)
             .ProducesProblem(422);
         group.MapPost("/{sessionId:guid}/reopen", (ShoppingPlanApiService service, Guid sessionId, HttpContext context, CancellationToken cancellationToken) => service.ReopenAsync(sessionId, context, cancellationToken))
@@ -189,6 +206,18 @@ public sealed class ShoppingPlanApiService(ShoppingPlanApplicationService applic
     /// <summary>Sets how many meals one cooking of a chosen dish covers.</summary>
     public async Task<IResult> SetCardYieldAsync(Guid sessionId, Guid cardId, ShoppingPlanCardYieldRequest body, HttpContext context, CancellationToken cancellationToken) =>
         ToResult(await application.SetCardYieldAsync(sessionId, cardId, body.Meals, cancellationToken), context.TraceIdentifier);
+
+    /// <summary>Sets how many people one chosen dish is for.</summary>
+    public async Task<IResult> SetCardPeopleAsync(Guid sessionId, Guid cardId, ShoppingPlanCardPeopleRequest body, HttpContext context, CancellationToken cancellationToken) =>
+        ToResult(await application.SetCardPeopleAsync(sessionId, cardId, body.People, cancellationToken), context.TraceIdentifier);
+
+    /// <summary>Chooses several offered dishes at once ("Completar").</summary>
+    public async Task<IResult> ChooseManyAsync(Guid sessionId, ShoppingPlanChoicesRequest body, HttpContext context, CancellationToken cancellationToken) =>
+        ToResult(await application.ChooseManyAsync(sessionId, body.Choices?.Select(choice => new ShoppingPlanChoice(choice.CardId, choice.MealType)).ToList(), cancellationToken), context.TraceIdentifier);
+
+    /// <summary>Spreads undated dishes across the period, or removes every day.</summary>
+    public async Task<IResult> DistributeAsync(Guid sessionId, ShoppingPlanDistributionRequest? body, HttpContext context, CancellationToken cancellationToken) =>
+        ToResult(await application.DistributeAsync(sessionId, body?.Clear ?? false, cancellationToken), context.TraceIdentifier);
 
     /// <summary>Goes back to choosing dishes from the review.</summary>
     public async Task<IResult> ReopenAsync(Guid sessionId, HttpContext context, CancellationToken cancellationToken) =>
@@ -351,6 +380,23 @@ public sealed record ShoppingPlanCardDayRequest(DateOnly? PlannedDate);
 /// <summary>Body for how many meals one cooking covers.</summary>
 /// <param name="Meals">Meals, 1 to 4.</param>
 public sealed record ShoppingPlanCardYieldRequest(int Meals);
+
+/// <summary>Body for how many people one dish is for.</summary>
+/// <param name="People">People, 1 to 12.</param>
+public sealed record ShoppingPlanCardPeopleRequest(int People);
+
+/// <summary>Body for choosing several offered dishes at once.</summary>
+/// <param name="Choices">One to forty different cards.</param>
+public sealed record ShoppingPlanChoicesRequest(IReadOnlyList<ShoppingPlanChoiceRequest>? Choices);
+
+/// <summary>One dish to choose.</summary>
+/// <param name="CardId">An offered card.</param>
+/// <param name="MealType">The meal it fills.</param>
+public sealed record ShoppingPlanChoiceRequest(Guid CardId, string? MealType);
+
+/// <summary>Body for spreading dishes across the period.</summary>
+/// <param name="Clear">Whether to remove every day instead; false when absent.</param>
+public sealed record ShoppingPlanDistributionRequest(bool? Clear = null);
 
 /// <summary>Body for the reason a card was refused.</summary>
 /// <param name="Reason"><c>dislike</c>, <c>too_much_work</c>, or <c>tired_of</c>.</param>
