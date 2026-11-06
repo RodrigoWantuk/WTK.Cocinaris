@@ -242,6 +242,15 @@ public sealed class MenuEntry
     /// </summary>
     public int? SuggestedOrder { get; private set; }
 
+    /// <summary>
+    /// Gets the day the person chose to cook this dish ahead, with others (PLAN-0065 Slice 4), or null.
+    /// It never moves the day it is eaten, its reservation, or "Hoje"; only the preparation route reads it.
+    /// </summary>
+    public DateOnly? CookOnDate { get; private set; }
+
+    /// <summary>Earliest day before the menu starts on which a dish may be cooked ahead.</summary>
+    public const int MaxCookAheadDays = 7;
+
     /// <summary>Gets the UTC creation instant.</summary>
     public DateTimeOffset CreatedAt { get; private init; }
 
@@ -278,8 +287,9 @@ public sealed class MenuEntry
     }
 
     /// <summary>Restores a persisted entry.</summary>
-    public static MenuEntry Restore(Guid id, Guid menuPlanId, Guid ownerUserId, Guid creationKey, Guid recipeId, int? pinnedRevisionNumber, DateOnly? plannedDate, string? mealType, int servings, MenuEntryStatus status, DateTimeOffset createdAt, DateTimeOffset updatedAt, bool reserveIngredients = true, int mealsCovered = 1, int? suggestedOrder = null, MenuEntryProduction? production = null) => new()
+    public static MenuEntry Restore(Guid id, Guid menuPlanId, Guid ownerUserId, Guid creationKey, Guid recipeId, int? pinnedRevisionNumber, DateOnly? plannedDate, string? mealType, int servings, MenuEntryStatus status, DateTimeOffset createdAt, DateTimeOffset updatedAt, bool reserveIngredients = true, int mealsCovered = 1, int? suggestedOrder = null, MenuEntryProduction? production = null, DateOnly? cookOnDate = null) => new()
     {
+        CookOnDate = cookOnDate,
         Production = production,
         ReserveIngredients = reserveIngredients,
         MealsCovered = mealsCovered,
@@ -323,6 +333,34 @@ public sealed class MenuEntry
         UpdatedAt = now;
     }
 
+    /// <summary>
+    /// Sets or clears the day this dish is cooked ahead (PLAN-0065 Slice 4). The day is at most
+    /// <see cref="MaxCookAheadDays"/> before the menu starts, inside the period, and never after the
+    /// day the dish is eaten.
+    /// </summary>
+    /// <exception cref="ArgumentException">The day is out of range.</exception>
+    /// <exception cref="InvalidOperationException">The plan is archived.</exception>
+    /// <param name="plan">The entry's plan.</param>
+    /// <param name="day">Cooking day, or null to clear it.</param>
+    /// <param name="now">Change instant.</param>
+    public void SetCookOn(MenuPlan plan, DateOnly? day, DateTimeOffset now)
+    {
+        plan.EnsureEditable();
+        if (day is { } value && !CanCookOn(plan, value))
+        {
+            throw new ArgumentException("The cooking day must fall between a week before the menu and the day the dish is eaten.", nameof(day));
+        }
+
+        CookOnDate = day;
+        UpdatedAt = now;
+    }
+
+    /// <summary>Whether this dish may be cooked on <paramref name="day"/>.</summary>
+    /// <param name="plan">The entry's plan.</param>
+    /// <param name="day">Cooking day.</param>
+    public bool CanCookOn(MenuPlan plan, DateOnly day) =>
+        day >= plan.StartDate.AddDays(-MaxCookAheadDays) && day <= plan.EndDate && (PlannedDate is not { } eaten || day <= eaten);
+
     /// <summary>Moves, re-portions, skips, or restores the entry. Changing one entry never touches another.</summary>
     /// <exception cref="ArgumentException">The day is outside the period, or the meal or portions are invalid.</exception>
     /// <exception cref="InvalidOperationException">The plan is archived.</exception>
@@ -352,6 +390,12 @@ public sealed class MenuEntry
         }
 
         PlannedDate = plannedDate;
+        // A dish cannot be cooked ahead of a day after it is eaten.
+        if (plannedDate is { } eaten && CookOnDate > eaten)
+        {
+            CookOnDate = null;
+        }
+
         MealType = mealType;
         Servings = servings;
         Status = status;

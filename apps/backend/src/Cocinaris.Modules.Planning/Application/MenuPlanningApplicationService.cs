@@ -53,6 +53,9 @@ public interface IMenuPlanStore
     /// <summary>Saves an entry and the plan's change instant.</summary>
     Task SaveEntryAsync(MenuPlan plan, MenuEntry entry, CancellationToken cancellationToken);
 
+    /// <summary>Saves several entries of one plan and the plan's change instant, in one transaction.</summary>
+    Task SaveEntriesAsync(MenuPlan plan, IReadOnlyCollection<MenuEntry> entries, CancellationToken cancellationToken);
+
     /// <summary>Saves the suggested order of entries, by entry id, and clears it from the plan's other entries.</summary>
     Task SetSuggestedOrdersAsync(Guid ownerUserId, Guid planId, IReadOnlyDictionary<Guid, int> orders, DateTimeOffset now, CancellationToken cancellationToken);
 
@@ -112,7 +115,8 @@ public sealed record MenuEntryView(
     string Kind = "meal",
     string? ProducesName = null,
     decimal? ProducesQuantity = null,
-    string? ProducesUnit = null);
+    string? ProducesUnit = null,
+    DateOnly? CookOnDate = null);
 
 /// <summary>A plan with its entries, ordered by day (flexible last), meal, and creation.</summary>
 public sealed record MenuPlanView(Guid PlanId, string Name, DateOnly StartDate, DateOnly EndDate, string Status, DateTimeOffset? AcceptedAt, DateTimeOffset UpdatedAt, IReadOnlyList<MenuEntryView> Entries);
@@ -367,6 +371,80 @@ public sealed class MenuPlanningApplicationService(
         entry.Change(plan, command.PlannedDate, command.MealType, command.Servings, status.Value, now, command.ReserveIngredients);
         plan.Touch(now);
         await store.SaveEntryAsync(plan, entry, cancellationToken);
+        return Succeeded(await ViewAsync(user.Id, plan, cancellationToken));
+    }
+
+    /// <summary>
+    /// Says which dishes are cooked ahead on one day (PLAN-0065 Slice 4, "Preparar vários de uma vez").
+    /// The listed dishes get the day, and dishes that had that day and are not listed lose it, so sending
+    /// the same choice again changes nothing. Only the preparation route reads the day: the day a dish is
+    /// eaten, its reservation, and "Hoje" stay as they were. Only a menu in use can be cooked from.
+    /// </summary>
+    /// <param name="planId">Menu.</param>
+    /// <param name="day">Cooking day.</param>
+    /// <param name="entryIds">Dishes cooked that day, at most <see cref="MenuPlan.MaxEntries"/>; empty clears the day.</param>
+    /// <param name="cancellationToken">Cancellation.</param>
+    public async Task<RecipeApplicationResult<MenuPlanView>> SetCookDayAsync(Guid planId, DateOnly? day, IReadOnlyList<Guid>? entryIds, CancellationToken cancellationToken)
+    {
+        if (day is null)
+        {
+            return Failure<MenuPlanView>("validation_failed", "Choose a day.", "date");
+        }
+
+        if (entryIds is null || entryIds.Count > MenuPlan.MaxEntries || entryIds.Distinct().Count() != entryIds.Count)
+        {
+            return Failure<MenuPlanView>("validation_failed", "Choose up to 60 different dishes.", "entryIds");
+        }
+
+        var user = await currentUser.GetCurrentAsync(cancellationToken);
+        var plan = await store.FindAsync(user.Id, planId, cancellationToken);
+        if (plan is null)
+        {
+            return NotFound<MenuPlanView>();
+        }
+
+        if (plan.Status != MenuPlanStatus.Accepted)
+        {
+            return Failure<MenuPlanView>("domain_rule_violated", "Only a menu in use can be cooked ahead.");
+        }
+
+        var entries = await store.ListEntriesAsync(user.Id, [plan.Id], cancellationToken);
+        var chosen = entryIds.ToHashSet();
+        if (chosen.Any(id => entries.All(entry => entry.Id != id)))
+        {
+            return NotFound<MenuPlanView>();
+        }
+
+        var changed = new List<MenuEntry>();
+        var now = timeProvider.GetUtcNow();
+        foreach (var entry in entries)
+        {
+            if (chosen.Contains(entry.Id))
+            {
+                if (entry.Status == MenuEntryStatus.Skipped || !entry.CanCookOn(plan, day.Value))
+                {
+                    return Failure<MenuPlanView>("validation_failed", "A dish is skipped, or would be cooked after the day it is eaten.", "entryIds");
+                }
+
+                if (entry.CookOnDate != day)
+                {
+                    entry.SetCookOn(plan, day, now);
+                    changed.Add(entry);
+                }
+            }
+            else if (entry.CookOnDate == day)
+            {
+                entry.SetCookOn(plan, null, now);
+                changed.Add(entry);
+            }
+        }
+
+        if (changed.Count > 0)
+        {
+            plan.Touch(now);
+            await store.SaveEntriesAsync(plan, changed, cancellationToken);
+        }
+
         return Succeeded(await ViewAsync(user.Id, plan, cancellationToken));
     }
 
@@ -856,7 +934,8 @@ public sealed class MenuPlanningApplicationService(
                 Kind: entry.Kind == MenuEntryKind.Component ? "component" : "meal",
                 ProducesName: entry.Production?.Name,
                 ProducesQuantity: entry.Production?.Quantity,
-                ProducesUnit: entry.Production?.Unit), content));
+                ProducesUnit: entry.Production?.Unit,
+                CookOnDate: entry.CookOnDate), content));
         }
 
         return resolved;

@@ -137,7 +137,13 @@ public enum ShoppingPlanStatus
     /// <summary>The menu was accepted.</summary>
     Finished,
     /// <summary>The plan was discarded and its menu archived.</summary>
-    Abandoned
+    Abandoned,
+    /// <summary>
+    /// The menu is in use and the person is choosing a dish for it again (PLAN-0065 Slice 4), to fill
+    /// something missing or swap a dish. Every change is one explicit command on one entry, and the
+    /// menu's order and days stay as they are.
+    /// </summary>
+    Amending
 }
 
 /// <summary>One shopping plan: a guided way to fill a draft menu (PLAN-0062). Deck state lives here; meals live in the menu.</summary>

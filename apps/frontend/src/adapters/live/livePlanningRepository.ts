@@ -91,6 +91,7 @@ function mapEntry(dto: EntryDto): MenuEntry {
       dto.suggestedOrder === null || dto.suggestedOrder === undefined
         ? null
         : num(dto.suggestedOrder),
+    cookOnDate: text(dto.cookOnDate),
   };
 }
 
@@ -355,6 +356,21 @@ export function createLivePlanningRepository(options?: {
         "Unable to remove the meal.",
         mapMenu,
       ),
+    setCookDay: (menuId, date, entryIds, { csrfToken, signal }) =>
+      run(
+        () =>
+          client.PUT("/api/v1/planning/menus/{menuId}/cook-day", {
+            params: {
+              path: { menuId },
+              header: { "X-CSRF-TOKEN": csrfToken },
+            },
+            body: { date, entryIds },
+            signal,
+            ...include,
+          }),
+        "Unable to set the cooking day.",
+        mapMenu,
+      ),
     getShopping: (menuId, from, signal) =>
       run(
         () =>
@@ -564,6 +580,7 @@ export function createUnavailablePlanningRepository(): PlanningRepository {
     addEntry: fail,
     changeEntry: fail,
     removeEntry: fail,
+    setCookDay: fail,
     getShopping: fail,
     setChecked: fail,
     getReservations: fail,

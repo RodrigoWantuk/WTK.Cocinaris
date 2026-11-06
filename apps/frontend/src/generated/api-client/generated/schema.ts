@@ -435,6 +435,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/planning/menus/{menuId}/cook-day": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** PUT /api/v1/planning/menus/{menuId}/cook-day */
+        put: operations["putApiV1PlanningMenusMenuIdCook-day"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/planning/menus/{menuId}/entries": {
         parameters: {
             query?: never;
@@ -601,6 +618,40 @@ export interface paths {
         put?: never;
         /** POST /api/v1/planning/shopping-plans */
         post: operations["postApiV1PlanningShopping-plans"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/planning/shopping-plans/amendments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** POST /api/v1/planning/shopping-plans/amendments */
+        post: operations["postApiV1PlanningShopping-plansAmendments"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/planning/shopping-plans/menu-link": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** GET /api/v1/planning/shopping-plans/menu-link */
+        get: operations["getApiV1PlanningShopping-plansMenu-link"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2306,10 +2357,22 @@ export interface components {
             missing: components["schemas"]["MissingIngredientResponse"][];
             readiness: string;
         };
+        /** @description Body of "Preparar vários de uma vez": the dishes cooked ahead on one day. */
+        MenuCookDayRequest: {
+            /**
+             * Format: date
+             * @description Cooking day, from a week before the menu to its last day, never after a dish's own day.
+             */
+            date: null | string;
+            /** @description Dishes cooked that day; dishes that had the day and are left out lose it. Empty clears the day. */
+            entryIds: null | string[];
+        };
         /** @description One meal. Status is `planned`, `skipped`, `cooking`, or
          *     `cooked`; the last two come from the cooking session started from it
          *     (ExecutionId). */
         MenuEntryResponse: {
+            /** Format: date */
+            cookOnDate?: null | string;
             /** Format: uuid */
             entryId: string;
             /** Format: uuid */
@@ -3540,6 +3603,24 @@ export interface components {
              */
             totalMinutes: number | string;
         };
+        /** @description Body for opening a menu in use for changes (PLAN-0065 Slice 4). */
+        ShoppingPlanAmendmentRequest: {
+            /**
+             * Format: uuid
+             * @description An accepted menu.
+             */
+            menuId: string;
+            /**
+             * Format: uuid
+             * @description A dish still to cook to swap, removed by this request; null to fill what is missing.
+             */
+            replaceEntryId?: null | string;
+            /**
+             * Format: date
+             * @description The owner's day.
+             */
+            today: null | string;
+        };
         /** @description Body for asking for more cards. */
         ShoppingPlanBatchRequest: {
             /** @description A cuisine code. */
@@ -3779,6 +3860,20 @@ export interface components {
              */
             wanted: number | string;
         };
+        /** @description The plan behind a menu, as the menu page needs it (PLAN-0065 Slice 4). */
+        ShoppingPlanMenuLinkView: {
+            /** @description How many of each meal the plan wants; empty without a plan. */
+            mealCounts: {
+                [key: string]: number | string;
+            };
+            /**
+             * Format: uuid
+             * @description The plan, or null for a menu built by hand.
+             */
+            sessionId: null | string;
+            /** @description The plan's state, or null. */
+            status: null | string;
+        };
         /** @description Body for the switches above the options. */
         ShoppingPlanPreferencesRequest: {
             /** @description `quick`, `short`, `save`, or null. */
@@ -3861,6 +3956,11 @@ export interface components {
         ShoppingPlanRecipeChoiceRequest: {
             /** @description The meal it fills. */
             mealType: null | string;
+            /**
+             * Format: date
+             * @description An optional day inside the period.
+             */
+            plannedDate?: null | string;
         };
         /** @description Body for replacing a meal. */
         ShoppingPlanReplacementRequest: {
@@ -4012,7 +4112,7 @@ export interface components {
             overBudget: boolean;
             /**
              * Format: date
-             * @description Session day.
+             * @description Session day: the day dishes are cooked ahead, or the setup's day on older plans.
              */
             prepDate: null | string;
             /** @description What was done. Tasks of a dish already cooked always count as done. */
@@ -6415,6 +6515,89 @@ export interface operations {
             };
         };
     };
+    "putApiV1PlanningMenusMenuIdCook-day": {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Required CSRF token issued by GET /api/v1/session. */
+                "X-CSRF-TOKEN": string;
+            };
+            path: {
+                menuId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MenuCookDayRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MenuPlanResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description The request content type is not supported. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
     postApiV1PlanningMenusMenuIdEntries: {
         parameters: {
             query?: never;
@@ -7216,6 +7399,127 @@ export interface operations {
             };
             /** @description Unprocessable Entity */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    "postApiV1PlanningShopping-plansAmendments": {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Required CSRF token issued by GET /api/v1/session. */
+                "X-CSRF-TOKEN": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ShoppingPlanAmendmentRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShoppingPlanView"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description The request content type is not supported. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    "getApiV1PlanningShopping-plansMenu-link": {
+        parameters: {
+            query: {
+                menuId: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShoppingPlanMenuLinkView"];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
                 headers: {
                     [name: string]: unknown;
                 };

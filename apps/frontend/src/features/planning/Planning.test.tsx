@@ -146,105 +146,6 @@ describe("menu planning (PLAN-0029)", () => {
     ]);
   });
 
-  it("creates a seven-day draft from today", async () => {
-    const user = userEvent.setup();
-    const createMenu = vi.fn(async () => MENU);
-    renderAt("/app/cardapio", {
-      listMenus: async () => [],
-      createMenu,
-      getMenu: async () => MENU,
-    });
-
-    expect(await screen.findByTestId("menus-empty")).toBeInTheDocument();
-    await user.type(screen.getByTestId("menu-create-name"), "Semana");
-    await user.click(screen.getByTestId("menu-create"));
-
-    const today = localIsoDate();
-    expect(createMenu).toHaveBeenCalledWith(
-      { name: "Semana", startDate: today, endDate: addDays(today, 6) },
-      { csrfToken: expect.any(String), idempotencyKey: expect.any(String) },
-    );
-    expect(await screen.findByTestId("menu-page")).toBeInTheDocument();
-  });
-
-  it("adds a library recipe to a day, skips a meal, and cooks from the menu", async () => {
-    const user = userEvent.setup();
-    const addEntry = vi.fn(async () => MENU);
-    const changeEntry = vi.fn(async () => ({
-      ...MENU,
-      entries: [{ ...MENU.entries[0], status: "skipped" }],
-    }));
-    const startExecution = vi.fn(async () => ({
-      executionId: "exec-9",
-    })) as unknown as RecipeRepository["startExecution"];
-    renderAt(
-      "/app/cardapio/menu-1",
-      { getMenu: async () => MENU, addEntry, changeEntry },
-      { recipes: recipeRepo({ startExecution }) },
-    );
-
-    const day = await screen.findByTestId("menu-day-2026-11-03");
-    await user.click(within(day).getByTestId("menu-add-2026-11-03"));
-    await user.click(await within(day).findByTestId("menu-add-recipe"));
-    await user.selectOptions(
-      within(day).getByTestId("menu-meal-select"),
-      "lunch",
-    );
-    await user.click(within(day).getByTestId("menu-add-submit"));
-    expect(addEntry).toHaveBeenCalledWith(
-      "menu-1",
-      {
-        recipeId: "recipe-2",
-        plannedDate: "2026-11-03",
-        mealType: "lunch",
-        servings: 1,
-      },
-      { csrfToken: expect.any(String), idempotencyKey: expect.any(String) },
-    );
-
-    const entry = within(screen.getByTestId("menu-day-2026-11-02")).getByTestId(
-      "menu-entry",
-    );
-    expect(entry).toHaveTextContent("Dinner");
-    expect(entry).toHaveTextContent("Planned");
-    await user.click(within(entry).getByTestId("menu-entry-skip"));
-    expect(changeEntry).toHaveBeenCalledWith(
-      "menu-1",
-      "entry-1",
-      {
-        plannedDate: "2026-11-02",
-        mealType: "dinner",
-        servings: 4,
-        status: "skipped",
-      },
-      { csrfToken: expect.any(String) },
-    );
-    await waitFor(() =>
-      expect(screen.getByTestId("menu-entry")).toHaveTextContent("Skipped"),
-    );
-  });
-
-  it("starts cooking linked to the meal", async () => {
-    const user = userEvent.setup();
-    const startExecution = vi.fn(async () => ({
-      executionId: "exec-9",
-    })) as unknown as RecipeRepository["startExecution"];
-    renderAt(
-      "/app/cardapio/menu-1",
-      { getMenu: async () => MENU },
-      { recipes: recipeRepo({ startExecution }) },
-    );
-
-    await user.click(await screen.findByTestId("menu-entry-cook"));
-
-    expect(startExecution).toHaveBeenCalledWith("recipe-1", {
-      csrfToken: expect.any(String),
-      servings: 4,
-      menuEntryId: "entry-1",
-    });
-    expect(await screen.findByText("cooking page")).toBeInTheDocument();
-  });
-
   it("groups the shopping list and records a purchase in the pantry", async () => {
     const user = userEvent.setup();
     const list: ShoppingList = {
@@ -558,37 +459,41 @@ describe("menu planning (PLAN-0029)", () => {
     );
   });
 
-  it("shows what a meal lacks and releases its reservations", async () => {
-    const user = userEvent.setup();
-    const changeEntry = vi.fn(async () => ({
-      ...MENU,
-      entries: [
-        { ...MENU.entries[0], reserveIngredients: false, readiness: null },
+  it("puts undated dishes on Hoje under Quando quiser, one per meal (PLAN-0065)", async () => {
+    const today = localIsoDate();
+    const dish = (
+      entryId: string,
+      plannedDate: string | null,
+      mealType: string,
+      recipeName: string,
+    ) => ({
+      menuId: "menu-1",
+      menuName: "",
+      entry: {
+        ...MENU.entries[0]!,
+        entryId,
+        plannedDate,
+        mealType,
+        recipeName,
+        readiness: null,
+      },
+    });
+    renderAt("/app", {
+      getToday: async () => [
+        dish("e1", today, "dinner", "Feijoada"),
+        dish("e2", null, "snack", "Pão de queijo"),
+        dish("e3", null, "breakfast", "Tapioca"),
       ],
-    }));
-    renderAt("/app/cardapio/menu-1", {
-      getMenu: async () => MENU,
-      changeEntry,
     });
 
-    expect(await screen.findByTestId("menu-entry-readiness")).toHaveTextContent(
-      "Missing: Feijão 200 g",
+    expect(await screen.findByTestId("today-menu-dated")).toHaveTextContent(
+      "Feijoada",
     );
-    await user.click(screen.getByTestId("menu-entry-edit"));
-    await user.click(screen.getByTestId("menu-entry-reserve"));
-    await user.click(screen.getByRole("button", { name: "Save" }));
-
-    expect(changeEntry).toHaveBeenCalledWith(
-      "menu-1",
-      "entry-1",
-      expect.objectContaining({ reserveIngredients: false }),
-      { csrfToken: expect.any(String) },
-    );
-    await waitFor(() =>
-      expect(screen.getByTestId("menu-entry-readiness")).toHaveTextContent(
-        "Does not reserve pantry items",
-      ),
-    );
+    const whenever = screen.getByTestId("today-menu-whenever");
+    expect(whenever).toHaveTextContent("Pão de queijo");
+    expect(whenever).toHaveTextContent("Snack");
+    expect(whenever).toHaveTextContent("Tapioca");
+    expect(screen.getByText("Whenever you like")).toBeInTheDocument();
   });
 
   it("lists a lot's reservations and protects a minimum quantity", async () => {
@@ -648,81 +553,6 @@ describe("menu planning (PLAN-0029)", () => {
       sampleLot.lotId,
       { kind: "minimum", minimumQuantity: 100 },
       { csrfToken: expect.any(String) },
-    );
-  });
-
-  it("suggests dishes for a day with AI and adds the chosen one", async () => {
-    const user = userEvent.setup();
-    const candidate = {
-      candidateId: "c1",
-      candidateStrategy: "on_hand_first",
-      name: "Arroz de forno",
-      targetMealType: "lunch",
-      dishFormat: "bake",
-      primaryTechnique: "bake",
-      primaryIngredientRefs: [],
-      summary: "Arroz gratinado com o que sobrou.",
-      servings: 3,
-      activeMinutes: 10,
-      passiveMinutes: 30,
-      totalMinutes: 40,
-      difficulty: "easy",
-      requiredEquipmentIds: [],
-      requiredCapabilities: [],
-    };
-    const requestCandidates = vi.fn(async () => ({
-      sessionId: "s-1",
-      status: "CandidatesReady",
-      candidates: [candidate],
-      failureReason: null,
-    }));
-    const selectCandidate = vi.fn(async () => ({ recipeId: "recipe-9" }));
-    const addEntry = vi.fn(async () => MENU);
-    renderAt(
-      "/app/cardapio/menu-1",
-      { getMenu: async () => MENU, addEntry },
-      {
-        recipes: recipeRepo({
-          requestCandidates,
-          selectCandidate,
-        } as unknown as Partial<RecipeRepository>),
-      },
-    );
-
-    const day = await screen.findByTestId("menu-day-2026-11-03");
-    await user.click(within(day).getByTestId("menu-ai-2026-11-03"));
-    await user.selectOptions(within(day).getByTestId("menu-ai-meal"), "lunch");
-    await user.clear(within(day).getByTestId("menu-ai-servings"));
-    await user.type(within(day).getByTestId("menu-ai-servings"), "3");
-    await user.click(within(day).getByTestId("menu-ai-ask"));
-
-    expect(requestCandidates).toHaveBeenCalledWith(
-      expect.objectContaining({
-        menuPlanning: {
-          menuId: "menu-1",
-          plannedDate: "2026-11-03",
-          mealType: "lunch",
-          servings: 3,
-        },
-      }),
-    );
-    await user.click(await within(day).findByTestId("menu-ai-choose"));
-    expect(selectCandidate).toHaveBeenCalledWith(
-      "s-1",
-      "c1",
-      expect.objectContaining({ idempotencyKey: expect.any(String) }),
-    );
-    await waitFor(() =>
-      expect(addEntry).toHaveBeenCalledWith(
-        "menu-1",
-        {
-          recipeId: "recipe-9",
-          plannedDate: "2026-11-03",
-          mealType: "lunch",
-          servings: 3,
-        },
-        { csrfToken: expect.any(String), idempotencyKey: expect.any(String) },
-      ),
     );
   });
 

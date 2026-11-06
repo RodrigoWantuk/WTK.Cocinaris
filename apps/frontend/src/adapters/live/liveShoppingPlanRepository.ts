@@ -531,7 +531,12 @@ export function createLiveShoppingPlanRepository(options?: {
         "Unable to save the preparation session.",
         () => undefined,
       ),
-    chooseRecipe: (sessionId, recipeId, mealType, { csrfToken, signal }) =>
+    chooseRecipe: (
+      sessionId,
+      recipeId,
+      mealType,
+      { csrfToken, signal, plannedDate },
+    ) =>
       run(
         () =>
           client.POST(
@@ -541,13 +546,54 @@ export function createLiveShoppingPlanRepository(options?: {
                 path: { sessionId, recipeId },
                 header: { "X-CSRF-TOKEN": csrfToken },
               },
-              body: { mealType },
+              body: { mealType, plannedDate: plannedDate ?? null },
               signal,
               ...include,
             },
           ),
         "Unable to choose the recipe.",
         mapPlan,
+      ),
+    openAmendment: (
+      menuId,
+      today,
+      replaceEntryId,
+      { csrfToken, signal, language },
+    ) =>
+      run(
+        () =>
+          client.POST("/api/v1/planning/shopping-plans/amendments", {
+            params: { header: { "X-CSRF-TOKEN": csrfToken } },
+            headers: headers(language),
+            body: { menuId, today, replaceEntryId },
+            signal,
+            ...include,
+          }),
+        "Unable to open the menu for changes.",
+        mapPlan,
+      ),
+    getMenuLink: (menuId, signal) =>
+      run(
+        () =>
+          client.GET("/api/v1/planning/shopping-plans/menu-link", {
+            params: { query: { menuId } },
+            signal,
+            ...include,
+          }),
+        "Unable to read the menu's plan.",
+        (dto) =>
+          text(dto.sessionId)
+            ? {
+                sessionId: String(dto.sessionId),
+                status: String(dto.status ?? ""),
+                mealCounts: Object.fromEntries(
+                  Object.entries(dto.mealCounts ?? {}).map(([meal, count]) => [
+                    meal,
+                    Number(count),
+                  ]),
+                ),
+              }
+            : null,
       ),
     setPreferences: (sessionId, preferences, { csrfToken, signal }) =>
       run(

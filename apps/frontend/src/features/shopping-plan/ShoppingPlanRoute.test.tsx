@@ -79,6 +79,10 @@ function repository(
     getRoute: vi.fn(async () => route),
     saveRouteProgress: vi.fn(async () => undefined),
     findRouteLink: vi.fn(async () => null),
+    openAmendment: vi.fn(async () => {
+      throw new Error("unused");
+    }),
+    getMenuLink: vi.fn(async () => null),
     ...overrides,
   } as unknown as ShoppingPlanRepository;
 }

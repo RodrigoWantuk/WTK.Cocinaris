@@ -330,7 +330,7 @@ describe("shopping marks (PLAN-0062)", () => {
       await screen.findByTestId("shopping-section-produce"),
     ).toBeInTheDocument();
     expect(screen.getByTestId("shopping-arrival")).toBeInTheDocument();
-    await user.click(screen.getByTestId("shopping-split"));
+    await user.click(screen.getByTestId("shopping-split-place"));
     expect(
       screen.getByTestId("shopping-place-street_market"),
     ).toBeInTheDocument();

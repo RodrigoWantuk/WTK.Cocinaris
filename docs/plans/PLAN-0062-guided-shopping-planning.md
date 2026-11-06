@@ -1000,6 +1000,12 @@ Migrations are additive, and rollback means deploying the earlier code with unus
 - **Unblocked:** the Slice 4 limits and warnings, which needed G2-A.
 - **Not accepted by this instruction:** the evaluations (G1-B, G5-A) and phone checks (G6, G7) are measurements, not reviews; they still have to run.
 
+### 2026-11-06 — Claude Code (route day, from PLAN-0065 Slice 4)
+
+- **Change recorded here because it touches Slice 6:** the preparation route's dishes are now those the person sets with "Preparar vários de uma vez" (`menu_entries.CookOnDate`), on the earliest such day with something still to cook. Plans whose setup asked for a preparation day keep it, with the dishes dated that day, until a cooking day is set. `route-link?date=` and `?menuId=` follow the same day. G6 (the route on the owner's phone with the screen kept on) is still open, and PLAN-0065 Gate S4 asks for the same check.
+- **Validation:** see PLAN-0065's Slice 4 entry. The existing route integration tests pass unchanged.
+- **Next action:** unchanged; see "Exact next action".
+
 ## Completion and handoff checklist
 
 - [ ] All slices and acceptance criteria are resolved truthfully.

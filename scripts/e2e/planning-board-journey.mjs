@@ -150,6 +150,56 @@ try {
   await page.getByTestId("menu-page").waitFor({ timeout: 20000 });
   check("seven snacks with no dates take at most 12 taps on the board", taps <= 12, `${taps} taps`);
 
+  // The menu in use (PLAN-0065 Slice 4): undated snacks under "Quando quiser", no empty days.
+  const snackMenuUrl = page.url();
+  const whenever = page.getByTestId("menu-whenever-snack");
+  await whenever.waitFor({ timeout: 15000 });
+  const snackRows = () => page.getByTestId("menu-whenever-snack").getByTestId("menu-entry").count();
+  check("the menu in use lists the seven snacks under Quando quiser", (await snackRows()) === 7, `${await snackRows()} rows`);
+  check("days with nothing on them do not appear", (await page.locator('[data-testid^="menu-day-"]').count()) === 0);
+  check("Cozinhar is on one dish only", (await page.getByTestId("menu-entry-cook-next").count()) === 1);
+  // "Trocar" takes that one dish off and opens the snack options; closing offers to put it back.
+  await whenever.getByTestId("menu-entry-open").first().click();
+  await page.getByTestId("menu-entry-swap").click();
+  const menuSheet = page.getByTestId("meal-sheet");
+  await menuSheet.waitFor({ timeout: 15000 });
+  check("Trocar on the menu in use opens the snack options", (await menuSheet.locator("h2").textContent()).includes("Lanche"), await menuSheet.locator("h2").textContent());
+  await page.keyboard.press("Escape");
+  await menuSheet.waitFor({ state: "detached" });
+  await page.getByTestId("menu-swap-undo").waitFor({ timeout: 15000 });
+  await page.waitForFunction(() => document.querySelectorAll('[data-testid="menu-whenever-snack"] [data-testid="menu-entry"]').length === 6, null, { timeout: 15000 });
+  await page.getByTestId("menu-swap-undo-action").click();
+  await page.waitForFunction(() => document.querySelectorAll('[data-testid="menu-whenever-snack"] [data-testid="menu-entry"]').length === 7, null, { timeout: 15000 });
+  check("a swap can be undone", true);
+  // Swapping for another dish keeps seven snacks.
+  await whenever.getByTestId("menu-entry-open").first().click();
+  await page.getByTestId("menu-entry-swap").click();
+  await menuSheet.waitFor({ timeout: 15000 });
+  await menuSheet.getByTestId("meal-option-choose").first().click({ timeout: 30000 });
+  await menuSheet.waitFor({ state: "detached", timeout: 15000 });
+  await page.waitForFunction(() => document.querySelectorAll('[data-testid="menu-whenever-snack"] [data-testid="menu-entry"]').length === 7, null, { timeout: 15000 });
+  check("choosing another dish keeps the menu whole", (await page.getByTestId("menu-swap-undo").count()) === 0);
+  // "Preparar vários de uma vez": two dishes today, on a route of their own.
+  await page.getByTestId("menu-more").locator("summary").click();
+  await page.getByTestId("menu-prepare").click();
+  const prepare = page.getByTestId("menu-prepare-sheet");
+  await prepare.waitFor();
+  await prepare.getByTestId("menu-prepare-dish").nth(0).check();
+  await prepare.getByTestId("menu-prepare-dish").nth(1).check();
+  await prepare.getByTestId("menu-prepare-confirm").click();
+  await prepare.waitFor({ state: "detached", timeout: 15000 });
+  check("two dishes are set to be cooked ahead", (await page.getByTestId("menu-entry-cook-on").count()) === 2);
+  check("cooking ahead gives them no eating day", (await page.locator('[data-testid^="menu-day-"]').count()) === 0);
+  await page.getByTestId("session-route-link").first().click({ timeout: 15000 });
+  await page.getByTestId("plan-route-overview").waitFor({ timeout: 15000 });
+  const routeSummary = (await page.getByTestId("plan-route-overview").locator("header p").textContent()) ?? "";
+  check("the preparation route has those two dishes", routeSummary.startsWith("2 pratos"), routeSummary);
+  await page.goto(`${BASE}/app/hoje`, { waitUntil: "networkidle" });
+  const todayWhenever = page.getByTestId("today-menu-whenever");
+  await todayWhenever.waitFor({ timeout: 15000 });
+  check("Hoje shows the next snack under Quando quiser", (await todayWhenever.getByTestId("today-menu-entry").count()) >= 1);
+  await page.goto(snackMenuUrl, { waitUntil: "networkidle" });
+
   // A mixed menu: 3 lunches and 2 dinners, counted apart.
   await page.goto(`${BASE}/app/compras/planejar`, { waitUntil: "networkidle" });
   await page.getByTestId("plan-setup").waitFor();
@@ -215,6 +265,8 @@ try {
 
   // "Distribuir nos dias" dates every dish, and "Tirar os dias" takes the days away.
   const dishCount = await page.getByTestId("board-dish").count();
+  // Rare changes stay folded under "Mais opções".
+  if (!(await page.getByTestId("board-more").evaluate((node) => node.open))) await page.getByTestId("board-more").locator("summary").click();
   await page.getByTestId("board-spread-action").click();
   await page.waitForFunction((total) => [...document.querySelectorAll('[data-testid="board-dish"]')].filter((dish) => /\d{1,2} de \w+/.test(dish.textContent ?? "")).length === total, dishCount, { timeout: 15000 });
   check("spreading gives every dish a day", true);

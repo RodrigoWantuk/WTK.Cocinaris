@@ -136,6 +136,14 @@ public static class ShoppingPlanEndpoints
             .Produces<ShoppingPlanView>()
             .ProducesProblem(404)
             .ProducesProblem(422);
+        group.MapPost("/amendments", (ShoppingPlanApiService service, ShoppingPlanAmendmentRequest body, HttpRequest request, CancellationToken cancellationToken) => service.OpenAmendmentAsync(body, request, cancellationToken))
+            .RequireRateLimiting("shopping-plan-decision")
+            .Produces<ShoppingPlanView>()
+            .ProducesProblem(400)
+            .ProducesProblem(404)
+            .ProducesProblem(422);
+        group.MapGet("/menu-link", (ShoppingPlanApiService service, Guid menuId, HttpContext context, CancellationToken cancellationToken) => service.GetMenuLinkAsync(menuId, context, cancellationToken))
+            .Produces<ShoppingPlanMenuLinkView>();
         group.MapGet("/route-link", (ShoppingPlanApiService service, Guid? menuId, DateOnly? date, HttpContext context, CancellationToken cancellationToken) => service.FindRouteLinkAsync(menuId, date, context, cancellationToken))
             .Produces<ShoppingPlanRouteLinkView>()
             .ProducesProblem(400);
@@ -189,7 +197,7 @@ public sealed class ShoppingPlanApiService(ShoppingPlanApplicationService applic
 
     /// <summary>Chooses one of the person's saved recipes for a meal.</summary>
     public async Task<IResult> ChooseRecipeAsync(Guid sessionId, Guid recipeId, ShoppingPlanRecipeChoiceRequest body, HttpContext context, CancellationToken cancellationToken) =>
-        ToResult(await application.ChooseRecipeAsync(sessionId, recipeId, body.MealType, cancellationToken), context.TraceIdentifier);
+        ToResult(await application.ChooseRecipeAsync(sessionId, recipeId, body.MealType, cancellationToken, body.PlannedDate), context.TraceIdentifier);
 
     /// <summary>Sets the switches above the options.</summary>
     public async Task<IResult> SetPreferencesAsync(Guid sessionId, ShoppingPlanPreferencesRequest body, HttpContext context, CancellationToken cancellationToken) =>
@@ -262,6 +270,14 @@ public sealed class ShoppingPlanApiService(ShoppingPlanApplicationService applic
     /// <summary>Discards the plan.</summary>
     public async Task<IResult> AbandonAsync(Guid sessionId, HttpContext context, CancellationToken cancellationToken) =>
         ToResult(await application.AbandonAsync(sessionId, cancellationToken), context.TraceIdentifier);
+
+    /// <summary>Opens a menu in use for choosing a dish again, optionally swapping one.</summary>
+    public async Task<IResult> OpenAmendmentAsync(ShoppingPlanAmendmentRequest body, HttpRequest request, CancellationToken cancellationToken) =>
+        ToResult(await application.OpenAmendmentAsync(body.MenuId, body.Today, body.ReplaceEntryId, cancellationToken, Language(request)), request.HttpContext.TraceIdentifier);
+
+    /// <summary>Gets the plan behind a menu.</summary>
+    public async Task<IResult> GetMenuLinkAsync(Guid menuId, HttpContext context, CancellationToken cancellationToken) =>
+        ToResult(await application.GetMenuLinkAsync(menuId, cancellationToken), context.TraceIdentifier);
 
     /// <summary>Finds a preparation session still to finish, for one menu or for one day.</summary>
     public async Task<IResult> FindRouteLinkAsync(Guid? menuId, DateOnly? date, HttpContext context, CancellationToken cancellationToken) =>
@@ -353,7 +369,14 @@ public sealed record ShoppingPlanDecisionRequest(string? Decision, string? Mode,
 
 /// <summary>Body for choosing a saved recipe.</summary>
 /// <param name="MealType">The meal it fills.</param>
-public sealed record ShoppingPlanRecipeChoiceRequest(string? MealType);
+/// <param name="PlannedDate">An optional day inside the period.</param>
+public sealed record ShoppingPlanRecipeChoiceRequest(string? MealType, DateOnly? PlannedDate = null);
+
+/// <summary>Body for opening a menu in use for changes (PLAN-0065 Slice 4).</summary>
+/// <param name="MenuId">An accepted menu.</param>
+/// <param name="Today">The owner's day.</param>
+/// <param name="ReplaceEntryId">A dish still to cook to swap, removed by this request; null to fill what is missing.</param>
+public sealed record ShoppingPlanAmendmentRequest(Guid MenuId, DateOnly? Today, Guid? ReplaceEntryId = null);
 
 /// <summary>Body for the switches above the options.</summary>
 /// <param name="UsePreferences">Whether the profile's tastes count. Restrictions and dislikes always do.</param>

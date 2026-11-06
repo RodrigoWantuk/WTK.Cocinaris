@@ -28,11 +28,14 @@ public interface IShoppingPlanStore
     /// <summary>Finds the latest plan, to reuse its answers as defaults.</summary>
     Task<ShoppingPlanSession?> FindLatestAsync(Guid ownerUserId, CancellationToken cancellationToken);
 
-    /// <summary>Lists the newest accepted plans, to offer repeating them.</summary>
+    /// <summary>Lists the newest accepted plans, including those being changed, to offer repeating them.</summary>
     Task<IReadOnlyList<ShoppingPlanSession>> ListFinishedAsync(Guid ownerUserId, int limit, CancellationToken cancellationToken);
 
-    /// <summary>Finds the accepted plan that filled a menu, if any.</summary>
+    /// <summary>Finds the accepted plan that filled a menu, including one being changed, if any.</summary>
     Task<ShoppingPlanSession?> FindFinishedByMenuAsync(Guid ownerUserId, Guid menuPlanId, CancellationToken cancellationToken);
+
+    /// <summary>Finds the plan of a menu in any state, if any.</summary>
+    Task<ShoppingPlanSession?> FindByMenuAsync(Guid ownerUserId, Guid menuPlanId, CancellationToken cancellationToken);
 
     /// <summary>Adds a plan. Returns false, persisting nothing, when its key was used or another plan is in progress.</summary>
     Task<bool> TryAddAsync(ShoppingPlanSession session, CancellationToken cancellationToken);
@@ -98,6 +101,12 @@ public sealed record ShoppingPlanPreferencesView(bool UsePreferences, bool UsePa
 /// <param name="Filled">How many are chosen.</param>
 /// <param name="Options">The next options, best first, at most six; empty once nothing is missing.</param>
 public sealed record ShoppingPlanMealGroupView(string MealType, int Wanted, int Filled, IReadOnlyList<ShoppingPlanCardView> Options);
+
+/// <summary>The plan behind a menu, as the menu page needs it (PLAN-0065 Slice 4).</summary>
+/// <param name="SessionId">The plan, or null for a menu built by hand.</param>
+/// <param name="Status">The plan's state, or null.</param>
+/// <param name="MealCounts">How many of each meal the plan wants; empty without a plan.</param>
+public sealed record ShoppingPlanMenuLinkView(Guid? SessionId, string? Status, IReadOnlyDictionary<string, int> MealCounts);
 
 /// <summary>The answers under "Quero outras opções" (PLAN-0064).</summary>
 /// <param name="Pantry"><c>use</c>, <c>free</c>, or null.</param>
@@ -599,7 +608,7 @@ public sealed class ShoppingPlanApplicationService(
             return NotFound<ShoppingPlanView>();
         }
 
-        if (!IsOpen(session))
+        if (!IsDraft(session))
         {
             return NotOpen<ShoppingPlanView>();
         }
@@ -773,7 +782,8 @@ public sealed class ShoppingPlanApplicationService(
     /// <param name="recipeId">An active recipe of the owner.</param>
     /// <param name="mealType">The meal it fills.</param>
     /// <param name="cancellationToken">Cancellation.</param>
-    public async Task<RecipeApplicationResult<ShoppingPlanView>> ChooseRecipeAsync(Guid sessionId, Guid recipeId, string? mealType, CancellationToken cancellationToken)
+    /// <param name="plannedDate">Optional day, such as the day of a dish being swapped on a menu in use.</param>
+    public async Task<RecipeApplicationResult<ShoppingPlanView>> ChooseRecipeAsync(Guid sessionId, Guid recipeId, string? mealType, CancellationToken cancellationToken, DateOnly? plannedDate = null)
     {
         var user = await currentUser.GetCurrentAsync(cancellationToken);
         var session = await store.FindAsync(user.Id, sessionId, cancellationToken);
@@ -826,7 +836,7 @@ public sealed class ShoppingPlanApplicationService(
             await store.AddCardsAsync([offered], cancellationToken);
         }
 
-        return await DecideAsync(sessionId, offered.Id, "accept", null, 1, mealType, null, cancellationToken);
+        return await DecideAsync(sessionId, offered.Id, "accept", null, 1, mealType, plannedDate, cancellationToken);
     }
 
     /// <summary>Sets the switches above the options. The answers belong to this plan and never reach the profile.</summary>
@@ -878,7 +888,7 @@ public sealed class ShoppingPlanApplicationService(
             return NotFound<ShoppingPlanView>();
         }
 
-        if (!IsOpen(session))
+        if (!IsDraft(session))
         {
             return NotOpen<ShoppingPlanView>();
         }
@@ -1088,7 +1098,7 @@ public sealed class ShoppingPlanApplicationService(
             return NotFound<ShoppingPlanView>();
         }
 
-        if (!IsOpen(session))
+        if (!IsDraft(session))
         {
             return NotOpen<ShoppingPlanView>();
         }
@@ -1404,7 +1414,7 @@ public sealed class ShoppingPlanApplicationService(
             return NotFound<ShoppingPlanView>();
         }
 
-        if (!IsOpen(session))
+        if (!IsDraft(session))
         {
             return NotOpen<ShoppingPlanView>();
         }
@@ -1435,7 +1445,7 @@ public sealed class ShoppingPlanApplicationService(
             return NotFound<ShoppingPlanView>();
         }
 
-        if (!IsOpen(session))
+        if (!IsDraft(session))
         {
             return NotOpen<ShoppingPlanView>();
         }
@@ -1500,6 +1510,17 @@ public sealed class ShoppingPlanApplicationService(
             return Failure<ShoppingPlanView>("expansions_pending", "Some recipes are still being prepared.");
         }
 
+        if (session.Status == ShoppingPlanStatus.Amending)
+        {
+            // The menu is already in use: closing the change keeps its order and only drops the options.
+            await store.DeleteCardsAsync(user.Id, session.Id, [ShoppingPlanCardState.Unseen, ShoppingPlanCardState.Rejected], cancellationToken);
+            session.Status = ShoppingPlanStatus.Finished;
+            session.LastDecidedCardId = null;
+            session.UpdatedAt = timeProvider.GetUtcNow();
+            await store.SaveAsync(session, cancellationToken);
+            return await ResultAsync(user.Id, session, cancellationToken);
+        }
+
         if ((await menus.ListEntriesAsync(user.Id, [session.MenuPlanId], cancellationToken)).Count == 0)
         {
             return Failure<ShoppingPlanView>("domain_rule_violated", "Choose at least one dish first.");
@@ -1538,7 +1559,7 @@ public sealed class ShoppingPlanApplicationService(
             return await ResultAsync(user.Id, session, cancellationToken);
         }
 
-        if (!IsOpen(session))
+        if (!IsDraft(session))
         {
             return NotOpen<ShoppingPlanView>();
         }
@@ -1549,6 +1570,180 @@ public sealed class ShoppingPlanApplicationService(
         session.UpdatedAt = timeProvider.GetUtcNow();
         await store.SaveAsync(session, cancellationToken);
         return await ResultAsync(user.Id, session, cancellationToken);
+    }
+
+    /// <summary>
+    /// Opens a menu in use for choosing dishes again (PLAN-0065 Slice 4): to fill a meal still missing,
+    /// or to swap one dish. A menu built before plans existed gets a plan here, wanting what it already
+    /// has. Every opening reads the menu as it is now, so a dish removed elsewhere stops filling its meal;
+    /// a chosen dish whose recipe is still being prepared is kept. Swapping removes that one dish, and
+    /// nothing else on the menu changes: dishes chosen here take the next places in its order.
+    /// </summary>
+    /// <param name="menuId">An accepted menu of the owner.</param>
+    /// <param name="today">The owner's day; the server does not know the owner's time zone.</param>
+    /// <param name="replaceEntryId">A dish still to cook, removed so another can take its meal.</param>
+    /// <param name="cancellationToken">Cancellation.</param>
+    /// <param name="language">Interface language, for ideas from the library.</param>
+    public async Task<RecipeApplicationResult<ShoppingPlanView>> OpenAmendmentAsync(Guid menuId, DateOnly? today, Guid? replaceEntryId, CancellationToken cancellationToken, string? language = null)
+    {
+        if (today is not { } day)
+        {
+            return Failure<ShoppingPlanView>("validation_failed", "The owner's day is required.", "today");
+        }
+
+        var user = await currentUser.GetCurrentAsync(cancellationToken);
+        var plan = await menus.FindAsync(user.Id, menuId, cancellationToken);
+        if (plan is null)
+        {
+            return NotFound<ShoppingPlanView>();
+        }
+
+        if (plan.Status != MenuPlanStatus.Accepted)
+        {
+            return Failure<ShoppingPlanView>("domain_rule_violated", "Only a menu in use is changed this way; a draft is changed on its board.");
+        }
+
+        var now = timeProvider.GetUtcNow();
+        var session = await store.FindByMenuAsync(user.Id, menuId, cancellationToken);
+        if (session is { Status: ShoppingPlanStatus.Abandoned })
+        {
+            return NotOpen<ShoppingPlanView>();
+        }
+
+        if (session is null)
+        {
+            var entries = await menus.ListEntriesAsync(user.Id, [menuId], cancellationToken);
+            var counts = entries.Where(entry => entry.Kind == MenuEntryKind.Meal && entry.Status != MenuEntryStatus.Skipped && entry.MealType is not null)
+                .GroupBy(entry => entry.MealType!)
+                .ToDictionary(group => group.Key, group => group.Sum(entry => entry.MealsCovered), StringComparer.Ordinal);
+            var profile = await profiles.FindAsync(user.Id, cancellationToken);
+            var people = profile?.Profile.DefaultServingCount is { } count ? Math.Clamp(count, 1, ShoppingPlanSetup.MaxPeople) : 2;
+            var days = plan.EndDate.DayNumber - plan.StartDate.DayNumber + 1;
+            var created = new ShoppingPlanSession
+            {
+                Id = Guid.NewGuid(),
+                OwnerUserId = user.Id,
+                MenuPlanId = plan.Id,
+                CreationKey = DerivedKey(plan.Id, "amendment"),
+                // It wants what the menu has, so only a swap leaves something missing.
+                Setup = new ShoppingPlanSetup(day, days, MealTypesOf(counts), 0, "daily", NoPriority, null, null, null, people, counts, plan.StartDate),
+                Status = ShoppingPlanStatus.Amending,
+                PrivateDirection = false,
+                DeckPreference = InitialPreference((await store.FindLatestAsync(user.Id, cancellationToken))?.DeckPreference),
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+            session = await store.TryAddAsync(created, cancellationToken)
+                ? created
+                : await store.FindByMenuAsync(user.Id, menuId, cancellationToken) ?? throw new InvalidOperationException("A menu's plan conflicted but could not be reloaded.");
+        }
+
+        if (replaceEntryId is { } entryId)
+        {
+            var target = (await planning.GetAsync(menuId, cancellationToken)).Value?.Entries.FirstOrDefault(item => item.EntryId == entryId);
+            var entry = (await menus.ListEntriesAsync(user.Id, [menuId], cancellationToken)).FirstOrDefault(item => item.Id == entryId);
+            if (target is null || entry is null)
+            {
+                return NotFound<ShoppingPlanView>();
+            }
+
+            if (target.Status != "planned" || target.Kind != "meal" || target.MealType is null)
+            {
+                return Failure<ShoppingPlanView>("domain_rule_violated", "Only a dish still to cook, with its meal, can be swapped.");
+            }
+
+            plan.Touch(now);
+            await menus.RemoveEntryAsync(plan, entry, cancellationToken);
+        }
+
+        await SyncAmendmentCardsAsync(user.Id, session, cancellationToken);
+        // The person's own recipes and library ideas are there at once, so a swap works without AI.
+        var current = await store.ListCardsAsync(user.Id, session.Id, cancellationToken);
+        if (!current.Any(card => card.State == ShoppingPlanCardState.Unseen))
+        {
+            await AddInstantCardsAsync(user.Id, session, current, await profiles.FindAsync(user.Id, cancellationToken), language, cancellationToken);
+        }
+
+        session.Status = ShoppingPlanStatus.Amending;
+        session.LastDecidedCardId = null;
+        session.ConsecutiveRejections = 0;
+        session.UpdatedAt = now;
+        await store.SaveAsync(session, cancellationToken);
+        return await ResultAsync(user.Id, session, cancellationToken);
+    }
+
+    /// <summary>
+    /// The plan behind a menu, for the menu page: whether there is one and how many of each meal it
+    /// wants. Another owner's menu reads as having none.
+    /// </summary>
+    /// <param name="menuId">Menu.</param>
+    /// <param name="cancellationToken">Cancellation.</param>
+    public async Task<RecipeApplicationResult<ShoppingPlanMenuLinkView>> GetMenuLinkAsync(Guid menuId, CancellationToken cancellationToken)
+    {
+        var user = await currentUser.GetCurrentAsync(cancellationToken);
+        var session = await store.FindByMenuAsync(user.Id, menuId, cancellationToken);
+        return RecipeApplicationResult<ShoppingPlanMenuLinkView>.Succeeded(new ShoppingPlanMenuLinkView(
+            session?.Id,
+            session is null ? null : Name(session.Status),
+            session?.Setup.Counts() ?? new Dictionary<string, int>()));
+    }
+
+    // The menu speaks for itself: chosen cards are read again from its dishes, so what the person
+    // removed or changed on the menu page counts as it is now. Only a dish still being prepared,
+    // which has no entry yet, keeps its card.
+    private async Task SyncAmendmentCardsAsync(Guid ownerUserId, ShoppingPlanSession session, CancellationToken cancellationToken)
+    {
+        var cards = await store.ListCardsAsync(ownerUserId, session.Id, cancellationToken);
+        var stale = cards.Where(card => card.State == ShoppingPlanCardState.Rejected || (card.State == ShoppingPlanCardState.Accepted && card.ExpansionState != ShoppingPlanExpansionState.Pending)).ToList();
+        if (stale.Count > 0)
+        {
+            await store.DeleteCardsByIdAsync(ownerUserId, session.Id, stale.Select(card => card.Id).ToList(), cancellationToken);
+        }
+
+        var active = (await recipes.ListActiveAsync(ownerUserId, MaxActiveRecipes, cancellationToken)).ToDictionary(item => item.RecipeId);
+        var entries = (await menus.ListEntriesAsync(ownerUserId, [session.MenuPlanId], cancellationToken))
+            .Where(entry => entry.Kind == MenuEntryKind.Meal && entry.Status != MenuEntryStatus.Skipped && entry.MealType is not null && active.ContainsKey(entry.RecipeId))
+            .OrderBy(entry => entry.SuggestedOrder ?? int.MaxValue)
+            .ThenBy(entry => entry.CreatedAt)
+            .ToList();
+        var ingredients = entries.Select(entry => entry.RecipeId).Distinct().ToDictionary(id => id, id => RecipeIngredientReader.Read(active[id].NormalizedRecipeJson).ToList());
+        var keys = await matching.KeysAsync(ownerUserId, ingredients.Values.SelectMany(items => items.Select(item => item.Name)), cancellationToken);
+        var restrictions = Restrictions(await profiles.FindAsync(ownerUserId, cancellationToken));
+        var remaining = cards.Except(stale).ToList();
+        var order = NextOrder(remaining);
+        var now = timeProvider.GetUtcNow();
+        var made = new List<ShoppingPlanCard>();
+        foreach (var entry in entries)
+        {
+            var repeats = Math.Clamp(entry.MealsCovered, 1, MaxRepeats);
+            var guard = RestrictionGuard.Default.Check(ingredients[entry.RecipeId].Select(item => item.Name), keys, restrictions);
+            var snapshot = SavedSnapshot(active[entry.RecipeId], entry.MealType!, ingredients[entry.RecipeId], guard) with
+            {
+                PlannedDate = entry.PlannedDate,
+                People = Math.Clamp(entry.Servings / repeats, 1, ShoppingPlanSetup.MaxPeople)
+            };
+            made.Add(new ShoppingPlanCard
+            {
+                Id = Guid.NewGuid(),
+                SessionId = session.Id,
+                OwnerUserId = ownerUserId,
+                Source = ShoppingPlanCardSource.Saved,
+                RecipeId = entry.RecipeId,
+                ExpansionKey = DerivedKey(entry.Id, "amendment"),
+                FirstSeenOrder = order++,
+                Snapshot = snapshot,
+                State = ShoppingPlanCardState.Accepted,
+                AcceptMode = repeats > 1 ? "yield" : null,
+                Repeats = repeats,
+                ExpansionState = ShoppingPlanExpansionState.Ready,
+                DecidedAt = now.AddMilliseconds(made.Count)
+            });
+        }
+
+        if (made.Count > 0)
+        {
+            await store.AddCardsAsync(made, cancellationToken);
+        }
     }
 
     /// <summary>Validates the setup answers; null when any is invalid.</summary>
@@ -2023,6 +2218,34 @@ public sealed class ShoppingPlanApplicationService(
             plan.Touch(now);
             await menus.TryAddEntryAsync(plan, entry, cancellationToken);
         }
+
+        if (session.Status == ShoppingPlanStatus.Amending)
+        {
+            await AppendOrderAsync(ownerUserId, session.MenuPlanId, cancellationToken);
+        }
+    }
+
+    /// <summary>
+    /// Gives dishes added to a menu in use the next places in its order, after every dish already there,
+    /// so nothing else moves (PLAN-0065 Slice 4). A menu built by hand has no order and keeps none.
+    /// </summary>
+    private async Task AppendOrderAsync(Guid ownerUserId, Guid menuPlanId, CancellationToken cancellationToken)
+    {
+        var entries = await menus.ListEntriesAsync(ownerUserId, [menuPlanId], cancellationToken);
+        var ordered = entries.Where(entry => entry.SuggestedOrder is not null).ToDictionary(entry => entry.Id, entry => entry.SuggestedOrder!.Value);
+        var added = entries.Where(entry => entry.SuggestedOrder is null).OrderBy(entry => entry.CreatedAt).ToList();
+        if (ordered.Count == 0 || added.Count == 0)
+        {
+            return;
+        }
+
+        var next = ordered.Values.Max() + 1;
+        foreach (var entry in added)
+        {
+            ordered[entry.Id] = next++;
+        }
+
+        await menus.SetSuggestedOrdersAsync(ownerUserId, menuPlanId, ordered, timeProvider.GetUtcNow(), cancellationToken);
     }
 
     private async Task RemoveCardEntriesAsync(Guid ownerUserId, ShoppingPlanSession session, ShoppingPlanCard card, CancellationToken cancellationToken)
@@ -2313,7 +2536,12 @@ public sealed class ShoppingPlanApplicationService(
         return card is null ? (null, null, NotFound<ShoppingPlanView>()) : (session, card, null);
     }
 
-    private static bool IsOpen(ShoppingPlanSession session) => session.Status is ShoppingPlanStatus.Building or ShoppingPlanStatus.Reviewing;
+    // A menu in use being changed (Amending) takes single-dish commands: choosing, undoing, removing a
+    // card, and preparing its recipe.
+    private static bool IsOpen(ShoppingPlanSession session) => session.Status is ShoppingPlanStatus.Building or ShoppingPlanStatus.Reviewing or ShoppingPlanStatus.Amending;
+
+    // What changes the whole menu (counts, order, days, review, discarding) needs a draft.
+    private static bool IsDraft(ShoppingPlanSession session) => session.Status is ShoppingPlanStatus.Building or ShoppingPlanStatus.Reviewing;
 
     private static string Name(ShoppingPlanStatus status) => status.ToString().ToLowerInvariant();
 

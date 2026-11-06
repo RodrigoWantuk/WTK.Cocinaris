@@ -57,6 +57,11 @@ export interface MenuEntry {
   producesUnit?: string | null;
   /** Suggested cooking order in a shopping plan's menu; null for a menu built by hand. */
   suggestedOrder: number | null;
+  /**
+   * The day the person chose to cook this dish ahead with others (PLAN-0065 Slice 4), or null. It
+   * never changes `plannedDate`, the reservation, or "Hoje"; only the preparation route reads it.
+   */
+  cookOnDate?: string | null;
 }
 
 /** `ready` when every required pantry ingredient is reserved; `missing` lists what is not. */
@@ -283,6 +288,16 @@ export interface PlanningRepository {
   removeEntry(
     menuId: string,
     entryId: string,
+    options: Mutation,
+  ): Promise<Menu>;
+  /**
+   * "Preparar vários de uma vez": the dishes cooked ahead on `date`. Dishes that had that day and are
+   * left out lose it, so repeating the same choice changes nothing. Only a menu in use accepts it.
+   */
+  setCookDay(
+    menuId: string,
+    date: string,
+    entryIds: string[],
     options: Mutation,
   ): Promise<Menu>;
   /** `from` is the owner's current day (`YYYY-MM-DD`); earlier dated meals count as missed. */

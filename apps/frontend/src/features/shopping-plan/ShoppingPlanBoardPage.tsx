@@ -1,35 +1,23 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useProductionI18n } from "@/app/i18n/ProductionI18nProvider";
 import { useSession } from "@/app/session/SessionProvider";
 import { Button } from "@/components/ui/button";
-import { RecipeApiError, type RecipeSummary } from "@/contracts/recipes";
+import { RecipeApiError } from "@/contracts/recipes";
 import {
   MEAL_ORDER,
   type MealCounts,
   type ShoppingPlan,
   type ShoppingPlanAccepted,
   type ShoppingPlanCard,
-  type ShoppingPlanPreferences,
 } from "@/contracts/shoppingPlan";
 import { formatMenuDay } from "@/features/planning/planningDates";
-import { useRecipeRepository } from "@/features/recipes/RecipeProvider";
 import { CompleteSheet } from "./CompleteSheet";
 import { Counter } from "./Counter";
 import { DishActionsSheet, type MealRaise } from "./DishActionsSheet";
-import { MealOptionsSheet } from "./MealOptionsSheet";
-import { restrictionLabel } from "./restrictionLabel";
 import { useShoppingPlanRepository } from "./ShoppingPlanProvider";
-import { useExpansionQueue, UNDO_WINDOW_MS } from "./useExpansionQueue";
-import { useMealBatches, type MealBatchJob } from "./useMealBatches";
-
-/** How many options a meal type should have before more are asked for on their own. */
-const FULL_OPTIONS = 6;
-const LOW_OPTIONS = 3;
-/** Automatic requests per meal type and visit; the person can always ask for more. */
-const MAX_AUTO = 2;
-/** Switches and counters wait this long, so quick taps send only the last state. */
-const SWITCH_DELAY_MS = 600;
+import { useExpansionQueue } from "./useExpansionQueue";
+import { SWITCH_DELAY_MS, useMealChooser } from "./useMealChooser";
 const MAX_MEALS = 40;
 /** How long a short confirmation stays on screen. */
 const NOTICE_MS = 5000;
@@ -53,23 +41,13 @@ function countsOf(plan: ShoppingPlan): MealCounts {
 export function ShoppingPlanBoardPage() {
   const { sessionId = "" } = useParams<{ sessionId: string }>();
   const repo = useShoppingPlanRepository();
-  const recipes = useRecipeRepository();
   const { t, locale } = useProductionI18n();
   const { session } = useSession();
   const navigate = useNavigate();
   const csrfToken = session.csrfToken;
   const [plan, setPlan] = useState<ShoppingPlan | null>(null);
   const [failed, setFailed] = useState(false);
-  const [sheetMeal, setSheetMeal] = useState<string | null>(null);
-  // The last meal type shown, so the sheet can close with its content instead of vanishing.
-  const [shownMeal, setShownMeal] = useState<string | null>(null);
-  const [saved, setSaved] = useState<RecipeSummary[] | null>(null);
-  const [busyCardId, setBusyCardId] = useState<string | null>(null);
-  const [chosen, setChosen] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [sheetError, setSheetError] = useState<string | null>(null);
-  const [localPreferences, setLocalPreferences] =
-    useState<ShoppingPlanPreferences | null>(null);
   const [dish, setDish] = useState<ShoppingPlanAccepted | null>(null);
   const [confirmUse, setConfirmUse] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -82,9 +60,6 @@ export function ShoppingPlanBoardPage() {
   const [completeOpen, setCompleteOpen] = useState(false);
   const [completeFailed, setCompleteFailed] = useState<string[] | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const autoCount = useRef<Record<string, number>>({});
-  const switchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const undoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const countTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const peopleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -94,7 +69,8 @@ export function ShoppingPlanBoardPage() {
     repo.get(sessionId, controller.signal).then(
       (value) => {
         if (controller.signal.aborted) return;
-        if (value.status === "finished") {
+        // A menu in use, even one being changed, is shown on its own page.
+        if (value.status === "finished" || value.status === "amending") {
           navigate(`/app/cardapio/${value.menuId}`, { replace: true });
           return;
         }
@@ -111,13 +87,7 @@ export function ShoppingPlanBoardPage() {
 
   useEffect(
     () => () => {
-      for (const timer of [
-        switchTimer,
-        undoTimer,
-        countTimer,
-        peopleTimer,
-        noticeTimer,
-      ]) {
+      for (const timer of [countTimer, peopleTimer, noticeTimer]) {
         if (timer.current) clearTimeout(timer.current);
       }
     },
@@ -129,67 +99,15 @@ export function ShoppingPlanBoardPage() {
     { csrfToken, language: locale },
     setPlan,
   );
-  const batches = useMealBatches(
-    sessionId,
-    { csrfToken, language: locale },
-    setPlan,
-  );
-
-  // The person's own recipes load once, the first time a sheet opens, so typing filters instantly.
-  useEffect(() => {
-    if (!sheetMeal || saved !== null) return;
-    const controller = new AbortController();
-    recipes.listRecipes(controller.signal).then(
-      (items) => !controller.signal.aborted && setSaved(items),
-      () => !controller.signal.aborted && setSaved([]),
-    );
-    return () => controller.abort();
-  }, [sheetMeal, saved, recipes]);
-
-  const group = plan?.groups.find((item) => item.mealType === sheetMeal);
-  const optionCount = group?.options.length ?? 0;
-  const groupMissing = group ? group.wanted - group.filled : 0;
-  const { enqueue, running, failures, exhausted, hasAsked } = batches;
-  // One automatic request when a meal type has few options, never one per opening of the sheet.
-  useEffect(() => {
-    if (!sheetMeal || !group || groupMissing <= 0 || running) return;
-    if (failures[sheetMeal] || exhausted.has(sheetMeal)) return;
-    const done = autoCount.current[sheetMeal] ?? 0;
-    const wanted =
-      (!hasAsked(sheetMeal) && optionCount < FULL_OPTIONS) ||
-      optionCount < LOW_OPTIONS;
-    if (!wanted || done >= MAX_AUTO) return;
-    autoCount.current[sheetMeal] = done + 1;
-    enqueue({ mealType: sheetMeal, kind: "auto" });
-  }, [
-    sheetMeal,
-    group,
-    groupMissing,
-    optionCount,
-    running,
-    failures,
-    exhausted,
-    hasAsked,
-    enqueue,
-  ]);
-
-  const showUndo = useCallback((name: string) => {
-    setChosen(name);
-    if (undoTimer.current) clearTimeout(undoTimer.current);
-    undoTimer.current = setTimeout(() => setChosen(null), UNDO_WINDOW_MS);
-  }, []);
-
-  const afterChoice = useCallback(
-    (updated: ShoppingPlan, name: string, mealType: string) => {
-      setPlan(updated);
-      showUndo(name);
-      const after = updated.groups.find((item) => item.mealType === mealType);
-      // The sheet stays for the same meal type until nothing is missing in it.
-      if (after && after.filled >= after.wanted) closeSheet();
-    },
-    // closeSheet only uses state setters.
-    [showUndo],
-  );
+  const chooser = useMealChooser(sessionId, plan, setPlan, {
+    csrfToken,
+    // Focus goes back to the row that opened the sheet, or to its group's heading once the row is
+    // gone because nothing is missing there any more.
+    focusTarget: (meal) =>
+      document.getElementById(`board-choose-${meal}`) ??
+      document.getElementById(`board-heading-${meal}`),
+  });
+  const { openSheet, busyCardId, setBusyCardId, running, ask } = chooser;
 
   const run = async (
     work: () => Promise<void>,
@@ -202,137 +120,6 @@ export function ShoppingPlanBoardPage() {
     }
   };
 
-  const choose = (card: ShoppingPlanCard) => {
-    if (!csrfToken || !sheetMeal || busyCardId) return;
-    const mealType = sheetMeal;
-    setBusyCardId(card.cardId);
-    setSheetError(null);
-    void run(
-      async () => {
-        const updated = await repo.decide(
-          sessionId,
-          card.cardId,
-          { decision: "accept", mealType },
-          { csrfToken },
-        );
-        afterChoice(updated, card.name, mealType);
-      },
-      () => setSheetError("shoppingPlan.error.save"),
-    ).finally(() => setBusyCardId(null));
-  };
-
-  const chooseRecipe = (recipeId: string, name: string) => {
-    if (!csrfToken || !sheetMeal || busyCardId) return;
-    const mealType = sheetMeal;
-    setBusyCardId(recipeId);
-    setSheetError(null);
-    void run(
-      async () => {
-        const updated = await repo.chooseRecipe(sessionId, recipeId, mealType, {
-          csrfToken,
-        });
-        afterChoice(updated, name, mealType);
-      },
-      (code, err) =>
-        setSheetError(
-          code === "request_blocked"
-            ? `blocked:${err instanceof RecipeApiError ? (err.fieldErrors.restriction?.[0] ?? "") : ""}`
-            : "shoppingPlan.error.save",
-        ),
-    ).finally(() => setBusyCardId(null));
-  };
-
-  const refuse = (card: ShoppingPlanCard) => {
-    if (!csrfToken || busyCardId) return;
-    setBusyCardId(card.cardId);
-    void run(
-      async () =>
-        setPlan(
-          await repo.decide(
-            sessionId,
-            card.cardId,
-            { decision: "reject" },
-            { csrfToken },
-          ),
-        ),
-      () => setSheetError("shoppingPlan.error.save"),
-    ).finally(() => setBusyCardId(null));
-  };
-
-  const undo = () => {
-    if (!csrfToken) return;
-    setChosen(null);
-    void run(
-      async () => setPlan(await repo.undo(sessionId, { csrfToken })),
-      () => setError("shoppingPlan.error.save"),
-    );
-  };
-
-  const ask = (job: MealBatchJob) => {
-    batches.clearFailure(job.mealType);
-    enqueue(job);
-  };
-
-  // A switch changes what the existing options were made for, so new ones are asked for at once;
-  // the goal only re-ranks what is there.
-  const setPreferences = (next: ShoppingPlanPreferences) => {
-    if (!csrfToken || !plan) return;
-    setLocalPreferences(next);
-    if (switchTimer.current) clearTimeout(switchTimer.current);
-    const mealType = sheetMeal;
-    switchTimer.current = setTimeout(() => {
-      const before = plan.preferences;
-      void run(
-        async () => {
-          const updated = await repo.setPreferences(sessionId, next, {
-            csrfToken,
-          });
-          setPlan(updated);
-          setLocalPreferences(null);
-          const switched =
-            before.usePreferences !== next.usePreferences ||
-            before.usePantry !== next.usePantry;
-          if (switched && mealType) ask({ mealType, kind: "switch" });
-        },
-        () => {
-          setLocalPreferences(null);
-          setSheetError("shoppingPlan.error.save");
-        },
-      );
-    }, SWITCH_DELAY_MS);
-  };
-
-  function openSheet(mealType: string) {
-    setSheetError(null);
-    setSheetMeal(mealType);
-    setShownMeal(mealType);
-  }
-
-  // Focus goes back to the row that opened the sheet, or to its group's heading once the row is
-  // gone because nothing is missing there any more.
-  function closeSheet() {
-    setSheetMeal(null);
-  }
-
-  // Focus goes back to the row that opened the sheet, or to its group's heading once the row is
-  // gone because nothing is missing there any more.
-  const returnFocus = (event: Event) => {
-    if (!shownMeal) return;
-    event.preventDefault();
-    (
-      document.getElementById(`board-choose-${shownMeal}`) ??
-      document.getElementById(`board-heading-${shownMeal}`)
-    )?.focus();
-  };
-
-  const view = useMemo(
-    () =>
-      plan && localPreferences
-        ? { ...plan, preferences: localPreferences }
-        : plan,
-    [plan, localPreferences],
-  );
-
   if (failed) {
     return (
       <p role="alert" className="text-muted-foreground">
@@ -340,7 +127,7 @@ export function ShoppingPlanBoardPage() {
       </p>
     );
   }
-  if (!plan || !view) return <p role="status">{t("planning.loading")}</p>;
+  if (!plan) return <p role="status">{t("planning.loading")}</p>;
 
   const pending = plan.accepted.filter(
     (card) => card.expansionState === "pending",
@@ -599,38 +386,6 @@ export function ShoppingPlanBoardPage() {
     ).finally(() => setSaving(false));
   };
 
-  const undoNotice = chosen ? (
-    <div
-      role="status"
-      data-testid="board-undo"
-      className="flex items-center justify-between gap-3 rounded-xl bg-secondary px-3 py-2 text-sm"
-    >
-      <span className="min-w-0">
-        {t("menuBuild.undo.chosen", { dish: chosen })}
-      </span>
-      <Button
-        type="button"
-        size="sm"
-        variant="ghost"
-        data-testid="board-undo-action"
-        onClick={undo}
-      >
-        {t("shoppingPlan.undo")}
-      </Button>
-    </div>
-  ) : null;
-
-  const sheetFailure = sheetError
-    ? sheetError.startsWith("blocked:")
-      ? t("menuBuild.sheet.blocked", {
-          restriction:
-            sheetError.length > 8
-              ? restrictionLabel(locale, sheetError.slice(8))
-              : t("menuBuild.sheet.blocked.any"),
-        })
-      : t(sheetError)
-    : null;
-
   return (
     <div data-testid="plan-board" className="space-y-6 pb-48">
       <header className="space-y-1">
@@ -671,7 +426,7 @@ export function ShoppingPlanBoardPage() {
           {t("shoppingPlan.expansion.stopped")}
         </p>
       ) : null}
-      {sheetMeal ? null : undoNotice}
+      {chooser.sheetMeal ? null : chooser.undoNotice}
       {notice ? (
         <p
           role="status"
@@ -1045,33 +800,7 @@ export function ShoppingPlanBoardPage() {
         </div>
       </div>
 
-      {shownMeal ? (
-        <MealOptionsSheet
-          plan={view}
-          mealType={shownMeal}
-          open={sheetMeal !== null}
-          onOpenChange={(open) => {
-            if (!open) closeSheet();
-          }}
-          onCloseAutoFocus={returnFocus}
-          saved={saved ?? []}
-          running={running}
-          failure={failures[shownMeal]}
-          exhausted={exhausted.has(shownMeal)}
-          busyCardId={busyCardId}
-          actions={{ choose, chooseRecipe, refuse, ask, setPreferences }}
-          notice={
-            <>
-              {undoNotice}
-              {sheetFailure ? (
-                <p role="alert" className="text-sm text-destructive">
-                  {sheetFailure}
-                </p>
-              ) : null}
-            </>
-          }
-        />
-      ) : null}
+      {chooser.sheet}
 
       <DishActionsSheet
         plan={plan}

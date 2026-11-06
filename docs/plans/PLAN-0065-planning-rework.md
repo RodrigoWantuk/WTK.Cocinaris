@@ -1,13 +1,13 @@
 # PLAN-0065: Planning Rework ("Montar o cardápio")
 
-- **Status:** In Progress; Slices 0 and 1 merged (#95, #96); D1 and D2 confirmed by the owner on 2026-11-05; Slice 2 in a draft PR
+- **Status:** In Progress; Slices 0 to 3 merged (#95 to #98); D1 and D2 confirmed by the owner on 2026-11-05; Slice 4 in a draft PR
 - **Type:** Implementation
 - **Priority:** High (owner request)
 - **Owner:** Claude Code
 - **Created:** 2026-11-05
-- **Last updated:** 2026-11-05
+- **Last updated:** 2026-11-06
 - **Branch:** Plan publication `agent/plan-0065-planning-rework`; each slice uses the branch named in its section
-- **Pull request:** #94 (plan publication, merged); #95 (Slice 0, merged); #96 (Slice 1, merged); Slice 2 draft PR
+- **Pull request:** #94 (plan publication, merged); #95 to #98 (Slices 0 to 3, merged); Slice 4 draft PR
 - **Related issues:** None
 - **Related ADRs:** ADR-0009, ADR-0012, ADR-0013
 - **Dependencies:** PLAN-0062, PLAN-0063, PLAN-0064 (all merged). This plan replaces the deck and review screens of PLAN-0062 Slice 1 and the panel of PLAN-0064.
@@ -369,12 +369,12 @@ Branch: `agent/plan-0065-s3-dish-actions`.
 
 Branch: `agent/plan-0065-s4-in-use`.
 
-- [ ] `/app/cardapio/:menuId`: heading, next step as on the hub, today's dishes, later dated dishes, "Quando quiser" by meal type, and the line near the end of the period. Empty days disappear. "Cozinhar" as the primary only on today's or the next dish; others keep it in the row's sheet. Archive moves to the page's menu.
-- [ ] "Hoje": "Quando quiser" with the next dish per meal type.
-- [ ] Options sheet on accepted menus, for something missing or "Trocar", as explicit single-entry commands. An accepted session reopens only for this; cards are purged as usual. A menu without a session gets one on first use. Remove `AiMealSuggestion`.
-- [ ] `MenusPage`: list of menus only, with "Novo cardápio".
-- [ ] List header: one summary line with progress, a share icon, "Por seção / Por lugar" chips. A fixed bar "Cheguei do mercado (3)" when something is marked.
-- [ ] "Preparar vários de uma vez": choose a day and dishes. It sets `CookOnDate`, and the route selects by it. Remove the session's `PrepDate` from new plans. `prepMinutes` becomes an optional note on the route.
+- [x] `/app/cardapio/:menuId`: heading, next step as on the hub, today's dishes, later dated dishes, "Quando quiser" by meal type, and the line near the end of the period. Empty days disappear. "Cozinhar" as the primary only on today's or the next dish; others keep it in the row's sheet. Archive moves to the page's menu.
+- [x] "Hoje": "Quando quiser" with the next dish per meal type.
+- [x] Options sheet on accepted menus, for something missing or "Trocar", as explicit single-entry commands. An accepted session reopens only for this; cards are purged as usual. A menu without a session gets one on first use. Remove `AiMealSuggestion`.
+- [x] `MenusPage`: list of menus only, with "Novo cardápio".
+- [x] List header: one summary line with progress, a share icon, "Por seção / Por lugar" chips. A fixed bar "Cheguei do mercado (3)" when something is marked.
+- [x] "Preparar vários de uma vez": choose a day and dishes. It sets `CookOnDate`, and the route selects by it. Remove the session's `PrepDate` from new plans. `prepMinutes` becomes an optional note on the route.
 
 **Hazards:** `CookOnDate` must not move the eating day, the reservation, or "Hoje". A cooked-ahead dish shows its stored portions, and otherwise "Já preparado". Old accepted menus keep their entries as they are. Offline, the list header must work without the server.
 
@@ -429,15 +429,15 @@ Prices and budgets, curated pack sizes, loose list items (a decision of PLAN-006
 
 ## Execution state
 
-- **Current run delivery target:** Slice 3, acting on chosen dishes and "Completar".
-- **Current checkpoint:** Slice 3 implemented on `agent/plan-0065-s3-dish-actions`, in a draft pull request. Slice 2 merged via #97.
-- **Last completed step:** Routes, screens, tests, browser journeys, mobile audit, and documents; see the Slice 3 log entry. The owner's acceptance of PLAN-0062 gates G1-A and G2-A is recorded in the same pull request.
-- **Exact next action:** The owner reviews and merges the Slice 3 pull request. Slice 4 (the menu in use) then starts from fresh `origin/main` on `agent/plan-0065-s4-in-use`.
-- **Blockers:** None for Slice 4. S1-AI still needs the provider key. The WebKit and real iPhone check of the sheets with the keyboard needs the owner's phone; the owner chose on 2026-11-06 to proceed without waiting for it.
-- **Partially modified areas:** None. Old batch fields and unused copy keys stay until Slice 5.
-- **Documentation delivered:** This plan and registry row; product spec flow, planning domain document, the review documents of G1-A and G2-A, and the runbook.
-- **Validation performed:** See the Slice 2 entry in the progress log.
-- **Known failures or limitations:** See the Slice 2 entry.
+- **Current run delivery target:** Slice 4, the menu in use.
+- **Current checkpoint:** Slice 4 implemented on `agent/plan-0065-s4-in-use`, in a draft pull request. Slice 3 merged via #98.
+- **Last completed step:** Migration, routes, screens, tests, browser journeys, mobile audit, and documents; see the Slice 4 log entry.
+- **Exact next action:** The owner reviews and merges the Slice 4 pull request. Slice 5 (finish) then starts from fresh `origin/main` on `agent/plan-0065-s5-finish`.
+- **Blockers:** None for Slice 5. S1-AI still needs the provider key. The owner's phone check of the route with the screen kept on (Gate S4, and PLAN-0062 G6) and of the sheets with the keyboard is still open; the owner chose on 2026-11-06 to proceed without waiting for it.
+- **Partially modified areas:** None. Old batch fields and unused copy keys (including the removed `AiMealSuggestion`'s `planning.ai.*`) stay until Slice 5.
+- **Documentation delivered:** This plan and registry row; product spec flow, planning domain document, and privacy document.
+- **Validation performed:** See the Slice 4 entry in the progress log.
+- **Known failures or limitations:** See the Slice 4 entry.
 - **Working tree state:** Clean after this commit.
 
 ## Progress log
@@ -545,6 +545,28 @@ Prices and budgets, curated pack sizes, loose list items (a decision of PLAN-006
 - **Not run or not passing:**
   - `mobile-audit`: the list at 320 px has a 110 px line, because a fixture name left by `planning-entry-journey`, "Item Entrada E2E 1793901123754", wraps on its 13-digit number. The list did not change in this slice; real names do not have that shape. Left as a known fixture limit.
   - WebKit and a real iPhone with the keyboard (WebKit does not start on this host), the real model, a screen reader.
+- **Next action:** See "Exact next action".
+
+### 2026-11-06 — Claude Code (Slice 4)
+
+- **Run delivery target:** Slice 4, the menu in use, after the owner merged #98 ("Merge feito, continue").
+- **Changes:**
+  - **Backend.** Migration `AddCookOnDateAndAmendments`: `menu_entries.CookOnDate` (date, null) and the plan status `Amending`; both additive. `PUT /menus/{id}/cook-day` ("Preparar vários de uma vez") sets the cooking day of the listed dishes and clears it from dishes that had that day and were left out; the day is at most 7 days before the menu, inside the period, and never after the day a dish is eaten, and only a menu in use accepts it. `POST /shopping-plans/amendments` opens an accepted menu for choosing again, optionally swapping one dish (`replaceEntryId`); a menu built by hand gets a plan there; chosen cards are rebuilt from the menu's dishes on every opening; the owner's recipes and library ideas are offered at once. While amending, counts, review, distribution, replacements, and discarding are refused; added dishes take the next places in the order; `acceptance` closes the change. `GET /shopping-plans/menu-link`. `recipes/{id}/choice` takes an optional `plannedDate`. The preparation route's day comes from the cooking days.
+  - **Frontend.** `MenuPage` rewritten: next step as on "Planejar", "Hoje", "Próximos dias", "Quando quiser" by meal type with "Escolher … · faltam N", folded past days, no empty days, "Cozinhar" in the row only for the next dish, the end-of-period line, and "Mais opções" with "Preparar vários de uma vez" and "Arquivar cardápio". `MenuEntrySheet` (cook, recipe, swap, day chips, portions, pantry reservation, skip, remove). `CookAheadSheet`. `MenuChoosing` opens the options sheet on a menu in use and closes the change when the sheet closes and nothing is being prepared. The options sheet's logic moved out of the board into `useMealChooser`, shared by both. `MenusPage` is the list and "Novo cardápio". "Hoje" shows undated dishes under "Quando quiser". The list header is one summary line with a share icon and "Por seção / Por lugar" chips, and a bar "Cheguei do mercado (N)" stays above the tab bar once something is marked. `AiMealSuggestion` removed.
+  - **Tooling.** `planning-board-journey.mjs` walks the menu in use (sections, swap and its undo, swap for another dish, cooking ahead and its route, "Hoje"). `mobile-audit.mjs` audits the dish sheet, the cook-ahead sheet, and the options sheet on the menu in use. `planning-journey.mjs` makes its hand-built menu through the API, because the form is gone. `shopping-plan-journey.mjs` and the audit use the new chips.
+- **Deviations from this plan:**
+  - **"Reopens" is a status of its own, `Amending`,** because the one-plan-in-progress rule must not block a swap while a new menu is being built, and the route and repeat must still see the plan as accepted. Every opening rebuilds the chosen cards from the menu, so dishes removed or skipped on the menu page count as they are; cards are purged when the change is closed.
+  - **"Trocar" removes the dish when the sheet opens,** as on the board, in the same request as opening the change; the page offers to put it back ("Desfazer"), which adds the same dish again. The new dish keeps the old one's day.
+  - **"Preparar vários de uma vez" is one request for several dishes.** It says which dishes are cooked on that day; it changes only `CookOnDate`, never the eating day, the reservation, the order, or "Hoje", so invariant 4 holds. The route reads `CookOnDate`; `CookOnDate ?? PlannedDate` applies only to plans whose setup has a preparation day, so a dish eaten that day is not pulled into a session the person did not ask for.
+  - **No time note on the route for new plans.** Plans by counts ask for no preparation time, and the route already shows its length; older plans keep their budget.
+  - **A cooked-ahead dish reads "Já preparado".** Its stored portions are already on "Hoje" through the `ready_portions` reminder (PLAN-0062 Slice 5), so the menu row does not repeat them.
+  - **"Cozinhar" is the main action only when there is no next step.** When something is left to buy, put away, or prepare, that step is the main action and "Cozinhar" is secondary, so a screen keeps one main action.
+  - **A menu built by hand gets no new dishes by hand.** The day-by-day "Adicionar refeição" form went with `AiMealSuggestion`; such a menu can still be swapped from once in use, and new menus are built on the board.
+  - **The arrival bar is sticky, not fixed,** above the tab bar, so it rests after the list at its end and never covers the last line.
+- **Validation performed:** Integration: the three new tests (cooking ahead with its route and limits and isolation; filling and swapping on a menu in use with order, day, closing, and refusals; a menu built by hand) and the whole planning class, 80 tests. Unit: 488, with a new domain test for the cooking day. Frontend: typecheck, lint, format, and the full suite, 631 tests (7 new in `MenuInUse.test.tsx` and one for "Hoje"; five tests of the removed form, day boxes, and AI suggestion were replaced). OpenAPI exported, client regenerated and mirrored, drift check passed. Proxy replica at 360 px, on the final build: `planning-board-journey` passed all 38 checks, 10 of them new; `shopping-plan-journey`, `offline-list-journey`, `session-route-journey`, and `planning-entry-journey` (16 of 16) passed. `mobile-audit`: 69 screens at 320, 360, and 390 px, including the dish sheet, the cook-ahead sheet, and the options sheet on the menu in use, with 1 problem: the known 110 px list line at 320 px from the fixture name of `planning-entry-journey`. The first audit run found a row where "Cozinhar" beside the dish squeezed its name and a summary line whose two parts wrapped into each other at 320 px; both were fixed, and the audit's overlap rule now treats a sticky bar like a fixed one. The first `shopping-plan-journey` run missed G1-C's 1 s target (1583 ms) while another journey ran in parallel, and passed alone. The first run of the user-B journeys failed at sign-in because the runner passed user A's password; rerun with the right one.
+- **Not passing, outside this slice:** `planning-journey` passes the menu, list, and purchase steps and stops at the cooking screen, as since Slice 0. `reservations-journey` passes the menu's readiness checks and stops on the lot page, whose reservations sit in a folded section the journey does not open; that page did not change here.
+- **Not run:** WebKit and a real iPhone with the keyboard; the route with the screen kept on, on the owner's phone (Gate S4 and PLAN-0062 G6); the real model; a screen reader.
+- **Environment note:** the dev database needed the new migration (`dotnet ef database update` with `COCINARIS_DB_CONNECTION`) before the replica could load menus.
 - **Next action:** See "Exact next action".
 
 ## Completion and handoff checklist

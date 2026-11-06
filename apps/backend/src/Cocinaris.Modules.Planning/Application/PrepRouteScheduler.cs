@@ -331,7 +331,7 @@ public sealed record ShoppingPlanRouteTaskView(string TaskKey, Guid EntryId, str
 /// <summary>A preparation session's route.</summary>
 /// <param name="SessionId">Plan.</param>
 /// <param name="MenuId">Its menu.</param>
-/// <param name="PrepDate">Session day.</param>
+/// <param name="PrepDate">Session day: the day dishes are cooked ahead, or the setup's day on older plans.</param>
 /// <param name="TotalMinutes">When the last task finishes.</param>
 /// <param name="BudgetMinutes">Time the person set aside, if any.</param>
 /// <param name="OverBudget">Whether the route takes longer than that.</param>
@@ -374,7 +374,7 @@ public sealed class ShoppingPlanRouteService(
             return NotFound();
         }
 
-        return session.Status != ShoppingPlanStatus.Finished
+        return !IsAccepted(session)
             ? NotAccepted()
             : RecipeApplicationResult<ShoppingPlanRouteView>.Succeeded(await BuildAsync(user.Id, session, cancellationToken) ?? throw new InvalidOperationException("A plan lost its menu."));
     }
@@ -401,7 +401,7 @@ public sealed class ShoppingPlanRouteService(
             return NotFound();
         }
 
-        if (session.Status != ShoppingPlanStatus.Finished)
+        if (!IsAccepted(session))
         {
             return NotAccepted();
         }
@@ -431,11 +431,11 @@ public sealed class ShoppingPlanRouteService(
         var user = await currentUser.GetCurrentAsync(cancellationToken);
         IReadOnlyList<ShoppingPlanSession> candidates = menuId is { } id
             ? await store.FindFinishedByMenuAsync(user.Id, id, cancellationToken) is { } found ? [found] : []
-            : (await store.ListFinishedAsync(user.Id, RecentPlansToSearch, cancellationToken)).Where(item => item.Setup.PrepDate == date).ToList();
-        foreach (var session in candidates.Where(item => item.Setup.PrepDate is not null))
+            : await store.ListFinishedAsync(user.Id, RecentPlansToSearch, cancellationToken);
+        foreach (var session in candidates)
         {
             var route = await BuildAsync(user.Id, session, cancellationToken);
-            if (route is not null && route.Recipes.Any(item => item.Status != "cooked"))
+            if (route is { PrepDate: { } day } && (date is null || day == date) && route.Recipes.Any(item => item.Status != "cooked"))
             {
                 return RecipeApplicationResult<ShoppingPlanRouteLinkView>.Succeeded(new ShoppingPlanRouteLinkView(session.Id));
             }
@@ -452,10 +452,12 @@ public sealed class ShoppingPlanRouteService(
             return null;
         }
 
-        var entries = view.Status != "accepted" || session.Setup.PrepDate is not { } day
+        var legacy = session.Setup.PrepDate is not null;
+        var routeDay = view.Status == "accepted" ? RouteDay(session, view.Entries) : null;
+        var entries = routeDay is not { } day
             ? []
             : view.Entries
-                .Where(entry => entry.PlannedDate == day && entry.Status != "skipped")
+                .Where(entry => entry.Status != "skipped" && (entry.CookOnDate ?? (legacy ? entry.PlannedDate : null)) == day)
                 .OrderBy(entry => entry.Kind == "component" ? 0 : 1)
                 .ThenBy(entry => entry.SuggestedOrder ?? int.MaxValue)
                 .ToList();
@@ -503,8 +505,27 @@ public sealed class ShoppingPlanRouteService(
                 ingredient.Unit,
                 ingredient.Optional)).ToList())).ToList();
         var budget = session.Setup.PrepMinutes;
-        return new ShoppingPlanRouteView(session.Id, session.MenuPlanId, session.Setup.PrepDate, schedule.TotalMinutes, budget, budget is { } limit && schedule.TotalMinutes > limit, recipeViews, taskViews, WithCooked(session.RouteProgress, recipeViews, taskViews));
+        return new ShoppingPlanRouteView(session.Id, session.MenuPlanId, routeDay, schedule.TotalMinutes, budget, budget is { } limit && schedule.TotalMinutes > limit, recipeViews, taskViews, WithCooked(session.RouteProgress, recipeViews, taskViews));
     }
+
+    /// <summary>
+    /// The day of the menu's preparation session. Dishes the person chose to cook ahead (PLAN-0065
+    /// Slice 4) set it: the earliest such day with something still to cook, else the last one, so a
+    /// finished session stays visible. A plan from before then that has none keeps the day it was
+    /// asked for in its setup, with the dishes dated that day.
+    /// </summary>
+    private static DateOnly? RouteDay(ShoppingPlanSession session, IReadOnlyList<MenuEntryView> entries)
+    {
+        var ahead = entries.Where(entry => entry.CookOnDate is not null && entry.Status != "skipped").ToList();
+        var open = ahead.Where(entry => entry.Status != "cooked").Select(entry => entry.CookOnDate!.Value).ToList();
+        return open.Count > 0 ? open.Min()
+            : session.Setup.PrepDate is { } asked ? asked
+            : ahead.Count > 0 ? ahead.Max(entry => entry.CookOnDate!.Value)
+            : null;
+    }
+
+    // A menu being changed after acceptance (PLAN-0065 Slice 4) is still in use.
+    private static bool IsAccepted(ShoppingPlanSession session) => session.Status is ShoppingPlanStatus.Finished or ShoppingPlanStatus.Amending;
 
     private static ShoppingPlanRouteProgress WithCooked(ShoppingPlanRouteProgress? progress, IReadOnlyList<ShoppingPlanRouteRecipeView> recipeViews, IReadOnlyList<ShoppingPlanRouteTaskView> taskViews)
     {

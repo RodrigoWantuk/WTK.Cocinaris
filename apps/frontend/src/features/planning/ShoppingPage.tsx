@@ -11,7 +11,6 @@ import {
   Package,
   PackageCheck,
   Share2,
-  ShoppingCart,
   Wheat,
 } from "lucide-react";
 import { Link, useLocation, useParams } from "react-router-dom";
@@ -21,6 +20,7 @@ import type {
 } from "@/adapters/live/inventoryTypes";
 import { useProductionI18n } from "@/app/i18n/ProductionI18nProvider";
 import { useSession } from "@/app/session/SessionProvider";
+import { ChoiceChips } from "@/components/choice/ChoiceChips";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FeatureUnavailable } from "@/components/runtime/FeatureUnavailable";
@@ -295,6 +295,10 @@ export function ShoppingPage({
     (item) =>
       (TO_BUY as readonly string[]).includes(item.category) && !item.later,
   );
+  // Lines marked as bought and not yet put away; the arrival bar counts them.
+  const bought = list.items.filter(
+    (item) => item.checked && item.toBuyQuantity > 0,
+  ).length;
   const laterItems = list.items.filter(
     (item) =>
       (TO_BUY as readonly string[]).includes(item.category) && item.later,
@@ -373,19 +377,26 @@ export function ShoppingPage({
           </p>
         ) : null}
       </div>
-      {list.mealCount > 0 ? <ShoppingSummary items={list.items} /> : null}
       {list.mealCount > 0 ? (
+        // One header line (PLAN-0065 Slice 4): the progress, then sharing as an icon. It reads only the
+        // list on the device, so it works without a connection.
         <div className="space-y-2">
-          <Button
-            type="button"
-            variant="secondary"
-            data-testid="shopping-share"
-            aria-expanded={shareOpen}
-            onClick={() => void share()}
-          >
-            <Share2 aria-hidden="true" className="mr-2 h-4 w-4" />
-            {t("shopping.share")}
-          </Button>
+          <div className="flex items-start gap-2">
+            <ShoppingSummary items={list.items} />
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-11 w-11 shrink-0"
+              data-testid="shopping-share"
+              aria-label={t("shopping.share")}
+              title={t("shopping.share")}
+              aria-expanded={shareOpen}
+              onClick={() => void share()}
+            >
+              <Share2 aria-hidden="true" className="h-5 w-5" />
+            </Button>
+          </div>
           {shareOpen ? (
             <div
               className="flex flex-wrap gap-2"
@@ -423,35 +434,17 @@ export function ShoppingPage({
         </div>
       ) : null}
       {list.mealCount > 0 && repo.setLineMark ? (
-        <label className="flex min-h-11 items-center gap-3 text-sm font-medium">
-          <input
-            type="checkbox"
-            className="h-5 w-5 accent-primary"
-            data-testid="shopping-split"
-            checked={byPlace}
-            onChange={(event) => setByPlace(event.target.checked)}
-          />
-          {t("shopping.split")}
-        </label>
-      ) : null}
-      {repo.getArrival &&
-      list.items.some((item) => item.checked && item.toBuyQuantity > 0) ? (
-        offline ? (
-          <Button
-            type="button"
-            className="w-full"
-            data-testid="shopping-arrival"
-            disabled
-          >
-            {t("shopping.arrival")}
-          </Button>
-        ) : (
-          <Button asChild className="w-full" data-testid="shopping-arrival">
-            <Link to={`/app/cardapio/${menuId}/chegada`}>
-              {t("shopping.arrival")}
-            </Link>
-          </Button>
-        )
+        <ChoiceChips
+          hideLabel
+          label={t("shopping.split")}
+          testId="shopping-split"
+          value={byPlace ? "place" : "section"}
+          options={[
+            { value: "section", label: t("shopping.split.section") },
+            { value: "place", label: t("shopping.split.place") },
+          ]}
+          onChange={(value) => setByPlace(value === "place")}
+        />
       ) : null}
       {undoHave ? (
         <div
@@ -652,6 +645,36 @@ export function ShoppingPage({
           })}
         </details>
       ) : null}
+      {repo.getArrival && bought > 0 ? (
+        // Stays above the tab bar while the list scrolls, and rests after the list at its end.
+        <div
+          data-testid="shopping-arrival-bar"
+          className="sticky bottom-[calc(max(env(safe-area-inset-bottom),1rem)+4.5rem)] z-20 -mx-4 border-t border-border bg-background/95 px-4 py-3 md:bottom-4 md:mx-0 md:rounded-xl md:border"
+        >
+          {offline ? (
+            <Button
+              type="button"
+              size="lg"
+              className="w-full"
+              data-testid="shopping-arrival"
+              disabled
+            >
+              {t("shopping.arrival.count", { count: bought })}
+            </Button>
+          ) : (
+            <Button
+              asChild
+              size="lg"
+              className="w-full"
+              data-testid="shopping-arrival"
+            >
+              <Link to={`/app/cardapio/${menuId}/chegada`}>
+                {t("shopping.arrival.count", { count: bought })}
+              </Link>
+            </Button>
+          )}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -669,15 +692,10 @@ function ShoppingSummary({ items }: { items: ShoppingItem[] }) {
   const percent =
     toBuy.length === 0 ? 100 : Math.round((done / toBuy.length) * 100);
   return (
-    <div
-      className="surface flex items-center gap-4 p-4"
-      data-testid="shopping-summary"
-    >
-      <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-accent text-accent-foreground">
-        <ShoppingCart aria-hidden="true" className="h-6 w-6" />
-      </span>
-      <div className="min-w-0 flex-1">
-        <p className="font-semibold">
+    <div className="min-w-0 flex-1 pt-1" data-testid="shopping-summary">
+      {/* The two parts wrap as whole pieces on narrow phones, never one inside the other. */}
+      <p className="flex flex-wrap gap-x-1 text-sm">
+        <span className="font-semibold">
           {toBuy.length === 0
             ? t("shopping.summary.none")
             : t(
@@ -686,12 +704,15 @@ function ShoppingSummary({ items }: { items: ShoppingItem[] }) {
                   : "shopping.summary.toBuy",
                 { count: toBuy.length },
               )}
-        </p>
-        <p className="text-sm text-muted-foreground">
+        </span>
+        <span className="text-muted-foreground">
+          <span aria-hidden="true">· </span>
           {t("shopping.summary.checked", { done, total: toBuy.length })}
-        </p>
+        </span>
+      </p>
+      <div>
         <div
-          className="mt-2 h-2 overflow-hidden rounded-full bg-secondary"
+          className="mt-2 h-1.5 overflow-hidden rounded-full bg-secondary"
           aria-hidden="true"
         >
           <div

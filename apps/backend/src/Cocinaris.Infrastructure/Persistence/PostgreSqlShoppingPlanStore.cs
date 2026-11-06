@@ -11,6 +11,8 @@ public sealed class PostgreSqlShoppingPlanStore(ApplicationDbContext database) :
 {
     private static readonly JsonSerializerOptions SerializerOptions = new(JsonSerializerDefaults.Web);
     private static readonly string[] InProgress = [nameof(ShoppingPlanStatus.Building), nameof(ShoppingPlanStatus.Reviewing)];
+    // A plan being changed after acceptance still describes a menu in use.
+    private static readonly string[] Accepted = [nameof(ShoppingPlanStatus.Finished), nameof(ShoppingPlanStatus.Amending)];
 
     /// <inheritdoc />
     public async Task<ShoppingPlanSession?> FindAsync(Guid ownerUserId, Guid sessionId, CancellationToken cancellationToken)
@@ -44,7 +46,7 @@ public sealed class PostgreSqlShoppingPlanStore(ApplicationDbContext database) :
     public async Task<IReadOnlyList<ShoppingPlanSession>> ListFinishedAsync(Guid ownerUserId, int limit, CancellationToken cancellationToken)
     {
         var records = await database.ShoppingPlanSessions.AsNoTracking()
-            .Where(item => item.OwnerUserId == ownerUserId && item.Status == nameof(ShoppingPlanStatus.Finished))
+            .Where(item => item.OwnerUserId == ownerUserId && Accepted.Contains(item.Status))
             .OrderByDescending(item => item.UpdatedAt)
             .Take(limit)
             .ToListAsync(cancellationToken);
@@ -54,7 +56,14 @@ public sealed class PostgreSqlShoppingPlanStore(ApplicationDbContext database) :
     /// <inheritdoc />
     public async Task<ShoppingPlanSession?> FindFinishedByMenuAsync(Guid ownerUserId, Guid menuPlanId, CancellationToken cancellationToken)
     {
-        var record = await database.ShoppingPlanSessions.AsNoTracking().SingleOrDefaultAsync(item => item.OwnerUserId == ownerUserId && item.MenuPlanId == menuPlanId && item.Status == nameof(ShoppingPlanStatus.Finished), cancellationToken);
+        var record = await database.ShoppingPlanSessions.AsNoTracking().SingleOrDefaultAsync(item => item.OwnerUserId == ownerUserId && item.MenuPlanId == menuPlanId && Accepted.Contains(item.Status), cancellationToken);
+        return record is null ? null : ToDomain(record);
+    }
+
+    /// <inheritdoc />
+    public async Task<ShoppingPlanSession?> FindByMenuAsync(Guid ownerUserId, Guid menuPlanId, CancellationToken cancellationToken)
+    {
+        var record = await database.ShoppingPlanSessions.AsNoTracking().SingleOrDefaultAsync(item => item.OwnerUserId == ownerUserId && item.MenuPlanId == menuPlanId, cancellationToken);
         return record is null ? null : ToDomain(record);
     }
 
