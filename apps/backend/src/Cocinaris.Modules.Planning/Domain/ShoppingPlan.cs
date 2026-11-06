@@ -1,4 +1,4 @@
-﻿namespace Cocinaris.Modules.Planning.Domain;
+namespace Cocinaris.Modules.Planning.Domain;
 
 /// <summary>
 /// The answers of a shopping plan's setup screen (PLAN-0062). They belong to this plan and never

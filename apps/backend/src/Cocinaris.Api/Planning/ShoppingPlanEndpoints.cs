@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using Cocinaris.Api.Observability;
 using Cocinaris.Api.Services;
 using Cocinaris.Modules.Planning.Application;
