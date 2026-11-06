@@ -760,6 +760,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/planning/shopping-plans/{sessionId}/cards/{cardId}/people": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** PUT /api/v1/planning/shopping-plans/{sessionId}/cards/{cardId}/people */
+        put: operations["putApiV1PlanningShopping-plansSessionIdCardsCardIdPeople"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/planning/shopping-plans/{sessionId}/cards/{cardId}/reason": {
         parameters: {
             query?: never;
@@ -805,6 +822,40 @@ export interface paths {
         /** PUT /api/v1/planning/shopping-plans/{sessionId}/cards/{cardId}/yield */
         put: operations["putApiV1PlanningShopping-plansSessionIdCardsCardIdYield"];
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/planning/shopping-plans/{sessionId}/choices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** POST /api/v1/planning/shopping-plans/{sessionId}/choices */
+        post: operations["postApiV1PlanningShopping-plansSessionIdChoices"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/planning/shopping-plans/{sessionId}/distribution": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** POST /api/v1/planning/shopping-plans/{sessionId}/distribution */
+        post: operations["postApiV1PlanningShopping-plansSessionIdDistribution"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3462,6 +3513,12 @@ export interface components {
             /** @description Dish name. */
             name: string;
             /**
+             * Format: int32
+             * @description People each of its meals is for: the plan's people unless the person changed it for this dish.
+             * @default 0
+             */
+            people: number | string;
+            /**
              * Format: date
              * @description The day the person gave it, if any.
              */
@@ -3536,6 +3593,14 @@ export interface components {
             /** @description `Gram`, `Milliliter`, or `Unit`. */
             unit: string;
         };
+        /** @description Body for how many people one dish is for. */
+        ShoppingPlanCardPeopleRequest: {
+            /**
+             * Format: int32
+             * @description People, 1 to 12.
+             */
+            people: number | string;
+        };
         /** @description A card to decide on. NewItemCount is an estimate until the recipe is expanded. */
         ShoppingPlanCardView: {
             /**
@@ -3599,6 +3664,28 @@ export interface components {
              */
             meals: number | string;
         };
+        /** @description One dish to choose. */
+        ShoppingPlanChoiceRequest: {
+            /**
+             * Format: uuid
+             * @description An offered card.
+             */
+            cardId: string;
+            /** @description The meal it fills. */
+            mealType: null | string;
+        };
+        /** @description Body for choosing several offered dishes at once. */
+        ShoppingPlanChoicesRequest: {
+            /** @description One to forty different cards. */
+            choices: null | components["schemas"]["ShoppingPlanChoiceRequest"][];
+        };
+        /** @description What "Completar" chose, and what it could not. */
+        ShoppingPlanChoicesView: {
+            /** @description Cards that were not chosen, for example because their meal filled up meanwhile; the others stay chosen. */
+            failed: string[];
+            /** @description The plan after every choice. */
+            plan: components["schemas"]["ShoppingPlanView"];
+        };
         /** @description What a base card makes and which accepted or offered dishes use it. */
         ShoppingPlanComponentView: {
             /** @description Ingredient it makes. */
@@ -3646,6 +3733,11 @@ export interface components {
              * @description Meals to fill, 1 to 4.
              */
             repeats: null | number | string;
+        };
+        /** @description Body for spreading dishes across the period. */
+        ShoppingPlanDistributionRequest: {
+            /** @description Whether to remove every day instead; false when absent. */
+            clear?: null | boolean;
         };
         /** @description Body for how many of each meal a plan wants. */
         ShoppingPlanMealCountsRequest: {
@@ -7779,6 +7871,90 @@ export interface operations {
             };
         };
     };
+    "putApiV1PlanningShopping-plansSessionIdCardsCardIdPeople": {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Required CSRF token issued by GET /api/v1/session. */
+                "X-CSRF-TOKEN": string;
+            };
+            path: {
+                sessionId: string;
+                cardId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ShoppingPlanCardPeopleRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShoppingPlanView"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description The request content type is not supported. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
     "putApiV1PlanningShopping-plansSessionIdCardsCardIdReason": {
         parameters: {
             query?: never;
@@ -7963,6 +8139,172 @@ export interface operations {
                 };
             };
             /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description The request content type is not supported. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    "postApiV1PlanningShopping-plansSessionIdChoices": {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Required CSRF token issued by GET /api/v1/session. */
+                "X-CSRF-TOKEN": string;
+            };
+            path: {
+                sessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ShoppingPlanChoicesRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShoppingPlanChoicesView"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description The request content type is not supported. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    "postApiV1PlanningShopping-plansSessionIdDistribution": {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Required CSRF token issued by GET /api/v1/session. */
+                "X-CSRF-TOKEN": string;
+            };
+            path: {
+                sessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": null | components["schemas"]["ShoppingPlanDistributionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShoppingPlanView"];
+                };
+            };
+            /** @description The request or CSRF token is invalid. */
             400: {
                 headers: {
                     [name: string]: unknown;

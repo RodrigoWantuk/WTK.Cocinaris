@@ -214,7 +214,18 @@ public sealed record ShoppingPlanCardView(Guid CardId, string Source, string Nam
 /// <param name="IsComponent">Whether it is a base, which fills no meal.</param>
 /// <param name="PlannedDate">The day the person gave it, if any.</param>
 /// <param name="TotalMinutes">Total time of the dish.</param>
-public sealed record ShoppingPlanAcceptedView(Guid CardId, string Name, string MealType, int Repeats, string? Mode, string ExpansionState, string? FailureCode, Guid? RecipeId, string? GuardCode, string? GuardIngredient, bool IsComponent = false, DateOnly? PlannedDate = null, int TotalMinutes = 0);
+/// <param name="People">People each of its meals is for: the plan's people unless the person changed it for this dish.</param>
+public sealed record ShoppingPlanAcceptedView(Guid CardId, string Name, string MealType, int Repeats, string? Mode, string ExpansionState, string? FailureCode, Guid? RecipeId, string? GuardCode, string? GuardIngredient, bool IsComponent = false, DateOnly? PlannedDate = null, int TotalMinutes = 0, int People = 0);
+
+/// <summary>One dish of "Completar" (PLAN-0065).</summary>
+/// <param name="CardId">An offered card.</param>
+/// <param name="MealType">The meal it fills.</param>
+public sealed record ShoppingPlanChoice(Guid CardId, string? MealType);
+
+/// <summary>What "Completar" chose, and what it could not.</summary>
+/// <param name="Plan">The plan after every choice.</param>
+/// <param name="Failed">Cards that were not chosen, for example because their meal filled up meanwhile; the others stay chosen.</param>
+public sealed record ShoppingPlanChoicesView(ShoppingPlanView Plan, IReadOnlyList<Guid> Failed);
 
 /// <summary>The state every plan route returns.</summary>
 /// <param name="SessionId">Plan.</param>
@@ -680,7 +691,7 @@ public sealed class ShoppingPlanApplicationService(
                 return Failure<ShoppingPlanView>("validation_failed", "A base is prepared once.", "repeats");
             }
 
-            if (mode == "yield" && session!.Setup.People * count > MaxEntryServings)
+            if (mode == "yield" && PeopleOf(card, session!.Setup) * count > MaxEntryServings)
             {
                 return Failure<ShoppingPlanView>("validation_failed", "That is too many portions for one cooking.", "repeats");
             }
@@ -940,7 +951,7 @@ public sealed class ShoppingPlanApplicationService(
             return failure;
         }
 
-        if (meals is < 1 or > MaxRepeats || session!.Setup.People * meals > MaxEntryServings)
+        if (meals is < 1 or > MaxRepeats || PeopleOf(card!, session!.Setup) * meals > MaxEntryServings)
         {
             return Failure<ShoppingPlanView>("validation_failed", "Choose a number of meals this one cooking can cover.", "meals");
         }
@@ -968,9 +979,190 @@ public sealed class ShoppingPlanApplicationService(
         if (await menus.FindEntryByCreationKeyAsync(user.Id, EntryKey(card, 0), cancellationToken) is { } entry)
         {
             var now = timeProvider.GetUtcNow();
-            entry.ChangeCoverage(plan, meals, session.Setup.People * meals, now);
+            entry.ChangeCoverage(plan, meals, PeopleOf(card, session.Setup) * meals, now);
             plan.Touch(now);
             await menus.SaveEntryAsync(plan, entry, cancellationToken);
+        }
+
+        return await ResultAsync(user.Id, session, cancellationToken);
+    }
+
+    /// <summary>Sets how many people one chosen dish is for, without changing the plan's people (PLAN-0065).</summary>
+    /// <param name="sessionId">Plan.</param>
+    /// <param name="cardId">Card.</param>
+    /// <param name="people">People, 1 to 12. With "Rende mais", the portions are people times meals, at most 24.</param>
+    /// <param name="cancellationToken">Cancellation.</param>
+    public async Task<RecipeApplicationResult<ShoppingPlanView>> SetCardPeopleAsync(Guid sessionId, Guid cardId, int people, CancellationToken cancellationToken)
+    {
+        var user = await currentUser.GetCurrentAsync(cancellationToken);
+        var (session, card, failure) = await FindChosenCardAsync(user.Id, sessionId, cardId, cancellationToken);
+        if (failure is not null)
+        {
+            return failure;
+        }
+
+        var meals = card!.AcceptMode == "yield" ? card.Repeats : 1;
+        if (people is < 1 or > ShoppingPlanSetup.MaxPeople || people * meals > MaxEntryServings)
+        {
+            return Failure<ShoppingPlanView>("validation_failed", "Choose how many people this dish is for.", "people");
+        }
+
+        var plan = await menus.FindAsync(user.Id, session!.MenuPlanId, cancellationToken);
+        if (plan is null)
+        {
+            return NotFound<ShoppingPlanView>();
+        }
+
+        card.Snapshot = card.Snapshot with { People = people };
+        await store.SaveCardAsync(card, cancellationToken);
+        var now = timeProvider.GetUtcNow();
+        for (var index = 0; index < MaxRepeats; index++)
+        {
+            if (await menus.FindEntryByCreationKeyAsync(user.Id, EntryKey(card, index), cancellationToken) is { } entry)
+            {
+                entry.Change(plan, entry.PlannedDate, entry.MealType, people * meals, entry.Status, now);
+                plan.Touch(now);
+                await menus.SaveEntryAsync(plan, entry, cancellationToken);
+            }
+        }
+
+        return await ResultAsync(user.Id, session, cancellationToken);
+    }
+
+    /// <summary>
+    /// Chooses several offered dishes at once, for "Completar" (PLAN-0065). Each is its own decision, so
+    /// one that no longer fits, because its meal filled up or the card is gone, leaves the others chosen
+    /// and is named in <see cref="ShoppingPlanChoicesView.Failed"/>. Repeating the call chooses nothing twice.
+    /// </summary>
+    /// <param name="sessionId">Plan.</param>
+    /// <param name="choices">One to forty different cards, each with its meal.</param>
+    /// <param name="cancellationToken">Cancellation.</param>
+    public async Task<RecipeApplicationResult<ShoppingPlanChoicesView>> ChooseManyAsync(Guid sessionId, IReadOnlyList<ShoppingPlanChoice>? choices, CancellationToken cancellationToken)
+    {
+        if (choices is null || choices.Count is 0 or > ShoppingPlanSetup.MaxMeals || choices.Select(choice => choice.CardId).Distinct().Count() != choices.Count)
+        {
+            return Failure<ShoppingPlanChoicesView>("validation_failed", "Choose one to forty different dishes.", "choices");
+        }
+
+        var user = await currentUser.GetCurrentAsync(cancellationToken);
+        var session = await store.FindAsync(user.Id, sessionId, cancellationToken);
+        if (session is null)
+        {
+            return NotFound<ShoppingPlanChoicesView>();
+        }
+
+        if (!IsOpen(session))
+        {
+            return NotOpen<ShoppingPlanChoicesView>();
+        }
+
+        foreach (var choice in choices)
+        {
+            // A failure here is reported through the card's state below, not by stopping.
+            await DecideAsync(sessionId, choice.CardId, "accept", null, 1, choice.MealType, null, cancellationToken);
+        }
+
+        var chosen = (await store.ListCardsAsync(user.Id, session.Id, cancellationToken))
+            .Where(card => card.State == ShoppingPlanCardState.Accepted)
+            .Select(card => card.Id)
+            .ToHashSet();
+        var view = await ResultAsync(user.Id, session, cancellationToken);
+        return RecipeApplicationResult<ShoppingPlanChoicesView>.Succeeded(new ShoppingPlanChoicesView(view.Value!, choices.Where(choice => !chosen.Contains(choice.CardId)).Select(choice => choice.CardId).ToList()));
+    }
+
+    /// <summary>
+    /// "Distribuir nos dias" (PLAN-0065): gives each undated dish a day, spreading each meal type across
+    /// the period in the suggested order, so what spoils first comes first. Dishes that already have a
+    /// day keep it. With <paramref name="clear"/>, every chosen dish loses its day instead. Only this
+    /// draft changes; nothing reserves until the menu is accepted.
+    /// </summary>
+    /// <param name="sessionId">Plan.</param>
+    /// <param name="clear">Whether to remove the days rather than give them.</param>
+    /// <param name="cancellationToken">Cancellation.</param>
+    public async Task<RecipeApplicationResult<ShoppingPlanView>> DistributeAsync(Guid sessionId, bool clear, CancellationToken cancellationToken)
+    {
+        var user = await currentUser.GetCurrentAsync(cancellationToken);
+        var session = await store.FindAsync(user.Id, sessionId, cancellationToken);
+        if (session is null)
+        {
+            return NotFound<ShoppingPlanView>();
+        }
+
+        if (!IsOpen(session))
+        {
+            return NotOpen<ShoppingPlanView>();
+        }
+
+        var plan = await menus.FindAsync(user.Id, session.MenuPlanId, cancellationToken);
+        if (plan is null)
+        {
+            return NotFound<ShoppingPlanView>();
+        }
+
+        var cards = await store.ListCardsAsync(user.Id, session.Id, cancellationToken);
+        var chosen = cards.Where(card => card.State == ShoppingPlanCardState.Accepted && card.Snapshot.Component is null).ToList();
+        // The order needs the real recipes, which a dish still being prepared does not have yet.
+        if (!clear && chosen.Any(card => card.ExpansionState == ShoppingPlanExpansionState.Pending))
+        {
+            return Failure<ShoppingPlanView>("expansions_pending", "Some recipes are still being prepared.");
+        }
+
+        var owners = new Dictionary<Guid, (ShoppingPlanCard Card, int Index)>();
+        foreach (var card in chosen)
+        {
+            for (var index = 0; index < MaxRepeats; index++)
+            {
+                owners[EntryKey(card, index)] = (card, index);
+            }
+        }
+
+        if (!clear)
+        {
+            await SequenceAsync(user.Id, session, cards, cancellationToken);
+        }
+
+        var entries = (await menus.ListEntriesAsync(user.Id, [session.MenuPlanId], cancellationToken))
+            .Where(entry => entry.Kind == MenuEntryKind.Meal && entry.Status == MenuEntryStatus.Planned && owners.ContainsKey(entry.CreationKey))
+            .ToList();
+        var days = new Dictionary<Guid, DateOnly?>();
+        if (clear)
+        {
+            foreach (var entry in entries.Where(entry => entry.PlannedDate is not null))
+            {
+                days[entry.Id] = null;
+            }
+        }
+        else
+        {
+            var length = plan.EndDate.DayNumber - plan.StartDate.DayNumber + 1;
+            foreach (var meal in entries.Where(entry => entry.PlannedDate is null).GroupBy(entry => entry.MealType ?? string.Empty))
+            {
+                var ordered = meal.OrderBy(entry => entry.SuggestedOrder ?? int.MaxValue).ThenBy(entry => entry.CreatedAt).ToList();
+                for (var position = 0; position < ordered.Count; position++)
+                {
+                    days[ordered[position].Id] = plan.StartDate.AddDays(position * length / ordered.Count);
+                }
+            }
+        }
+
+        var now = timeProvider.GetUtcNow();
+        foreach (var entry in entries.Where(entry => days.ContainsKey(entry.Id)))
+        {
+            entry.Change(plan, days[entry.Id], entry.MealType, entry.Servings, entry.Status, now);
+            plan.Touch(now);
+            await menus.SaveEntryAsync(plan, entry, cancellationToken);
+        }
+
+        // The board shows the first meal's day of each dish; a failed dish has no meal but may have a day.
+        foreach (var card in chosen)
+        {
+            var first = entries.FirstOrDefault(entry => owners[entry.CreationKey] == (card, 0));
+            var day = first is not null && days.TryGetValue(first.Id, out var given) ? given : clear ? null : card.Snapshot.PlannedDate;
+            if (day != card.Snapshot.PlannedDate)
+            {
+                card.Snapshot = card.Snapshot with { PlannedDate = day };
+                await store.SaveCardAsync(card, cancellationToken);
+            }
         }
 
         return await ResultAsync(user.Id, session, cancellationToken);
@@ -1065,7 +1257,7 @@ public sealed class ShoppingPlanApplicationService(
         card.Repeats = 1;
         card.ExpansionState = ShoppingPlanExpansionState.None;
         card.DecidedAt = null;
-        card.Snapshot = card.Snapshot with { PlannedDate = null };
+        card.Snapshot = card.Snapshot with { PlannedDate = null, People = null };
         await store.SaveCardAsync(card, cancellationToken);
         session.LastDecidedCardId = null;
         session.Status = ShoppingPlanStatus.Building;
@@ -1826,7 +2018,8 @@ public sealed class ShoppingPlanApplicationService(
 
             var now = timeProvider.GetUtcNow();
             // "Fazer de novo" is another day by definition, so only the first one can have the chosen date.
-            var entry = MenuEntry.Create(plan, key, recipeId, null, index == 0 ? plannedDate : null, card.Snapshot.MealType, yields ? setup.People * card.Repeats : setup.People, now, yields ? card.Repeats : 1);
+            var people = PeopleOf(card, setup);
+            var entry = MenuEntry.Create(plan, key, recipeId, null, index == 0 ? plannedDate : null, card.Snapshot.MealType, yields ? people * card.Repeats : people, now, yields ? card.Repeats : 1);
             plan.Touch(now);
             await menus.TryAddEntryAsync(plan, entry, cancellationToken);
         }
@@ -1946,7 +2139,7 @@ public sealed class ShoppingPlanApplicationService(
 
     private static RankCard ToRankCard(ShoppingPlanCard card, ShoppingPlanSetup setup, IngredientMatchKeys keys, IReadOnlyList<RestrictionCode> restrictions)
     {
-        var scale = (decimal)setup.People / Math.Max(1, card.Snapshot.Servings);
+        var scale = (decimal)PeopleOf(card, setup) / Math.Max(1, card.Snapshot.Servings);
         var ingredients = new List<RankIngredient>();
         foreach (var item in card.Snapshot.Ingredients.Where(item => !item.Optional && !item.Assumed && !HouseholdBasics.Is(item.Name)))
         {
@@ -2013,7 +2206,7 @@ public sealed class ShoppingPlanApplicationService(
             setup,
             new ShoppingPlanProgressView(setup.TotalMeals, filled, projection.ListItemCount, ShoppingPlanRanker.SessionMinutesUsed(loaded.Context.Accepted), setup.PrepMinutes),
             queue,
-            acceptedCards.Select(card => new ShoppingPlanAcceptedView(card.Id, card.Snapshot.Name, card.Snapshot.MealType, card.Repeats, card.AcceptMode, card.ExpansionState.ToString().ToLowerInvariant(), card.Snapshot.FailureCode, card.RecipeId, card.Snapshot.GuardCode, card.Snapshot.GuardIngredient, card.Snapshot.Component is not null, card.Snapshot.PlannedDate, card.Snapshot.TotalMinutes)).ToList(),
+            acceptedCards.Select(card => new ShoppingPlanAcceptedView(card.Id, card.Snapshot.Name, card.Snapshot.MealType, card.Repeats, card.AcceptMode, card.ExpansionState.ToString().ToLowerInvariant(), card.Snapshot.FailureCode, card.RecipeId, card.Snapshot.GuardCode, card.Snapshot.GuardIngredient, card.Snapshot.Component is not null, card.Snapshot.PlannedDate, card.Snapshot.TotalMinutes, PeopleOf(card, setup))).ToList(),
             canAskBatch && eligible.Count < LowQueue,
             session.ConsecutiveRejections >= MoreOptionsAfterRejections,
             open && eligible.Count == 0 && !canAskBatch && filled < setup.TotalMeals,
@@ -2123,6 +2316,8 @@ public sealed class ShoppingPlanApplicationService(
     private static bool IsOpen(ShoppingPlanSession session) => session.Status is ShoppingPlanStatus.Building or ShoppingPlanStatus.Reviewing;
 
     private static string Name(ShoppingPlanStatus status) => status.ToString().ToLowerInvariant();
+
+    private static int PeopleOf(ShoppingPlanCard card, ShoppingPlanSetup setup) => card.Snapshot.People ?? setup.People;
 
     private static Guid EntryKey(ShoppingPlanCard card, int index) => DerivedKey(card.ExpansionKey, $"entry-{index}");
 

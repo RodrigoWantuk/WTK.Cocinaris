@@ -737,15 +737,15 @@ Migrations are additive, and rollback means deploying the earlier code with unus
 
 ## Execution state
 
-- **Current run delivery target:** Slice 7, web push.
-- **Current checkpoint:** Slice 7 implemented on `agent/plan-0062-s7-web-push`, in a draft pull request. No notification has reached a real phone.
-- **Last completed step:** Worker check and signed-in journey on the proxy replica with disposable keys; see the Slice 7 log entry.
-- **Exact next action:** The owner merges this pull request (#91), deploys, adds keys with `scripts/ops/generate-vapid-keys.mjs`, turns notifications on from a real installed phone, and confirms one arrives at 09:00. All seven slices are then delivered except the Slice 4 limits, which wait for G2-A.
-- **Blockers:** G7 and G6 need the owner's phone. G5-A and G1-B need the provider key. G1-A has no owner comment. G2-A for the Slice 4 limits and for storage guidance. The browser smoke matrix does not finish on this host.
+- **Current run delivery target:** None; all seven slices are merged (Slice 7 via #91). PLAN-0065 reworks the planning screens.
+- **Current checkpoint:** G1-A and G2-A accepted by the owner on 2026-11-06 (see the log entry of that day).
+- **Last completed step:** Owner acceptance recorded in the review documents, the runbook, and the code comments of the storage flag.
+- **Exact next action:** The Slice 4 limits and warnings (`cook_by`, "Congelar hoje", "Deixar como está") are no longer blocked. Deliver them after PLAN-0065, or earlier if the owner asks. Separately, the owner decides when the test host turns `Planning__StorageGuidance__Enabled` on.
+- **Blockers:** G7 and G6 need the owner's phone. G5-A and G1-B need the provider key. The browser smoke matrix does not finish on this host.
 - **Partially modified areas:** Slice 4 limits and warnings are not delivered.
 - **Documentation delivered:** ADR-0013 and its index row; runbook, `api.env.example`, privacy, product spec, planning, and gates documents; PLAN-0048 registry row; this plan.
 - **Validation performed:** See the Slice 7 entry in the progress log.
-- **Known failures or limitations:** See the Slice 7 entry. Earlier limits stand: storage values are not checked against primary sources, and G1-A has no separate owner comment.
+- **Known failures or limitations:** See the Slice 7 entry. Storage values marked unverified are still not checked against a primary source; the owner's acceptance does not change that.
 - **Working tree state:** Clean after this commit.
 
 ## Progress log
@@ -991,6 +991,14 @@ Migrations are additive, and rollback means deploying the earlier code with unus
 - **Correction:** the Slice 7 entry says #90 and this branch "merge cleanly in either order". That was wrong and was never tried: after #90 merged, this branch conflicted in the plan and the registry.
 - **Changes:** merged `origin/main` at `41d597a`, kept both progress log sections in order, and updated the state and registry to say #90 is merged.
 - **Validation:** the diff against the gated commit `e4d4fa3` is limited to the files #90 changed and this plan's records, so the gates were not rerun.
+
+### 2026-11-06 — Claude Code (owner gates G1-A and G2-A)
+
+- **Owner instruction (written, 2026-11-06):** "Assuma as revisões como aceitas e siga o trabalho." The agent had listed the pending reviews, G1-A and G2-A among them, in the message just before.
+- **Recorded:** `restriction-rules-review.md` and `storage-guidance-review.md` are marked accepted as written, quoting the instruction; the runbook, `StorageGuidance`, `Program.cs`, and the storage catalog say the table is accepted. Committed with PLAN-0065 Slice 3, whose pull request carries the record.
+- **Not changed:** no rule or value. The flag stays off on the test host until the owner asks for it, because it changes what people are told about their food. Values marked unverified remain unverified.
+- **Unblocked:** the Slice 4 limits and warnings, which needed G2-A.
+- **Not accepted by this instruction:** the evaluations (G1-B, G5-A) and phone checks (G6, G7) are measurements, not reviews; they still have to run.
 
 ## Completion and handoff checklist
 

@@ -6,7 +6,9 @@
  *
  * In the browser, at 360 px: seven snacks within fourteen days with no dates, from saved recipes, counting
  * the taps on the board; a typed search that finds a saved recipe; undo; a mixed menu of 3 lunches and 2
- * dinners; keyboard only (open, choose, Escape, focus back); and the board's title in en and es.
+ * dinners; keyboard only (open, choose, Escape, focus back); Slice 3's "Completar", a dish's day and
+ * "Rende mais" (asking before passing the count), the group counter, "Distribuir nos dias", and
+ * "Trocar"; and the board's title in en and es.
  * Names are unique per run.
  *
  * Usage: COCINARIS_SMOKE_PASSWORD_A=<development-fixture-password> \
@@ -84,7 +86,7 @@ const tap = async (locator) => {
 try {
   await signIn(page);
   const snacks = Array.from({ length: 8 }, (_, index) => `Lanche E2E ${run} ${index + 1}`);
-  const mains = [`Almoco E2E ${run} 1`, `Almoco E2E ${run} 2`];
+  const mains = Array.from({ length: 5 }, (_, index) => `Almoco E2E ${run} ${index + 1}`);
   await abandonCurrent(page);
   await api(page, [
     ...snacks.map((name) => ({
@@ -175,6 +177,58 @@ try {
   check("keyboard: choose, close, and focus returns to the row", focused === "board-choose-dinner", focused);
   const after = await page.locator('[data-testid="board-group-dinner"] h2').textContent();
   check("a dinner counts as a dinner", after.includes("1 de 2"), after);
+
+  // Slice 3: "Completar" proposes one dish per missing meal and changes nothing until confirmed.
+  const heading = (meal) => page.locator(`[data-testid="board-group-${meal}"] h2`).textContent();
+  await page.getByTestId("board-complete").click();
+  const complete = page.getByTestId("complete-sheet");
+  await complete.getByTestId("complete-row").first().waitFor();
+  const rows = await complete.getByTestId("complete-row").count();
+  check("Completar proposes a dish for each of the 4 missing meals", rows === 4, `${rows} rows`);
+  check("nothing is chosen before confirming", (await page.getByTestId("board-progress").textContent()).startsWith("1 de 5"));
+  await complete.getByTestId("complete-confirm").click();
+  await complete.waitFor({ state: "detached", timeout: 15000 });
+  await page.waitForFunction(() => document.querySelector('[data-testid="board-progress"]')?.textContent?.startsWith("5 de 5"), null, { timeout: 15000 });
+  check("one confirmation fills the menu and says so", (await page.getByTestId("board-notice").textContent()).includes("4 pratos"));
+
+  // A dish's actions: a day, and covering more meals than wanted only after saying yes.
+  await page.getByTestId("board-group-lunch").getByTestId("board-dish").first().click();
+  const actions = page.getByTestId("board-dish-sheet");
+  await actions.locator('[data-testid^="board-dish-day-2"]').nth(1).click();
+  await actions.locator('[data-testid^="board-dish-day-2"][aria-pressed="true"]').waitFor({ timeout: 15000 });
+  await actions.getByTestId("board-dish-yield-2").click();
+  const raise = await actions.getByTestId("board-dish-raise").textContent();
+  check("Rende mais asks before passing what was wanted", raise.includes("Você pediu 3") && raise.includes("ficam 4"), raise);
+  await actions.getByTestId("board-dish-raise-confirm").click();
+  await page.waitForFunction(() => document.querySelector('[data-testid="board-group-lunch"] h2')?.textContent?.includes("4 de 4"), null, { timeout: 15000 });
+  check("after yes, the dish covers two lunches and the count follows", true);
+  await page.keyboard.press("Escape");
+  await actions.waitFor({ state: "detached" });
+  check("a dish given a day shows it on the board", (await page.getByTestId("board-dish").filter({ hasText: /\d{1,2} de \w+/ }).count()) === 1);
+
+  // The group counter: one more dinner opens one meal again.
+  await page.getByTestId("board-count-dinner-more").click();
+  await page.waitForFunction(() => document.querySelector('[data-testid="board-group-dinner"] h2')?.textContent?.includes("2 de 3"), null, { timeout: 15000 });
+  // The heading moves at once; the bar follows when the server has saved the count.
+  await page.getByTestId("board-complete").waitFor({ timeout: 15000 });
+  check("the group counter changes what is wanted", true, await heading("dinner"));
+
+  // "Distribuir nos dias" dates every dish, and "Tirar os dias" takes the days away.
+  const dishCount = await page.getByTestId("board-dish").count();
+  await page.getByTestId("board-spread-action").click();
+  await page.waitForFunction((total) => [...document.querySelectorAll('[data-testid="board-dish"]')].filter((dish) => /\d{1,2} de \w+/.test(dish.textContent ?? "")).length === total, dishCount, { timeout: 15000 });
+  check("spreading gives every dish a day", true);
+  await page.getByTestId("board-spread-clear").click();
+  await page.waitForFunction(() => ![...document.querySelectorAll('[data-testid="board-dish"]')].some((dish) => /\d{1,2} de \w+/.test(dish.textContent ?? "")), null, { timeout: 15000 });
+  check("and the days can be taken away again", true);
+
+  // "Trocar" removes the dish and opens its meal's options at once.
+  await page.getByTestId("board-group-dinner").getByTestId("board-dish").first().click();
+  await actions.getByTestId("board-dish-swap").click();
+  await sheet.waitFor();
+  check("Trocar opens the dinner options", (await sheet.locator("h2").textContent()).includes("Jantar"), await sheet.locator("h2").textContent());
+  await page.keyboard.press("Escape");
+  await sheet.waitFor({ state: "detached" });
 
   // Other languages read the board in their own words.
   const sessionId = page.url().split("/").pop();

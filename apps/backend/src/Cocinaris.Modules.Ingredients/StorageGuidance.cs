@@ -7,8 +7,9 @@ namespace Cocinaris.Modules.Ingredients;
 public sealed class StorageGuidanceOptions
 {
     /// <summary>
-    /// Gets or sets whether curated storage times may be shown. Off by default: it is turned on only
-    /// after the owner approves <c>docs/domain/storage-guidance-review.md</c> (PLAN-0062 gate G2-A).
+    /// Gets or sets whether curated storage times may be shown. Off by default; a host turns it on in
+    /// its configuration. The owner accepted <c>docs/domain/storage-guidance-review.md</c> on 2026-11-06
+    /// (PLAN-0062 gate G2-A).
     /// </summary>
     public bool Enabled { get; set; }
 }

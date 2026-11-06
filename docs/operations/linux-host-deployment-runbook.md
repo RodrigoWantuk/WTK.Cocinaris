@@ -164,7 +164,7 @@ The production build publishes `sw.js`, which precaches application files only. 
 
 ## Storage guidance flag (PLAN-0062)
 
-`Planning__StorageGuidance__Enabled` in `api.env` defaults to `false`. Set it to `true` only after the owner approves `docs/domain/storage-guidance-review.md` in writing, then restart the service. Setting it back to `false` removes the advice at once and changes no stored data. Lots already frozen stay frozen.
+`Planning__StorageGuidance__Enabled` in `api.env` defaults to `false`. Set it to `true` only after the owner approves `docs/domain/storage-guidance-review.md` in writing, then restart the service. The owner accepted the table on 2026-11-06; the test host keeps the flag off until the owner asks for it to be turned on, because turning it on changes what people see about their food. Setting it back to `false` removes the advice at once and changes no stored data. Lots already frozen stay frozen.
 
 ## Plan notifications (PLAN-0062, [ADR-0013](../architecture/decisions/0013-web-push-plan-reminders.md))
 

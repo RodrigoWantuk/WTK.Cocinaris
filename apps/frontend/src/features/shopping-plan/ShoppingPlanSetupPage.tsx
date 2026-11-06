@@ -17,6 +17,7 @@ import {
   formatMenuDay,
   localIsoDate,
 } from "@/features/planning/planningDates";
+import { Counter } from "./Counter";
 import { restrictionLabel } from "./restrictionLabel";
 import { useShoppingPlanRepository } from "./ShoppingPlanProvider";
 import { ShoppingPlanRecentList } from "./ShoppingPlanRecent";
@@ -46,59 +47,6 @@ function countsOf(setup: ShoppingPlanSetup): MealCounts {
     if (meal in counts) counts[meal as MealType] = setup.days;
   }
   return counts;
-}
-
-/** A labeled number control with 44 px targets, usable by keyboard and screen readers. */
-function Counter({
-  label,
-  value,
-  min,
-  max,
-  onChange,
-  testId,
-}: {
-  label: string;
-  value: number;
-  min: number;
-  max: number;
-  onChange: (next: number) => void;
-  testId: string;
-}) {
-  const { t } = useProductionI18n();
-  return (
-    <div className="flex min-h-11 items-center gap-3">
-      <span className="min-w-0 flex-1 text-[15px] font-medium">{label}</span>
-      <Button
-        type="button"
-        variant="secondary"
-        className="h-11 w-11 p-0 text-lg"
-        aria-label={t("shoppingPlan.stepper.less", { label })}
-        data-testid={`${testId}-less`}
-        disabled={value <= min}
-        onClick={() => onChange(value - 1)}
-      >
-        −
-      </Button>
-      <output
-        data-testid={testId}
-        aria-label={`${label}: ${value}`}
-        className="tabular w-8 text-center text-lg font-semibold"
-      >
-        {value}
-      </output>
-      <Button
-        type="button"
-        variant="secondary"
-        className="h-11 w-11 p-0 text-lg"
-        aria-label={t("shoppingPlan.stepper.more", { label })}
-        data-testid={`${testId}-more`}
-        disabled={value >= max}
-        onClick={() => onChange(value + 1)}
-      >
-        +
-      </Button>
-    </div>
-  );
 }
 
 /**

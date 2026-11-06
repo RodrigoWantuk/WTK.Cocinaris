@@ -162,6 +162,11 @@ function repository(
     chooseRecipe: unused,
     setPreferences: unused,
     setMealCounts: unused,
+    setCardDay: unused,
+    setCardYield: unused,
+    setCardPeople: unused,
+    chooseMany: vi.fn(async () => ({ plan: plan(), failed: [] })),
+    distribute: unused,
     setReason: unused,
     undo: unused,
     expand: unused,
@@ -648,6 +653,162 @@ describe("menu board (PLAN-0065)", () => {
     expect(screen.getByTestId("board-preparing")).toHaveTextContent(
       "Preparando receitas: 6 de 7",
     );
+  });
+});
+
+describe("acting on chosen dishes (PLAN-0065 Slice 3)", () => {
+  it("completes what is missing with one confirmation, after a swap", async () => {
+    const chooseMany = vi.fn(async () => ({
+      plan: withChosen(7),
+      failed: [],
+    }));
+    renderAt(
+      repository({ get: vi.fn(async () => withChosen(5)), chooseMany }),
+      "/app/compras/planejar/s1",
+    );
+    const user = userEvent.setup();
+    await user.click(await screen.findByTestId("board-complete"));
+    const sheet = await screen.findByTestId("complete-sheet");
+    const rows = within(sheet).getAllByTestId("complete-row");
+    expect(rows.map((row) => row.textContent)).toEqual([
+      expect.stringContaining("Lanche a"),
+      expect.stringContaining("Lanche b"),
+    ]);
+    // Nothing is chosen until the person confirms.
+    expect(chooseMany).not.toHaveBeenCalled();
+    await user.click(
+      within(sheet).getByRole("button", { name: "Trocar Lanche a" }),
+    );
+    expect(within(sheet).getAllByTestId("complete-row")[0]).toHaveTextContent(
+      "Lanche c",
+    );
+    await user.click(within(sheet).getByTestId("complete-confirm"));
+    expect(chooseMany).toHaveBeenCalledWith(
+      "s1",
+      [
+        { cardId: "c", mealType: "snack" },
+        { cardId: "b", mealType: "snack" },
+      ],
+      expect.anything(),
+    );
+    expect(await screen.findByTestId("board-notice")).toHaveTextContent(
+      "2 pratos adicionados.",
+    );
+    await waitFor(() =>
+      expect(screen.queryByTestId("complete-sheet")).toBeNull(),
+    );
+  });
+
+  it("names what could not be added and what is still missing", async () => {
+    const chooseMany = vi.fn(async () => ({
+      plan: withChosen(6),
+      failed: ["b"],
+    }));
+    renderAt(
+      repository({ get: vi.fn(async () => withChosen(5)), chooseMany }),
+      "/app/compras/planejar/s1",
+    );
+    const user = userEvent.setup();
+    await user.click(await screen.findByTestId("board-complete"));
+    const sheet = await screen.findByTestId("complete-sheet");
+    await user.click(within(sheet).getByTestId("complete-confirm"));
+    const failed = await within(sheet).findByTestId("complete-failed");
+    expect(failed).toHaveTextContent("Não consegui adicionar: Lanche b.");
+    expect(failed).toHaveTextContent("Ainda falta 1 refeição.");
+  });
+
+  it("gives a dish a day, and asks before it covers more than the menu wants", async () => {
+    const value = withChosen(2, 3);
+    const setCardDay = vi.fn(async () => value);
+    const setMealCounts = vi.fn(async () => value);
+    const setCardYield = vi.fn(async () => value);
+    renderAt(
+      repository({
+        get: vi.fn(async () => value),
+        setCardDay,
+        setMealCounts,
+        setCardYield,
+      }),
+      "/app/compras/planejar/s1",
+    );
+    const user = userEvent.setup();
+    await user.click((await screen.findAllByTestId("board-dish"))[0]);
+    const sheet = await screen.findByTestId("board-dish-sheet");
+    await user.click(within(sheet).getByTestId("board-dish-day-2026-11-06"));
+    expect(setCardDay).toHaveBeenCalledWith(
+      "s1",
+      "x0",
+      "2026-11-06",
+      expect.anything(),
+    );
+
+    // One snack is left, so covering three would make four: the count rises only if confirmed.
+    await user.click(within(sheet).getByTestId("board-dish-yield-3"));
+    expect(within(sheet).getByTestId("board-dish-raise")).toHaveTextContent(
+      "Você pediu 3. Com isso ficam 4.",
+    );
+    expect(setCardYield).not.toHaveBeenCalled();
+    await user.click(within(sheet).getByTestId("board-dish-raise-confirm"));
+    await waitFor(() =>
+      expect(setCardYield).toHaveBeenCalledWith(
+        "s1",
+        "x0",
+        3,
+        expect.anything(),
+      ),
+    );
+    expect(setMealCounts).toHaveBeenCalledWith(
+      "s1",
+      { breakfast: 0, lunch: 0, dinner: 0, snack: 4 },
+      expect.anything(),
+    );
+  });
+
+  it("swaps a dish by removing it and opening its meal's options", async () => {
+    const removeCard = vi.fn(async () => withChosen(1));
+    renderAt(
+      repository({ get: vi.fn(async () => withChosen(2)), removeCard }),
+      "/app/compras/planejar/s1",
+    );
+    const user = userEvent.setup();
+    await user.click((await screen.findAllByTestId("board-dish"))[0]);
+    await user.click(await screen.findByTestId("board-dish-swap"));
+    expect(removeCard).toHaveBeenCalledWith("s1", "x0", expect.anything());
+    expect(await screen.findByTestId("meal-sheet")).toBeInTheDocument();
+    expect(screen.queryByTestId("board-dish-sheet")).toBeNull();
+  });
+
+  it("sends the last count after quick taps, and spreads dishes over the days on request", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const setMealCounts = vi.fn(async () => withChosen(2, 9));
+    const distribute = vi.fn(async () => withChosen(2));
+    renderAt(
+      repository({
+        get: vi.fn(async () => withChosen(2)),
+        setMealCounts,
+        distribute,
+      }),
+      "/app/compras/planejar/s1",
+    );
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    const more = await screen.findByTestId("board-count-snack-more");
+    await user.click(more);
+    await user.click(more);
+    expect(screen.getByTestId("board-count-snack")).toHaveTextContent("9");
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(700);
+    });
+    expect(setMealCounts).toHaveBeenCalledTimes(1);
+    expect(setMealCounts).toHaveBeenCalledWith(
+      "s1",
+      { breakfast: 0, lunch: 0, dinner: 0, snack: 9 },
+      expect.anything(),
+    );
+    // Never below what is chosen.
+    expect(screen.getByTestId("board-count-snack-less")).toBeEnabled();
+
+    await user.click(screen.getByTestId("board-spread-action"));
+    expect(distribute).toHaveBeenCalledWith("s1", false, expect.anything());
   });
 });
 

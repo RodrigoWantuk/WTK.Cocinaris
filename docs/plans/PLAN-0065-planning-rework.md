@@ -355,11 +355,11 @@ Branch: `agent/plan-0065-s2-board`.
 
 Branch: `agent/plan-0065-s3-dish-actions`.
 
-- [ ] Actions sheet: Trocar, Marcar um dia, Rende mais, Porções, Ver receita, Remover.
-- [ ] "Completar": proposals for everything missing, with swap, and one confirmation.
-- [ ] Group counters on the board.
-- [ ] Bases as a quiet row on the board, not an interruption: "Base sugerida: Frango desfiado serve para Wrap e Escondidinho. Adicionar". Style `mix` keeps requesting components, except for a menu of only snacks or breakfasts.
-- [ ] "Distribuir nos dias", optional, in the board's menu: dates undated dishes across the period using `ShoppingPlanSequencer`, what spoils first coming first.
+- [x] Actions sheet: Trocar, Marcar um dia, Rende mais, Porções, Ver receita, Remover.
+- [x] "Completar": proposals for everything missing, with swap, and one confirmation.
+- [x] Group counters on the board.
+- [x] Bases as a quiet row on the board, not an interruption: "Base sugerida: Frango desfiado serve para Wrap e Escondidinho. Adicionar". Style `mix` keeps requesting components, except for a menu of only snacks or breakfasts.
+- [x] "Distribuir nos dias", optional, in the board's menu: dates undated dishes across the period using `ShoppingPlanSequencer`, what spoils first coming first.
 
 **Hazards:** Completar sends one decision per dish, so handle a partial failure by naming what stayed missing. `Rende mais` counts toward its type, so it cannot pass what is wanted without raising the count; ask first.
 
@@ -429,13 +429,13 @@ Prices and budgets, curated pack sizes, loose list items (a decision of PLAN-006
 
 ## Execution state
 
-- **Current run delivery target:** Slice 2, the first screen, the board, and the options sheet.
-- **Current checkpoint:** Slice 2 implemented on `agent/plan-0065-s2-board`, in a draft pull request.
-- **Last completed step:** Screens, tests, browser journeys, mobile audit, and documents; see the Slice 2 log entry.
-- **Exact next action:** The owner reviews and merges the Slice 2 pull request, asks for a deploy, and answers on a phone: "Consigo pedir o que eu quero, e só lanches?" Slice 3 then starts from fresh `origin/main` on `agent/plan-0065-s3-dish-actions`.
-- **Blockers:** None for Slice 3. S1-AI still needs the provider key. The WebKit and real iPhone check of the sheet with the keyboard needs the owner's phone.
+- **Current run delivery target:** Slice 3, acting on chosen dishes and "Completar".
+- **Current checkpoint:** Slice 3 implemented on `agent/plan-0065-s3-dish-actions`, in a draft pull request. Slice 2 merged via #97.
+- **Last completed step:** Routes, screens, tests, browser journeys, mobile audit, and documents; see the Slice 3 log entry. The owner's acceptance of PLAN-0062 gates G1-A and G2-A is recorded in the same pull request.
+- **Exact next action:** The owner reviews and merges the Slice 3 pull request. Slice 4 (the menu in use) then starts from fresh `origin/main` on `agent/plan-0065-s4-in-use`.
+- **Blockers:** None for Slice 4. S1-AI still needs the provider key. The WebKit and real iPhone check of the sheets with the keyboard needs the owner's phone; the owner chose on 2026-11-06 to proceed without waiting for it.
 - **Partially modified areas:** None. Old batch fields and unused copy keys stay until Slice 5.
-- **Documentation delivered:** This plan and registry row; product spec flow and planning domain document.
+- **Documentation delivered:** This plan and registry row; product spec flow, planning domain document, the review documents of G1-A and G2-A, and the runbook.
 - **Validation performed:** See the Slice 2 entry in the progress log.
 - **Known failures or limitations:** See the Slice 2 entry.
 - **Working tree state:** Clean after this commit.
@@ -524,6 +524,27 @@ Prices and budgets, curated pack sizes, loose list items (a decision of PLAN-006
   - **Copy keys of the removed screens** are left for Slice 5's dead-code pass, so this diff stays reviewable.
 - **Validation performed:** Frontend typecheck, lint, format, and the shopping plan, planning, and app suites (91 tests in the two feature folders). Backend: the new route's integration test and the affected ones. OpenAPI and client regenerated, drift check passed. Proxy replica at 360 px: `planning-board-journey` 18 of 18 (7 snacks with no dates in 11 taps on the board, typed search, undo, 3 lunches and 2 dinners, AI failure, keyboard only, en and es); `shopping-plan-journey` 19 of 19; `planning-entry-journey` 16 of 16; `session-route-journey` passed; `mobile-audit` 57 screens at 320, 360, and 390 px with 0 problems, including the open sheet, typed text, details, and confirmation. Local gates run on the pull request head; results are in the pull request.
 - **Not run:** WebKit and a real iPhone with the keyboard (WebKit does not start on this host), the real model, a screen reader.
+- **Next action:** See "Exact next action".
+
+### 2026-11-06 — Claude Code (Slice 3)
+
+- **Run delivery target:** Slice 3, after the owner merged #97 and wrote "Assuma as revisões como aceitas e siga o trabalho."
+- **Changes:**
+  - **Backend.** `PUT /{id}/cards/{cardId}/people` (people for one dish, 1 to 12, stored on the card as `People`; entries, ranking, and list scale to it; at most 24 portions with "Rende mais"; undo forgets it). `POST /{id}/choices` chooses 1 to 40 offered cards in one request, each as its own decision, and returns the plan plus `failed`. `POST /{id}/distribution` sequences the draft and spreads each meal type's undated entries over the period, or with `clear` removes every day; it refuses with `expansions_pending` while a recipe is being prepared. The accepted view adds `people`.
+  - **Frontend.** `DishActionsSheet` (Ver receita, Trocar, day chips with "Sem dia", "Rende quantas refeições?" with a confirmation before raising the count, people counter, Tentar de novo, Remover). `CompleteSheet` (one proposal per missing meal, never the same dish twice, "Trocar" per row, one automatic request per meal type short of offers, "Usar estes (N)", and the names of what failed with what is still missing). A compact counter on each group heading, debounced 600 ms. Suggested bases as a quiet row with "Adicionar" and "Agora não". "Mais opções", folded, with "Adicionar refeição", "Distribuir nos dias", and "Tirar os dias". The bar's main action is "Completar (N)" while meals are missing. `Counter` moved to its own module.
+  - **Tooling.** `planning-board-journey.mjs` covers Completar, a day, "Rende mais" with its confirmation, the group counter, distribution and its undoing, and "Trocar". `mobile-audit.mjs` audits the Completar sheet, and its overlap rule now ignores content scrolling under a fixed bar; instead it fails anything still under a bottom bar with the page scrolled to its end, which is the real defect.
+  - **Owner gates of PLAN-0062.** G1-A and G2-A recorded as accepted; see PLAN-0062's log of this day.
+- **Deviations from this plan:**
+  - **"Completar" is one request, not one decision per dish.** A server route makes the partial outcome testable, keeps the order of choices, and spends one rate-limit token instead of up to 40; each dish is still its own decision, so the hazard's rule holds.
+  - **"Porções" is people per dish,** because portions on the board follow people times the meals a dish covers; a separate portions number would contradict "Rende mais".
+  - **"Trocar" removes the dish first,** then opens its meal's options. A full meal type has no offers to swap to, so keeping the old dish until a new one is chosen would show an empty sheet.
+  - **Group counters cannot go below what is chosen in that meal type** on screen, which is stricter than the server's rule for lunch and dinner; the server still answers `meal_count_below_chosen` for the rest.
+  - **"Distribuir nos dias" and adding a meal type live in a folded "Mais opções"** at the end of the board, the board's menu in this plan's words, so the board keeps to its dishes.
+- **Validation performed:** Integration: the three new tests (partial and repeated Completar with isolation, people with yield limits, distribution with pending refusal and clearing) and the three affected ones pass. Unit: 67 planning, restriction, and storage tests. Frontend: typecheck, lint, format, and 39 shopping-plan tests (5 new) plus the planning suite. OpenAPI exported, client regenerated, drift check passed. Proxy replica at 360 px: `planning-board-journey` 28 of 28; `shopping-plan-journey` 19 of 19; `planning-entry-journey` 16 of 16; `session-route-journey` passed; `mobile-audit` 60 screens with 1 problem. The first runs of the shopping-plan and entry journeys failed on the `mutation` limit after back-to-back runs, and passed when rerun after the window.
+- **Local gates on `4b7a7e1`:** 31 of 32 steps passed (14 architecture, 487 unit, 267 integration, and 628 frontend tests). `backend-format` failed: the edit script added a UTF-8 BOM to `ShoppingPlanEndpoints.cs`, `ShoppingPlanApplicationService.cs`, and `ShoppingPlan.cs`, which `main` has without one. The next commit removes the three BOMs and nothing else; `dotnet format whitespace --verify-no-changes` passes on the three projects. The gates run once more on that head.
+- **Not run or not passing:**
+  - `mobile-audit`: the list at 320 px has a 110 px line, because a fixture name left by `planning-entry-journey`, "Item Entrada E2E 1793901123754", wraps on its 13-digit number. The list did not change in this slice; real names do not have that shape. Left as a known fixture limit.
+  - WebKit and a real iPhone with the keyboard (WebKit does not start on this host), the real model, a screen reader.
 - **Next action:** See "Exact next action".
 
 ## Completion and handoff checklist
