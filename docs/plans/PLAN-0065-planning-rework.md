@@ -1,13 +1,13 @@
 # PLAN-0065: Planning Rework ("Montar o cardápio")
 
-- **Status:** In Progress; Slices 0 to 3 merged (#95 to #98); D1 and D2 confirmed by the owner on 2026-11-05; Slice 4 in a draft PR
+- **Status:** In Progress; Slices 0 to 4 merged (#95 to #99); D1 and D2 confirmed by the owner on 2026-11-05; Slice 5 (the last) in a draft PR; owner checks remain (see Execution state)
 - **Type:** Implementation
 - **Priority:** High (owner request)
 - **Owner:** Claude Code
 - **Created:** 2026-11-05
 - **Last updated:** 2026-11-06
 - **Branch:** Plan publication `agent/plan-0065-planning-rework`; each slice uses the branch named in its section
-- **Pull request:** #94 (plan publication, merged); #95 to #98 (Slices 0 to 3, merged); Slice 4 draft PR
+- **Pull request:** #94 (plan publication, merged); #95 to #99 (Slices 0 to 4, merged); Slice 5 draft PR
 - **Related issues:** None
 - **Related ADRs:** ADR-0009, ADR-0012, ADR-0013
 - **Dependencies:** PLAN-0062, PLAN-0063, PLAN-0064 (all merged). This plan replaces the deck and review screens of PLAN-0062 Slice 1 and the panel of PLAN-0064.
@@ -384,12 +384,12 @@ Branch: `agent/plan-0065-s4-in-use`.
 
 Branch: `agent/plan-0065-s5-finish`.
 
-- [ ] Screen reader pass (VoiceOver and TalkBack) and 200% zoom on board, sheet, list. Both themes.
-- [ ] en and es walked in a browser.
-- [ ] Remove dead code: legacy deck copy, `MoreOptionsAfterRejections`, unused API fields, unused prompts.
-- [ ] Documents: rewrite `guided-shopping-planning.md`; update `planning-and-shopping.md`, the design system (sheets, fixed bars, coarse pointer), user journeys, and privacy.
-- [ ] Metrics: `planning.meal_filled{source=saved|idea|ai|requested}`, `planning.request{outcome}`, time from start to acceptance. No dish or typed text in labels.
-- [ ] Update PLAN-0062's acceptance criteria to state what was replaced.
+- [ ] Screen reader pass (VoiceOver and TalkBack) and 200% zoom on board, sheet, list. Both themes. *Automated part done: `planning-a11y-audit.mjs` runs axe-core in both themes and checks 200% zoom. VoiceOver and TalkBack need a phone and stay open.*
+- [x] en and es walked in a browser.
+- [x] Remove dead code: legacy deck copy, `MoreOptionsAfterRejections`, unused API fields, unused prompts.
+- [x] Documents: rewrite `guided-shopping-planning.md`; update `planning-and-shopping.md`, the design system (sheets, fixed bars, coarse pointer), user journeys, and privacy.
+- [x] Metrics: `planning.meal_filled{source=saved|idea|ai|requested}`, `planning.request{outcome}`, time from start to acceptance. No dish or typed text in labels.
+- [x] Update PLAN-0062's acceptance criteria to state what was replaced.
 
 **Gate S5:** full gates; external test with three people (PLAN-0054 decision 8), recording whether they reach a list unaided and whether they keep a second list.
 
@@ -410,6 +410,8 @@ Branch: `agent/plan-0065-s5-finish`.
 
 "About 30" is an estimate from the screens, to be measured when Slice 0 adds the audit.
 
+**Measured by the end of Slice 5 (2026-11-06), on the proxy replica:** "7 snacks in 14 days, no days" is a valid menu; the first screen asks 3 questions and fits 360 × 740; 7 snacks from saved recipes take 11 taps on the board; a specific dish is asked for in 2 steps; no refusal is needed to reach a menu; list lines stay within the audit's 90 px limit except one fixture name at 320 px; the phone audit finds no control under 44 px. Full meals among offered snacks were checked on the real session's names with `MealFit`, not on the live model, and the share of dishes leading with one taste needs S1-AI.
+
 ## Risks
 
 | Risk | Likelihood | Impact | Mitigation |
@@ -429,15 +431,15 @@ Prices and budgets, curated pack sizes, loose list items (a decision of PLAN-006
 
 ## Execution state
 
-- **Current run delivery target:** Slice 4, the menu in use.
-- **Current checkpoint:** Slice 4 implemented on `agent/plan-0065-s4-in-use`, in a draft pull request. Slice 3 merged via #98.
-- **Last completed step:** Migration, routes, screens, tests, browser journeys, mobile audit, and documents; see the Slice 4 log entry.
-- **Exact next action:** The owner reviews and merges the Slice 4 pull request. Slice 5 (finish) then starts from fresh `origin/main` on `agent/plan-0065-s5-finish`.
-- **Blockers:** None for Slice 5. S1-AI still needs the provider key. The owner's phone check of the route with the screen kept on (Gate S4, and PLAN-0062 G6) and of the sheets with the keyboard is still open; the owner chose on 2026-11-06 to proceed without waiting for it.
-- **Partially modified areas:** None. Old batch fields and unused copy keys (including the removed `AiMealSuggestion`'s `planning.ai.*`) stay until Slice 5.
-- **Documentation delivered:** This plan and registry row; product spec flow, planning domain document, and privacy document.
-- **Validation performed:** See the Slice 4 entry in the progress log.
-- **Known failures or limitations:** See the Slice 4 entry.
+- **Current run delivery target:** Slice 5, finish.
+- **Current checkpoint:** Slice 5 implemented on `agent/plan-0065-s5-finish`, in a draft pull request. Slice 4 merged via #99. All code slices of this plan are delivered once it merges.
+- **Last completed step:** Dead code removed, metrics added, accessibility pass, documents rewritten; see the Slice 5 log entry.
+- **Exact next action:** The owner reviews and merges the Slice 5 pull request. The plan then stays In Progress only for owner checks: S1-AI with the provider key (`PLAN0065_LIVE_EVAL=1`), a phone check of the sheets with the keyboard and of the route with the screen kept on, VoiceOver and TalkBack on the board, sheet, and list, and Gate S5's external test with three people. When those are recorded, mark the plan Completed. PLAN-0062 Slice 4's limits and warnings come next if the owner wants them.
+- **Blockers:** S1-AI needs the provider key; the phone, screen reader, and external test need the owner.
+- **Partially modified areas:** None.
+- **Documentation delivered:** This plan and registry row; product spec rewritten; planning domain, design system, user journeys, privacy, and AI protocol documents; PLAN-0062's acceptance criteria.
+- **Validation performed:** See the Slice 5 entry in the progress log.
+- **Known failures or limitations:** See the Slice 5 entry.
 - **Working tree state:** Clean after this commit.
 
 ## Progress log
@@ -567,6 +569,24 @@ Prices and budgets, curated pack sizes, loose list items (a decision of PLAN-006
 - **Not passing, outside this slice:** `planning-journey` passes the menu, list, and purchase steps and stops at the cooking screen, as since Slice 0. `reservations-journey` passes the menu's readiness checks and stops on the lot page, whose reservations sit in a folded section the journey does not open; that page did not change here.
 - **Not run:** WebKit and a real iPhone with the keyboard; the route with the screen kept on, on the owner's phone (Gate S4 and PLAN-0062 G6); the real model; a screen reader.
 - **Environment note:** the dev database needed the new migration (`dotnet ef database update` with `COCINARIS_DB_CONNECTION`) before the replica could load menus.
+- **Next action:** See "Exact next action".
+
+### 2026-11-06 — Claude Code (Slice 5)
+
+- **Run delivery target:** Slice 5, finish, after the owner merged #99 ("Pode seguir").
+- **Changes:**
+  - **Dead code.** Routes `PUT …/cards/{id}/reason`, `POST …/review`, `POST …/replacements`, and `POST …/reopen` removed with their service methods; the view's `needsBatch`, `offerMoreOptions`, `exhausted`, and `canUndo` removed with `MoreOptionsAfterRejections`; the PLAN-0064 batch fields (families, cuisine, time, pantry, similarity, reference card, hint), `ShoppingPlanDirection`, and the plan deck's `suggestionGuidance` and `personHint` removed. The frontend contract, adapter, and test doubles follow; 128 copy keys no code used any more (deck, review, panel, AI per slot, form by dates) left the three languages.
+  - **Metrics.** `cocinaris.planning.meal_filled{source}`, `cocinaris.planning.request{outcome}`, and `cocinaris.planning.time_to_acceptance`, with closed codes only.
+  - **Accessibility.** New `scripts/e2e/planning-a11y-audit.mjs`: axe-core (WCAG 2.0 to 2.2, A and AA) on the board, options sheet, menu in use, dish sheet, list, and hub, in pt-BR light and dark, en, and es; copy keys on screen; and 200% zoom emulated as 640 × 360 at a device scale of 2.
+  - **Journeys.** `planning-journey` and `reservations-journey`, broken before this plan by guided cooking and a folded lot section, reach the cooking review through the guided steps and "Ajustar", and open the folded reservations; `reservations-journey` ends its cooking session through the API, because guided cooking has no "abandon" on the review.
+  - **Documents.** Product spec rewritten for the current flow; planning domain (removed routes, batch fields, metrics, order, slot suggestions), design system (sheets, fixed and sticky bars, both audits), user journeys, privacy (typed hint, metrics), AI protocol (`personHint` and `suggestionGuidance` no longer sent by plan decks), and PLAN-0062's acceptance criteria.
+- **Deviations from this plan:**
+  - **Batches without a meal type stay valid.** They ask for whatever is still missing, and PLAN-0062's tests and older clients use them; only the panel's fields went.
+  - **Tests of removed behavior were removed or moved.** `ShoppingPlanMoreOptionsApiTests` became `ShoppingPlanAskingApiTests`, keeping nothing new, a failed request, meal fit, near-duplicates, and an answer replacing what waited, now asked by meal type; the tests of the panel, its hint, and reopening the review went with them. Review steps in other tests became acceptance, which also sets the order.
+  - **The screen reader pass is automated only.** VoiceOver and TalkBack need a phone; the box stays open.
+  - **`ConsecutiveRejections` stays** as stored data that older plans' pantry weight reads; nothing shows it any more.
+- **Validation performed:** Integration: 74 planning tests (6 tests of removed behavior gone). Unit: 488. Frontend: typecheck, lint, format, and 631 tests. OpenAPI exported, client regenerated and mirrored, drift check passed. Proxy replica: `planning-a11y-audit` 30 screens with 0 violations, 0 copy keys, and no sideways scroll at 200%; `mobile-audit` 69 screens with 0 problems; `planning-board-journey`, `shopping-plan-journey`, `planning-entry-journey` (16 of 16), `planning-journey`, and `reservations-journey` passed. The first `planning-entry-journey` run failed because the first version of the accessibility pass left a menu being built for the same user; the pass now discards it, and both passed on rerun.
+- **Not run:** VoiceOver and TalkBack; WebKit and a real iPhone; the real model (S1-AI); the external test with three people (Gate S5).
 - **Next action:** See "Exact next action".
 
 ## Completion and handoff checklist

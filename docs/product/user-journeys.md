@@ -51,16 +51,19 @@ Select period and meal context
 
 The user may mix fixed dates with unscheduled options. Simulation and draft modes do not mutate the active plan or inventory reservations.
 
-### Without knowing what to cook (PLAN-0062)
+### Without knowing what to cook (PLAN-0062, reworked by PLAN-0065)
 
 ```text
-Open "Planejar", then "Começar um plano"
-→ answer one setup screen
-→ accept or refuse dish cards, watching "+N itens novos"
-→ review the dishes in the suggested order
-→ see the list, marking "Já tenho" where needed
-→ share the list or go to the market
-→ "Usar este plano"
+Open "Planejar", then "Montar cardápio"
+→ say how many days and how many of each meal, such as 7 snacks in 14 days
+→ on the board, tap "Escolher lanche": type a dish, pick one of your recipes, or tap one of six options
+→ or "Completar" to take a proposal for every meal still missing
+→ see "O que comprar", marking "Já tenho" where needed
+→ "Usar este cardápio"
+→ share the list, go to the market, and "Cheguei do mercado"
+→ cook from the menu or "Hoje": dated dishes on their day, the rest "Quando quiser"
+→ optionally "Preparar vários de uma vez", then follow the preparation session
+→ swap a dish or fill a missing meal later, one dish at a time
 ```
 
 See [`guided-shopping-planning.md`](guided-shopping-planning.md).
@@ -101,8 +104,8 @@ Receive an in-product, push, or email reminder
 → inspect readiness, missing products, uncertainty, and advance actions
 → start the planned recipe
 or adapt the recipe
-or replace only this menu item
-or reschedule
+or replace only this menu item ("Trocar", PLAN-0065)
+or reschedule, or cook it ahead with others ("Preparar vários de uma vez")
 or ignore the plan
 ```
 

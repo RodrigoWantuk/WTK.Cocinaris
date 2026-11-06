@@ -30,6 +30,19 @@ const iso = (date) => `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(d
 const day1 = iso(new Date(Date.now() + 86400000));
 const day2 = iso(new Date(Date.now() + 2 * 86400000));
 
+
+/** Guided cooking (PLAN-0054) leads to the detailed review through its steps and "Ajustar". */
+async function toReview(page) {
+  await page.getByTestId("cooking-start").or(page.getByTestId("cooking-finish")).first().waitFor({ timeout: 15000 });
+  if (await page.getByTestId("cooking-start").count()) await page.getByTestId("cooking-start").click();
+  for (let step = 0; step < 30 && (await page.getByTestId("cooking-finish").count()) === 0; step += 1) {
+    await page.getByTestId("cooking-step-next").click();
+  }
+  await page.getByTestId("cooking-finish").click();
+  if (await page.getByTestId("cooking-adjust").count()) await page.getByTestId("cooking-adjust").click();
+  await page.getByTestId("cooking-review").waitFor({ timeout: 15000 });
+}
+
 const results = [];
 const check = (name, ok, detail = "") => results.push({ name, ok, detail });
 
@@ -74,6 +87,8 @@ try {
   check("second meal lacks 100 g", (await readiness(day2)).includes("100 g"), await readiness(day2));
 
   await page.goto(`${BASE}/app/despensa/${seeded.lotId}`, { waitUntil: "networkidle" });
+  // The reservations are folded on the lot page (PLAN-0058); open them first.
+  await page.getByTestId("inventory-commitments").locator("summary").click();
   await page.getByTestId("lot-commitments-meal").first().waitFor({ timeout: 10000 });
   check("lot page lists the reservations", (await page.getByTestId("lot-commitments-meal").count()) === 2);
   await page.getByTestId("lot-protect-minimum").check();
@@ -87,7 +102,7 @@ try {
   await page.goto(`${BASE}/app/receitas/${seeded.puddingId}`, { waitUntil: "networkidle" });
   await page.getByTestId("recipes-detail-cook").click();
   await page.waitForURL(/\/app\/receitas\/cozinhar\//, { timeout: 15000 });
-  await page.getByTestId("cooking-finish").click();
+  await toReview(page);
   const line = page.getByTestId("cooking-review-line").first();
   const include = line.getByRole("checkbox");
   if (!(await include.isChecked())) await include.check();
@@ -95,10 +110,13 @@ try {
   await line.getByRole("textbox").fill("300");
   const notice = (await line.getByTestId("cooking-review-commitment").textContent()) ?? "";
   check("cooking off the menu warns about the planned meals", notice.includes("Risoto E2E") && notice.includes("sem o suficiente"), notice.slice(0, 120));
-  await page.getByRole("button", { name: "Voltar para a receita" }).click();
-  page.once("dialog", (dialog) => void dialog.accept());
-  await page.getByTestId("cooking-abandon").click();
-  await page.getByTestId("cooking-finished").waitFor({ timeout: 15000 });
+  // Guided cooking has no "abandon" on its review; the session is ended through the API instead.
+  const executionId = new URL(page.url()).pathname.split("/").pop();
+  const ended = await page.evaluate(async (id) => {
+    const session = await (await fetch("/api/v1/session", { credentials: "include" })).json();
+    return (await fetch(`/api/v1/recipes/executions/${id}/abandonment`, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json", "X-CSRF-TOKEN": session.csrfToken }, body: "{}" })).status;
+  }, executionId);
+  check("the cooking session ends without using anything", ended === 200, `status ${ended}`);
   const after = await page.evaluate(async (id) => (await (await fetch(`/api/v1/inventory/lots/${id}`, { credentials: "include" })).json()).quantity.measuredValue, seeded.lotId);
   check("nothing changed physically", after === 500, `measured ${after}`);
 } catch (error) {

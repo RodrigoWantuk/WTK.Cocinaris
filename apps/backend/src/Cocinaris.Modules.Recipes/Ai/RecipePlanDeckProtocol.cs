@@ -116,7 +116,6 @@ public sealed class PlanDeckComponent
 /// <param name="Pantry"><c>use</c> to stick to what is at home and chosen, <c>free</c> to ignore it, or null for the plan's default.</param>
 /// <param name="Similarity"><c>similar</c> or <c>different</c> from <paramref name="ReferenceDish"/>, or null.</param>
 /// <param name="ReferenceDish">The dish to compare with; untrusted.</param>
-/// <param name="Hint">The person's typed hint, already cleaned; untrusted.</param>
 /// <param name="UsePreferences">Whether the profile's tastes are sent. Restrictions and dislikes always are.</param>
 /// <param name="RequestedDish">A specific dish the person asked for, already cleaned; untrusted.</param>
 /// <param name="NoFixedDays">The dishes will be eaten at some point in the period, on no fixed day.</param>
@@ -135,7 +134,6 @@ public sealed record PlanDeckBrief(
     string? Pantry = null,
     string? Similarity = null,
     string? ReferenceDish = null,
-    string? Hint = null,
     bool UsePreferences = true,
     string? RequestedDish = null,
     bool NoFixedDays = false);

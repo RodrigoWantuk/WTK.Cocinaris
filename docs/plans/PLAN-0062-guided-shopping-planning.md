@@ -726,18 +726,20 @@ Migrations are additive, and rollback means deploying the earlier code with unus
 
 ## Acceptance criteria
 
-- [ ] **S1:** Someone with an empty pantry reaches a usable list from one setup screen and cards. Accepted dishes show live "+N". Goal changes order deterministically. Restrictions are enforced. AI off still works. Nothing reserves before acceptance.
+PLAN-0065 replaced parts of what these criteria describe; each criterion says what now stands in its place. The outcome each one asks for still holds, and PLAN-0065's tests and journeys check it.
+
+- [ ] **S1 (screens replaced by PLAN-0065):** Someone with an empty pantry reaches a usable list. The setup screen and dish cards are replaced by the first screen with meal counts, the board, and the options sheet; "Sim, 2 vezes" by "Rende mais" on a chosen dish; the review by the board and the menu in use; "Quero outras opções" (PLAN-0064) by the switches, the filter, and typed requests. Chosen dishes show "+N itens". The goal, now a filter, changes order deterministically. Restrictions are enforced. AI off still works. Nothing reserves before acceptance. G1-B (live evaluation) is still pending, now as PLAN-0065's S1-AI.
 - [ ] **S2:** Arrival records all purchases with one confirmation, portions follow the advisor, freezer portions are frozen, and a retry never double counts. "Não achei" and store grouping work.
 - [ ] **S3:** The list opens and takes marks with no signal, then syncs; no other owner's data appears.
-- [ ] **S4:** Limits and warnings appear only from curated rules, with the three options. A plan can be repeated.
+- [ ] **S4 (repeat delivered; limits not):** Limits and warnings appear only from curated rules, with the three options. A plan can be repeated, now from "Repetir um cardápio" on the first screen. "Trocar de prato" on a menu in use is delivered by PLAN-0065 Slice 4 through the options sheet, not by extending `POST /replacements`, which PLAN-0065 Slice 5 removed.
 - [ ] **S5 (code delivered; G5-A pending):** A component reduces purchases and is cooked into stored portions atomically. Frozen dishes are proposed and consumed by portion.
-- [x] **S6:** A session route merges recipes with parallel passive work, can be resumed, and completes executions. (Phone check with wake lock pending.)
+- [x] **S6:** A session route merges recipes with parallel passive work, can be resumed, and completes executions. Its dishes are now chosen with "Preparar vários de uma vez" (PLAN-0065 Slice 4) instead of a preparation day asked at setup. (Phone check with wake lock pending.)
 - [ ] **S7:** Opt-in push arrives at most once a day with no food data.
 - [ ] Every slice: documentation, XML docs, TSDoc, contracts, and gates are current. No unsupported claim remains.
 
 ## Execution state
 
-- **Current run delivery target:** None; all seven slices are merged (Slice 7 via #91). PLAN-0065 reworks the planning screens.
+- **Current run delivery target:** None; all seven slices are merged (Slice 7 via #91). PLAN-0065 reworked the planning screens, and its Slice 5 restated this plan's acceptance criteria (2026-11-06).
 - **Current checkpoint:** G1-A and G2-A accepted by the owner on 2026-11-06 (see the log entry of that day).
 - **Last completed step:** Owner acceptance recorded in the review documents, the runbook, and the code comments of the storage flag.
 - **Exact next action:** The Slice 4 limits and warnings (`cook_by`, "Congelar hoje", "Deixar como está") are no longer blocked. Deliver them after PLAN-0065, or earlier if the owner asks. Separately, the owner decides when the test host turns `Planning__StorageGuidance__Enabled` on.
@@ -1004,6 +1006,11 @@ Migrations are additive, and rollback means deploying the earlier code with unus
 
 - **Change recorded here because it touches Slice 6:** the preparation route's dishes are now those the person sets with "Preparar vários de uma vez" (`menu_entries.CookOnDate`), on the earliest such day with something still to cook. Plans whose setup asked for a preparation day keep it, with the dishes dated that day, until a cooking day is set. `route-link?date=` and `?menuId=` follow the same day. G6 (the route on the owner's phone with the screen kept on) is still open, and PLAN-0065 Gate S4 asks for the same check.
 - **Validation:** see PLAN-0065's Slice 4 entry. The existing route integration tests pass unchanged.
+- **Next action:** unchanged; see "Exact next action".
+
+### 2026-11-06 — Claude Code (acceptance criteria restated, from PLAN-0065 Slice 5)
+
+- **Change:** the acceptance criteria now say what PLAN-0065 replaced: the setup screen, cards, review, and PLAN-0064 panel; `POST /replacements`, `review`, `reason`, and `reopen`, which PLAN-0065 Slice 5 removed; and the preparation day, replaced by "Preparar vários de uma vez". No criterion was ticked or unticked.
 - **Next action:** unchanged; see "Exact next action".
 
 ## Completion and handoff checklist
