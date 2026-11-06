@@ -563,6 +563,9 @@ namespace Cocinaris.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<DateOnly?>("CookOnDate")
+                        .HasColumnType("date");
+
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -1903,7 +1906,7 @@ namespace Cocinaris.Infrastructure.Persistence.Migrations
                         {
                             t.HasCheckConstraint("ck_shopping_plan_sessions_batches", "\"BatchCount\" BETWEEN 0 AND 12");
 
-                            t.HasCheckConstraint("ck_shopping_plan_sessions_status", "\"Status\" IN ('Building', 'Reviewing', 'Finished', 'Abandoned')");
+                            t.HasCheckConstraint("ck_shopping_plan_sessions_status", "\"Status\" IN ('Building', 'Reviewing', 'Finished', 'Amending', 'Abandoned')");
                         });
                 });
 

@@ -1932,9 +1932,45 @@
         ],
         "type": "object"
       },
+      "MenuCookDayRequest": {
+        "description": "Body of \"Preparar vários de uma vez\": the dishes cooked ahead on one day.",
+        "properties": {
+          "date": {
+            "description": "Cooking day, from a week before the menu to its last day, never after a dish's own day.",
+            "format": "date",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "entryIds": {
+            "description": "Dishes cooked that day; dishes that had the day and are left out lose it. Empty clears the day.",
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "type": [
+              "null",
+              "array"
+            ]
+          }
+        },
+        "required": [
+          "date",
+          "entryIds"
+        ],
+        "type": "object"
+      },
       "MenuEntryResponse": {
         "description": "One meal. Status is `planned`, `skipped`, `cooking`, or\n`cooked`; the last two come from the cooking session started from it\n(ExecutionId).",
         "properties": {
+          "cookOnDate": {
+            "format": "date",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
           "entryId": {
             "format": "uuid",
             "type": "string"
@@ -5855,6 +5891,37 @@
         ],
         "type": "object"
       },
+      "ShoppingPlanAmendmentRequest": {
+        "description": "Body for opening a menu in use for changes (PLAN-0065 Slice 4).",
+        "properties": {
+          "menuId": {
+            "description": "An accepted menu.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "replaceEntryId": {
+            "description": "A dish still to cook to swap, removed by this request; null to fill what is missing.",
+            "format": "uuid",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "today": {
+            "description": "The owner's day.",
+            "format": "date",
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "required": [
+          "menuId",
+          "today"
+        ],
+        "type": "object"
+      },
       "ShoppingPlanBatchRequest": {
         "description": "Body for asking for more cards.",
         "properties": {
@@ -6463,6 +6530,44 @@
         ],
         "type": "object"
       },
+      "ShoppingPlanMenuLinkView": {
+        "description": "The plan behind a menu, as the menu page needs it (PLAN-0065 Slice 4).",
+        "properties": {
+          "mealCounts": {
+            "additionalProperties": {
+              "format": "int32",
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ]
+            },
+            "description": "How many of each meal the plan wants; empty without a plan.",
+            "type": "object"
+          },
+          "sessionId": {
+            "description": "The plan, or null for a menu built by hand.",
+            "format": "uuid",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "status": {
+            "description": "The plan's state, or null.",
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "required": [
+          "sessionId",
+          "status",
+          "mealCounts"
+        ],
+        "type": "object"
+      },
       "ShoppingPlanPreferencesRequest": {
         "description": "Body for the switches above the options.",
         "properties": {
@@ -6644,6 +6749,14 @@
         "properties": {
           "mealType": {
             "description": "The meal it fills.",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "plannedDate": {
+            "description": "An optional day inside the period.",
+            "format": "date",
             "type": [
               "null",
               "string"
@@ -6984,7 +7097,7 @@
             "type": "boolean"
           },
           "prepDate": {
-            "description": "Session day.",
+            "description": "Session day: the day dishes are cooked ahead, or the setup's day on older plans.",
             "format": "date",
             "type": [
               "null",
@@ -12171,6 +12284,161 @@
         ]
       }
     },
+    "/api/v1/planning/menus/{menuId}/cook-day": {
+      "put": {
+        "operationId": "putApiV1PlanningMenusMenuIdCook-day",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "menuId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Required CSRF token issued by GET /api/v1/session.",
+            "in": "header",
+            "name": "X-CSRF-TOKEN",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MenuCookDayRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MenuPlanResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "authenticationFailure": {
+                    "summary": "The backend-managed session is absent or invalid.",
+                    "value": {
+                      "detail": "Authentication is required.",
+                      "errorCode": "authentication_required",
+                      "status": 401,
+                      "title": "Unauthorized",
+                      "traceId": "00-00000000000000000000000000000000-0000000000000000-00",
+                      "type": "about:blank"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authentication is required."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "415": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "unsupportedMediaType": {
+                    "summary": "The request content type is unsupported.",
+                    "value": {
+                      "detail": "The request content type is not supported.",
+                      "errorCode": "unsupported_media_type",
+                      "status": 415,
+                      "title": "Unsupported Media Type",
+                      "traceId": "00-00000000000000000000000000000000-0000000000000000-00",
+                      "type": "about:blank"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request content type is not supported."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "unexpectedFailure": {
+                    "summary": "An unexpected error was safely redacted.",
+                    "value": {
+                      "detail": "An unexpected error occurred.",
+                      "errorCode": "unexpected_error",
+                      "status": 500,
+                      "title": "Internal Server Error",
+                      "traceId": "00-00000000000000000000000000000000-0000000000000000-00",
+                      "type": "about:blank"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An unexpected server error occurred."
+          }
+        },
+        "security": [
+          {
+            "cocinarisSession": []
+          }
+        ],
+        "summary": "PUT /api/v1/planning/menus/{menuId}/cook-day",
+        "tags": [
+          "Cocinaris.Api"
+        ]
+      }
+    },
     "/api/v1/planning/menus/{menuId}/entries": {
       "post": {
         "operationId": "postApiV1PlanningMenusMenuIdEntries",
@@ -13748,6 +14016,235 @@
           }
         ],
         "summary": "POST /api/v1/planning/shopping-plans",
+        "tags": [
+          "Cocinaris.Api"
+        ]
+      }
+    },
+    "/api/v1/planning/shopping-plans/amendments": {
+      "post": {
+        "operationId": "postApiV1PlanningShopping-plansAmendments",
+        "parameters": [
+          {
+            "description": "Required CSRF token issued by GET /api/v1/session.",
+            "in": "header",
+            "name": "X-CSRF-TOKEN",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ShoppingPlanAmendmentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShoppingPlanView"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "authenticationFailure": {
+                    "summary": "The backend-managed session is absent or invalid.",
+                    "value": {
+                      "detail": "Authentication is required.",
+                      "errorCode": "authentication_required",
+                      "status": 401,
+                      "title": "Unauthorized",
+                      "traceId": "00-00000000000000000000000000000000-0000000000000000-00",
+                      "type": "about:blank"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authentication is required."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "415": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "unsupportedMediaType": {
+                    "summary": "The request content type is unsupported.",
+                    "value": {
+                      "detail": "The request content type is not supported.",
+                      "errorCode": "unsupported_media_type",
+                      "status": 415,
+                      "title": "Unsupported Media Type",
+                      "traceId": "00-00000000000000000000000000000000-0000000000000000-00",
+                      "type": "about:blank"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request content type is not supported."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "unexpectedFailure": {
+                    "summary": "An unexpected error was safely redacted.",
+                    "value": {
+                      "detail": "An unexpected error occurred.",
+                      "errorCode": "unexpected_error",
+                      "status": 500,
+                      "title": "Internal Server Error",
+                      "traceId": "00-00000000000000000000000000000000-0000000000000000-00",
+                      "type": "about:blank"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An unexpected server error occurred."
+          }
+        },
+        "security": [
+          {
+            "cocinarisSession": []
+          }
+        ],
+        "summary": "POST /api/v1/planning/shopping-plans/amendments",
+        "tags": [
+          "Cocinaris.Api"
+        ]
+      }
+    },
+    "/api/v1/planning/shopping-plans/menu-link": {
+      "get": {
+        "operationId": "getApiV1PlanningShopping-plansMenu-link",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "menuId",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShoppingPlanMenuLinkView"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "authenticationFailure": {
+                    "summary": "The backend-managed session is absent or invalid.",
+                    "value": {
+                      "detail": "Authentication is required.",
+                      "errorCode": "authentication_required",
+                      "status": 401,
+                      "title": "Unauthorized",
+                      "traceId": "00-00000000000000000000000000000000-0000000000000000-00",
+                      "type": "about:blank"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authentication is required."
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "unexpectedFailure": {
+                    "summary": "An unexpected error was safely redacted.",
+                    "value": {
+                      "detail": "An unexpected error occurred.",
+                      "errorCode": "unexpected_error",
+                      "status": 500,
+                      "title": "Internal Server Error",
+                      "traceId": "00-00000000000000000000000000000000-0000000000000000-00",
+                      "type": "about:blank"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An unexpected server error occurred."
+          }
+        },
+        "security": [
+          {
+            "cocinarisSession": []
+          }
+        ],
+        "summary": "GET /api/v1/planning/shopping-plans/menu-link",
         "tags": [
           "Cocinaris.Api"
         ]

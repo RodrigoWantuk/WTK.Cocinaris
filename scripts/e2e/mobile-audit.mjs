@@ -84,11 +84,12 @@ const measure = () => {
     range.selectNodeContents(node);
     return range.getBoundingClientRect();
   };
-  // Content scrolling under a fixed bar is not lying on it, as long as the page leaves room to scroll
-  // it clear; that is checked below with the page at its end.
+  // Content scrolling under a fixed or sticky bar is not lying on it, as long as the page leaves room
+  // to scroll it clear; that is checked below with the page at its end. A sticky bar rests after the
+  // content at the end, so only fixed bars need that check.
   const fixedOf = (node) => {
     for (let at = node; at && at !== document.body; at = at.parentElement) {
-      if (getComputedStyle(at).position === "fixed") return at;
+      if (["fixed", "sticky"].includes(getComputedStyle(at).position)) return at;
     }
     return null;
   };
@@ -106,6 +107,7 @@ const measure = () => {
   }
   // With the page scrolled to its end, nothing in it may stay under a bar fixed to the bottom.
   const bars = [...new Set(boxes.map((item) => item.fixed).filter(Boolean))].filter((bar) => {
+    if (getComputedStyle(bar).position !== "fixed") return false;
     const box = bar.getBoundingClientRect();
     return box.bottom >= window.innerHeight - 1 && box.top > window.innerHeight / 2;
   });
@@ -243,7 +245,28 @@ async function walk(browserName, browserType, profile) {
       await page.getByTestId("menu-page").waitFor();
       await page.waitForTimeout(500);
       await audit(browserName, page, width, "menu");
-      await page.goto(`${page.url()}/compras`, { waitUntil: "networkidle" });
+      // The menu in use (PLAN-0065 Slice 4): a dish's sheet, cooking ahead, and choosing what is missing.
+      const menuUrl = page.url();
+      await page.getByTestId("menu-entry-open").first().click();
+      await page.getByTestId("menu-entry-sheet").waitFor();
+      await audit(browserName, page, width, "menu-dish");
+      await page.keyboard.press("Escape");
+      await page.getByTestId("menu-entry-sheet").waitFor({ state: "detached" });
+      await page.getByTestId("menu-more").locator("summary").click();
+      await page.getByTestId("menu-prepare").click();
+      await page.getByTestId("menu-prepare-sheet").waitFor();
+      await audit(browserName, page, width, "menu-prepare");
+      await page.keyboard.press("Escape");
+      await page.getByTestId("menu-prepare-sheet").waitFor({ state: "detached" });
+      if (await page.getByTestId("menu-choose-dinner").count()) {
+        await page.getByTestId("menu-choose-dinner").click();
+        await page.getByTestId("meal-sheet").waitFor();
+        await page.waitForTimeout(800);
+        await audit(browserName, page, width, "menu-choose");
+        await page.keyboard.press("Escape");
+        await page.getByTestId("meal-sheet").waitFor({ state: "detached" });
+      }
+      await page.goto(`${menuUrl}/compras`, { waitUntil: "networkidle" });
       await page.getByTestId("shopping-item").first().waitFor();
       await audit(browserName, page, width, "list");
       const line = page.getByTestId("shopping-item").first();
@@ -259,7 +282,7 @@ async function walk(browserName, browserType, profile) {
       await line.getByTestId("shopping-not-found").click();
       await line.getByTestId("shopping-item-check").check();
       await page.getByTestId("shopping-arrival").first().waitFor();
-      await page.getByTestId("shopping-split").check();
+      await page.getByTestId("shopping-split-place").click();
       await audit(browserName, page, width, "list-by-place");
       await page.getByTestId("shopping-arrival").first().click();
       await page.waitForTimeout(800);

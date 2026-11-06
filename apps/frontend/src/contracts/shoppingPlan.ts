@@ -267,6 +267,15 @@ interface Mutation {
   language?: string;
 }
 
+/** The plan behind a menu, as the menu page needs it (PLAN-0065 Slice 4). */
+export interface ShoppingPlanMenuLink {
+  sessionId: string;
+  /** `building`, `reviewing`, `finished`, `amending`, or `abandoned`. */
+  status: string;
+  /** How many of each meal the plan wants. */
+  mealCounts: Partial<MealCounts>;
+}
+
 /** Shopping plan repository. Every method is owner-scoped by the backend session. */
 export interface ShoppingPlanRepository {
   getStart(signal?: AbortSignal): Promise<ShoppingPlanStart>;
@@ -280,13 +289,32 @@ export interface ShoppingPlanRepository {
     input: CreateShoppingPlanInput,
     options: Mutation & { idempotencyKey: string },
   ): Promise<ShoppingPlan>;
-  /** Chooses one of the person's saved recipes for a meal; restrictions still apply. */
+  /**
+   * Chooses one of the person's saved recipes for a meal; restrictions still apply. `plannedDate`
+   * keeps the day of a dish being swapped on a menu in use.
+   */
   chooseRecipe(
     sessionId: string,
     recipeId: string,
     mealType: string,
-    options: Mutation,
+    options: Mutation & { plannedDate?: string | null },
   ): Promise<ShoppingPlan>;
+  /**
+   * Opens a menu in use for choosing a dish again (PLAN-0065 Slice 4): to fill a meal still missing,
+   * or, with `replaceEntryId`, to swap that one dish, which this call removes. The plan comes back
+   * with status `amending`; {@link ShoppingPlanRepository.accept} closes it again.
+   */
+  openAmendment(
+    menuId: string,
+    today: string,
+    replaceEntryId: string | null,
+    options: Mutation & { language?: string },
+  ): Promise<ShoppingPlan>;
+  /** The plan behind a menu and how many of each meal it wants; null without a plan. */
+  getMenuLink(
+    menuId: string,
+    signal?: AbortSignal,
+  ): Promise<ShoppingPlanMenuLink | null>;
   /** Sets the switches; the server re-ranks the options. */
   setPreferences(
     sessionId: string,

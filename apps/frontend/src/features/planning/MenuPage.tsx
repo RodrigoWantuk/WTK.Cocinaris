@@ -1,24 +1,29 @@
-import { SessionRouteLink } from "@/features/shopping-plan/SessionRouteLink";
-import { PushOptIn } from "@/features/notifications/PushOptIn";
+import { ChevronLeft } from "lucide-react";
 import {
-  CalendarDays,
-  ChevronLeft,
-  Plus,
-  Sparkles,
-  Trash2,
-} from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useProductionI18n } from "@/app/i18n/ProductionI18nProvider";
 import { useSession } from "@/app/session/SessionProvider";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { FeatureUnavailable } from "@/components/runtime/FeatureUnavailable";
-import type { Menu, MenuEntry, MenuEntryInput } from "@/contracts/planning";
-import { RecipeApiError, type RecipeSummary } from "@/contracts/recipes";
+import type { Menu, MenuEntry, ShoppingList } from "@/contracts/planning";
+import type { RecipeSummary } from "@/contracts/recipes";
+import { MEAL_ORDER, type ShoppingPlan } from "@/contracts/shoppingPlan";
+import { PushOptIn } from "@/features/notifications/PushOptIn";
 import { useRecipeRepository } from "@/features/recipes/RecipeProvider";
 import { RecipeThumbnail } from "@/features/recipes/RecipeThumbnail";
-import { MEAL_TYPES, mealTypeLabel } from "@/features/recipes/recipeLabels";
+import { mealTypeLabel } from "@/features/recipes/recipeLabels";
+import { useOptionalShoppingPlanRepository } from "@/features/shopping-plan/ShoppingPlanProvider";
+import { formatLocaleDecimal } from "@/lib/localeDecimal";
+import { CookAheadSheet } from "./CookAheadSheet";
+import { MenuChoosing, type MenuChoosingRequest } from "./MenuChoosing";
+import { MenuEntrySheet } from "./MenuEntrySheet";
+import { nextPlanningStep, type PlanningStep } from "./planningOverview";
 import {
   daysBetween,
   formatMenuDay,
@@ -26,43 +31,110 @@ import {
   localIsoDate,
 } from "./planningDates";
 import { usePlanningRepository } from "./PlanningProvider";
-import { AiMealSuggestion } from "./AiMealSuggestion";
-import { formatLocaleDecimal } from "@/lib/localeDecimal";
 
-const FLEXIBLE = "flexible";
+/** Portions wait this long, so quick taps send only the last number. */
+const SERVINGS_DELAY_MS = 600;
+/** The line about what is left appears this many days before the period ends. */
+const END_LINE_DAYS = 3;
+
+const isOpenDish = (entry: MenuEntry) =>
+  entry.status === "planned" || entry.status === "cooking";
+
+const byOrder = (a: MenuEntry, b: MenuEntry) =>
+  (a.suggestedOrder ?? Number.MAX_SAFE_INTEGER) -
+  (b.suggestedOrder ?? Number.MAX_SAFE_INTEGER);
 
 /**
- * One menu (PLAN-0029): its days with their meals, adding recipes from the library, moving,
- * re-portioning, skipping, removing, and cooking a meal. Cooking from here links the session to
- * the meal, which then shows as cooking and, once completed, as cooked. Every change touches one
- * meal only; an archived menu is read-only.
+ * Meals still missing per meal type, from what the menu's plan wants and the dishes on the menu.
+ * Lunch and dinner share what passes one of them, as the server counts them. Pure.
+ *
+ * @param counts How many of each meal the plan wants.
+ * @param entries The menu's dishes.
+ */
+export function missingByMeal(
+  counts: Record<string, number>,
+  entries: MenuEntry[],
+): Record<string, number> {
+  const filled: Record<string, number> = {};
+  for (const entry of entries) {
+    if (entry.kind === "component" || entry.status === "skipped") continue;
+    if (!entry.mealType) continue;
+    filled[entry.mealType] = (filled[entry.mealType] ?? 0) + entry.mealsCovered;
+  }
+  for (const [meal, other] of [
+    ["lunch", "dinner"],
+    ["dinner", "lunch"],
+  ] as const) {
+    const extra = (filled[meal] ?? 0) - (counts[meal] ?? 0);
+    if (extra > 0 && (counts[other] ?? 0) > 0) {
+      filled[meal] -= extra;
+      filled[other] = (filled[other] ?? 0) + extra;
+    }
+  }
+  return Object.fromEntries(
+    Object.entries(counts).map(([meal, wanted]) => [
+      meal,
+      Math.max(0, wanted - (filled[meal] ?? 0)),
+    ]),
+  );
+}
+
+/**
+ * One menu (PLAN-0065 Slice 4, after PLAN-0029). It opens with the next step, as on "Planejar", then
+ * today's dishes, later dated dishes, and "Quando quiser": undated dishes by meal type, with what is
+ * still missing. Empty days do not appear. "Cozinhar" is the main action only on today's or the next
+ * dish; every other action is in the dish's sheet, one explicit command on that dish. On a menu in use
+ * a dish can be swapped and a missing meal filled through the options sheet, and several dishes can be
+ * cooked ahead on one day. An archived menu is read-only.
  */
 export function MenuPage() {
   const { menuId = "" } = useParams<{ menuId: string }>();
   const repo = usePlanningRepository();
+  const plans = useOptionalShoppingPlanRepository();
   const recipes = useRecipeRepository();
   const { t, locale } = useProductionI18n();
   const { session } = useSession();
   const navigate = useNavigate();
+  const csrfToken = session.csrfToken;
   const [menu, setMenu] = useState<Menu | null>(null);
   const [loadError, setLoadError] = useState(false);
+  const [version, setVersion] = useState(0);
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
-  const [addingTo, setAddingTo] = useState<string | null>(null);
-  const [suggestingFor, setSuggestingFor] = useState<string | null>(null);
-  const [editing, setEditing] = useState<string | null>(null);
-  // Dish images for the meals (PLAN-0058); a failed read only leaves the placeholders.
+  const [link, setLink] = useState<{
+    sessionId: string;
+    status: string;
+    counts: Record<string, number>;
+  } | null>(null);
+  const [list, setList] = useState<ShoppingList | null>(null);
+  const [routeSessionId, setRouteSessionId] = useState<string | null>(null);
+  const [routeVersion, setRouteVersion] = useState(0);
+  const [openEntryId, setOpenEntryId] = useState<string | null>(null);
+  const [servingsDraft, setServingsDraft] = useState<{
+    entryId: string;
+    servings: number;
+  } | null>(null);
+  const [prepareOpen, setPrepareOpen] = useState(false);
+  const [prepareError, setPrepareError] = useState<string | null>(null);
+  const [request, setRequest] = useState<MenuChoosingRequest | null>(null);
+  const [swapped, setSwapped] = useState<MenuEntry | null>(null);
+  const servingsTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Dish images (PLAN-0058); a failed read only leaves the placeholders.
   const [thumbnails, setThumbnails] = useState<
     Map<string, RecipeSummary["thumbnail"]>
   >(new Map());
+  const today = localIsoDate();
+
   useEffect(() => {
     const controller = new AbortController();
     recipes
       .listRecipes(controller.signal)
-      .then((list) =>
-        setThumbnails(
-          new Map(list.map((recipe) => [recipe.recipeId, recipe.thumbnail])),
-        ),
+      .then(
+        (items) =>
+          !controller.signal.aborted &&
+          setThumbnails(
+            new Map(items.map((recipe) => [recipe.recipeId, recipe.thumbnail])),
+          ),
       )
       .catch(() => undefined);
     return () => controller.abort();
@@ -75,15 +147,71 @@ export function MenuPage() {
       () => !controller.signal.aborted && setLoadError(true),
     );
     return () => controller.abort();
-  }, [repo, menuId]);
+  }, [repo, menuId, version]);
+
+  // The plan behind the menu says how many of each meal it wants; a menu built by hand has none.
+  useEffect(() => {
+    if (!plans) return;
+    const controller = new AbortController();
+    plans.getMenuLink(menuId, controller.signal).then(
+      (value) =>
+        !controller.signal.aborted &&
+        setLink(
+          value
+            ? {
+                sessionId: value.sessionId,
+                status: value.status,
+                counts: Object.fromEntries(
+                  Object.entries(value.mealCounts).filter(
+                    (item): item is [string, number] => item[1] !== undefined,
+                  ),
+                ),
+              }
+            : null,
+        ),
+      () => undefined,
+    );
+    return () => controller.abort();
+  }, [plans, menuId]);
+
+  const accepted = menu?.status === "accepted";
+  // The next step reads the list and the preparation session; each failure only hides its step.
+  useEffect(() => {
+    if (!accepted) return;
+    const controller = new AbortController();
+    repo.getShopping(menuId, today, controller.signal).then(
+      (value) => !controller.signal.aborted && setList(value),
+      () => undefined,
+    );
+    return () => controller.abort();
+  }, [repo, menuId, today, accepted, version]);
+
+  useEffect(() => {
+    if (!accepted || !plans) return;
+    const controller = new AbortController();
+    plans.findRouteLink({ menuId }, controller.signal).then(
+      (value) => !controller.signal.aborted && setRouteSessionId(value),
+      () => undefined,
+    );
+    return () => controller.abort();
+  }, [plans, menuId, accepted, routeVersion]);
+
+  useEffect(
+    () => () => {
+      if (servingsTimer.current) clearTimeout(servingsTimer.current);
+    },
+    [],
+  );
+
+  const reload = useCallback(() => setVersion((value) => value + 1), []);
 
   const mutate = useCallback(
-    async (change: (csrfToken: string) => Promise<Menu>) => {
-      if (!session.csrfToken) return false;
+    async (change: (token: string) => Promise<Menu>) => {
+      if (!csrfToken) return false;
       setBusy(true);
       setActionError(null);
       try {
-        setMenu(await change(session.csrfToken));
+        setMenu(await change(csrfToken));
         return true;
       } catch {
         setActionError("planning.error.save");
@@ -92,7 +220,7 @@ export function MenuPage() {
         setBusy(false);
       }
     },
-    [session.csrfToken],
+    [csrfToken],
   );
 
   const cook = async (entry: MenuEntry) => {
@@ -100,12 +228,12 @@ export function MenuPage() {
       navigate(`/app/receitas/cozinhar/${entry.executionId}`);
       return;
     }
-    if (!session.csrfToken) return;
+    if (!csrfToken) return;
     setBusy(true);
     setActionError(null);
     try {
       const execution = await recipes.startExecution(entry.recipeId, {
-        csrfToken: session.csrfToken,
+        csrfToken,
         servings: entry.servings,
         menuEntryId: entry.entryId,
       });
@@ -140,194 +268,177 @@ export function MenuPage() {
   }
 
   const editable = menu.status !== "archived";
-  const today = localIsoDate();
-  const groups = [
-    ...daysBetween(menu.startDate, menu.endDate).map((day) => ({
-      key: day,
-      title:
-        formatMenuDay(day, locale) +
-        (day === today ? ` · ${t("today.menu.today")}` : ""),
-      entries: menu.entries.filter((entry) => entry.plannedDate === day),
-    })),
-    {
-      key: FLEXIBLE,
-      title: t("planning.flexible"),
-      entries: menu.entries.filter((entry) => entry.plannedDate === null),
-    },
+  const canChoose = accepted && plans !== null;
+  const dishes = menu.entries.filter((entry) => entry.kind !== "component");
+  const bases = menu.entries.filter((entry) => entry.kind === "component");
+  const todays = dishes.filter((entry) => entry.plannedDate === today);
+  const later = dishes.filter(
+    (entry) => entry.plannedDate !== null && entry.plannedDate > today,
+  );
+  const past = dishes.filter(
+    (entry) => entry.plannedDate !== null && entry.plannedDate < today,
+  );
+  const undated = dishes.filter((entry) => entry.plannedDate === null);
+  const missing =
+    canChoose && link ? missingByMeal(link.counts, menu.entries) : {};
+  const wheneverMeals = [
+    ...MEAL_ORDER.filter(
+      (meal) =>
+        undated.some((entry) => entry.mealType === meal) ||
+        (missing[meal] ?? 0) > 0,
+    ),
+    ...(undated.some((entry) => !entry.mealType) ? ["none"] : []),
   ];
+  // Today's first dish to cook, else the next one in the menu's order.
+  const next =
+    todays.find(isOpenDish) ??
+    [...undated].filter(isOpenDish).sort(byOrder)[0] ??
+    later.find(isOpenDish) ??
+    null;
 
-  const planned = groups.filter((group) => group.entries.length > 0);
-  const empty = groups.filter((group) => group.entries.length === 0);
-  const renderGroup = (group: (typeof groups)[number]) => (
-    <li
-      key={group.key}
-      data-testid={`menu-day-${group.key}`}
-      className="space-y-2 p-4"
-    >
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="flex items-center gap-3 font-display text-lg">
-          {/* A calendar leaf per day; today carries the accent. */}
-          <span
-            aria-hidden="true"
-            className={`flex h-11 w-11 shrink-0 flex-col items-center justify-center rounded-xl ${
-              group.key === today
-                ? "bg-primary text-primary-foreground"
-                : "bg-secondary text-secondary-foreground"
-            }`}
-          >
-            {group.key === FLEXIBLE ? (
-              <CalendarDays className="h-5 w-5" />
-            ) : (
-              <>
-                <span className="text-[10px] font-semibold uppercase leading-none">
-                  {new Intl.DateTimeFormat(locale, { weekday: "short" })
-                    .format(new Date(`${group.key}T12:00:00`))
-                    .replace(".", "")}
-                </span>
-                <span className="tabular text-base font-bold leading-tight">
-                  {Number(group.key.slice(8, 10))}
-                </span>
-              </>
-            )}
-          </span>
-          {group.title}
-        </h2>
-        {editable ? (
-          <div className="ml-auto flex gap-1">
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              aria-expanded={addingTo === group.key}
-              data-testid={`menu-add-${group.key}`}
-              onClick={() => {
-                setSuggestingFor(null);
-                setAddingTo((current) =>
-                  current === group.key ? null : group.key,
-                );
-              }}
-            >
-              <Plus aria-hidden="true" />
-              <span className="sr-only sm:not-sr-only">
-                {t("planning.addMeal")}
-              </span>
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              aria-expanded={suggestingFor === group.key}
-              data-testid={`menu-ai-${group.key}`}
-              onClick={() => {
-                setAddingTo(null);
-                setSuggestingFor((current) =>
-                  current === group.key ? null : group.key,
-                );
-              }}
-            >
-              <Sparkles aria-hidden="true" />
-              <span className="sr-only sm:not-sr-only">
-                {t("planning.ai.open")}
-              </span>
-            </Button>
-          </div>
-        ) : null}
-      </div>
-      {group.entries.length === 0 &&
-      addingTo !== group.key &&
-      suggestingFor !== group.key ? (
-        <p className="text-sm text-muted-foreground">
-          {t(
-            group.key === FLEXIBLE
-              ? "planning.flexibleHint"
-              : "planning.emptyDay",
-          )}
-        </p>
-      ) : null}
-      <ul className="space-y-2">
-        {group.entries.map((entry) => (
-          <EntryRow
-            key={entry.entryId}
-            entry={entry}
-            thumbnail={thumbnails.get(entry.recipeId)}
-            menu={menu}
-            editable={editable}
-            busy={busy}
-            editing={editing === entry.entryId}
-            onEdit={() =>
-              setEditing((current) =>
-                current === entry.entryId ? null : entry.entryId,
-              )
-            }
-            onCook={() => void cook(entry)}
-            onChange={async (input) => {
-              if (
-                await mutate((csrfToken) =>
-                  repo.changeEntry(menu.menuId, entry.entryId, input, {
-                    csrfToken,
-                  }),
-                )
-              )
-                setEditing(null);
-            }}
-            onRemove={() =>
-              void mutate((csrfToken) =>
-                repo.removeEntry(menu.menuId, entry.entryId, {
-                  csrfToken,
-                }),
-              )
-            }
-          />
-        ))}
-      </ul>
-      {suggestingFor === group.key ? (
-        <AiMealSuggestion
-          menuId={menu.menuId}
-          plannedDate={group.key === FLEXIBLE ? null : group.key}
-          initialServings={2}
-          onCancel={() => setSuggestingFor(null)}
-          onChosen={async (input) => {
-            const added = await mutate((csrfToken) =>
-              repo.addEntry(
-                menu.menuId,
-                {
-                  recipeId: input.recipeId,
-                  plannedDate: group.key === FLEXIBLE ? null : group.key,
-                  mealType: input.mealType,
-                  servings: input.servings,
-                },
-                { csrfToken, idempotencyKey: crypto.randomUUID() },
-              ),
-            );
-            if (added) setSuggestingFor(null);
-            return added;
-          }}
-        />
-      ) : null}
-      {addingTo === group.key ? (
-        <AddMeal
-          plannedDate={group.key === FLEXIBLE ? null : group.key}
-          busy={busy}
-          onCancel={() => setAddingTo(null)}
-          onAdd={async (input, idempotencyKey) => {
-            if (
-              await mutate((csrfToken) =>
-                repo.addEntry(menu.menuId, input, {
-                  csrfToken,
-                  idempotencyKey,
-                }),
-              )
-            )
-              setAddingTo(null);
-          }}
-        />
-      ) : null}
-    </li>
+  const step: PlanningStep | null = accepted
+    ? nextPlanningStep({
+        planInProgress: false,
+        menu: {
+          menuId: menu.menuId,
+          name: menu.name,
+          startDate: menu.startDate,
+          endDate: menu.endDate,
+          status: menu.status,
+          entryCount: menu.entries.length,
+          updatedAt: menu.updatedAt,
+        },
+        list,
+        prepareSessionId: routeSessionId,
+      })
+    : null;
+  const stepLink = stepAction(step, menu.menuId, routeSessionId);
+
+  const openEntry =
+    menu.entries.find((entry) => entry.entryId === openEntryId) ?? null;
+  const entryInput = (entry: MenuEntry) => ({
+    plannedDate: entry.plannedDate,
+    mealType: entry.mealType,
+    servings: entry.servings,
+    status: entry.status === "skipped" ? "skipped" : "planned",
+  });
+  const change = (
+    entry: MenuEntry,
+    patch: Partial<ReturnType<typeof entryInput>> & {
+      reserveIngredients?: boolean;
+    },
+  ) =>
+    void mutate((token) =>
+      repo.changeEntry(
+        menu.menuId,
+        entry.entryId,
+        { ...entryInput(entry), ...patch },
+        { csrfToken: token },
+      ),
+    );
+
+  const actions = {
+    cook: (entry: MenuEntry) => void cook(entry),
+    swap: (entry: MenuEntry) => {
+      if (!entry.mealType) return;
+      setOpenEntryId(null);
+      setSwapped(null);
+      setRequest({
+        nonce: Date.now(),
+        mealType: entry.mealType,
+        replace: entry,
+      });
+    },
+    setDay: (entry: MenuEntry, day: string | null) =>
+      change(entry, { plannedDate: day }),
+    setServings: (entry: MenuEntry, servings: number) => {
+      setServingsDraft({ entryId: entry.entryId, servings });
+      if (servingsTimer.current) clearTimeout(servingsTimer.current);
+      servingsTimer.current = setTimeout(() => {
+        void mutate((token) =>
+          repo.changeEntry(
+            menu.menuId,
+            entry.entryId,
+            { ...entryInput(entry), servings },
+            { csrfToken: token },
+          ),
+        ).finally(() => setServingsDraft(null));
+      }, SERVINGS_DELAY_MS);
+    },
+    setReserve: (entry: MenuEntry, reserve: boolean) =>
+      change(entry, { reserveIngredients: reserve }),
+    toggleSkip: (entry: MenuEntry) =>
+      change(entry, {
+        status: entry.status === "skipped" ? "planned" : "skipped",
+      }),
+    remove: (entry: MenuEntry) => {
+      setOpenEntryId(null);
+      void mutate((token) =>
+        repo.removeEntry(menu.menuId, entry.entryId, { csrfToken: token }),
+      );
+    },
+  };
+
+  // A swapped dish can come back as it was, as long as nothing took its place.
+  const undoSwap = (entry: MenuEntry) => {
+    setSwapped(null);
+    void mutate((token) =>
+      repo.addEntry(
+        menu.menuId,
+        {
+          recipeId: entry.recipeId,
+          plannedDate: entry.plannedDate,
+          mealType: entry.mealType,
+          servings: entry.servings,
+        },
+        { csrfToken: token, idempotencyKey: crypto.randomUUID() },
+      ),
+    );
+  };
+
+  const onPlan = (plan: ShoppingPlan) => {
+    setLink({
+      sessionId: plan.sessionId,
+      status: plan.status,
+      counts: Object.fromEntries(
+        plan.groups.map((group) => [group.mealType, group.wanted]),
+      ),
+    });
+    const group = swapped
+      ? plan.groups.find((item) => item.mealType === swapped.mealType)
+      : undefined;
+    if (group && group.filled >= group.wanted) setSwapped(null);
+  };
+
+  const row = (
+    entry: MenuEntry,
+    context: { meal?: boolean; day?: boolean },
+  ) => (
+    <EntryRow
+      key={entry.entryId}
+      entry={entry}
+      today={today}
+      thumbnail={thumbnails.get(entry.recipeId)}
+      showMeal={context.meal ?? true}
+      showDay={context.day ?? false}
+      cookNow={editable && next?.entryId === entry.entryId}
+      // One main action per screen: the next step, when there is one, outranks cooking.
+      cookVariant={stepLink ? "secondary" : "default"}
+      busy={busy}
+      onOpen={() => setOpenEntryId(entry.entryId)}
+      onCook={() => void cook(entry)}
+    />
   );
 
+  const laterDays = [
+    ...new Set(later.map((entry) => entry.plannedDate!)),
+  ].sort();
+  const pastDays = [...new Set(past.map((entry) => entry.plannedDate!))].sort();
+  const endLine = accepted ? endOfPeriodLine(menu, dishes, today, t) : null;
+
   return (
-    <div data-testid="menu-page" className="space-y-6">
-      <div className="space-y-2">
+    <div data-testid="menu-page" className="space-y-6 pb-8">
+      <header className="space-y-2">
         <Link
           to="/app/cardapio"
           className="inline-flex min-h-11 items-center gap-1 text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
@@ -344,520 +455,574 @@ export function MenuPage() {
             {t(`planning.status.${menu.status}`)}
           </span>
         </p>
-        <p className="text-sm text-muted-foreground">
-          {t(`planning.statusHint.${menu.status}`)}
-        </p>
-      </div>
+        {endLine ? (
+          <p className="text-sm font-medium" data-testid="menu-end-line">
+            {endLine}
+          </p>
+        ) : null}
+      </header>
 
-      <div className="flex flex-wrap gap-2">
-        <Button asChild data-testid="menu-shopping-link">
-          <Link to={`/app/cardapio/${menu.menuId}/compras`}>
+      <section aria-label={t("menuUse.next")} className="space-y-2">
+        {menu.status === "draft" ? (
+          link &&
+          (link.status === "building" || link.status === "reviewing") ? (
+            <Button asChild size="lg" className="w-full sm:w-auto">
+              <Link
+                to={`/app/compras/planejar/${link.sessionId}`}
+                data-testid="menu-continue"
+              >
+                {t("menuUse.draft.continue")}
+              </Link>
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              size="lg"
+              className="w-full sm:w-auto"
+              data-testid="menu-accept"
+              disabled={busy || menu.entries.length === 0}
+              onClick={() =>
+                void mutate((token) =>
+                  repo.acceptMenu(menu.menuId, { csrfToken: token }),
+                )
+              }
+            >
+              {t("planning.accept")}
+            </Button>
+          )
+        ) : null}
+        {stepLink ? (
+          <Button asChild size="lg" className="w-full sm:w-auto">
+            <Link to={stepLink.to} data-testid={stepLink.testId}>
+              {t(stepLink.labelKey, { count: stepLink.count ?? 0 })}
+            </Link>
+          </Button>
+        ) : null}
+        {accepted ? (
+          <div className="flex flex-wrap gap-x-4">
+            {stepLink?.testId !== "menu-step-buy" ? (
+              <Link
+                to={`/app/cardapio/${menu.menuId}/compras`}
+                data-testid="menu-shopping-link"
+                className="inline-flex min-h-11 items-center font-medium text-primary underline-offset-4 hover:underline"
+              >
+                {t("planning.shoppingLink")}
+              </Link>
+            ) : null}
+            {routeSessionId && stepLink?.testId !== "session-route-link" ? (
+              <Link
+                to={`/app/compras/planejar/${routeSessionId}/preparo`}
+                data-testid="session-route-link"
+                className="inline-flex min-h-11 items-center font-medium text-primary underline-offset-4 hover:underline"
+              >
+                {t("shoppingPlan.route.open")}
+              </Link>
+            ) : null}
+          </div>
+        ) : menu.status === "draft" ? (
+          <Link
+            to={`/app/cardapio/${menu.menuId}/compras`}
+            data-testid="menu-shopping-link"
+            className="inline-flex min-h-11 items-center font-medium text-primary underline-offset-4 hover:underline"
+          >
             {t("planning.shoppingLink")}
           </Link>
-        </Button>
-        {menu.status === "accepted" ? (
-          <SessionRouteLink query={{ menuId: menu.menuId }} />
         ) : null}
-        {menu.status === "draft" ? (
-          <Button
-            type="button"
-            variant="secondary"
-            data-testid="menu-accept"
-            disabled={busy || menu.entries.length === 0}
-            onClick={() =>
-              void mutate((csrfToken) =>
-                repo.acceptMenu(menu.menuId, { csrfToken }),
-              )
-            }
-          >
-            {t("planning.accept")}
-          </Button>
-        ) : null}
-        {editable ? (
-          <Button
-            type="button"
-            variant="ghost"
-            data-testid="menu-archive"
-            disabled={busy}
-            onClick={() => {
-              if (window.confirm(t("planning.archiveConfirm")))
-                void mutate((csrfToken) =>
-                  repo.archiveMenu(menu.menuId, { csrfToken }),
-                );
-            }}
-          >
-            {t("planning.archive")}
-          </Button>
-        ) : null}
-      </div>
+      </section>
 
-      {menu.status === "accepted" ? <PushOptIn variant="prompt" /> : null}
+      {accepted ? <PushOptIn variant="prompt" /> : null}
       {actionError ? (
         <p role="alert" className="text-sm text-destructive">
           {t(actionError)}
         </p>
       ) : null}
-
-      {/* What is planned comes first; a person with dishes and no days must not scroll past empty days. */}
-      {planned.length > 0 ? (
-        <ol
-          className="surface divide-y divide-border overflow-hidden"
-          data-testid="menu-planned"
+      {swapped ? (
+        <div
+          role="status"
+          data-testid="menu-swap-undo"
+          className="flex items-center justify-between gap-3 rounded-xl bg-secondary px-3 py-2 text-sm"
         >
-          {planned.map(renderGroup)}
-        </ol>
+          <span className="min-w-0">
+            {t("menuUse.swapped", { dish: swapped.recipeName })}
+          </span>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            data-testid="menu-swap-undo-action"
+            disabled={busy}
+            onClick={() => undoSwap(swapped)}
+          >
+            {t("shoppingPlan.undo")}
+          </Button>
+        </div>
       ) : null}
-      {empty.length > 0 ? (
-        <details
-          className="surface group overflow-hidden"
-          data-testid="menu-empty-days"
-          open={planned.length === 0}
+
+      {dishes.length === 0 && wheneverMeals.length === 0 ? (
+        <p
+          className="surface p-4 text-muted-foreground"
+          data-testid="menu-empty"
         >
-          <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 p-4 font-medium">
-            {t("planning.emptyDays")}
-            <span className="tabular rounded-full bg-secondary px-2 text-xs">
-              {empty.length}
-            </span>
+          {t("menuUse.empty")}
+        </p>
+      ) : null}
+
+      {todays.length > 0 ? (
+        <MenuSection id="menu-today" title={t("menuUse.section.today")}>
+          <ul data-testid={`menu-day-${today}`}>
+            {todays.map((entry) => row(entry, {}))}
+          </ul>
+        </MenuSection>
+      ) : null}
+
+      {laterDays.length > 0 ? (
+        <MenuSection id="menu-later" title={t("menuUse.section.later")}>
+          {laterDays.map((day) => (
+            <div key={day} data-testid={`menu-day-${day}`}>
+              <h3 className="px-2 pt-2 text-sm font-semibold text-muted-foreground">
+                {formatMenuDay(day, locale)}
+              </h3>
+              <ul>
+                {later
+                  .filter((entry) => entry.plannedDate === day)
+                  .map((entry) => row(entry, {}))}
+              </ul>
+            </div>
+          ))}
+        </MenuSection>
+      ) : null}
+
+      {wheneverMeals.length > 0 ? (
+        <MenuSection id="menu-whenever" title={t("menuUse.section.whenever")}>
+          {wheneverMeals.map((meal) => {
+            const left = missing[meal] ?? 0;
+            const items = undated
+              .filter((entry) =>
+                meal === "none" ? !entry.mealType : entry.mealType === meal,
+              )
+              .sort(byOrder);
+            return (
+              <div key={meal} data-testid={`menu-whenever-${meal}`}>
+                <h3 className="px-2 pt-2 text-sm font-semibold text-muted-foreground">
+                  {meal === "none"
+                    ? t("menuUse.meal.none")
+                    : t(`menuBuild.meal.plural.${meal}`)}
+                </h3>
+                <ul>
+                  {items.map((entry) => row(entry, { meal: false }))}
+                  {left > 0 && canChoose && editable ? (
+                    <li>
+                      <button
+                        type="button"
+                        id={`menu-choose-${meal}`}
+                        data-testid={`menu-choose-${meal}`}
+                        onClick={() =>
+                          setRequest({ nonce: Date.now(), mealType: meal })
+                        }
+                        className="flex min-h-14 w-full items-center gap-2 rounded-lg px-2 py-2 text-left font-semibold text-primary transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      >
+                        <span
+                          aria-hidden="true"
+                          className="text-xl leading-none"
+                        >
+                          +
+                        </span>
+                        {t(`menuBuild.choose.${meal}`)}{" "}
+                        <span className="font-normal text-muted-foreground">
+                          ·{" "}
+                          {t(
+                            left === 1
+                              ? "menuBuild.missing.one"
+                              : "menuBuild.missing",
+                            { count: left },
+                          )}
+                        </span>
+                      </button>
+                    </li>
+                  ) : null}
+                </ul>
+              </div>
+            );
+          })}
+        </MenuSection>
+      ) : null}
+
+      {bases.length > 0 ? (
+        <MenuSection id="menu-bases" title={t("menuBuild.board.bases")}>
+          <ul>
+            {bases.map((entry) => row(entry, { meal: false, day: true }))}
+          </ul>
+        </MenuSection>
+      ) : null}
+
+      {pastDays.length > 0 ? (
+        <details className="surface p-2" data-testid="menu-past">
+          <summary className="flex min-h-11 cursor-pointer items-center rounded-lg px-2 font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            {t("menuUse.section.past")}
           </summary>
-          <ol className="divide-y divide-border border-t border-border">
-            {empty.map(renderGroup)}
-          </ol>
+          {pastDays.map((day) => (
+            <ul key={day} data-testid={`menu-day-${day}`}>
+              {past
+                .filter((entry) => entry.plannedDate === day)
+                .map((entry) => row(entry, { day: true }))}
+            </ul>
+          ))}
         </details>
+      ) : null}
+
+      {editable ? (
+        // Rare changes to the whole menu stay folded, so the page keeps to its dishes.
+        <details className="surface p-2" data-testid="menu-more">
+          <summary className="flex min-h-11 cursor-pointer items-center rounded-lg px-2 font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            {t("menuBuild.board.more")}
+          </summary>
+          <div className="flex flex-col items-start gap-1 px-2 pb-2 pt-1">
+            {accepted && dishes.some(isOpenDish) ? (
+              <Button
+                type="button"
+                variant="ghost"
+                data-testid="menu-prepare"
+                onClick={() => {
+                  setPrepareError(null);
+                  setPrepareOpen(true);
+                }}
+              >
+                {t("menuUse.prepare.title")}
+              </Button>
+            ) : null}
+            <Button
+              type="button"
+              variant="ghost"
+              className="text-destructive"
+              data-testid="menu-archive"
+              disabled={busy}
+              onClick={() => {
+                if (window.confirm(t("planning.archiveConfirm")))
+                  void mutate((token) =>
+                    repo.archiveMenu(menu.menuId, { csrfToken: token }),
+                  );
+              }}
+            >
+              {t("menuUse.archive")}
+            </Button>
+          </div>
+        </details>
+      ) : null}
+
+      <MenuEntrySheet
+        menu={menu}
+        entry={openEntry}
+        open={openEntry !== null}
+        onOpenChange={(open) => {
+          if (!open) setOpenEntryId(null);
+        }}
+        servings={
+          openEntry && servingsDraft?.entryId === openEntry.entryId
+            ? servingsDraft.servings
+            : (openEntry?.servings ?? 1)
+        }
+        canSwap={
+          canChoose &&
+          openEntry?.status === "planned" &&
+          openEntry.kind !== "component" &&
+          openEntry.mealType !== null
+        }
+        busy={busy}
+        notice={
+          actionError ? (
+            <p role="alert" className="text-sm text-destructive">
+              {t(actionError)}
+            </p>
+          ) : null
+        }
+        actions={actions}
+      />
+
+      {accepted ? (
+        <CookAheadSheet
+          menu={menu}
+          today={today}
+          open={prepareOpen}
+          onOpenChange={setPrepareOpen}
+          busy={busy}
+          notice={
+            prepareError ? (
+              <p role="alert" className="text-sm text-destructive">
+                {t(prepareError)}
+              </p>
+            ) : null
+          }
+          onConfirm={(day, entryIds) => {
+            if (!csrfToken) return;
+            setBusy(true);
+            setPrepareError(null);
+            repo
+              .setCookDay(menu.menuId, day, entryIds, { csrfToken })
+              .then(
+                (updated) => {
+                  setMenu(updated);
+                  setPrepareOpen(false);
+                  setRouteVersion((value) => value + 1);
+                },
+                () => setPrepareError("planning.error.save"),
+              )
+              .finally(() => setBusy(false));
+          }}
+        />
+      ) : null}
+
+      {canChoose ? (
+        <MenuChoosing
+          menuId={menu.menuId}
+          request={request}
+          onPlan={onPlan}
+          onMenuChanged={reload}
+          onReplaced={(entry) => setSwapped(entry)}
+          onError={setActionError}
+        />
       ) : null}
     </div>
   );
 }
 
-function EntryRow({
-  entry,
-  thumbnail,
-  menu,
-  editable,
-  busy,
-  editing,
-  onEdit,
-  onCook,
-  onChange,
-  onRemove,
-}: {
-  entry: MenuEntry;
-  thumbnail?: RecipeSummary["thumbnail"];
-  menu: Menu;
-  editable: boolean;
-  busy: boolean;
-  editing: boolean;
-  onEdit: () => void;
-  onCook: () => void;
-  onChange: (input: MenuEntryInput) => Promise<void>;
-  onRemove: () => void;
-}) {
-  const { t, locale } = useProductionI18n();
-  const [day, setDay] = useState(entry.plannedDate ?? FLEXIBLE);
-  const [meal, setMeal] = useState(entry.mealType ?? "");
-  const [servings, setServings] = useState(String(entry.servings));
-  const [reserve, setReserve] = useState(entry.reserveIngredients);
-  const done = entry.status === "cooked";
-  const input = (status: string) => ({
-    plannedDate: entry.plannedDate,
-    mealType: entry.mealType,
-    servings: entry.servings,
-    status,
-  });
-
-  return (
-    <li
-      data-testid="menu-entry"
-      className="space-y-3 rounded-xl border border-border bg-background p-3"
-    >
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex min-w-0 flex-1 items-center gap-3">
-          <span className="w-20 shrink-0">
-            <RecipeThumbnail
-              thumbnail={thumbnail ?? { state: "none", url: null }}
-              name={entry.recipeName}
-              size="small"
-            />
-          </span>
-          <div className="min-w-0">
-            <Link
-              to={`/app/receitas/${entry.recipeId}`}
-              className={`font-medium underline-offset-2 hover:underline ${entry.status === "skipped" ? "line-through" : ""}`}
-            >
-              {entry.recipeName}
-            </Link>
-            <p className="text-xs text-muted-foreground">
-              {[
-                entry.mealType ? mealTypeLabel(t, entry.mealType) : null,
-                t("recipes.detail.servings", { count: entry.servings }),
-                entry.mealsCovered > 1
-                  ? t("shoppingPlan.review.covers", {
-                      count: entry.mealsCovered,
-                    })
-                  : null,
-                t(`planning.entryStatus.${entry.status}`),
-              ]
-                .filter(Boolean)
-                .join(" · ")}
-            </p>
-            <Readiness entry={entry} />
-          </div>
-        </div>
-        {editable ? (
-          <div className="flex flex-wrap gap-1">
-            {entry.status === "planned" || entry.status === "cooking" ? (
-              <Button
-                type="button"
-                size="sm"
-                data-testid="menu-entry-cook"
-                disabled={busy}
-                onClick={onCook}
-              >
-                {t(
-                  entry.status === "cooking"
-                    ? "today.cooking.resume"
-                    : "recipes.detail.cook",
-                )}
-              </Button>
-            ) : null}
-            {!done && entry.status !== "cooking" ? (
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                className="px-2.5"
-                data-testid="menu-entry-skip"
-                disabled={busy}
-                onClick={() =>
-                  void onChange(
-                    input(entry.status === "skipped" ? "planned" : "skipped"),
-                  )
-                }
-              >
-                {t(
-                  entry.status === "skipped"
-                    ? "planning.unskip"
-                    : "planning.skip",
-                )}
-              </Button>
-            ) : null}
-            {!done ? (
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                className="px-2.5"
-                data-testid="menu-entry-edit"
-                aria-expanded={editing}
-                onClick={onEdit}
-              >
-                {t("planning.edit")}
-              </Button>
-            ) : null}
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              className="px-2.5"
-              data-testid="menu-entry-remove"
-              aria-label={t("planning.remove", { name: entry.recipeName })}
-              disabled={busy}
-              title={t("planning.remove", { name: entry.recipeName })}
-              onClick={onRemove}
-            >
-              <Trash2 aria-hidden="true" />
-            </Button>
-          </div>
-        ) : null}
-      </div>
-      {editing ? (
-        <form
-          className="grid gap-2 sm:grid-cols-4 sm:items-end"
-          onSubmit={(event) => {
-            event.preventDefault();
-            const portions = Number(servings);
-            if (!Number.isInteger(portions) || portions < 1 || portions > 24)
-              return;
-            void onChange({
-              plannedDate: day === FLEXIBLE ? null : day,
-              mealType: meal || null,
-              servings: portions,
-              status: entry.status === "skipped" ? "skipped" : "planned",
-              reserveIngredients: reserve,
-            });
-          }}
-        >
-          <label className="space-y-1 text-xs text-muted-foreground">
-            {t("planning.field.day")}
-            <select
-              className="h-11 w-full rounded-xl border border-input bg-background px-3 text-[15px] text-foreground"
-              value={day}
-              onChange={(event) => setDay(event.target.value)}
-            >
-              {daysBetween(menu.startDate, menu.endDate).map((value) => (
-                <option key={value} value={value}>
-                  {formatMenuDay(value, locale)}
-                </option>
-              ))}
-              <option value={FLEXIBLE}>{t("planning.flexible")}</option>
-            </select>
-          </label>
-          <MealSelect value={meal} onChange={setMeal} />
-          <label className="space-y-1 text-xs text-muted-foreground">
-            {t("editor.servings")}
-            <Input
-              type="number"
-              min={1}
-              max={24}
-              value={servings}
-              onChange={(event) => setServings(event.target.value)}
-            />
-          </label>
-          <Button type="submit" size="sm" disabled={busy}>
-            {t("planning.save")}
-          </Button>
-          <label className="flex items-center gap-2 text-xs text-muted-foreground sm:col-span-4">
-            <input
-              type="checkbox"
-              className="h-4 w-4"
-              data-testid="menu-entry-reserve"
-              checked={reserve}
-              onChange={(event) => setReserve(event.target.checked)}
-            />
-            {t("planning.field.reserve")}
-          </label>
-        </form>
-      ) : null}
-    </li>
-  );
+/** The next step's link, as on "Planejar"; null when the next thing is to cook. */
+function stepAction(
+  step: PlanningStep | null,
+  menuId: string,
+  routeSessionId: string | null,
+): { to: string; labelKey: string; testId: string; count?: number } | null {
+  switch (step?.kind) {
+    case "buy":
+      return {
+        to: `/app/cardapio/${menuId}/compras`,
+        labelKey: "planningHub.buy",
+        testId: "menu-step-buy",
+        count: step.count,
+      };
+    case "arrival":
+      return {
+        to: `/app/cardapio/${menuId}/chegada`,
+        labelKey: "shopping.arrival",
+        testId: "menu-step-arrival",
+      };
+    case "prepare":
+      return routeSessionId
+        ? {
+            to: `/app/compras/planejar/${routeSessionId}/preparo`,
+            labelKey: "shoppingPlan.route.open",
+            testId: "session-route-link",
+          }
+        : null;
+    default:
+      return null;
+  }
 }
 
 /**
- * Whether a meal's pantry ingredients are covered (PLAN-0029 Phase 3). On a menu in use the
- * quantities are reserved; on a draft this simulates accepting it after the menus in use.
+ * "Faltam 2 dias · 3 lanches por fazer", near the end of the period while dishes are left. Null
+ * otherwise.
  */
-function Readiness({ entry }: { entry: MenuEntry }) {
-  const { t, locale } = useProductionI18n();
-  if (entry.status === "cooked" || entry.status === "skipped") return null;
-  if (!entry.reserveIngredients) {
-    return (
-      <p
-        className="text-xs text-muted-foreground"
-        data-testid="menu-entry-readiness"
+function endOfPeriodLine(
+  menu: Menu,
+  dishes: MenuEntry[],
+  today: string,
+  t: (key: string, values?: Record<string, string | number>) => string,
+): string | null {
+  if (today < menu.startDate || today > menu.endDate) return null;
+  const daysLeft = daysBetween(today, menu.endDate).length;
+  if (daysLeft > END_LINE_DAYS) return null;
+  const left: Record<string, number> = {};
+  for (const entry of dishes) {
+    if (entry.status !== "planned" || !entry.mealType) continue;
+    left[entry.mealType] = (left[entry.mealType] ?? 0) + entry.mealsCovered;
+  }
+  const parts = MEAL_ORDER.filter((meal) => left[meal]).map((meal) =>
+    t(
+      left[meal] === 1
+        ? `menuUse.left.${meal}.one`
+        : `menuUse.left.${meal}.other`,
+      {
+        count: left[meal]!,
+      },
+    ),
+  );
+  if (parts.length === 0) return null;
+  const days =
+    daysLeft === 1
+      ? t("menuUse.days.last")
+      : t("menuUse.days.other", { count: daysLeft });
+  return t("menuUse.endLine", { days, meals: parts.join(", ") });
+}
+
+function MenuSection({
+  id,
+  title,
+  children,
+}: {
+  id: string;
+  title: string;
+  children: ReactNode;
+}) {
+  return (
+    <section
+      aria-labelledby={`${id}-title`}
+      data-testid={id}
+      className="surface p-2"
+    >
+      <h2
+        id={`${id}-title`}
+        tabIndex={-1}
+        className="px-2 pt-1 text-lg font-semibold outline-none"
       >
-        {t("planning.readiness.released")}
-      </p>
-    );
-  }
-  if (!entry.readiness) return null;
-  if (entry.readiness.readiness === "ready") {
-    return (
-      <p className="text-xs text-primary" data-testid="menu-entry-readiness">
-        {t("planning.readiness.ready")}
-      </p>
-    );
-  }
+        {title}
+      </h2>
+      {children}
+    </section>
+  );
+}
+
+/** One dish: tapping opens its sheet; only the next dish carries "Cozinhar" in the row. */
+function EntryRow({
+  entry,
+  today,
+  thumbnail,
+  showMeal,
+  showDay,
+  cookNow,
+  cookVariant,
+  busy,
+  onOpen,
+  onCook,
+}: {
+  entry: MenuEntry;
+  today: string;
+  thumbnail?: RecipeSummary["thumbnail"];
+  showMeal: boolean;
+  showDay: boolean;
+  cookNow: boolean;
+  cookVariant: "default" | "secondary";
+  busy: boolean;
+  onOpen: () => void;
+  onCook: () => void;
+}) {
+  const { t, locale } = useProductionI18n();
+  // A dish cooked ahead for a later day is ready, not done.
+  const readyAhead =
+    entry.status === "cooked" &&
+    entry.cookOnDate &&
+    (entry.plannedDate === null || entry.plannedDate >= today);
+  const meta = [
+    showMeal && entry.mealType ? mealTypeLabel(t, entry.mealType) : null,
+    showDay && entry.plannedDate
+      ? formatMenuDay(entry.plannedDate, locale)
+      : null,
+    entry.kind === "component" && entry.producesName
+      ? entry.producesName
+      : t("recipes.detail.servings", { count: entry.servings }),
+    entry.mealsCovered > 1
+      ? t("shoppingPlan.review.covers", { count: entry.mealsCovered })
+      : null,
+    readyAhead
+      ? t("menuUse.cookedAhead")
+      : entry.status !== "planned"
+        ? t(`planning.entryStatus.${entry.status}`)
+        : null,
+  ].filter(Boolean);
   const unitKey: Record<string, string> = {
     Gram: "recipes.unit.g",
     Milliliter: "recipes.unit.ml",
     Unit: "recipes.unit.unit",
   };
-  const items = entry.readiness.missing
-    .map(
-      (item) =>
-        `${item.name} ${formatLocaleDecimal(item.quantity, locale)} ${t(unitKey[item.unit] ?? "recipes.unit.unit")}`,
-    )
-    .join(", ");
+  // Whether the pantry covers it (PLAN-0029 Phase 3): reserved on a menu in use, simulated on a draft.
+  const open = entry.status === "planned" || entry.status === "cooking";
+  const readiness = !open
+    ? null
+    : !entry.reserveIngredients
+      ? {
+          tone: "text-muted-foreground",
+          text: t("planning.readiness.released"),
+        }
+      : entry.readiness?.readiness === "ready"
+        ? { tone: "text-primary", text: t("planning.readiness.ready") }
+        : entry.readiness?.readiness === "missing"
+          ? {
+              tone: "font-semibold text-warning",
+              text: t("planning.readiness.missing", {
+                items: entry.readiness.missing
+                  .map(
+                    (item) =>
+                      `${item.name} ${formatLocaleDecimal(item.quantity, locale)} ${t(unitKey[item.unit] ?? "recipes.unit.unit")}`,
+                  )
+                  .join(", "),
+              }),
+            }
+          : null;
   return (
-    <p
-      className="mt-1 inline-block rounded-full bg-warning-soft px-2.5 py-0.5 text-xs font-semibold text-warning"
-      data-testid="menu-entry-readiness"
-    >
-      {t("planning.readiness.missing", { items })}
-    </p>
-  );
-}
-
-function MealSelect({
-  value,
-  onChange,
-}: {
-  value: string;
-  onChange: (value: string) => void;
-}) {
-  const { t } = useProductionI18n();
-  return (
-    <label className="space-y-1 text-xs text-muted-foreground">
-      {t("planning.field.meal")}
-      <select
-        data-testid="menu-meal-select"
-        className="h-11 w-full rounded-xl border border-input bg-background px-3 text-[15px] text-foreground"
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
+    // "Cozinhar" goes under the dish, aligned with its name, so a long name keeps the row's width.
+    <li data-testid="menu-entry" className="flex flex-col">
+      <button
+        type="button"
+        data-testid="menu-entry-open"
+        onClick={onOpen}
+        className="flex min-h-14 min-w-0 flex-1 items-center gap-3 rounded-lg px-2 py-2 text-left transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
-        <option value="">{t("planning.field.anyMeal")}</option>
-        {MEAL_TYPES.map((mealType) => (
-          <option key={mealType} value={mealType}>
-            {mealTypeLabel(t, mealType)}
-          </option>
-        ))}
-      </select>
-    </label>
-  );
-}
-
-function AddMeal({
-  plannedDate,
-  busy,
-  onCancel,
-  onAdd,
-}: {
-  plannedDate: string | null;
-  busy: boolean;
-  onCancel: () => void;
-  onAdd: (
-    input: {
-      recipeId: string;
-      plannedDate: string | null;
-      mealType: string | null;
-      servings: number | null;
-    },
-    idempotencyKey: string,
-  ) => Promise<void>;
-}) {
-  const recipes = useRecipeRepository();
-  const { t } = useProductionI18n();
-  const [library, setLibrary] = useState<RecipeSummary[] | null>(null);
-  const [failed, setFailed] = useState(false);
-  const [search, setSearch] = useState("");
-  const [recipeId, setRecipeId] = useState("");
-  const [meal, setMeal] = useState("");
-  const [servings, setServings] = useState("");
-  // One key per intended addition, so a retried request never adds the meal twice.
-  const keyRef = useRef(crypto.randomUUID());
-
-  useEffect(() => {
-    const controller = new AbortController();
-    recipes.listRecipes(controller.signal).then(
-      (items) => !controller.signal.aborted && setLibrary(items),
-      (err) =>
-        !controller.signal.aborted &&
-        !(err instanceof RecipeApiError && err.code === "cancelled") &&
-        setFailed(true),
-    );
-    return () => controller.abort();
-  }, [recipes]);
-
-  const visible = useMemo(() => {
-    const term = search.trim().toLocaleLowerCase();
-    return (library ?? []).filter(
-      (item) => !term || item.name.toLocaleLowerCase().includes(term),
-    );
-  }, [library, search]);
-  const selected = library?.find((item) => item.recipeId === recipeId);
-
-  if (failed) {
-    return (
-      <p role="alert" className="text-sm text-muted-foreground">
-        {t("recipes.list.error")}
-      </p>
-    );
-  }
-  if (!library) return <p role="status">{t("planning.loading")}</p>;
-  if (library.length === 0) {
-    return (
-      <p className="text-sm" data-testid="menu-add-empty">
-        {t("planning.add.noRecipes")}{" "}
-        <Link to="/app/receitas/gerar" className="underline">
-          {t("recipes.actions.generate")}
-        </Link>{" "}
-        ·{" "}
-        <Link to="/app/receitas/nova" className="underline">
-          {t("library.new")}
-        </Link>
-      </p>
-    );
-  }
-
-  return (
-    <form
-      data-testid="menu-add-form"
-      className="space-y-2 rounded-xl border border-dashed border-border p-3"
-      onSubmit={(event) => {
-        event.preventDefault();
-        if (!recipeId) return;
-        const portions = servings ? Number(servings) : null;
-        if (
-          portions !== null &&
-          (!Number.isInteger(portions) || portions < 1 || portions > 24)
-        )
-          return;
-        void onAdd(
-          { recipeId, plannedDate, mealType: meal || null, servings: portions },
-          keyRef.current,
-        );
-      }}
-    >
-      <label htmlFor="menu-add-search" className="sr-only">
-        {t("library.search")}
-      </label>
-      <Input
-        id="menu-add-search"
-        type="search"
-        value={search}
-        placeholder={t("library.search.placeholder")}
-        onChange={(event) => setSearch(event.target.value)}
-      />
-      <fieldset>
-        <legend className="sr-only">{t("planning.add.recipe")}</legend>
-        <ul className="max-h-56 space-y-1 overflow-y-auto">
-          {visible.map((item) => (
-            <li key={item.recipeId}>
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="radio"
-                  name="menu-add-recipe"
-                  data-testid="menu-add-recipe"
-                  value={item.recipeId}
-                  checked={recipeId === item.recipeId}
-                  onChange={() => {
-                    setRecipeId(item.recipeId);
-                    setServings(String(item.servings));
-                  }}
-                />
-                {item.isFavorite ? "★ " : ""}
-                {item.name}
-              </label>
-            </li>
-          ))}
-        </ul>
-      </fieldset>
-      <div className="grid gap-2 sm:grid-cols-3 sm:items-end">
-        <MealSelect value={meal} onChange={setMeal} />
-        <label className="space-y-1 text-xs text-muted-foreground">
-          {t("editor.servings")}
-          <Input
-            type="number"
-            min={1}
-            max={24}
-            data-testid="menu-add-servings"
-            value={servings}
-            onChange={(event) => setServings(event.target.value)}
+        <span className="w-14 shrink-0">
+          <RecipeThumbnail
+            thumbnail={thumbnail ?? { state: "none", url: null }}
+            name={entry.recipeName}
+            size="small"
           />
-        </label>
-        <div className="flex gap-2">
-          <Button
-            type="submit"
-            size="sm"
-            data-testid="menu-add-submit"
-            disabled={busy || !selected}
+        </span>
+        <span className="min-w-0">
+          <span
+            className={`line-clamp-2 font-medium ${entry.status === "skipped" ? "line-through" : ""}`}
           >
-            {t("planning.add.submit")}
-          </Button>
-          <Button type="button" size="sm" variant="ghost" onClick={onCancel}>
-            {t("editor.cancel")}
-          </Button>
-        </div>
-      </div>
-    </form>
+            {entry.recipeName}
+          </span>
+          <span className="block text-sm text-muted-foreground">
+            {meta.join(" · ")}
+          </span>
+          {entry.cookOnDate && entry.status === "planned" ? (
+            <span
+              data-testid="menu-entry-cook-on"
+              className="mt-1 inline-block rounded-full bg-secondary px-2 py-0.5 text-xs text-foreground"
+            >
+              {t("menuUse.cookOn", {
+                day:
+                  entry.cookOnDate === today
+                    ? t("today.menu.today")
+                    : formatMenuDay(entry.cookOnDate, locale),
+              })}
+            </span>
+          ) : null}
+          {readiness ? (
+            <span
+              data-testid="menu-entry-readiness"
+              className={`mt-1 block text-xs ${readiness.tone}`}
+            >
+              {readiness.text}
+            </span>
+          ) : null}
+        </span>
+      </button>
+      {cookNow ? (
+        <Button
+          type="button"
+          size="sm"
+          variant={cookVariant}
+          // Lines up with the dish name: the image is 3.5rem wide, plus the row's padding and gap.
+          className="mb-2 ml-[4.75rem] self-start"
+          data-testid="menu-entry-cook-next"
+          disabled={busy}
+          onClick={onCook}
+        >
+          {t(
+            entry.status === "cooking"
+              ? "today.cooking.resume"
+              : "recipes.detail.cook",
+          )}
+        </Button>
+      ) : null}
+    </li>
   );
 }

@@ -74,6 +74,10 @@ function setUp({
   repos.plans = {
     getStart: vi.fn(async () => ({ current })),
     findRouteLink: vi.fn(async () => route),
+    openAmendment: vi.fn(async () => {
+      throw new Error("unused");
+    }),
+    getMenuLink: vi.fn(async () => null),
   };
 }
 

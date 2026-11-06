@@ -141,7 +141,7 @@ try {
   await page.getByTestId("shopping-later-back").first().click();
   await page.getByTestId("shopping-later").waitFor({ state: "detached", timeout: 10000 });
   check("a line can be left for later and brought back", true);
-  await page.getByTestId("shopping-split").check();
+  await page.getByTestId("shopping-split-place").click();
   check("the list splits by place", (await page.getByTestId("shopping-place").count()) > 0);
   await page.getByTestId("shopping-item-check").first().check();
   await page.getByTestId("shopping-arrival").click();

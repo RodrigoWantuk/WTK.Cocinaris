@@ -52,6 +52,12 @@ public static class PlanningEndpoints
             .ProducesProblem(400)
             .ProducesProblem(404)
             .ProducesProblem(422);
+        group.MapPut("/menus/{menuId:guid}/cook-day", (PlanningApiService service, Guid menuId, MenuCookDayRequest body, HttpContext context, CancellationToken cancellationToken) => service.SetCookDayAsync(menuId, body, context, cancellationToken))
+            .RequireRateLimiting("mutation")
+            .Produces<MenuPlanResponse>()
+            .ProducesProblem(400)
+            .ProducesProblem(404)
+            .ProducesProblem(422);
         group.MapDelete("/menus/{menuId:guid}/entries/{entryId:guid}", (PlanningApiService service, Guid menuId, Guid entryId, HttpContext context, CancellationToken cancellationToken) => service.RemoveEntryAsync(menuId, entryId, context, cancellationToken))
             .RequireRateLimiting("mutation")
             .Produces<MenuPlanResponse>()
@@ -187,6 +193,10 @@ public sealed class PlanningApiService(MenuPlanningApplicationService applicatio
     public async Task<IResult> ChangeEntryAsync(Guid menuId, Guid entryId, ChangeMenuEntryRequest body, HttpContext context, CancellationToken cancellationToken) =>
         ToResult(await application.ChangeEntryAsync(new ChangeMenuEntryCommand(menuId, entryId, body.PlannedDate, body.MealType, body.Servings, body.Status, body.ReserveIngredients), cancellationToken), context.TraceIdentifier, ToResponse);
 
+    /// <summary>Says which dishes are cooked ahead on one day.</summary>
+    public async Task<IResult> SetCookDayAsync(Guid menuId, MenuCookDayRequest body, HttpContext context, CancellationToken cancellationToken) =>
+        ToResult(await application.SetCookDayAsync(menuId, body.Date, body.EntryIds, cancellationToken), context.TraceIdentifier, ToResponse);
+
     /// <summary>Removes one entry.</summary>
     public async Task<IResult> RemoveEntryAsync(Guid menuId, Guid entryId, HttpContext context, CancellationToken cancellationToken) =>
         ToResult(await application.RemoveEntryAsync(menuId, entryId, cancellationToken), context.TraceIdentifier, ToResponse);
@@ -269,7 +279,7 @@ public sealed class PlanningApiService(MenuPlanningApplicationService applicatio
 
     private static MenuPlanResponse ToResponse(MenuPlanView view) => new(view.PlanId, view.Name, view.StartDate, view.EndDate, view.Status, view.AcceptedAt, view.UpdatedAt, view.Entries.Select(ToResponse).ToList());
 
-    private static MenuEntryResponse ToResponse(MenuEntryView view) => new(view.EntryId, view.RecipeId, view.RecipeName, view.RevisionNumber, view.RevisionPinned, view.PlannedDate, view.MealType, view.Servings, view.Status, view.ExecutionId, view.ReserveIngredients, view.Readiness is null ? null : ToResponse(view.Readiness), view.MealsCovered, view.SuggestedOrder, view.Kind, view.ProducesName, view.ProducesQuantity, view.ProducesUnit);
+    private static MenuEntryResponse ToResponse(MenuEntryView view) => new(view.EntryId, view.RecipeId, view.RecipeName, view.RevisionNumber, view.RevisionPinned, view.PlannedDate, view.MealType, view.Servings, view.Status, view.ExecutionId, view.ReserveIngredients, view.Readiness is null ? null : ToResponse(view.Readiness), view.MealsCovered, view.SuggestedOrder, view.Kind, view.ProducesName, view.ProducesQuantity, view.ProducesUnit, view.CookOnDate);
 
     private static IResult ToResult<TApp, THttp>(RecipeApplicationResult<TApp> result, string traceId, Func<TApp, THttp> map)
     {
@@ -316,6 +326,11 @@ public sealed record ChangeMenuPlanRequest(string? Name, DateOnly? StartDate, Da
 /// <param name="PinRevision">Pin the current revision instead of following later edits.</param>
 public sealed record AddMenuEntryRequest(Guid RecipeId, DateOnly? PlannedDate, string? MealType, int? Servings, bool PinRevision = false);
 
+/// <summary>Body of "Preparar vários de uma vez": the dishes cooked ahead on one day.</summary>
+/// <param name="Date">Cooking day, from a week before the menu to its last day, never after a dish's own day.</param>
+/// <param name="EntryIds">Dishes cooked that day; dishes that had the day and are left out lose it. Empty clears the day.</param>
+public sealed record MenuCookDayRequest(DateOnly? Date, IReadOnlyList<Guid>? EntryIds);
+
 /// <summary>Body for changing a menu entry; every field is replaced.</summary>
 /// <param name="PlannedDate">Day inside the period, or null for flexible.</param>
 /// <param name="MealType">Meal, or null.</param>
@@ -361,7 +376,7 @@ public sealed record MenuPlanResponse(Guid MenuId, string Name, DateOnly StartDa
 /// (<paramref name="ExecutionId"/>).
 /// </summary>
 /// <remarks><c>Readiness</c> is present for meals still to cook that reserve ingredients.</remarks>
-public sealed record MenuEntryResponse(Guid EntryId, Guid RecipeId, string RecipeName, int RevisionNumber, bool RevisionPinned, DateOnly? PlannedDate, string? MealType, int Servings, string Status, Guid? ExecutionId, bool ReserveIngredients, MealReadinessResponse? Readiness, int MealsCovered, int? SuggestedOrder, string Kind = "meal", string? ProducesName = null, decimal? ProducesQuantity = null, string? ProducesUnit = null);
+public sealed record MenuEntryResponse(Guid EntryId, Guid RecipeId, string RecipeName, int RevisionNumber, bool RevisionPinned, DateOnly? PlannedDate, string? MealType, int Servings, string Status, Guid? ExecutionId, bool ReserveIngredients, MealReadinessResponse? Readiness, int MealsCovered, int? SuggestedOrder, string Kind = "meal", string? ProducesName = null, decimal? ProducesQuantity = null, string? ProducesUnit = null, DateOnly? CookOnDate = null);
 
 /// <summary>A meal of an accepted menu for the requested day.</summary>
 public sealed record TodayMenuEntryResponse(Guid MenuId, string MenuName, MenuEntryResponse Entry);

@@ -131,6 +131,18 @@ public sealed class PostgreSqlMenuPlanStore(ApplicationDbContext database) : IMe
     }
 
     /// <inheritdoc />
+    public async Task SaveEntriesAsync(MenuPlan plan, IReadOnlyCollection<MenuEntry> entries, CancellationToken cancellationToken)
+    {
+        foreach (var entry in entries)
+        {
+            database.MenuEntries.Update(ToRecord(entry));
+        }
+
+        database.MenuPlans.Attach(ToRecord(plan)).Property(item => item.UpdatedAt).IsModified = true;
+        await SaveAndClearAsync(cancellationToken);
+    }
+
+    /// <inheritdoc />
     public async Task SetSuggestedOrdersAsync(Guid ownerUserId, Guid planId, IReadOnlyDictionary<Guid, int> orders, DateTimeOffset now, CancellationToken cancellationToken)
     {
         var records = await database.MenuEntries.Where(item => item.OwnerUserId == ownerUserId && item.MenuPlanId == planId).ToListAsync(cancellationToken);
@@ -264,7 +276,7 @@ public sealed class PostgreSqlMenuPlanStore(ApplicationDbContext database) : IMe
         record.Id, record.OwnerUserId, record.CreationKey, record.Name, record.StartDate, record.EndDate, Enum.Parse<MenuPlanStatus>(record.Status), record.CreatedAt, record.UpdatedAt, record.AcceptedAt);
 
     private static MenuEntry ToDomain(MenuEntryRecord record) => MenuEntry.Restore(
-        record.Id, record.MenuPlanId, record.OwnerUserId, record.CreationKey, record.RecipeId, record.PinnedRevisionNumber, record.PlannedDate, record.MealType, record.Servings, Enum.Parse<MenuEntryStatus>(record.Status), record.CreatedAt, record.UpdatedAt, record.ReserveIngredients, record.MealsCovered, record.SuggestedOrder, production: record.ProducesName is { } name ? new MenuEntryProduction(name, record.ProducesQuantity!.Value, record.ProducesUnit!) : null);
+        record.Id, record.MenuPlanId, record.OwnerUserId, record.CreationKey, record.RecipeId, record.PinnedRevisionNumber, record.PlannedDate, record.MealType, record.Servings, Enum.Parse<MenuEntryStatus>(record.Status), record.CreatedAt, record.UpdatedAt, record.ReserveIngredients, record.MealsCovered, record.SuggestedOrder, production: record.ProducesName is { } name ? new MenuEntryProduction(name, record.ProducesQuantity!.Value, record.ProducesUnit!) : null, cookOnDate: record.CookOnDate);
 
     private static MenuPlanRecord ToRecord(MenuPlan plan) => new()
     {
@@ -295,6 +307,7 @@ public sealed class PostgreSqlMenuPlanStore(ApplicationDbContext database) : IMe
         ReserveIngredients = entry.ReserveIngredients,
         MealsCovered = entry.MealsCovered,
         SuggestedOrder = entry.SuggestedOrder,
+        CookOnDate = entry.CookOnDate,
         Kind = entry.Kind == MenuEntryKind.Component ? "component" : "meal",
         ProducesName = entry.Production?.Name,
         ProducesQuantity = entry.Production?.Quantity,

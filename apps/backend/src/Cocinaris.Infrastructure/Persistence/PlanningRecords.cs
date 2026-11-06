@@ -62,6 +62,8 @@ public sealed class MenuEntryRecord
     public string? ProducesUnit { get; set; }
     /// <summary>Gets or sets the suggested cooking order within the menu; null for a menu built by hand.</summary>
     public int? SuggestedOrder { get; set; }
+    /// <summary>Gets or sets the day the dish is cooked ahead (PLAN-0065 Slice 4); null when not set.</summary>
+    public DateOnly? CookOnDate { get; set; }
     /// <summary>Gets or sets the UTC creation instant.</summary>
     public DateTimeOffset CreatedAt { get; set; }
     /// <summary>Gets or sets the UTC instant of the last change.</summary>

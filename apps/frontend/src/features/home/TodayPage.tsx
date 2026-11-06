@@ -590,72 +590,97 @@ export function TodayPage() {
             label: t("today.menu.open"),
           }}
         >
-          <ul className="grid gap-3 sm:grid-cols-2">
-            {menu.items.map((item) => {
-              const readiness = item.entry.readiness;
-              return (
-                <li
-                  key={item.entry.entryId}
-                  data-testid="today-menu-entry"
-                  className="surface flex flex-col gap-3 p-3"
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="w-28 shrink-0 sm:w-32">
-                      <RecipeThumbnail
-                        thumbnail={
-                          thumbnails.get(item.entry.recipeId) ?? {
-                            state: "none",
-                            url: null,
-                          }
-                        }
-                        name={item.entry.recipeName}
-                        size="small"
-                      />
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-primary">
-                        {item.entry.plannedDate === null
-                          ? t("today.menu.flexible")
-                          : item.entry.mealType
-                            ? mealTypeLabel(t, item.entry.mealType)
-                            : t("today.menu.today")}
-                      </p>
-                      <p className="mt-0.5 text-lg font-semibold leading-snug">
-                        {item.entry.recipeName}
-                      </p>
-                      {readiness ? (
-                        <p
-                          className={`mt-2 inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-                            readiness.readiness === "ready"
-                              ? "bg-success-soft text-success"
-                              : "bg-warning-soft text-warning"
-                          }`}
-                        >
-                          {readiness.readiness === "ready"
-                            ? t("today.menu.ready")
-                            : t("today.menu.missing", {
-                                count: readiness.missing.length,
-                              })}
-                        </p>
-                      ) : null}
-                    </div>
+          {(() => {
+            // Dated dishes are today's; undated ones are "Quando quiser", the next of each meal type
+            // (PLAN-0065 Slice 4), so a menu without days still says what to cook.
+            const dated = menu.items.filter(
+              (item) => item.entry.plannedDate !== null,
+            );
+            const whenever = menu.items.filter(
+              (item) => item.entry.plannedDate === null,
+            );
+            const list = (items: typeof menu.items, testId: string) => (
+              <ul className="grid gap-3 sm:grid-cols-2" data-testid={testId}>
+                {items.map((item) => {
+                  const readiness = item.entry.readiness;
+                  return (
+                    <li
+                      key={item.entry.entryId}
+                      data-testid="today-menu-entry"
+                      className="surface flex flex-col gap-3 p-3"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="w-28 shrink-0 sm:w-32">
+                          <RecipeThumbnail
+                            thumbnail={
+                              thumbnails.get(item.entry.recipeId) ?? {
+                                state: "none",
+                                url: null,
+                              }
+                            }
+                            name={item.entry.recipeName}
+                            size="small"
+                          />
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-semibold uppercase tracking-wide text-primary">
+                            {item.entry.mealType
+                              ? mealTypeLabel(t, item.entry.mealType)
+                              : item.entry.plannedDate === null
+                                ? t("today.menu.flexible")
+                                : t("today.menu.today")}
+                          </p>
+                          <p className="mt-0.5 text-lg font-semibold leading-snug">
+                            {item.entry.recipeName}
+                          </p>
+                          {readiness ? (
+                            <p
+                              className={`mt-2 inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                                readiness.readiness === "ready"
+                                  ? "bg-success-soft text-success"
+                                  : "bg-warning-soft text-warning"
+                              }`}
+                            >
+                              {readiness.readiness === "ready"
+                                ? t("today.menu.ready")
+                                : t("today.menu.missing", {
+                                    count: readiness.missing.length,
+                                  })}
+                            </p>
+                          ) : null}
+                        </div>
+                      </div>
+                      <Button
+                        className="mt-auto w-full"
+                        data-testid="today-menu-cook"
+                        disabled={startingEntry !== null || !session.csrfToken}
+                        onClick={() => void cookMenuEntry(item)}
+                      >
+                        {t(
+                          item.entry.status === "cooking"
+                            ? "today.cooking.resume"
+                            : "recipes.detail.cook",
+                        )}
+                      </Button>
+                    </li>
+                  );
+                })}
+              </ul>
+            );
+            return (
+              <>
+                {dated.length > 0 ? list(dated, "today-menu-dated") : null}
+                {whenever.length > 0 ? (
+                  <div className="space-y-2">
+                    <h3 className="text-sm font-semibold text-muted-foreground">
+                      {t("menuUse.section.whenever")}
+                    </h3>
+                    {list(whenever, "today-menu-whenever")}
                   </div>
-                  <Button
-                    className="mt-auto w-full"
-                    data-testid="today-menu-cook"
-                    disabled={startingEntry !== null || !session.csrfToken}
-                    onClick={() => void cookMenuEntry(item)}
-                  >
-                    {t(
-                      item.entry.status === "cooking"
-                        ? "today.cooking.resume"
-                        : "recipes.detail.cook",
-                    )}
-                  </Button>
-                </li>
-              );
-            })}
-          </ul>
+                ) : null}
+              </>
+            );
+          })()}
           {menuError ? (
             <p role="alert" className="text-sm text-destructive">
               {t("planning.error.cook")}

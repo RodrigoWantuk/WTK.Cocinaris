@@ -73,6 +73,28 @@ public sealed class ShoppingProjectorTests
         Assert.Throws<InvalidOperationException>(() => plan.Accept(Now));
     }
 
+    [Fact]
+    public void ADishIsCookedAheadNoLaterThanTheDayItIsEaten()
+    {
+        var plan = MenuPlan.Create(Guid.NewGuid(), Guid.NewGuid(), null, new DateOnly(2026, 11, 10), new DateOnly(2026, 11, 16), Now);
+        var dated = MenuEntry.Create(plan, Guid.NewGuid(), Guid.NewGuid(), null, new DateOnly(2026, 11, 13), "dinner", 2, Now);
+        var undated = MenuEntry.Create(plan, Guid.NewGuid(), Guid.NewGuid(), null, null, "snack", 2, Now);
+
+        // A week before the menu at most, never after it ends or after the day the dish is eaten.
+        Assert.True(undated.CanCookOn(plan, new DateOnly(2026, 11, 3)));
+        Assert.False(undated.CanCookOn(plan, new DateOnly(2026, 11, 2)));
+        Assert.False(undated.CanCookOn(plan, new DateOnly(2026, 11, 17)));
+        Assert.Throws<ArgumentException>(() => dated.SetCookOn(plan, new DateOnly(2026, 11, 14), Now));
+
+        dated.SetCookOn(plan, new DateOnly(2026, 11, 11), Now);
+        Assert.Equal((new DateOnly(2026, 11, 11), new DateOnly(2026, 11, 13)), (dated.CookOnDate, dated.PlannedDate));
+        // Eating it earlier than the cooking day drops the cooking day; eating it later keeps it.
+        dated.Change(plan, new DateOnly(2026, 11, 12), "dinner", 2, MenuEntryStatus.Planned, Now);
+        Assert.Equal(new DateOnly(2026, 11, 11), dated.CookOnDate);
+        dated.Change(plan, new DateOnly(2026, 11, 10), "dinner", 2, MenuEntryStatus.Planned, Now);
+        Assert.Null(dated.CookOnDate);
+    }
+
     private static ShoppingMeal Meal(string name, DateOnly? date, int servings, int recipeServings, params string[] ingredients) =>
         new(Guid.NewGuid(), name, date, servings, recipeServings, "{\"ingredients\":[" + string.Join(",", ingredients) + "]}");
 

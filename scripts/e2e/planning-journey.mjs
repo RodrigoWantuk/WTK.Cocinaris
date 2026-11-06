@@ -63,27 +63,27 @@ try {
 
   await page.goto(`${BASE}/app/cardapio`, { waitUntil: "networkidle" });
   check("the tab says Planejar", (await page.getByTestId("production-nav-planejar").innerText()).trim() === "Planejar");
-  // The form opens by itself only with no menus.
-  if (!(await page.getByTestId("menu-create-panel").evaluate((node) => node.open))) {
-    await page.getByTestId("menu-create-panel").locator("summary").click();
-  }
-  await page.getByTestId("menu-create-name").fill(`Semana E2E ${run}`);
-  await page.getByTestId("menu-create").click();
-  await page.getByTestId("menu-page").waitFor({ timeout: 15000 });
-
-  for (const day of [today, tomorrow]) {
-    // Days with nothing planned are folded under one line once something is planned.
-    if (await page.getByTestId("menu-empty-days").count() && !(await page.getByTestId("menu-empty-days").evaluate((node) => node.open))) {
-      await page.getByTestId("menu-empty-days").locator("summary").click();
+  // Menus are built on the board now (PLAN-0065 Slice 4); a menu made by hand before then still
+  // works, so this journey makes one through the API, as older menus were.
+  check("new menus start on the board", (await page.getByTestId("menus-new").getAttribute("href")) === "/app/compras/planejar");
+  const menuId = await page.evaluate(async ({ recipeName, run, today, tomorrow }) => {
+    const session = await (await fetch("/api/v1/session", { credentials: "include" })).json();
+    const post = async (url, body) => (await fetch(url, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json", "X-CSRF-TOKEN": session.csrfToken, "Idempotency-Key": crypto.randomUUID() },
+      body: JSON.stringify(body ?? {}),
+    })).json();
+    const recipes = await (await fetch(`/api/v1/recipes?search=${encodeURIComponent(recipeName)}`, { credentials: "include" })).json();
+    const recipeId = (recipes.items ?? recipes)[0].recipeId;
+    const menu = await post("/api/v1/planning/menus", { name: `Semana E2E ${run}`, startDate: today, endDate: tomorrow });
+    for (const day of [today, tomorrow]) {
+      await post(`/api/v1/planning/menus/${menu.menuId}/entries`, { recipeId, plannedDate: day, mealType: "dinner" });
     }
-    const group = page.getByTestId(`menu-day-${day}`);
-    await group.getByTestId(`menu-add-${day}`).click();
-    await group.getByRole("searchbox").fill(recipeName);
-    await group.getByLabel(recipeName).check();
-    await group.getByTestId("menu-meal-select").selectOption("dinner");
-    await group.getByTestId("menu-add-submit").click();
-    await group.getByTestId("menu-entry").waitFor({ timeout: 10000 });
-  }
+    return menu.menuId;
+  }, { recipeName, run, today, tomorrow });
+  await page.goto(`${BASE}/app/cardapio/${menuId}`, { waitUntil: "networkidle" });
+  await page.getByTestId("menu-page").waitFor({ timeout: 15000 });
   check("two dinners planned", (await page.getByTestId("menu-entry").count()) === 2);
   await page.getByTestId("menu-accept").click();
   await page.getByText("Em uso", { exact: true }).waitFor({ timeout: 10000 });
