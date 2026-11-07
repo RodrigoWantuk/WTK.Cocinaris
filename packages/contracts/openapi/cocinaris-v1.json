@@ -1797,12 +1797,22 @@
             "format": "uuid",
             "type": "string"
           },
+          "freezeLots": {
+            "description": "For `cook_by`: reserved quantities the storage table says can be frozen; empty without the table.",
+            "items": {
+              "$ref": "#/components/schemas/PreparationReminderLotResponse"
+            },
+            "type": [
+              "null",
+              "array"
+            ]
+          },
           "itemName": {
             "description": "Ingredient or product name.",
             "type": "string"
           },
           "kind": {
-            "description": "`buy` (a required ingredient is not covered), `thaw` (a reserved lot is frozen), or `use_by` (a reserved lot's date falls before the meal; advisory).",
+            "description": "`buy` (a required ingredient is not covered), `thaw` (a reserved lot is frozen), `use_by` (a reserved lot's date falls before the meal; advisory), `ready_portions`, or `cook_by` (a meal with no day should be cooked by UseByDate; advisory).",
             "type": "string"
           },
           "lotId": {
@@ -1826,7 +1836,7 @@
             "type": "string"
           },
           "plannedDate": {
-            "description": "Day of the meal.",
+            "description": "Day of the meal; for `cook_by`, whose meal has no day, the day to cook it by.",
             "format": "date",
             "type": "string"
           },
@@ -1852,7 +1862,7 @@
             ]
           },
           "useByDate": {
-            "description": "The lot's earliest date, for `use_by`.",
+            "description": "The lot's earliest date, for `use_by`; the day to cook by, for `cook_by`.",
             "format": "date",
             "type": [
               "null",
@@ -2633,6 +2643,38 @@
         "required": [
           "lot",
           "preparedMetadata"
+        ],
+        "type": "object"
+      },
+      "PreparationReminderLotResponse": {
+        "description": "Pantry quantity reserved for a meal that can be frozen today.",
+        "properties": {
+          "lotId": {
+            "description": "Pantry lot.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "quantity": {
+            "description": "Quantity the meal reserves from it.",
+            "format": "double",
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ]
+          },
+          "unit": {
+            "description": "`Gram`, `Milliliter`, or `Unit`.",
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "required": [
+          "lotId",
+          "quantity",
+          "unit"
         ],
         "type": "object"
       },
@@ -5321,6 +5363,37 @@
           "state",
           "url",
           "smallUrl"
+        ],
+        "type": "object"
+      },
+      "ReminderDismissalRequest": {
+        "description": "Body of \"Deixar como está\" on a reminder.",
+        "properties": {
+          "date": {
+            "description": "The day the reminder named; the reminder comes back when that day changes.",
+            "format": "date",
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "entryId": {
+            "description": "Menu entry the reminder is about.",
+            "format": "uuid",
+            "type": "string"
+          },
+          "kind": {
+            "description": "`cook_by`.",
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "required": [
+          "entryId",
+          "kind",
+          "date"
         ],
         "type": "object"
       },
@@ -13667,6 +13740,135 @@
           }
         ],
         "summary": "PUT /api/v1/planning/protections/{lotId}",
+        "tags": [
+          "Cocinaris.Api"
+        ]
+      }
+    },
+    "/api/v1/planning/reminders/dismissal": {
+      "put": {
+        "operationId": "putApiV1PlanningRemindersDismissal",
+        "parameters": [
+          {
+            "description": "Required CSRF token issued by GET /api/v1/session.",
+            "in": "header",
+            "name": "X-CSRF-TOKEN",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReminderDismissalRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "authenticationFailure": {
+                    "summary": "The backend-managed session is absent or invalid.",
+                    "value": {
+                      "detail": "Authentication is required.",
+                      "errorCode": "authentication_required",
+                      "status": 401,
+                      "title": "Unauthorized",
+                      "traceId": "00-00000000000000000000000000000000-0000000000000000-00",
+                      "type": "about:blank"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Authentication is required."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "415": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "unsupportedMediaType": {
+                    "summary": "The request content type is unsupported.",
+                    "value": {
+                      "detail": "The request content type is not supported.",
+                      "errorCode": "unsupported_media_type",
+                      "status": 415,
+                      "title": "Unsupported Media Type",
+                      "traceId": "00-00000000000000000000000000000000-0000000000000000-00",
+                      "type": "about:blank"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "The request content type is not supported."
+          },
+          "500": {
+            "content": {
+              "application/problem+json": {
+                "examples": {
+                  "unexpectedFailure": {
+                    "summary": "An unexpected error was safely redacted.",
+                    "value": {
+                      "detail": "An unexpected error occurred.",
+                      "errorCode": "unexpected_error",
+                      "status": 500,
+                      "title": "Internal Server Error",
+                      "traceId": "00-00000000000000000000000000000000-0000000000000000-00",
+                      "type": "about:blank"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            },
+            "description": "An unexpected server error occurred."
+          }
+        },
+        "security": [
+          {
+            "cocinarisSession": []
+          }
+        ],
+        "summary": "PUT /api/v1/planning/reminders/dismissal",
         "tags": [
           "Cocinaris.Api"
         ]

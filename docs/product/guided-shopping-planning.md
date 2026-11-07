@@ -27,7 +27,7 @@ A menu is how many of each meal within a period, with no fixed days unless the p
 8. **The menu in use (`/app/cardapio/:menuId`, Slice 4).** The heading and period, then the next step as on "Planejar" ("Comprar N itens", "Cheguei do mercado", or "Abrir preparo"), then today's dishes, later dishes by day, and **"Quando quiser"**: undated dishes by meal type. Days with nothing on them do not appear, and past days are folded. "Cozinhar" is in the row only for today's first dish, or the next in the menu's order; every other action is in the dish's sheet: "Cozinhar", "Ver receita", "Trocar", the day, portions, whether it reserves from the pantry, "Pular", and "Remover". Each changes that dish only. Near the end of the period: "Faltam 2 dias · 3 lanches por fazer". "Mais opções", folded, holds "Preparar vários de uma vez" and "Arquivar cardápio".
 9. **Choosing again on a menu in use (Slice 4).** A meal the menu still lacks shows "Escolher lanche · faltam 1" under "Quando quiser", and "Trocar" on a dish takes that dish off and opens its meal's options, the same sheet as on the board; a notice offers to put the dish back ("Desfazer"). The new dish keeps the old one's day and takes the next place in the menu's order; nothing else on the menu moves. The person's own recipes are offered at once, so this works without AI.
 10. **"Preparar vários de uma vez" (Slice 4).** Choose a day (from today to the end of the period) and the dishes to make together. Only the day they are cooked changes: each stays on the day it is eaten, with its reservation, and on "Hoje" as before. The dishes show "Preparar sex., 7", and the preparation session of that day gathers them. A dish already cooked ahead for a later day reads "Já preparado".
-11. **"Hoje".** Dishes dated today, then "Quando quiser" with the next undated dish of each meal type.
+11. **"Hoje".** Dishes dated today, then "Quando quiser" with the next undated dish of each meal type. A dish with no day whose ingredients should be used soon shows in "Prepare-se" as "Fazer Moqueca até amanhã", with why ("Por causa de Peixe. É uma estimativa: confira o alimento.") and three ways out: "Congelar hoje" (only when the storage table says it can be frozen), "Trocar de prato", and "Deixar como está", which hides it until the day changes.
 12. **Menus (`/app/cardapio`).** The list of menus and "Novo cardápio", which opens the first screen. Menus are no longer created empty by dates; those made that way before still open and work.
 
 A menu whose dishes have no day raises no buy reminder, because reminders come from dated meals. The list and the hub still show what to buy.
@@ -124,7 +124,6 @@ After a plan is accepted, the dishes the person chose to make together merge int
 
 ## Not yet
 
-- Cook-by limits and warnings (PLAN-0062 Slice 4), now unblocked by the owner's review of the storage table.
 - Turning the storage table on for the test host, when the owner decides.
 - A server queue for preparing recipes (PLAN-0039); preparation runs from the open app.
 - Drag and drop, a calendar view, prices and budgets, curated pack sizes, loose list items, a shared household, and building a menu offline.

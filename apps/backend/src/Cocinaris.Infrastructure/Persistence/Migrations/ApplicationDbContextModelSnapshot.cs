@@ -1655,6 +1655,34 @@ namespace Cocinaris.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Cocinaris.Infrastructure.Persistence.ReminderDismissalRecord", b =>
+                {
+                    b.Property<Guid>("OwnerUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("MenuEntryId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Kind")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<DateTimeOffset>("DismissedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateOnly>("ReminderDate")
+                        .HasColumnType("date");
+
+                    b.HasKey("OwnerUserId", "MenuEntryId", "Kind");
+
+                    b.HasIndex("MenuEntryId");
+
+                    b.ToTable("reminder_dismissals", "planning", t =>
+                        {
+                            t.HasCheckConstraint("ck_reminder_dismissals_kind", "\"Kind\" IN ('cook_by')");
+                        });
+                });
+
             modelBuilder.Entity("Cocinaris.Infrastructure.Persistence.SavedCandidateEntryRecord", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2559,6 +2587,21 @@ namespace Cocinaris.Infrastructure.Persistence.Migrations
                         .WithMany()
                         .HasForeignKey("RecipeId", "OwnerUserId")
                         .HasPrincipalKey("Id", "OwnerUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Cocinaris.Infrastructure.Persistence.ReminderDismissalRecord", b =>
+                {
+                    b.HasOne("Cocinaris.Infrastructure.Persistence.MenuEntryRecord", null)
+                        .WithMany()
+                        .HasForeignKey("MenuEntryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Cocinaris.Modules.Identity.InternalUser", null)
+                        .WithMany()
+                        .HasForeignKey("OwnerUserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });

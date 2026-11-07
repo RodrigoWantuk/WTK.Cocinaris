@@ -556,8 +556,35 @@ export function createLivePlanningRepository(options?: {
             dueDate: String(item.dueDate),
             lotId: text(item.lotId),
             useByDate: text(item.useByDate),
+            freezeLots: (item.freezeLots ?? []).map((lot) => ({
+              lotId: String(lot.lotId),
+              quantity: num(lot.quantity),
+              unit: text(lot.unit),
+            })),
           })),
       ),
+    // The server answers 204 with no body, which `run` would read as a failure.
+    dismissReminder: async (entryId, kind, date, { csrfToken, signal }) => {
+      try {
+        const { error, response } = await client.PUT(
+          "/api/v1/planning/reminders/dismissal",
+          {
+            params: { header: { "X-CSRF-TOKEN": csrfToken } },
+            body: { entryId, kind, date },
+            signal,
+            ...include,
+          },
+        );
+        if (!response.ok)
+          await throwForFailure(
+            response,
+            "Unable to leave the reminder as it is.",
+            error,
+          );
+      } catch (err) {
+        wrapAbort(err);
+      }
+    },
   };
 }
 

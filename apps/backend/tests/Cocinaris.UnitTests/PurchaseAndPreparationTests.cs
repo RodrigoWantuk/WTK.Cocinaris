@@ -73,10 +73,44 @@ public sealed class PurchaseAndPreparationTests
         Assert.DoesNotContain(reminders, item => item.ItemName == "Carne moída");
     }
 
+    [Fact]
+    public void AMealWithNoDaySaysByWhenToCookItFromWhatItReserves()
+    {
+        var cream = Lot("Creme de leite", 200m, "Gram", printed: Today.AddDays(2), storage: "Refrigerator");
+        var fish = Lot("Peixe", 300m, "Gram", storage: "Refrigerator");
+        var frozen = Lot("Peito de frango", 500m, "Gram", printed: Today, storage: "Freezer");
+        var rice = Lot("Arroz", 500m, "Gram");
+        var stew = Reserving("Moqueca", null, Ingredient("i1", "Peixe", 300, "g", fish.LotId), Ingredient("i2", "Creme de leite", 200, "g", cream.LotId));
+        var chicken = Reserving("Frango", null, Ingredient("i1", "Peito de frango", 400, "g", frozen.LotId));
+        var plain = Reserving("Arroz", null, Ingredient("i1", "Arroz", 200, "g", rice.LotId));
+        var lots = new[] { cream, fish, frozen, rice };
+        var projection = ReservationProjector.Build([stew, chicken, plain], lots, []);
+        var plan = Guid.NewGuid();
+        var meals = new[] { stew, chicken, plain }.Select(meal => new FlexibleReminderMeal(plan, meal.EntryId, meal.RecipeName, "dinner")).ToList();
+        // The fish has no printed date: only the storage table could give it one.
+        DateOnly? UseBy(InventoryLotReadModel lot) => lot.PrintedExpirationDate ?? (lot.ProductName == "Peixe" ? Today.AddDays(1) : null);
+        var none = new Dictionary<Guid, DateOnly>();
+
+        var reminders = PreparationReminders.CookBy(meals, projection, lots, UseBy, lot => lot.ProductName == "Peixe", none, Today, Today.AddDays(2));
+
+        // The fish sets the day; the frozen chicken waits; rice with no date sets none.
+        var stewReminder = Assert.Single(reminders);
+        Assert.Equal(("Moqueca", "cook_by", "Peixe", Today.AddDays(1), Today), (stewReminder.RecipeName, stewReminder.Kind, stewReminder.ItemName, stewReminder.UseByDate, stewReminder.DueDate));
+        Assert.Equal([(fish.LotId, 300m)], stewReminder.FreezeLots!.Select(lot => (lot.LotId, lot.Quantity)));
+
+        // Without the table, the cream's printed date still counts, two days away: due tomorrow, past this window.
+        Assert.Empty(PreparationReminders.CookBy(meals, projection, lots, lot => lot.PrintedExpirationDate, _ => false, none, Today, Today.AddDays(1)));
+        Assert.Equal(Today.AddDays(1), Assert.Single(PreparationReminders.CookBy(meals, projection, lots, lot => lot.PrintedExpirationDate, _ => false, none, Today, Today.AddDays(2))).DueDate);
+
+        // "Deixar como está" holds for that day, and the reminder comes back when the day changes.
+        Assert.Empty(PreparationReminders.CookBy(meals, projection, lots, UseBy, _ => false, new Dictionary<Guid, DateOnly> { [stew.EntryId] = Today.AddDays(1) }, Today, Today.AddDays(2)));
+        Assert.Single(PreparationReminders.CookBy(meals, projection, lots, UseBy, _ => false, new Dictionary<Guid, DateOnly> { [stew.EntryId] = Today }, Today, Today.AddDays(2)));
+    }
+
     private static ShoppingMeal Shopping(string name, int day, params string[] ingredients) =>
         new(Guid.NewGuid(), name, new DateOnly(2026, 11, day), 2, 2, "{\"ingredients\":[" + string.Join(",", ingredients) + "]}");
 
-    private static ReservingMeal Reserving(string name, DateOnly day, params string[] ingredients) =>
+    private static ReservingMeal Reserving(string name, DateOnly? day, params string[] ingredients) =>
         new(Guid.NewGuid(), name, day, 2, 2, "{\"ingredients\":[" + string.Join(",", ingredients) + "]}");
 
     private static ReminderMeal ToReminder(Guid plan, ReservingMeal meal) => new(plan, meal.EntryId, meal.RecipeName, meal.PlannedDate!.Value, "dinner");

@@ -6,7 +6,12 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import {
+  Link,
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from "react-router-dom";
 import { useProductionI18n } from "@/app/i18n/ProductionI18nProvider";
 import { useSession } from "@/app/session/SessionProvider";
 import { Button } from "@/components/ui/button";
@@ -204,6 +209,32 @@ export function MenuPage() {
   );
 
   const reload = useCallback(() => setVersion((value) => value + 1), []);
+
+  // "Trocar de prato" from a reminder on "Hoje" (PLAN-0062 Slice 4) opens the swap here, once.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const swapId = searchParams.get("trocar");
+  useEffect(() => {
+    if (!swapId || !menu || menu.status !== "accepted" || !plans) return;
+    const entry = menu.entries.find((item) => item.entryId === swapId);
+    setSearchParams(
+      (current) => {
+        const next = new URLSearchParams(current);
+        next.delete("trocar");
+        return next;
+      },
+      { replace: true },
+    );
+    if (
+      entry?.status === "planned" &&
+      entry.mealType &&
+      entry.kind !== "component"
+    )
+      setRequest({
+        nonce: Date.now(),
+        mealType: entry.mealType,
+        replace: entry,
+      });
+  }, [swapId, menu, plans, setSearchParams]);
 
   const mutate = useCallback(
     async (change: (token: string) => Promise<Menu>) => {

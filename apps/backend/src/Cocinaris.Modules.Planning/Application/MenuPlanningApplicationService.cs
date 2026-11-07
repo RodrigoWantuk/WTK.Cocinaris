@@ -83,6 +83,12 @@ public interface IMenuPlanStore
     /// <summary>Lists what the owner said about a plan's lines, by the line's original key.</summary>
     Task<IReadOnlyDictionary<string, ShoppingLineMark>> ListLineMarksAsync(Guid ownerUserId, Guid planId, CancellationToken cancellationToken);
 
+    /// <summary>Lists the reminders the owner left as they are, by menu entry and kind, with the day each named.</summary>
+    Task<IReadOnlyDictionary<(Guid EntryId, string Kind), DateOnly>> ListDismissalsAsync(Guid ownerUserId, CancellationToken cancellationToken);
+
+    /// <summary>Records (inserts or replaces) that the owner left a reminder as it is.</summary>
+    Task SetDismissalAsync(Guid ownerUserId, Guid entryId, string kind, DateOnly reminderDate, DateTimeOffset now, CancellationToken cancellationToken);
+
     /// <summary>Sets one line's mark, or removes it when it says nothing.</summary>
     Task SetLineMarkAsync(Guid ownerUserId, Guid planId, ShoppingLineMark mark, DateTimeOffset now, CancellationToken cancellationToken);
 }
@@ -184,7 +190,8 @@ public sealed class MenuPlanningApplicationService(
     IInventoryLotReadStore inventory,
     IIngredientMatching matching,
     TimeProvider timeProvider,
-    IProfileReadStore profiles)
+    IProfileReadStore profiles,
+    Cocinaris.Modules.Ingredients.StorageGuidance? storageGuidance = null)
 {
     private const int MaxPantryLots = 500;
     private const int MaxItemKeyLength = PackageSize.MaxItemKeyLength;
@@ -664,7 +671,21 @@ public sealed class MenuPlanningApplicationService(
         var fromPrep = made.Select(keys.Key).ToHashSet(StringComparer.Ordinal);
         var reminders = PreparationReminders.Build(meals, projected.Projection, lots, start).Where(item => item.Kind != "buy" || !fromPrep.Contains(keys.Key(item.ItemName))).ToList();
         reminders.AddRange(await ReadyPortionsAsync(ownerUserId, start, lots, cancellationToken));
-        return new PreparationView(start, span, reminders);
+        // Meals with no day still have a day they should be cooked by (PLAN-0062 Slice 4).
+        var flexible = projected.Meals
+            .Where(item => item.View.PlannedDate is null && item.View.Status == "planned" && item.View.Kind == "meal")
+            .Select(item => new FlexibleReminderMeal(item.PlanId, item.View.EntryId, item.View.RecipeName, item.View.MealType))
+            .ToList();
+        if (flexible.Count > 0)
+        {
+            var dismissed = (await store.ListDismissalsAsync(ownerUserId, cancellationToken))
+                .Where(item => item.Key.Kind == "cook_by")
+                .ToDictionary(item => item.Key.EntryId, item => item.Value);
+            reminders.AddRange(PreparationReminders.CookBy(flexible, projected.Projection, lots, lot => UseBy(lot, start), lot => storageGuidance?.RuleForName(lot.ProductName)?.Freezable == true, dismissed, start, end));
+        }
+
+        // A stable sort: reminders due the same day keep their order.
+        return new PreparationView(start, span, reminders.OrderBy(item => item.DueDate).ToList());
     }
 
     private async Task<IReadOnlyList<PreparationReminderView>> ReadyPortionsAsync(Guid ownerUserId, DateOnly today, IReadOnlyList<InventoryLotReadModel> lots, CancellationToken cancellationToken)
@@ -870,6 +891,40 @@ public sealed class MenuPlanningApplicationService(
     /// <summary>Matching keys for the pantry's product names and the meals' ingredient names (PLAN-0055).</summary>
     private Task<IngredientMatchKeys> MatchKeysAsync(Guid ownerUserId, IReadOnlyList<InventoryLotReadModel> lots, IEnumerable<string> recipeJson, CancellationToken cancellationToken) =>
         matching.KeysAsync(ownerUserId, lots.Select(lot => lot.ProductName).Concat(recipeJson.SelectMany(json => RecipeIngredientReader.Read(json).Select(ingredient => ingredient.Name))), cancellationToken);
+
+    // Advisory only, as on the pantry: a printed or recorded date first, then the owner-reviewed table
+    // when it is on. The owner's day stands in for the time zone, which the server does not know.
+    private DateOnly? UseBy(InventoryLotReadModel lot, DateOnly today) =>
+        InventoryAttentionAdvisor.Evaluate(
+            new InventoryAttentionFacts(lot.PrintedExpirationDate, lot.Lifecycle?.PreparedShelfLifeDate, lot.StorageLocation, lot.PackageState, lot.Lifecycle?.State ?? "AsAcquired", lot.Lifecycle?.FrozenAt, lot.Lifecycle?.ThawStartedAt, lot.Lifecycle?.ThawedAt,
+                Cocinaris.Modules.Ingredients.IngredientCatalog.Default.KeepsWhenOpened(lot.ProductName), lot.CreatedAt, storageGuidance?.RuleForName(lot.ProductName)?.FridgeDays),
+            today,
+            TimeZoneInfo.Utc).EstimatedUseBy;
+
+    /// <summary>
+    /// "Deixar como está" on a reminder (PLAN-0062 Slice 4): it stays hidden until the day it names
+    /// changes. Only <c>cook_by</c> can be left this way; the meal must be the owner's.
+    /// </summary>
+    /// <param name="entryId">Menu entry the reminder is about.</param>
+    /// <param name="kind"><c>cook_by</c>.</param>
+    /// <param name="date">The day the reminder named.</param>
+    /// <param name="cancellationToken">Cancellation.</param>
+    public async Task<RecipeApplicationResult<bool>> DismissReminderAsync(Guid entryId, string? kind, DateOnly? date, CancellationToken cancellationToken)
+    {
+        if (kind != "cook_by" || date is null)
+        {
+            return Failure<bool>("validation_failed", "Only a cook-by reminder, with its day, can be left as it is.", "kind");
+        }
+
+        var user = await currentUser.GetCurrentAsync(cancellationToken);
+        if (await store.FindEntryAsync(user.Id, entryId, cancellationToken) is null)
+        {
+            return NotFound<bool>();
+        }
+
+        await store.SetDismissalAsync(user.Id, entryId, kind, date.Value, timeProvider.GetUtcNow(), cancellationToken);
+        return Succeeded(true);
+    }
 
     // The server does not know the owner's time zone. A meal keeps its reservation until its day
     // has ended everywhere (UTC-12), so a meal is never released early; one missed yesterday may

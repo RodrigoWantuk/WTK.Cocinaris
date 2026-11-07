@@ -111,6 +111,24 @@ public sealed class PackageSizeRecord
     public DateTimeOffset UpdatedAt { get; set; }
 }
 
+/// <summary>
+/// The owner said "Deixar como está" to a reminder about one meal (PLAN-0062 Slice 4). It holds the
+/// reminder's day, so the reminder comes back when that day changes.
+/// </summary>
+public sealed class ReminderDismissalRecord
+{
+    /// <summary>Gets or sets the authoritative owner identifier.</summary>
+    public Guid OwnerUserId { get; set; }
+    /// <summary>Gets or sets the menu entry the reminder is about.</summary>
+    public Guid MenuEntryId { get; set; }
+    /// <summary>Gets or sets the reminder kind, such as <c>cook_by</c>.</summary>
+    public required string Kind { get; set; }
+    /// <summary>Gets or sets the day the reminder named when it was dismissed.</summary>
+    public DateOnly ReminderDate { get; set; }
+    /// <summary>Gets or sets the UTC instant of the dismissal.</summary>
+    public DateTimeOffset DismissedAt { get; set; }
+}
+
 /// <summary>Persistence representation of one shopping plan (PLAN-0062).</summary>
 public sealed class ShoppingPlanSessionRecord
 {
