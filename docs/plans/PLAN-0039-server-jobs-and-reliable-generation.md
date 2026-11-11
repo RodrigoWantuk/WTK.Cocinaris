@@ -1,13 +1,13 @@
 # PLAN-0039: Server Jobs and Reliable Recipe Generation
 
-- **Status:** In Progress; scope agreed with the owner on 2026-11-11; Slice 1 merged (#106); Slice 2 in a draft PR
+- **Status:** In Progress; scope agreed with the owner on 2026-11-11; Slices 1 and 2 merged (#106, #107) and deployed; Slice 3 in a draft PR
 - **Type:** Implementation
 - **Priority:** High (owner request)
 - **Owner:** Claude Code (claimed 2026-11-11)
 - **Created:** 2026-11-11
 - **Last updated:** 2026-11-11
 - **Branch:** Plan and Slice 1 `agent/plan-0039-reliable-generation`; each later slice uses the branch named in its section
-- **Pull request:** #106 (plan and Slice 1, merged); Slice 2 draft PR
+- **Pull request:** #106 (plan and Slice 1, merged); #107 (Slice 2, merged); Slice 3 draft PR
 - **Related ADRs:** ADR-0003 (PostgreSQL job state and outbox, RabbitMQ as target), ADR-0009 (AI gateway)
 - **Dependencies:** None open.
 
@@ -110,10 +110,10 @@ Branch: `agent/plan-0039-s2-jobs`.
 
 Branch: `agent/plan-0039-s3-unify`.
 
-- [ ] Account deletion and dish images run as job kinds; their own tables keep only their domain state.
-- [ ] Retention, pantry auto-removal, and plan reminders run as scheduled kinds of the same runner.
-- [ ] Ingredient recognition reports runs through the job metrics; it keeps its queue (R10).
-- [ ] Runbook: one query and one metric set for every job; how to retry or cancel a job by hand.
+- [x] Account deletion and dish images run as job kinds; their own tables keep only their domain state.
+- [x] Retention, pantry auto-removal, and plan reminders run as scheduled kinds of the same runner.
+- [x] Ingredient recognition reports runs through the job metrics; it keeps its queue (R10).
+- [x] Runbook: one query and one metric set for every job; how to retry or cancel a job by hand.
 
 **Gate S3:** the existing tests of each moved job pass unchanged in behavior; the replica runs a deletion, an image, and a retention run through the runner.
 
@@ -130,15 +130,15 @@ RabbitMQ, the transactional outbox, a separate worker process (ADR-0003 target, 
 
 ## Execution state
 
-- **Current run delivery target:** Slice 2, menu dishes prepared on the server.
-- **Current checkpoint:** Slice 2 implemented on `agent/plan-0039-s2-jobs`, in a draft pull request. Slice 1 merged via #106 (`80621e4`).
-- **Last completed step:** Job table and runner, server expansion, retries and reasons on the board, the app following instead of preparing; see the Slice 2 log entry.
-- **Exact next action:** The owner reviews and merges the Slice 2 pull request and deploys `main` (migration `AddJobs`). Then Slice 3 (every background job in one format) starts from a fresh `origin/main` on `agent/plan-0039-s3-unify`.
+- **Current run delivery target:** Slice 3, every background job in one format (the last slice).
+- **Current checkpoint:** Slice 3 implemented on `agent/plan-0039-s3-unify`, in a draft pull request. Slices 1 and 2 merged via #106 and #107 and deployed with `56f079d`; #107's local gates passed 32 of 32.
+- **Last completed step:** Every worker replaced by a job kind of one runner; see the Slice 3 log entry.
+- **Exact next action:** The owner reviews and merges the Slice 3 pull request and deploys `main` (migration `MoveAccountDeletionAttemptsToJobs`). After a few days, run `scripts/ops/ai-failure-report.sh 7` and the job query of the runbook, and record here what they show. Then mark the plan Completed; RabbitMQ stays for a later plan, when the job metrics show one process is not enough.
 - **Blockers:** None.
 - **Partially modified areas:** None.
-- **Documentation delivered:** Slice 1 documents, plus the planning domain (expansion by job), the product spec (preparing the recipes, reasons), the deployment runbook (background jobs), and privacy (jobs and their retention).
-- **Validation performed:** See the Slice 2 log entry.
-- **Known failures or limitations:** See the Slice 2 log entry.
+- **Documentation delivered:** Slices 1 and 2 documents, plus the runbook's job table, deletion and retention entries, the privacy document's retention line, and the ingredient identity components.
+- **Validation performed:** See the Slice 3 log entry.
+- **Known failures or limitations:** See the Slice 3 log entry.
 - **Working tree state:** Clean after this commit.
 
 ## Progress log
@@ -200,6 +200,24 @@ RabbitMQ, the transactional outbox, a separate worker process (ADR-0003 target, 
   - **Frontend tests changed:** the three follower tests were rewritten, and one board test is new (retrying, the reason, and "Tentar de novo" calling the server).
   - **Architecture:** 19.
 - **Not run:** the full local gates (one run on the pull request head follows); the browser journey, see above.
+- **Next action:** See "Exact next action".
+
+### 2026-11-11 — Claude Code (Slice 3)
+
+- **Run delivery target:** Slice 3, after the owner merged #107 and #108, asked for the deploy (done, `56f079d`), and said "Siga com o slice 3 então".
+- **Changes:**
+  - **Scheduled kinds.** `IScheduledJob` (first run, next run) and `JobResult.Repeat`. A repeat starts the row over with every attempt back. The runner queues each scheduled kind at start when it has no waiting row, so a deploy keeps planned times. It also turns any failed or thrown run of a scheduled kind into a repeat at its next time, keeping `LastFailureCode`, and sleeps until the next due job (`IJobStore.NextDueAtAsync`), at most 15 seconds.
+  - **Workers replaced.** Six hosted services are gone. `retention` is daily, `pantry_auto_removal` every 30 minutes, and `plan_reminders` at the top of each hour. `dish_images` and `ingredient_resolution` take one item per run, run again at once while work waits, and otherwise wait their poll time. They are registered under the same conditions as before, and `AddJobHandler<T>()` registers each.
+  - **Account deletion as jobs.** One `account_deletion` job per deletion, queued with the request, up to 20 attempts. `AccountDeletionSignal`, `AccountDeletionProcessor`, and `AccountDeletionWorker` are gone. `IAccountDeletionStore` lost `ListDueAsync` and `RecordFailureAsync` and gained `ListPendingAsync`. Migration `MoveAccountDeletionAttemptsToJobs` drops `Attempts`, `NextAttemptAt`, and `FailureCode` from `platform.account_deletions`.
+  - **Recovery.** `IJobRecovery` and the `job_recovery` kind, every 10 minutes; `AccountDeletionRecovery` queues pending deletions that lost their job.
+- **Deviations from this plan:**
+  - **Dish images stay a scheduled drain of their own table**, like ingredient names, instead of one job per image. Their states (`Pending`, `Generating`, `Ready`, `Failed`) are shown to people and drive reuse by similarity, so the table keeps them; the runner now runs and measures them.
+  - **One item per run for the drains**, so a menu dish being prepared never waits behind a row of images.
+- **Validation performed:**
+  - **New integration test:** `ScheduledJobsAreQueuedOnceRepeatAfterEveryRunAndLostDeletionsComeBack`. The scheduled kinds are queued once across two starts. A retention run made to fail (a hidden table) waits for its next day with its code and does not end. The recovery queues a pending deletion that lost its job.
+  - **Changed tests:** the account deletion tests run through `JobProcessor`, and the failed attempt is checked on the job; the worker removals in the thumbnail tests and the test host are updated.
+  - **Results:** the 87 integration tests of `RecipeExecutionApiTests` pass. They cover jobs, deletion, retention, pantry auto-removal, notifications, images, and recipes. Also 496 unit and 19 architecture tests, and backend formatting verified.
+- **Not run:** the full local gates (one run on the pull request head follows).
 - **Next action:** See "Exact next action".
 
 ## Completion and handoff checklist

@@ -71,7 +71,7 @@ public sealed partial class RecipeExecutionApiTests
     }
 
     private static Task<int> RunPushAsync(WebApplicationFactory<Program> host) =>
-        PlanReminderPushWorker.RunOnceAsync(host.Services.GetRequiredService<IServiceScopeFactory>(), NullLogger.Instance, CancellationToken.None);
+        PlanReminderPushJob.RunOnceAsync(host.Services.GetRequiredService<IServiceScopeFactory>(), NullLogger.Instance, CancellationToken.None);
 
     private static async Task SetZoneAsync(HttpClient client, string csrf, string zone, string language = "es")
     {

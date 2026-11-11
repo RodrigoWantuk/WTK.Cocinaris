@@ -39,11 +39,10 @@ public sealed class JobProcessor(IJobStore store, IEnumerable<IJobHandler> handl
         var started = Stopwatch.GetTimestamp();
         JobResult result;
         await using var scope = scopes.CreateAsyncScope();
+        var handler = byKind.TryGetValue(job.Kind, out var known) ? (IJobHandler)scope.ServiceProvider.GetRequiredService(known.GetType()) : null;
         try
         {
-            result = byKind.TryGetValue(job.Kind, out var known)
-                ? await ((IJobHandler)scope.ServiceProvider.GetRequiredService(known.GetType())).HandleAsync(job, cancellationToken)
-                : JobResult.Failed("no_handler");
+            result = handler is null ? JobResult.Failed("no_handler") : await handler.HandleAsync(job, cancellationToken);
         }
         catch (Exception exception) when (exception is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
         {
@@ -51,9 +50,15 @@ public sealed class JobProcessor(IJobStore store, IEnumerable<IJobHandler> handl
             result = JobResult.Retry(exception.GetType().Name);
         }
 
+        // A scheduled job never ends: a failed run only waits for the next one.
+        if (handler is IScheduledJob scheduled && result.RepeatAt is null)
+        {
+            result = JobResult.Repeat(scheduled.NextRunAt(timeProvider.GetUtcNow()), result.Outcome == JobState.Succeeded ? null : result.Code);
+        }
+
         var retryAfter = Backoff[Math.Clamp(job.Attempt - 1, 0, Backoff.Length - 1)];
         await scope.ServiceProvider.GetRequiredService<IJobStore>().FinishAsync(job, result, timeProvider.GetUtcNow(), retryAfter, CancellationToken.None);
-        var outcome = result.Outcome switch
+        var outcome = result.RepeatAt is not null ? (result.Code is null ? "succeeded" : "failed") : result.Outcome switch
         {
             JobState.Queued => job.IsLastAttempt && result.CountsAsAttempt ? "failed" : "retried",
             JobState.Succeeded => "succeeded",
@@ -65,22 +70,57 @@ public sealed class JobProcessor(IJobStore store, IEnumerable<IJobHandler> handl
     }
 }
 
-/// <summary>Runs <see cref="JobProcessor"/> as soon as a job is queued, and every 15 seconds; resumes leased jobs after a restart.</summary>
-public sealed class JobRunner(IServiceScopeFactory scopes, JobSignal signal, ILogger<JobRunner> logger) : BackgroundService
+/// <summary>
+/// Runs <see cref="JobProcessor"/> as soon as a job is queued or due, and at least every 15 seconds;
+/// resumes leased jobs after a restart. At start it queues every scheduled job that is not already
+/// waiting, so a deploy keeps the times of the jobs already planned.
+/// </summary>
+public sealed class JobRunner(IServiceScopeFactory scopes, JobSignal signal, TimeProvider timeProvider, ILogger<JobRunner> logger) : BackgroundService
 {
     /// <summary>Longest wait between looks for work.</summary>
     public static readonly TimeSpan Interval = TimeSpan.FromSeconds(15);
 
+    /// <summary>Subject of every scheduled job's single row.</summary>
+    public const string ScheduleSubject = "schedule";
+
+    /// <summary>Queues each scheduled job that has no waiting row; one already queued keeps its time.</summary>
+    public static async Task QueueScheduledAsync(IServiceProvider services, TimeProvider timeProvider, CancellationToken cancellationToken)
+    {
+        var queue = services.GetRequiredService<IJobQueue>();
+        var now = timeProvider.GetUtcNow();
+        foreach (var scheduled in services.GetServices<IJobHandler>().OfType<IScheduledJob>())
+        {
+            await queue.EnqueueAsync(new JobRequest(scheduled.Kind, null, ScheduleSubject, "{}", scheduled.FirstRunAt(now), 3), restart: false, cancellationToken);
+        }
+    }
+
     /// <inheritdoc />
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        try
+        {
+            await using var scope = scopes.CreateAsyncScope();
+            await QueueScheduledAsync(scope.ServiceProvider, timeProvider, stoppingToken);
+        }
+        catch (Exception exception) when (!stoppingToken.IsCancellationRequested)
+        {
+            // The recovery job queues them again later; the runner still runs what is there.
+            logger.LogWarning("Queueing scheduled jobs failed: {ExceptionType}", exception.GetType().Name);
+        }
+
         while (!stoppingToken.IsCancellationRequested)
         {
             var ran = 0;
+            var wait = Interval;
             try
             {
                 await using var scope = scopes.CreateAsyncScope();
                 ran = await scope.ServiceProvider.GetRequiredService<JobProcessor>().RunDueAsync(stoppingToken);
+                if (await scope.ServiceProvider.GetRequiredService<IJobStore>().NextDueAtAsync(stoppingToken) is { } due)
+                {
+                    var untilDue = due - timeProvider.GetUtcNow();
+                    wait = untilDue < TimeSpan.FromMilliseconds(500) ? TimeSpan.FromMilliseconds(500) : untilDue < Interval ? untilDue : Interval;
+                }
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
@@ -99,7 +139,7 @@ public sealed class JobRunner(IServiceScopeFactory scopes, JobSignal signal, ILo
 
             try
             {
-                await signal.WaitAsync(Interval, stoppingToken);
+                await signal.WaitAsync(wait, stoppingToken);
             }
             catch (OperationCanceledException)
             {

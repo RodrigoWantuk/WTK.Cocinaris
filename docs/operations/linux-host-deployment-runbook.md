@@ -190,10 +190,10 @@ The page "Seus dados" (`/app/perfil/privacidade`) needs no configuration. Its ex
 - **Support line.** Set `Privacy__ContactEmail` in `api.env` to the address people write to for a right the page cannot serve, then restart the service. Empty or absent hides the line. Use a role address, not a personal one.
 - **Limit.** Three exports per person per hour; the fourth gets `429` and the page says so. Rate limits count per person by the login subject and fall back to the client address only without a session.
 - **Metric.** `cocinaris.privacy.export`, with `outcome` = `completed` or `failed`. Nothing exported is logged.
-- **Account deletion** (Slice 2) runs in `AccountDeletionWorker` within seconds of the request, and every 30 seconds after a restart. Metric: `cocinaris.privacy.deletion`, with `outcome` = `completed` or `failed`. The log names only the deletion id and the exception type.
-- **A stuck deletion.** It shows as a pending row with attempts and a failure code: `SELECT "Id", "RequestedAt", "Attempts", "FailureCode", "NextAttemptAt" FROM platform.account_deletions WHERE "State" = 'Pending';`. Each attempt is one transaction, so a failed one changed nothing. Fix the cause, for example a new table with a foreign key that blocks the deletion. The next attempt then finishes it.
+- **Account deletion** (Slice 2) runs as an `account_deletion` job within seconds of the request, retried with the job backoff for up to 20 attempts; the `job_recovery` job queues a pending deletion that lost its job. Metric: `cocinaris.privacy.deletion`, with `outcome` = `completed` or `failed`. The log names only the job id and the exception type.
+- **A stuck deletion.** A pending deletion and its job: `SELECT d."Id", d."RequestedAt", j."State", j."Attempts", j."LastFailureCode", j."NextAttemptAt" FROM platform.account_deletions d LEFT JOIN platform.jobs j ON j."Kind" = 'account_deletion' AND j."SubjectKey" = d."Id"::text WHERE d."State" = 'Pending';`. Each attempt is one transaction, so a failed one changed nothing. Fix the cause, for example a new table with a foreign key that blocks the deletion, and the next attempt finishes it.
 - **Deleting a login on request.** Cocinaris unlinks the login and does not delete it (decision D2). When a person asks for the login itself to be deleted, the owner deletes the user in the identity provider's administration. Their Cocinaris data is already gone; nothing else is needed.
-- **Retention** (Slice 3) runs in `RetentionWorker` ten minutes after start and then daily. The log has one line per run with counts per rule. Metric: `cocinaris.privacy.retention_deleted{rule}`. The rules and their limits are in the privacy document. `Idempotency__Retention` in `api.env` changes how long stored replies stay (1 to 90 days).
+- **Retention** (Slice 3) runs as the `retention` scheduled job, ten minutes after the first start and then daily. The log has one line per run with counts per rule. Metric: `cocinaris.privacy.retention_deleted{rule}`. The rules and their limits are in the privacy document. `Idempotency__Retention` in `api.env` changes how long stored replies stay (1 to 90 days).
 - **Deleting a recipe from the shared library on request.** The library is never cleaned automatically (owner decision D5). When someone asks for a library recipe to be removed, delete it by id: `DELETE FROM recipes.recipe_ideas WHERE "Id" = '<id>';`. People's own recipes are not affected.
 - **Rollback.** Migration `AddAccountDeletions` creates the table, lets an account erasure delete append-only history, and drops the foreign key from `ai.usage_ledger` to `identity.users`. Rolling it back fails once anonymized usage rows exist, so repair forward.
 
@@ -211,7 +211,20 @@ Read it before changing a prompt, a schema limit, or the fallback model. A rule 
 
 ## Background jobs (PLAN-0039 Slice 2)
 
-`JobRunner`, inside the API, runs the jobs of `platform.jobs`: today `plan_card_expansion`, which prepares a chosen menu dish's recipe.
+`JobRunner`, inside the API, runs every background job from `platform.jobs` (PLAN-0039 Slices 2 and 3). It runs two at a time and sleeps until the next job is due, at most 15 seconds.
+
+| Kind | What it does | When |
+|---|---|---|
+| `plan_card_expansion` | Prepares a chosen menu dish's recipe | 5 seconds after the choice; up to 3 attempts |
+| `account_deletion` | Erases one account | At once; up to 20 attempts |
+| `retention` | Deletes what has no use (privacy document) | Daily |
+| `pantry_auto_removal` | Removes lots whose removal day passed | Every 30 minutes |
+| `plan_reminders` | Sends the day's plan notifications | Top of each hour |
+| `dish_images` | Draws one dish image | At once while images wait, else every `Ai__Images__PollSeconds` (only when images are on) |
+| `ingredient_resolution` | Recognizes one batch of ingredient names | At once while names wait, else every `Ingredients__Resolution__PollSeconds` (only when embeddings are on) |
+| `job_recovery` | Queues work that lost its job, such as a pending deletion | Every 10 minutes |
+
+Scheduled kinds have one row each (`"SubjectKey" = 'schedule'`). They are queued at start if missing, and a failed run only moves them to their next time, keeping `LastFailureCode`. A deploy keeps the times already planned. Dish images and ingredient names keep their own tables and leases, because people see those states and the names wait there for a later catalog.
 - **State of every job:** `SELECT "Kind", "State", count(*) FROM platform.jobs GROUP BY 1, 2;`.
 - **A job that keeps failing:** `SELECT "Kind", "Attempts", "LastFailureCode", "NextAttemptAt" FROM platform.jobs WHERE "State" IN ('Queued', 'Failed') ORDER BY "UpdatedAt" DESC LIMIT 20;`.
 - **Retrying by hand:** set `"State" = 'Queued', "Attempts" = 0, "NextAttemptAt" = now()` on the row. The person can also tap "Tentar de novo".

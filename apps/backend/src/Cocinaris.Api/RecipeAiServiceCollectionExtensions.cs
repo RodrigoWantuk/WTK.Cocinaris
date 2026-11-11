@@ -1,3 +1,4 @@
+using Cocinaris.Api.Jobs;
 using Cocinaris.Infrastructure.Persistence;
 using Cocinaris.Modules.Ai.Abstractions;
 using Cocinaris.Modules.Ai.Images;
@@ -201,7 +202,7 @@ public static class RecipeAiServiceCollectionExtensions
             provider.GetRequiredService<TimeProvider>()));
         if (!environment.IsEnvironment("Testing"))
         {
-            services.AddHostedService<RecipeThumbnailWorker>();
+            services.AddJobHandler<RecipeThumbnailJob>();
         }
     }
 }

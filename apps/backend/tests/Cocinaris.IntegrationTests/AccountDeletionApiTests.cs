@@ -61,7 +61,11 @@ public sealed partial class RecipeExecutionApiTests
     private static async Task<int> RunDeletionsAsync(Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactory<Program> host)
     {
         using var scope = host.Services.CreateScope();
-        return await scope.ServiceProvider.GetRequiredService<AccountDeletionProcessor>().RunDueAsync(CancellationToken.None);
+        // Deletions run as jobs (PLAN-0039 Slice 3); this counts the deletions the run completed.
+        var deletions = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>().AccountDeletions;
+        var before = await deletions.CountAsync(item => item.State == "Completed");
+        await scope.ServiceProvider.GetRequiredService<Cocinaris.Api.Jobs.JobProcessor>().RunDueAsync(CancellationToken.None);
+        return await deletions.CountAsync(item => item.State == "Completed") - before;
     }
 
     [Fact]
@@ -161,18 +165,22 @@ public sealed partial class RecipeExecutionApiTests
         {
             var database = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
             var pending = await database.AccountDeletions.SingleAsync(item => item.OwnerUserId == owner);
-            Assert.Equal(("Pending", 1, "PostgresException"), (pending.State, pending.Attempts, pending.FailureCode));
+            Assert.Equal("Pending", pending.State);
+            // The attempt lives on the deletion's job (PLAN-0039 Slice 3).
+            var subject = pending.Id.ToString();
+            var job = await database.Jobs.AsNoTracking().SingleAsync(item => item.SubjectKey == subject);
+            Assert.Equal(("account_deletion", "Queued", 1, "PostgresException"), (job.Kind, job.State, job.Attempts, job.LastFailureCode));
             var unblock = $"DROP TRIGGER test_block_{owner:N} ON recipes.recipes; DROP FUNCTION recipes.test_block_{owner:N}();";
             await database.Database.ExecuteSqlRawAsync(unblock);
             // The retry waits a minute; the test does not.
-            await database.AccountDeletions.Where(item => item.Id == pending.Id).ExecuteUpdateAsync(update => update.SetProperty(item => item.NextAttemptAt, DateTimeOffset.UtcNow.AddSeconds(-1)));
+            await database.Jobs.Where(item => item.SubjectKey == subject).ExecuteUpdateAsync(update => update.SetProperty(item => item.NextAttemptAt, DateTimeOffset.UtcNow.AddSeconds(-1)));
         }
 
         var retried = await RunDeletionsAsync(host);
         using (var scope = host.Services.CreateScope())
         {
             var state = await scope.ServiceProvider.GetRequiredService<ApplicationDbContext>().AccountDeletions.AsNoTracking().SingleAsync(item => item.SubjectHash == SessionGuard.HashOf("https://integration.test", "privacy-delete-retry"));
-            Assert.True(retried == 1, $"Retry gave {retried}: {state.State}, {state.Attempts}, {state.FailureCode}, next {state.NextAttemptAt:O}");
+            Assert.True(retried == 1, $"Retry gave {retried}: {state.State}");
         }
 
         Assert.All(await RowsOfAsync(host, owner), pair => Assert.Equal(0, pair.Value));

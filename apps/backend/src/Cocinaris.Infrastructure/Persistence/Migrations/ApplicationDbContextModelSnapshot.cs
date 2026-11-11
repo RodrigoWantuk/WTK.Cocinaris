@@ -28,21 +28,11 @@ namespace Cocinaris.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<int>("Attempts")
-                        .HasColumnType("integer");
-
                     b.Property<DateTimeOffset?>("CompletedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("CountsJson")
                         .HasColumnType("jsonb");
-
-                    b.Property<string>("FailureCode")
-                        .HasMaxLength(120)
-                        .HasColumnType("character varying(120)");
-
-                    b.Property<DateTimeOffset>("NextAttemptAt")
-                        .HasColumnType("timestamp with time zone");
 
                     b.Property<Guid?>("OwnerUserId")
                         .HasColumnType("uuid");

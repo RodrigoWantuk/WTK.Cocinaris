@@ -4,43 +4,30 @@ using Cocinaris.Modules.Profiles.Application;
 namespace Cocinaris.Api.Inventory;
 
 /// <summary>
-/// Background job that removes pantry lots whose auto-removal day has passed (PLAN-0056). Every
-/// 30 minutes it reads lots due in some time zone (day at most UTC today), resolves each owner's
-/// time zone from their profile, and removes only those whose day has ended there. Failures are
-/// logged by exception type only, and the next run retries.
+/// Scheduled job that removes pantry lots whose auto-removal day has passed (PLAN-0056; a job kind of
+/// PLAN-0039 Slice 3). Every 30 minutes it reads lots due in some time zone (day at most UTC today),
+/// resolves each owner's time zone from their profile, and removes only those whose day has ended
+/// there. A failed run is recorded on the job and the next run tries again.
 /// </summary>
-public sealed class InventoryAutoRemovalWorker(IServiceScopeFactory scopes, TimeProvider timeProvider, ILogger<InventoryAutoRemovalWorker> logger) : BackgroundService
+public sealed class InventoryAutoRemovalJob(IServiceScopeFactory scopes, TimeProvider timeProvider) : Cocinaris.SharedKernel.Jobs.IScheduledJob
 {
     /// <summary>Time between runs.</summary>
     public static readonly TimeSpan Interval = TimeSpan.FromMinutes(30);
 
     /// <inheritdoc />
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
-    {
-        while (!stoppingToken.IsCancellationRequested)
-        {
-            try
-            {
-                await RunOnceAsync(scopes, timeProvider, stoppingToken);
-            }
-            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
-            {
-                return;
-            }
-            catch (Exception exception)
-            {
-                logger.LogWarning("Inventory auto-removal run failed: {ExceptionType}", exception.GetType().Name);
-            }
+    public string Kind => "pantry_auto_removal";
 
-            try
-            {
-                await Task.Delay(Interval, timeProvider, stoppingToken);
-            }
-            catch (OperationCanceledException)
-            {
-                return;
-            }
-        }
+    /// <inheritdoc />
+    public DateTimeOffset FirstRunAt(DateTimeOffset now) => now + TimeSpan.FromMinutes(1);
+
+    /// <inheritdoc />
+    public DateTimeOffset NextRunAt(DateTimeOffset now) => now + Interval;
+
+    /// <inheritdoc />
+    public async Task<Cocinaris.SharedKernel.Jobs.JobResult> HandleAsync(Cocinaris.SharedKernel.Jobs.JobContext job, CancellationToken cancellationToken)
+    {
+        await RunOnceAsync(scopes, timeProvider, cancellationToken);
+        return Cocinaris.SharedKernel.Jobs.JobResult.Succeeded;
     }
 
     /// <summary>One run; returns the number of lots removed. Public so tests can drive it without the timer.</summary>

@@ -1,3 +1,4 @@
+using Cocinaris.Api.Jobs;
 using Cocinaris.Infrastructure.Persistence;
 using Cocinaris.Modules.Ai.Embeddings;
 using Cocinaris.Modules.Ai.Images;
@@ -58,7 +59,7 @@ public static class IngredientServiceCollectionExtensions
             provider.GetRequiredService<TimeProvider>()));
         if (!environment.IsEnvironment("Testing"))
         {
-            services.AddHostedService<IngredientResolutionWorker>();
+            services.AddJobHandler<IngredientResolutionJob>();
         }
 
         return services;

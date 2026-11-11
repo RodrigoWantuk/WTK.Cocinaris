@@ -1,5 +1,6 @@
 using System.Diagnostics.Metrics;
 using Cocinaris.Api.Services;
+using Cocinaris.SharedKernel.Jobs;
 using Cocinaris.SharedKernel.Privacy;
 using Microsoft.Extensions.Options;
 
@@ -45,51 +46,25 @@ public sealed class RetentionJob(IRetentionStore store, IOptions<IdempotencyOpti
     }
 }
 
-/// <summary>Runs <see cref="RetentionJob"/> ten minutes after start and then once a day.</summary>
-public sealed class RetentionWorker(IServiceScopeFactory scopes, TimeProvider timeProvider, ILogger<RetentionWorker> logger) : BackgroundService
+/// <summary>
+/// Runs <see cref="RetentionJob"/> ten minutes after the first start and then once a day, as a
+/// scheduled job kind (PLAN-0039 Slice 3). A deploy keeps the time already planned.
+/// </summary>
+public sealed class RetentionScheduledJob(RetentionJob retention) : IScheduledJob
 {
-    /// <summary>Time between runs.</summary>
-    public static readonly TimeSpan Interval = TimeSpan.FromDays(1);
-
-    /// <summary>Wait after start, so a deploy is not slowed by the first run.</summary>
-    public static readonly TimeSpan StartDelay = TimeSpan.FromMinutes(10);
+    /// <inheritdoc />
+    public string Kind => "retention";
 
     /// <inheritdoc />
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    public DateTimeOffset FirstRunAt(DateTimeOffset now) => now + TimeSpan.FromMinutes(10);
+
+    /// <inheritdoc />
+    public DateTimeOffset NextRunAt(DateTimeOffset now) => now + TimeSpan.FromDays(1);
+
+    /// <inheritdoc />
+    public async Task<JobResult> HandleAsync(JobContext job, CancellationToken cancellationToken)
     {
-        try
-        {
-            await Task.Delay(StartDelay, timeProvider, stoppingToken);
-        }
-        catch (OperationCanceledException)
-        {
-            return;
-        }
-
-        while (!stoppingToken.IsCancellationRequested)
-        {
-            try
-            {
-                await using var scope = scopes.CreateAsyncScope();
-                await scope.ServiceProvider.GetRequiredService<RetentionJob>().RunAsync(stoppingToken);
-            }
-            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
-            {
-                return;
-            }
-            catch (Exception exception)
-            {
-                logger.LogWarning("Retention run failed: {ExceptionType}", exception.GetType().Name);
-            }
-
-            try
-            {
-                await Task.Delay(Interval, timeProvider, stoppingToken);
-            }
-            catch (OperationCanceledException)
-            {
-                return;
-            }
-        }
+        await retention.RunAsync(cancellationToken);
+        return JobResult.Succeeded;
     }
 }
