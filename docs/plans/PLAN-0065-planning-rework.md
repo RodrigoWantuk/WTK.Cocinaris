@@ -1,13 +1,13 @@
 # PLAN-0065: Planning Rework ("Montar o cardápio")
 
-- **Status:** In Progress; Slices 0 to 5 merged (#95 to #100); Slice 6 ("Repetir", an owner request of 2026-11-07) in a draft PR; owner checks remain (see Execution state)
+- **Status:** In Progress; Slices 0 to 6 merged (#95 to #100, #102); owner checks remain (see Execution state)
 - **Type:** Implementation
 - **Priority:** High (owner request)
 - **Owner:** Claude Code
 - **Created:** 2026-11-05
 - **Last updated:** 2026-11-11
 - **Branch:** Plan publication `agent/plan-0065-planning-rework`; each slice uses the branch named in its section
-- **Pull request:** #94 (plan publication, merged); #95 to #100 (Slices 0 to 5, merged); Slice 6 draft PR
+- **Pull request:** #94 (plan publication, merged); #95 to #100 (Slices 0 to 5, merged); #102 (Slice 6, merged); the byte-order-mark fix rides on the PLAN-0049 Slice 1 pull request
 - **Related issues:** None
 - **Related ADRs:** ADR-0009, ADR-0012, ADR-0013
 - **Dependencies:** PLAN-0062, PLAN-0063, PLAN-0064 (all merged). This plan replaces the deck and review screens of PLAN-0062 Slice 1 and the panel of PLAN-0064.
@@ -446,9 +446,9 @@ Prices and budgets, curated pack sizes, loose list items (a decision of PLAN-006
 ## Execution state
 
 - **Current run delivery target:** Slice 6, "Repetir".
-- **Current checkpoint:** Slice 6 implemented on `agent/plan-0065-s6-repeat`, in a draft pull request. Slices 0 to 5 merged via #95 to #100 and deployed with `7333b25`.
+- **Current checkpoint:** Slice 6 merged via #102 (`7c769b4`). The local gates on its head failed one step, `backend-format`, because the generated migration had a byte-order mark; the fix is a commit on the PLAN-0049 Slice 1 branch.
 - **Last completed step:** Repeat endpoint, migration, options-sheet panel, dish-sheet counter, copy, and documents; see the Slice 6 log entry.
-- **Exact next action:** The owner reviews and merges the Slice 6 pull request, then deploys `main` (the migration runs on deploy). The plan then stays In Progress only for owner checks: S1-AI with the provider key (`PLAN0065_LIVE_EVAL=1`), a phone check of the sheets with the keyboard and of the route with the screen kept on, VoiceOver and TalkBack on the board, sheet, and list, and Gate S5's external test with three people. When those are recorded, mark the plan Completed.
+- **Exact next action:** Deploy `main` (the migration runs on deploy); the formatting fix reaches `main` with PLAN-0049 Slice 1. The plan then stays In Progress only for owner checks: S1-AI with the provider key (`PLAN0065_LIVE_EVAL=1`), a phone check of the sheets with the keyboard and of the route with the screen kept on, VoiceOver and TalkBack on the board, sheet, and list, and Gate S5's external test with three people. When those are recorded, mark the plan Completed.
 - **Blockers:** S1-AI needs the provider key; the phone, screen reader, and external test need the owner.
 - **Partially modified areas:** None.
 - **Documentation delivered:** This plan and registry row; product spec rewritten; planning domain, design system, user journeys, privacy, and AI protocol documents; PLAN-0062's acceptance criteria; Slice 6 in the product spec and planning domain.
@@ -615,6 +615,11 @@ Prices and budgets, curated pack sizes, loose list items (a decision of PLAN-006
 - **Validation performed:** Integration: 77 planning tests, 2 of them new (both ways, switching, limits, idempotency, other owner, a pending dish, removal past the fourth key). Unit: 489. Architecture: 14. Frontend: typecheck, lint, format, and 636 tests (3 new). OpenAPI exported, client regenerated and mirrored, drift check passed. Proxy replica at 360 px: `planning-board-journey` 40 of 40, now building the seven snacks with five choices and one "Repetir" (11 taps); the panel is 326 px wide. `mobile-audit`: 69 screens with only the known 110 px fixture line at 320 px; its "sheet-chosen" screen shows the panel on a dinner at 320, 360, and 390 px. The first audit runs failed before any screen: the wrong fixture user, then the rate limit right after the journey; neither was a product failure.
 - **Not run:** the full local gates (one run on the pull request head follows); the real model; a real phone.
 - **Rollback:** the migration's rollback fails while any card repeats more than 4 times; repair forward.
+- **Next action:** See "Exact next action".
+
+### 2026-11-11 — Claude Code (Slice 6 gates)
+
+- **Result:** Owner merged #102 ("Merge feito, continue"). The local gates on `1a01a7f` failed `backend-format` with `CHARSET` on `20261111121111_RaiseShoppingPlanRepeatLimit.cs`, which `dotnet ef` wrote with a byte-order mark. The mark is removed in a commit on `agent/plan-0049-privacy-center`; nothing else changed. The remaining gate steps are reported on #102.
 - **Next action:** See "Exact next action".
 
 ## Completion and handoff checklist

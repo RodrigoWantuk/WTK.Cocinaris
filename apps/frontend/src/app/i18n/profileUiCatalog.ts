@@ -209,6 +209,47 @@ export const REQUIRED_PROFILE_I18N_KEYS = [
   "profile.preferences.customLabel",
   "profile.preferences.entryNote",
   "profile.preferences.entryCustomName",
+  "profile.overview.section.privacy",
+  "profile.overview.linkPrivacy",
+  "profile.privacy.title",
+  "profile.privacy.intro",
+  "profile.privacy.kept.title",
+  "profile.privacy.kept.account",
+  "profile.privacy.kept.profile",
+  "profile.privacy.kept.restrictions",
+  "profile.privacy.kept.pantry",
+  "profile.privacy.kept.cooking",
+  "profile.privacy.kept.typed",
+  "profile.privacy.kept.usage",
+  "profile.privacy.kept.notifications",
+  "profile.privacy.processors.title",
+  "profile.privacy.processors.host",
+  "profile.privacy.processors.cdn",
+  "profile.privacy.processors.deepseek",
+  "profile.privacy.processors.openrouter",
+  "profile.privacy.processors.login",
+  "profile.privacy.processors.push",
+  "profile.privacy.download.title",
+  "profile.privacy.download.detail",
+  "profile.privacy.download.action",
+  "profile.privacy.download.working",
+  "profile.privacy.download.done",
+  "profile.privacy.download.failed",
+  "profile.privacy.download.limited",
+  "profile.privacy.correct.title",
+  "profile.privacy.correct.data",
+  "profile.privacy.correct.preferences",
+  "profile.privacy.correct.equipment",
+  "profile.privacy.correct.pantry",
+  "profile.privacy.correct.recipes",
+  "profile.privacy.correct.menus",
+  "profile.privacy.notifications.title",
+  "profile.privacy.notifications.detail",
+  "profile.privacy.notifications.link",
+  "profile.privacy.delete.title",
+  "profile.privacy.delete.soon",
+  "profile.privacy.delete.action",
+  "profile.privacy.contact",
 ] as const;
 
 export type ProfileI18nKey = (typeof REQUIRED_PROFILE_I18N_KEYS)[number];
@@ -458,6 +499,66 @@ const en: Record<ProfileI18nKey, string> = {
   "profile.equipment.reorderAnnouncement":
     "{name} moved to position {position} of {total}.",
   "profile.preferences.customSubmit": "Add custom entry",
+  "profile.overview.section.privacy": "Your data",
+  "profile.overview.linkPrivacy":
+    "See, download, or delete what Cocinaris keeps",
+  "profile.privacy.title": "Your data",
+  "profile.privacy.intro":
+    "What Cocinaris keeps about you, who else receives a part of it, and how to take it with you or correct it.",
+  "profile.privacy.kept.title": "What we keep",
+  "profile.privacy.kept.account":
+    "Account: the id of your login and when you first signed in.",
+  "profile.privacy.kept.profile":
+    "Profile: name, language, region, how many people, preferences, and equipment.",
+  "profile.privacy.kept.restrictions":
+    "Allergies and restrictions: treated as sensitive data and used only to keep unsuitable food out of suggestions.",
+  "profile.privacy.kept.pantry":
+    "Pantry: items, amounts, dates, and the history of changes.",
+  "profile.privacy.kept.cooking":
+    "Recipes, menus, shopping lists, and what you cooked, with your notes.",
+  "profile.privacy.kept.typed":
+    "What you write for the AI, such as a dish you ask for.",
+  "profile.privacy.kept.usage":
+    "AI usage: how many calls and what they cost, without their text.",
+  "profile.privacy.kept.notifications":
+    "Notifications, if you turn them on: your browser's address for reminders.",
+  "profile.privacy.processors.title": "Who else receives a part",
+  "profile.privacy.processors.host": "The Cocinaris server keeps all of it.",
+  "profile.privacy.processors.cdn":
+    "The delivery network in front of the site: all traffic passes through it.",
+  "profile.privacy.processors.deepseek":
+    "DeepSeek, for recipes and menus: what the request needs, such as pantry items, preferences, restrictions, and what you typed. Never your name or email.",
+  "profile.privacy.processors.openrouter":
+    "OpenRouter: single ingredient names, to recognize them, and dish descriptions, to draw their pictures. Never your profile or restrictions.",
+  "profile.privacy.processors.login":
+    "The login provider keeps your email and password.",
+  "profile.privacy.processors.push":
+    "Your browser's notification service, if you turn notifications on, knows only that a reminder was sent and when.",
+  "profile.privacy.download.title": "Download my data",
+  "profile.privacy.download.detail":
+    "A ZIP file with everything in JSON, to take to another service, and a page to read.",
+  "profile.privacy.download.action": "Download my data",
+  "profile.privacy.download.working": "Preparing the file…",
+  "profile.privacy.download.done": "The file is being saved to your device.",
+  "profile.privacy.download.failed": "I could not prepare the file. Try again.",
+  "profile.privacy.download.limited":
+    "You already downloaded three times this hour. Try again later.",
+  "profile.privacy.correct.title": "Correct",
+  "profile.privacy.correct.data": "Profile and household",
+  "profile.privacy.correct.preferences": "Preferences and restrictions",
+  "profile.privacy.correct.equipment": "Equipment",
+  "profile.privacy.correct.pantry": "Pantry",
+  "profile.privacy.correct.recipes": "Recipes",
+  "profile.privacy.correct.menus": "Menus",
+  "profile.privacy.notifications.title": "Notifications",
+  "profile.privacy.notifications.detail":
+    "Reminders are off until you turn them on, and you can turn them off at any time in",
+  "profile.privacy.notifications.link": "Profile",
+  "profile.privacy.delete.title": "Delete my account",
+  "profile.privacy.delete.soon":
+    "Coming soon: deleting the account and everything in it from here.",
+  "profile.privacy.delete.action": "Delete my account",
+  "profile.privacy.contact": "For anything this page cannot do, write to",
 };
 
 const ptBR: Record<ProfileI18nKey, string> = {
@@ -712,6 +813,69 @@ const ptBR: Record<ProfileI18nKey, string> = {
   "profile.equipment.reorderAnnouncement":
     "{name} movido para a posição {position} de {total}.",
   "profile.preferences.customSubmit": "Adicionar entrada personalizada",
+  "profile.overview.section.privacy": "Seus dados",
+  "profile.overview.linkPrivacy":
+    "Ver, baixar ou excluir o que o Cocinaris guarda",
+  "profile.privacy.title": "Seus dados",
+  "profile.privacy.intro":
+    "O que o Cocinaris guarda sobre você, quem mais recebe uma parte, e como levar com você ou corrigir.",
+  "profile.privacy.kept.title": "O que guardamos",
+  "profile.privacy.kept.account":
+    "Conta: o identificador do seu login e quando você entrou pela primeira vez.",
+  "profile.privacy.kept.profile":
+    "Perfil: nome, idioma, região, quantas pessoas, preferências e equipamentos.",
+  "profile.privacy.kept.restrictions":
+    "Alergias e restrições: tratadas como dados sensíveis e usadas só para tirar das sugestões o que não serve para você.",
+  "profile.privacy.kept.pantry":
+    "Despensa: itens, quantidades, datas e o histórico de mudanças.",
+  "profile.privacy.kept.cooking":
+    "Receitas, cardápios, listas de compras e o que você cozinhou, com suas notas.",
+  "profile.privacy.kept.typed":
+    "O que você escreve para a IA, como um prato que você pede.",
+  "profile.privacy.kept.usage":
+    "Uso da IA: quantas chamadas e quanto custaram, sem o texto.",
+  "profile.privacy.kept.notifications":
+    "Notificações, se você ligar: o endereço do seu navegador para os avisos.",
+  "profile.privacy.processors.title": "Quem mais recebe uma parte",
+  "profile.privacy.processors.host": "O servidor do Cocinaris guarda tudo.",
+  "profile.privacy.processors.cdn":
+    "A rede de entrega na frente do site: todo o tráfego passa por ela.",
+  "profile.privacy.processors.deepseek":
+    "DeepSeek, para receitas e cardápios: o que o pedido precisa, como itens da despensa, preferências, restrições e o que você digitou. Nunca seu nome ou e-mail.",
+  "profile.privacy.processors.openrouter":
+    "OpenRouter: nomes de ingredientes, um por vez, para reconhecê-los, e a descrição dos pratos, para criar as imagens. Nunca seu perfil ou suas restrições.",
+  "profile.privacy.processors.login":
+    "O provedor de login guarda seu e-mail e sua senha.",
+  "profile.privacy.processors.push":
+    "O serviço de notificação do seu navegador, se você ligar os avisos, sabe só que um aviso foi enviado e quando.",
+  "profile.privacy.download.title": "Baixar meus dados",
+  "profile.privacy.download.detail":
+    "Um arquivo ZIP com tudo em JSON, para levar a outro serviço, e uma página para ler.",
+  "profile.privacy.download.action": "Baixar meus dados",
+  "profile.privacy.download.working": "Preparando o arquivo…",
+  "profile.privacy.download.done":
+    "O arquivo está sendo salvo no seu aparelho.",
+  "profile.privacy.download.failed":
+    "Não consegui preparar o arquivo. Tente de novo.",
+  "profile.privacy.download.limited":
+    "Você já baixou três vezes nesta hora. Tente mais tarde.",
+  "profile.privacy.correct.title": "Corrigir",
+  "profile.privacy.correct.data": "Perfil e casa",
+  "profile.privacy.correct.preferences": "Preferências e restrições",
+  "profile.privacy.correct.equipment": "Equipamentos",
+  "profile.privacy.correct.pantry": "Despensa",
+  "profile.privacy.correct.recipes": "Receitas",
+  "profile.privacy.correct.menus": "Cardápios",
+  "profile.privacy.notifications.title": "Notificações",
+  "profile.privacy.notifications.detail":
+    "Os avisos ficam desligados até você ligar, e você desliga quando quiser em",
+  "profile.privacy.notifications.link": "Perfil",
+  "profile.privacy.delete.title": "Excluir minha conta",
+  "profile.privacy.delete.soon":
+    "Em breve: excluir a conta e tudo o que há nela por aqui.",
+  "profile.privacy.delete.action": "Excluir minha conta",
+  "profile.privacy.contact":
+    "Para algo que esta página não resolve, escreva para",
 };
 
 const es: Record<ProfileI18nKey, string> = {
@@ -969,6 +1133,68 @@ const es: Record<ProfileI18nKey, string> = {
   "profile.equipment.reorderAnnouncement":
     "{name} movido a la posición {position} de {total}.",
   "profile.preferences.customSubmit": "Agregar entrada personalizada",
+  "profile.overview.section.privacy": "Tus datos",
+  "profile.overview.linkPrivacy":
+    "Ver, descargar o eliminar lo que guarda Cocinaris",
+  "profile.privacy.title": "Tus datos",
+  "profile.privacy.intro":
+    "Lo que Cocinaris guarda sobre ti, quién más recibe una parte, y cómo llevártelo o corregirlo.",
+  "profile.privacy.kept.title": "Lo que guardamos",
+  "profile.privacy.kept.account":
+    "Cuenta: el identificador de tu inicio de sesión y cuándo entraste por primera vez.",
+  "profile.privacy.kept.profile":
+    "Perfil: nombre, idioma, región, cuántas personas, preferencias y equipos.",
+  "profile.privacy.kept.restrictions":
+    "Alergias y restricciones: tratadas como datos sensibles y usadas solo para quitar de las sugerencias lo que no te sirve.",
+  "profile.privacy.kept.pantry":
+    "Despensa: artículos, cantidades, fechas y el historial de cambios.",
+  "profile.privacy.kept.cooking":
+    "Recetas, menús, listas de compras y lo que cocinaste, con tus notas.",
+  "profile.privacy.kept.typed":
+    "Lo que escribes para la IA, como un plato que pides.",
+  "profile.privacy.kept.usage":
+    "Uso de la IA: cuántas llamadas y cuánto costaron, sin su texto.",
+  "profile.privacy.kept.notifications":
+    "Notificaciones, si las activas: la dirección de tu navegador para los avisos.",
+  "profile.privacy.processors.title": "Quién más recibe una parte",
+  "profile.privacy.processors.host": "El servidor de Cocinaris lo guarda todo.",
+  "profile.privacy.processors.cdn":
+    "La red de entrega delante del sitio: todo el tráfico pasa por ella.",
+  "profile.privacy.processors.deepseek":
+    "DeepSeek, para recetas y menús: lo que el pedido necesita, como artículos de la despensa, preferencias, restricciones y lo que escribiste. Nunca tu nombre ni tu correo.",
+  "profile.privacy.processors.openrouter":
+    "OpenRouter: nombres de ingredientes, uno a la vez, para reconocerlos, y la descripción de los platos, para crear las imágenes. Nunca tu perfil ni tus restricciones.",
+  "profile.privacy.processors.login":
+    "El proveedor de inicio de sesión guarda tu correo y tu contraseña.",
+  "profile.privacy.processors.push":
+    "El servicio de notificaciones de tu navegador, si activas los avisos, sabe solo que se envió un aviso y cuándo.",
+  "profile.privacy.download.title": "Descargar mis datos",
+  "profile.privacy.download.detail":
+    "Un archivo ZIP con todo en JSON, para llevarlo a otro servicio, y una página para leer.",
+  "profile.privacy.download.action": "Descargar mis datos",
+  "profile.privacy.download.working": "Preparando el archivo…",
+  "profile.privacy.download.done":
+    "El archivo se está guardando en tu dispositivo.",
+  "profile.privacy.download.failed":
+    "No pude preparar el archivo. Inténtalo de nuevo.",
+  "profile.privacy.download.limited":
+    "Ya descargaste tres veces en esta hora. Inténtalo más tarde.",
+  "profile.privacy.correct.title": "Corregir",
+  "profile.privacy.correct.data": "Perfil y hogar",
+  "profile.privacy.correct.preferences": "Preferencias y restricciones",
+  "profile.privacy.correct.equipment": "Equipos",
+  "profile.privacy.correct.pantry": "Despensa",
+  "profile.privacy.correct.recipes": "Recetas",
+  "profile.privacy.correct.menus": "Menús",
+  "profile.privacy.notifications.title": "Notificaciones",
+  "profile.privacy.notifications.detail":
+    "Los avisos están apagados hasta que los actives, y los apagas cuando quieras en",
+  "profile.privacy.notifications.link": "Perfil",
+  "profile.privacy.delete.title": "Eliminar mi cuenta",
+  "profile.privacy.delete.soon":
+    "Pronto: eliminar la cuenta y todo lo que contiene desde aquí.",
+  "profile.privacy.delete.action": "Eliminar mi cuenta",
+  "profile.privacy.contact": "Para algo que esta página no resuelve, escribe a",
 };
 
 export const profileCatalogs: Record<

@@ -96,6 +96,14 @@ The first release provides:
 
 Some deletion requests may be limited by security, financial, legal, or dispute-retention obligations. Such exceptions must be documented and minimized.
 
+### Delivered (PLAN-0049 Slice 1)
+
+- **Page.** "Seus dados" at `/app/perfil/privacidade`, linked from the profile: what is kept (allergies and restrictions marked sensitive), who else receives a part, the export, links to where each part is corrected, where notifications are turned off, and a support line from `Privacy:ContactEmail` when one is configured. Account deletion is shown as coming (Slice 2).
+- **Who else receives a part**, as the page says it: the host keeps everything; the delivery network in front of the site sees all traffic; DeepSeek receives what a recipe or menu request needs (pantry items, preferences, restrictions, typed text), never name or email; OpenRouter receives single ingredient names and dish descriptions for images, never profile or restrictions; the identity provider keeps email and password; a browser's push service learns only that a message was sent and when. Turning on receipt photos (PLAN-0046) adds OpenRouter's vision model, and the page must say so before that flag is turned on.
+- **Export.** `GET /api/v1/privacy/export` streams a ZIP with `cocinaris-dados.json` (format `cocinaris-export`, version 1: every row of every table in `AccountDataCatalog`, by module, with columns stored as JSON text written as JSON) and `cocinaris-dados.html` (profile, preferences, equipment, pantry, current recipes, menus, what was cooked, and a count of every part; every value escaped; no scripts and a `default-src 'none'` policy). Both come from one read-only snapshot. It is made on request, never stored, `no-store`, and limited to three per person per hour.
+- **Left out of the export:** a browser's push address and keys (secrets of that browser; the export says how many devices and since when), stored replies of retried requests (`platform.idempotency_records`), and shared data whose rows only name who asked first (`recipes.recipe_thumbnails`, `ingredients.resolution_queue`). Dish images are not included.
+- **Coverage.** `AccountDataCoverageTests` reads the EF model and fails when a table with `OwnerUserId`, `ActorUserId`, or `RequestedByUserId` is neither exported nor listed as an exemption with a reason.
+
 ## Account deletion workflow
 
 ```text

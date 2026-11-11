@@ -304,6 +304,13 @@ export function ProfileOverviewPage() {
               "profile.overview.section.equipment",
               "profile.overview.linkEquipment",
             ],
+            [
+              "privacy",
+              "/app/perfil/privacidade",
+              "profile-overview-link-privacy",
+              "profile.overview.section.privacy",
+              "profile.overview.linkPrivacy",
+            ],
           ] as const
         ).map(([section, to, testId, title, detail]) => {
           const step = nextSteps.find((item) => item.sectionKey === section);
