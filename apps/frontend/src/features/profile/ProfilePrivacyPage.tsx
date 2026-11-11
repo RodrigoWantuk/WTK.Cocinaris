@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { createLivePrivacyRepository } from "@/adapters/live/livePrivacyRepository";
 import { RecipeApiError } from "@/contracts/recipes";
 import type { PrivacyRepository } from "@/contracts/privacy";
+import { AccountDeletionSection } from "./AccountDeletionSection";
 
 const KEPT = [
   "account",
@@ -37,7 +38,7 @@ type DownloadState = "idle" | "working" | "done" | "failed" | "limited";
 
 /**
  * "Seus dados" (PLAN-0049 Slice 1): what Cocinaris keeps and who else receives a part of it, the
- * export download, where each part is corrected, and account deletion (Slice 2; disabled until then).
+ * export download, where each part is corrected, and account deletion (Slice 2).
  * The download is a ZIP saved through an object URL, so a failure can be said on the page instead of
  * opening an error file.
  *
@@ -205,22 +206,7 @@ export function ProfilePrivacyPage({
         </p>
       </section>
 
-      <section aria-labelledby="privacy-delete" className="space-y-2">
-        <h2 id="privacy-delete" className="text-xl font-semibold">
-          {t("profile.privacy.delete.title")}
-        </h2>
-        <p className="text-sm text-muted-foreground">
-          {t("profile.privacy.delete.soon")}
-        </p>
-        <Button
-          type="button"
-          variant="secondary"
-          disabled
-          data-testid="privacy-delete"
-        >
-          {t("profile.privacy.delete.action")}
-        </Button>
-      </section>
+      <AccountDeletionSection repository={repo} />
 
       {contactEmail ? (
         <p className="text-sm" data-testid="privacy-contact">

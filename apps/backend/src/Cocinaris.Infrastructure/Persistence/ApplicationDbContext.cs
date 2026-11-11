@@ -40,6 +40,8 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
 
     /// <summary>Gets PostgreSQL-backed idempotency records.</summary>
     public DbSet<IdempotencyRecord> IdempotencyRecords => Set<IdempotencyRecord>();
+    /// <summary>Gets account deletions and their short-lived tombstones (PLAN-0049).</summary>
+    public DbSet<AccountDeletionRecord> AccountDeletions => Set<AccountDeletionRecord>();
 
     /// <summary>Gets owner profile persistence records.</summary>
     public DbSet<UserProfileRecord> UserProfiles => Set<UserProfileRecord>();
@@ -305,6 +307,25 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             entity.HasIndex(x => new { x.OwnerUserId, x.Scope, x.Key }).IsUnique();
         });
 
+        modelBuilder.Entity<AccountDeletionRecord>(entity =>
+        {
+            entity.ToTable("account_deletions", "platform", table =>
+            {
+                table.HasCheckConstraint("ck_account_deletions_state", "\"State\" IN ('Pending', 'Completed')");
+                // A completed deletion keeps no link to the account it erased.
+                table.HasCheckConstraint("ck_account_deletions_owner", "(\"State\" = 'Pending' AND \"OwnerUserId\" IS NOT NULL) OR (\"State\" = 'Completed' AND \"OwnerUserId\" IS NULL AND \"CompletedAt\" IS NOT NULL)");
+            });
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.SubjectHash).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.State).HasMaxLength(16).IsRequired();
+            entity.Property(x => x.FailureCode).HasMaxLength(120);
+            entity.Property(x => x.CountsJson).HasColumnType("jsonb");
+            entity.HasIndex(x => x.SubjectHash);
+            entity.HasIndex(x => x.RequestedAt);
+            // One pending deletion per account, so a repeated request finds the first.
+            entity.HasIndex(x => x.OwnerUserId).IsUnique().HasFilter("\"State\" = 'Pending'");
+        });
+
         modelBuilder.Entity<UserProfileRecord>(entity =>
         {
             entity.ToTable("user_profiles", "profiles", table =>
@@ -400,7 +421,7 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             entity.Property(x => x.Provider).HasMaxLength(60);
             entity.Property(x => x.Model).HasMaxLength(100);
             entity.Property(x => x.CorrelationId).HasMaxLength(100).IsRequired();
-            entity.HasOne<InternalUser>().WithMany().HasForeignKey(x => x.OwnerUserId).OnDelete(DeleteBehavior.Restrict);
+            // No foreign key to identity.users: an account deletion keeps these rows under a random id (PLAN-0049 D4).
             entity.HasIndex(x => new { x.OwnerUserId, x.Status });
             entity.HasIndex(x => new { x.OwnerUserId, x.CreatedAt });
             entity.HasIndex(x => x.CreatedAt);
@@ -998,6 +1019,34 @@ public sealed class AuditEventRecord
     public required string MetadataJson { get; set; }
     /// <summary>Gets or sets the UTC event instant.</summary>
     public DateTimeOffset OccurredAt { get; set; }
+}
+
+/// <summary>
+/// An account deletion (PLAN-0049 Slice 2). While pending it names the account; once completed it is a
+/// tombstone of the login's hash, the times, and per-table counts, kept 31 days so older sessions end.
+/// </summary>
+public sealed class AccountDeletionRecord
+{
+    /// <summary>Gets or sets the deletion id.</summary>
+    public Guid Id { get; set; }
+    /// <summary>Gets or sets the SHA-256, in lowercase hex, of the login's issuer and subject.</summary>
+    public required string SubjectHash { get; set; }
+    /// <summary>Gets or sets the account being erased; null once completed.</summary>
+    public Guid? OwnerUserId { get; set; }
+    /// <summary>Gets or sets <c>Pending</c> or <c>Completed</c>.</summary>
+    public required string State { get; set; }
+    /// <summary>Gets or sets when the deletion was asked for.</summary>
+    public DateTimeOffset RequestedAt { get; set; }
+    /// <summary>Gets or sets when every row was erased.</summary>
+    public DateTimeOffset? CompletedAt { get; set; }
+    /// <summary>Gets or sets failed attempts so far.</summary>
+    public int Attempts { get; set; }
+    /// <summary>Gets or sets when the next attempt is due.</summary>
+    public DateTimeOffset NextAttemptAt { get; set; }
+    /// <summary>Gets or sets the last failure's closed code, never data.</summary>
+    public string? FailureCode { get; set; }
+    /// <summary>Gets or sets rows affected per table, as JSON; counts only.</summary>
+    public string? CountsJson { get; set; }
 }
 
 /// <summary>Persistence record used to replay an already completed idempotent command.</summary>

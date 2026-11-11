@@ -21,4 +21,10 @@ export interface PrivacyRepository {
     language: string,
     signal?: AbortSignal,
   ): Promise<PrivacyExportFile>;
+  /**
+   * Deletes the account at once (PLAN-0049 Slice 2): `confirmation` is the typed word. Rejects with a
+   * `RecipeApiError` of status 400 for a wrong word and 403 when the sign-in is not recent; on success
+   * the session has already ended.
+   */
+  deleteAccount(confirmation: string, csrfToken: string): Promise<void>;
 }

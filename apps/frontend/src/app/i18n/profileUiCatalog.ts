@@ -247,9 +247,23 @@ export const REQUIRED_PROFILE_I18N_KEYS = [
   "profile.privacy.notifications.detail",
   "profile.privacy.notifications.link",
   "profile.privacy.delete.title",
-  "profile.privacy.delete.soon",
   "profile.privacy.delete.action",
   "profile.privacy.contact",
+  "profile.privacy.delete.goes",
+  "profile.privacy.delete.login",
+  "profile.privacy.delete.usage",
+  "profile.privacy.delete.final",
+  "profile.privacy.delete.word",
+  "profile.privacy.delete.type",
+  "profile.privacy.delete.working",
+  "profile.privacy.delete.reauth",
+  "profile.privacy.delete.reauth.action",
+  "profile.privacy.delete.wrong",
+  "profile.privacy.delete.failed",
+  "profile.privacy.deleted.title",
+  "profile.privacy.deleted.body",
+  "profile.privacy.deleted.login",
+  "profile.privacy.deleted.home",
 ] as const;
 
 export type ProfileI18nKey = (typeof REQUIRED_PROFILE_I18N_KEYS)[number];
@@ -555,10 +569,30 @@ const en: Record<ProfileI18nKey, string> = {
     "Reminders are off until you turn them on, and you can turn them off at any time in",
   "profile.privacy.notifications.link": "Profile",
   "profile.privacy.delete.title": "Delete my account",
-  "profile.privacy.delete.soon":
-    "Coming soon: deleting the account and everything in it from here.",
   "profile.privacy.delete.action": "Delete my account",
   "profile.privacy.contact": "For anything this page cannot do, write to",
+  "profile.privacy.delete.goes":
+    "Deleted for good: profile, restrictions, pantry, recipes, menus, lists, what you cooked, and everything you wrote.",
+  "profile.privacy.delete.login":
+    "Stays: your login at the login provider (email and password). If you sign in again, an empty account starts. To delete the login too, ask through this page's contact.",
+  "profile.privacy.delete.usage":
+    "Kept without your name, for 13 months: what the AI cost, for spending control.",
+  "profile.privacy.delete.final":
+    "There is no way back. To keep anything, download your data first.",
+  "profile.privacy.delete.word": "DELETE",
+  "profile.privacy.delete.type": "To confirm, type {{word}}",
+  "profile.privacy.delete.working": "Deleting…",
+  "profile.privacy.delete.reauth":
+    "For your safety, sign in again to delete the account.",
+  "profile.privacy.delete.reauth.action": "Sign in again",
+  "profile.privacy.delete.wrong": "Type {{word}} to confirm.",
+  "profile.privacy.delete.failed": "I could not delete the account. Try again.",
+  "profile.privacy.deleted.title": "Your account was deleted",
+  "profile.privacy.deleted.body":
+    "Your Cocinaris data is being erased, and it is gone within moments.",
+  "profile.privacy.deleted.login":
+    "Your login stays at the login provider. If you sign in again, an empty account starts.",
+  "profile.privacy.deleted.home": "Back to the start",
 };
 
 const ptBR: Record<ProfileI18nKey, string> = {
@@ -871,11 +905,32 @@ const ptBR: Record<ProfileI18nKey, string> = {
     "Os avisos ficam desligados até você ligar, e você desliga quando quiser em",
   "profile.privacy.notifications.link": "Perfil",
   "profile.privacy.delete.title": "Excluir minha conta",
-  "profile.privacy.delete.soon":
-    "Em breve: excluir a conta e tudo o que há nela por aqui.",
   "profile.privacy.delete.action": "Excluir minha conta",
   "profile.privacy.contact":
     "Para algo que esta página não resolve, escreva para",
+  "profile.privacy.delete.goes":
+    "Apagamos de vez: perfil, restrições, despensa, receitas, cardápios, listas, o que você cozinhou e tudo o que escreveu.",
+  "profile.privacy.delete.login":
+    "Fica: seu login no provedor de login (e-mail e senha). Se entrar de novo, começa uma conta vazia. Para apagar o login também, peça pelo contato desta página.",
+  "profile.privacy.delete.usage":
+    "Fica sem o seu nome, por 13 meses: quanto a IA custou, para o controle de gastos.",
+  "profile.privacy.delete.final":
+    "Não tem volta. Se quiser guardar algo, baixe seus dados antes.",
+  "profile.privacy.delete.word": "EXCLUIR",
+  "profile.privacy.delete.type": "Para confirmar, digite {{word}}",
+  "profile.privacy.delete.working": "Excluindo…",
+  "profile.privacy.delete.reauth":
+    "Por segurança, entre de novo para excluir a conta.",
+  "profile.privacy.delete.reauth.action": "Entrar de novo",
+  "profile.privacy.delete.wrong": "Digite {{word}} para confirmar.",
+  "profile.privacy.delete.failed":
+    "Não consegui excluir a conta. Tente de novo.",
+  "profile.privacy.deleted.title": "Sua conta foi excluída",
+  "profile.privacy.deleted.body":
+    "Seus dados do Cocinaris estão sendo apagados e somem em instantes.",
+  "profile.privacy.deleted.login":
+    "Seu login continua no provedor de login. Se entrar de novo, começa uma conta vazia.",
+  "profile.privacy.deleted.home": "Voltar ao início",
 };
 
 const es: Record<ProfileI18nKey, string> = {
@@ -1191,10 +1246,31 @@ const es: Record<ProfileI18nKey, string> = {
     "Los avisos están apagados hasta que los actives, y los apagas cuando quieras en",
   "profile.privacy.notifications.link": "Perfil",
   "profile.privacy.delete.title": "Eliminar mi cuenta",
-  "profile.privacy.delete.soon":
-    "Pronto: eliminar la cuenta y todo lo que contiene desde aquí.",
   "profile.privacy.delete.action": "Eliminar mi cuenta",
   "profile.privacy.contact": "Para algo que esta página no resuelve, escribe a",
+  "profile.privacy.delete.goes":
+    "Se borra para siempre: perfil, restricciones, despensa, recetas, menús, listas, lo que cocinaste y todo lo que escribiste.",
+  "profile.privacy.delete.login":
+    "Se queda: tu inicio de sesión en el proveedor (correo y contraseña). Si vuelves a entrar, empieza una cuenta vacía. Para borrar también el inicio de sesión, pídelo por el contacto de esta página.",
+  "profile.privacy.delete.usage":
+    "Se queda sin tu nombre, durante 13 meses: cuánto costó la IA, para el control de gastos.",
+  "profile.privacy.delete.final":
+    "No hay vuelta atrás. Si quieres guardar algo, descarga tus datos antes.",
+  "profile.privacy.delete.word": "ELIMINAR",
+  "profile.privacy.delete.type": "Para confirmar, escribe {{word}}",
+  "profile.privacy.delete.working": "Eliminando…",
+  "profile.privacy.delete.reauth":
+    "Por seguridad, vuelve a entrar para eliminar la cuenta.",
+  "profile.privacy.delete.reauth.action": "Volver a entrar",
+  "profile.privacy.delete.wrong": "Escribe {{word}} para confirmar.",
+  "profile.privacy.delete.failed":
+    "No pude eliminar la cuenta. Inténtalo de nuevo.",
+  "profile.privacy.deleted.title": "Tu cuenta fue eliminada",
+  "profile.privacy.deleted.body":
+    "Tus datos de Cocinaris se están borrando y desaparecen en unos instantes.",
+  "profile.privacy.deleted.login":
+    "Tu inicio de sesión sigue en el proveedor. Si vuelves a entrar, empieza una cuenta vacía.",
+  "profile.privacy.deleted.home": "Volver al inicio",
 };
 
 export const profileCatalogs: Record<

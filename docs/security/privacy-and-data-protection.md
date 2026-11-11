@@ -104,6 +104,19 @@ Some deletion requests may be limited by security, financial, legal, or dispute-
 - **Left out of the export:** a browser's push address and keys (secrets of that browser; the export says how many devices and since when), stored replies of retried requests (`platform.idempotency_records`), and shared data whose rows only name who asked first (`recipes.recipe_thumbnails`, `ingredients.resolution_queue`). Dish images are not included.
 - **Coverage.** `AccountDataCoverageTests` reads the EF model and fails when a table with `OwnerUserId`, `ActorUserId`, or `RequestedByUserId` is neither exported nor listed as an exemption with a reason.
 
+### Delivered (PLAN-0049 Slice 2): account deletion
+
+- **Asking.** "Excluir minha conta" on the same page says what goes, what stays, and that there is no way back, and offers the export first. The person types the word of the page's language (`EXCLUIR`, `DELETE`, or `ELIMINAR`). A sign-in older than 15 minutes is sent through sign-in again, with the provider asking for the password (`prompt=login`). The deletion then happens at once (owner decision D1): `POST /api/v1/privacy/account-deletion` records it in `platform.account_deletions`, ends the session, and wakes the worker.
+- **Erasure.** One transaction removes the person's rows from every table in `AccountDataCatalog` and its exemptions, in the order the foreign keys require, with the account (`identity.users`) last. Either everything goes or nothing does. A failure is retried a minute later with only its exception type recorded. Append-only history (pantry transactions, audit events, recipe revisions, preparation records) refuses any change, except a deletion inside a transaction that marks itself as an account erasure with `SET LOCAL cocinaris.account_erasure`. Updates stay refused.
+- **What stays.**
+  - The login at the identity provider (owner decision D2: unlink only). Signing in again starts an empty account. The owner deletes a login by hand on request (runbook).
+  - AI usage rows, under one random id per deletion, which names nobody (owner decision D4), until the retention job deletes them after 13 months (Slice 3). `ai.usage_ledger` has no foreign key to `identity.users` for this reason.
+  - Shared rows that only named who asked first: dish images, where the id becomes the empty id, and pending ingredient names, where it becomes null.
+  - The tombstone: the SHA-256 of the login's issuer and subject, the request and completion times, and per-table counts, with no content and no account id. It is kept 31 days.
+- **Sessions.** Every session carries its sign-in time and lives at most 30 days. A session signed in before its account's deletion ends at once, on every device, within 15 seconds. A sign-in while the deletion runs is refused. Sessions from before this rule get their cookie's issue time, which is earlier than any tombstone.
+- **On the device.** After the deletion, the browser removes its notification subscription and clears the offline list, as on logout, then shows "Sua conta foi excluída" at `/conta-excluida`, a page outside the app.
+- **Not yet:** background jobs that write for an account during its erasure (a dish image request, for example) may leave a row with the old id; the retention job (Slice 3) is where such rows are found. Backups expire under the backup policy.
+
 ## Account deletion workflow
 
 ```text

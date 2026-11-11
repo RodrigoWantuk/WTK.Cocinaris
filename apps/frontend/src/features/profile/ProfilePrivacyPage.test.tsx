@@ -15,6 +15,7 @@ function privacy(
       blob: new Blob(["zip"], { type: "application/zip" }),
       fileName: "cocinaris-dados-2026-11-11.zip",
     })),
+    deleteAccount: vi.fn(async () => undefined),
     ...overrides,
   };
 }
@@ -51,7 +52,7 @@ describe("ProfilePrivacyPage (PLAN-0049)", () => {
       "href",
       "/app/despensa",
     );
-    // Deletion arrives with Slice 2.
+    // Deleting needs the typed word first.
     expect(screen.getByTestId("privacy-delete")).toBeDisabled();
     expect(screen.queryByTestId("privacy-contact")).toBeNull();
   });

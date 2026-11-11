@@ -113,6 +113,12 @@ builder.Services.AddCocinarisPlanning();
 builder.Services.Configure<PrivacyOptions>(builder.Configuration.GetSection("Privacy"));
 builder.Services.AddScoped<Cocinaris.SharedKernel.Privacy.IAccountDataReader, Cocinaris.Infrastructure.Persistence.AccountData.PostgreSqlAccountDataReader>();
 builder.Services.AddScoped<PrivacyExportService>();
+builder.Services.AddScoped<Cocinaris.SharedKernel.Privacy.IAccountDeletionStore, Cocinaris.Infrastructure.Persistence.AccountData.PostgreSqlAccountDeletionStore>();
+builder.Services.AddSingleton<AccountDeletionMarks>();
+builder.Services.AddSingleton<AccountDeletionSignal>();
+builder.Services.AddScoped<AccountDeletionService>();
+builder.Services.AddScoped<AccountDeletionProcessor>();
+builder.Services.AddHostedService<AccountDeletionWorker>();
 builder.Services.AddCocinarisIngredients(builder.Configuration, builder.Environment);
 builder.Services.AddAntiforgery(options => { options.HeaderName = "X-CSRF-TOKEN"; options.Cookie.Name = "__Host-cocinaris-antiforgery"; options.Cookie.Path = "/"; options.Cookie.SecurePolicy = CookieSecurePolicy.Always; });
 var dataProtection = builder.Services.AddDataProtection().SetApplicationName("Cocinaris");
@@ -133,6 +139,8 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
     options.Cookie.SameSite = SameSiteMode.Lax;
     options.ExpireTimeSpan = sessionOptions.IdleTimeout;
     options.SlidingExpiration = true;
+    // PLAN-0049: every session carries its sign-in time, for the 30-day limit and deletion tombstones.
+    options.Events.OnValidatePrincipal = SessionGuard.StampMissingSignInAsync;
     options.Events.OnRedirectToLogin = context =>
     {
         securityMetrics.RecordFailure("authentication");
@@ -153,6 +161,15 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
     options.SaveTokens = false;
     options.PushedAuthorizationBehavior = PushedAuthorizationBehavior.Disable;
     options.RequireHttpsMetadata = !isDevelopment;
+    options.Events.OnTicketReceived = context =>
+    {
+        if (context.Principal is { } principal)
+        {
+            context.Principal = SessionGuard.WithSignedInAt(principal, context.HttpContext.RequestServices.GetRequiredService<TimeProvider>().GetUtcNow());
+        }
+
+        return Task.CompletedTask;
+    };
 });
 builder.Services.AddAuthorization();
 builder.Services.AddRateLimiter(options =>
@@ -186,7 +203,7 @@ telemetry.WithTracing(tracing =>
 });
 telemetry.WithMetrics(metrics =>
 {
-    metrics.AddAspNetCoreInstrumentation().AddMeter("Cocinaris.Inventory").AddMeter("Cocinaris.ShoppingPlans").AddMeter("Cocinaris.Profiles").AddMeter("Cocinaris.Security").AddMeter("Cocinaris.Privacy");
+    metrics.AddAspNetCoreInstrumentation().AddMeter("Cocinaris.Inventory").AddMeter("Cocinaris.ShoppingPlans").AddMeter("Cocinaris.Profiles").AddMeter("Cocinaris.Security").AddMeter("Cocinaris.Privacy").AddMeter("Cocinaris.Privacy.Deletion");
     if (Uri.TryCreate(builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"], UriKind.Absolute, out var endpoint))
     {
         metrics.AddOtlpExporter(options => options.Endpoint = endpoint);
@@ -249,6 +266,7 @@ app.UseStatusCodePages(async statusContext =>
     await ApiProblem.Create(context, context.Response.StatusCode, errorCode, detail).ExecuteAsync(context);
 });
 app.UseAuthentication();
+app.Use((context, next) => SessionGuard.EnforceAsync(context, () => next(context)));
 app.UseAuthorization();
 app.UseRateLimiter();
 app.UseAntiforgery();
@@ -256,7 +274,10 @@ app.MapOpenApi("/openapi/{documentName}.json").AllowAnonymous();
 app.MapGet("/health/live", () => Results.Ok()).Produces(StatusCodes.Status200OK).AllowAnonymous();
 app.MapGet("/health/ready", async (ApplicationDbContext db, RuntimeConfigurationReadiness readiness, CancellationToken ct) => !readiness.IsReady || !await db.Database.CanConnectAsync(ct) ? Results.StatusCode(503) : Results.Ok()).Produces(StatusCodes.Status200OK).ProducesProblem(StatusCodes.Status503ServiceUnavailable).AllowAnonymous();
 var api = app.MapGroup("/api/v1");
-api.MapPost("/auth/login", (string? returnUrl) => Results.Challenge(new AuthenticationProperties { RedirectUri = ReturnUrlPolicy.Normalize(returnUrl) }, ["oidc"])).AllowAnonymous().RequireRateLimiting("authentication").Produces(StatusCodes.Status302Found);
+// reauth=true asks the provider for the password again, for actions that need a recent sign-in (PLAN-0049).
+api.MapPost("/auth/login", (string? returnUrl, bool? reauth) => Results.Challenge(reauth == true
+        ? new OpenIdConnectChallengeProperties { RedirectUri = ReturnUrlPolicy.Normalize(returnUrl), Prompt = "login", MaxAge = TimeSpan.Zero }
+        : new AuthenticationProperties { RedirectUri = ReturnUrlPolicy.Normalize(returnUrl) }, ["oidc"])).AllowAnonymous().RequireRateLimiting("authentication").Produces(StatusCodes.Status302Found);
 api.MapPost("/auth/logout", async (HttpContext context, IAntiforgery antiforgery, SecurityMetrics metrics) =>
 {
     try { await antiforgery.ValidateRequestAsync(context); }

@@ -9,7 +9,8 @@ namespace Cocinaris.SharedKernel.Privacy;
 /// <param name="Name">Table name.</param>
 /// <param name="OwnerColumn">Column holding the person's internal user id.</param>
 /// <param name="OmittedColumns">Columns left out of the export, such as a browser's push keys, which are secrets of that browser.</param>
-public sealed record AccountDataTable(string Module, string Schema, string Name, string OwnerColumn, IReadOnlyList<string> OmittedColumns)
+/// <param name="Erasure">What account deletion does to the person's rows (PLAN-0049 Slice 2).</param>
+public sealed record AccountDataTable(string Module, string Schema, string Name, string OwnerColumn, IReadOnlyList<string> OmittedColumns, AccountDataErasure Erasure = AccountDataErasure.Delete)
 {
     /// <summary>Gets the qualified name, <c>schema.table</c>, used as the export key.</summary>
     public string QualifiedName => $"{Schema}.{Name}";
@@ -22,7 +23,78 @@ public sealed record AccountDataTable(string Module, string Schema, string Name,
 /// <param name="Schema">PostgreSQL schema.</param>
 /// <param name="Name">Table name.</param>
 /// <param name="Reason">Why it is left out of the export.</param>
-public sealed record AccountDataExemption(string Schema, string Name, string Reason);
+/// <param name="OwnerColumn">Column holding the person's internal user id.</param>
+/// <param name="Erasure">What account deletion does to the person's rows.</param>
+public sealed record AccountDataExemption(string Schema, string Name, string Reason, string OwnerColumn, AccountDataErasure Erasure);
+
+/// <summary>What account deletion does to a table's rows of the deleted person (PLAN-0049 Slice 2).</summary>
+public enum AccountDataErasure
+{
+    /// <summary>The rows are deleted.</summary>
+    Delete,
+
+    /// <summary>The owner id is replaced by one random id per deletion; used for AI usage, kept for spend accounting (decision D4).</summary>
+    Anonymize,
+
+    /// <summary>The owner id is set to null and the shared row stays, such as a dish image others use.</summary>
+    ClearOwner,
+
+    /// <summary>The deletion's own record, which the deletion store clears when the erasure completes.</summary>
+    SelfManaged,
+}
+
+/// <summary>A deletion's state as the session check needs it: who, when, and whether it finished.</summary>
+/// <param name="SubjectHash">SHA-256, in lowercase hex, of the login's issuer and subject; never the subject itself.</param>
+/// <param name="RequestedAt">When the deletion was asked for; sessions signed in before it end.</param>
+/// <param name="Completed">Whether every row is gone; until then, signing in again is refused.</param>
+public sealed record AccountDeletionMark(string SubjectHash, DateTimeOffset RequestedAt, bool Completed);
+
+/// <summary>Durable account deletions (PLAN-0049 Slice 2): the request, the erasure, and the short-lived tombstone.</summary>
+public interface IAccountDeletionStore
+{
+    /// <summary>Records a deletion for one person, or returns the one already pending, so repeating the request changes nothing.</summary>
+    /// <param name="subjectHash">The login's hash, kept as the tombstone.</param>
+    /// <param name="ownerUserId">The internal user id whose rows go; cleared when the deletion completes.</param>
+    /// <param name="now">The request time.</param>
+    /// <param name="cancellationToken">Cancellation.</param>
+    /// <returns>The deletion's id and when it was requested.</returns>
+    Task<(Guid Id, DateTimeOffset RequestedAt)> RequestAsync(string subjectHash, Guid ownerUserId, DateTimeOffset now, CancellationToken cancellationToken);
+
+    /// <summary>Lists the deletions requested since <paramref name="since"/>, for the session check.</summary>
+    /// <param name="since">The oldest request that can still matter: now minus the longest session.</param>
+    /// <param name="cancellationToken">Cancellation.</param>
+    Task<IReadOnlyList<AccountDeletionMark>> ListMarksAsync(DateTimeOffset since, CancellationToken cancellationToken);
+
+    /// <summary>Lists pending deletions whose next attempt is due.</summary>
+    /// <param name="now">The current time.</param>
+    /// <param name="max">At most this many.</param>
+    /// <param name="cancellationToken">Cancellation.</param>
+    Task<IReadOnlyList<Guid>> ListDueAsync(DateTimeOffset now, int max, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Erases every row of the deletion's person in one transaction, in an order the foreign keys allow,
+    /// and marks the deletion completed with per-table counts. A failure changes nothing, so a retry
+    /// starts over; an already completed deletion is left as it is.
+    /// </summary>
+    /// <param name="deletionId">A pending deletion.</param>
+    /// <param name="now">The completion time.</param>
+    /// <param name="cancellationToken">Cancellation.</param>
+    /// <returns>Rows affected per table, or null when the deletion was already completed or does not exist.</returns>
+    Task<IReadOnlyDictionary<string, int>?> EraseAsync(Guid deletionId, DateTimeOffset now, CancellationToken cancellationToken);
+
+    /// <summary>Records a failed attempt with a closed code and when to try again.</summary>
+    /// <param name="deletionId">The deletion.</param>
+    /// <param name="failureCode">A closed code, such as an exception type name; never data.</param>
+    /// <param name="nextAttemptAt">When the next attempt is due.</param>
+    /// <param name="cancellationToken">Cancellation.</param>
+    Task RecordFailureAsync(Guid deletionId, string failureCode, DateTimeOffset nextAttemptAt, CancellationToken cancellationToken);
+
+    /// <summary>Deletes tombstones of completed deletions older than <paramref name="before"/> (retention, Slice 3).</summary>
+    /// <param name="before">The cutoff.</param>
+    /// <param name="cancellationToken">Cancellation.</param>
+    /// <returns>How many were deleted.</returns>
+    Task<int> PurgeCompletedAsync(DateTimeOffset before, CancellationToken cancellationToken);
+}
 
 /// <summary>Reads everything a person has stored, for the export of the privacy center (PLAN-0049).</summary>
 public interface IAccountDataReader
