@@ -554,7 +554,7 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
                 table.HasCheckConstraint("ck_shopping_plan_cards_state", "\"State\" IN ('Unseen', 'Accepted', 'Rejected')");
                 table.HasCheckConstraint("ck_shopping_plan_cards_source", "\"Source\" IN ('Saved', 'Idea', 'Ai')");
                 table.HasCheckConstraint("ck_shopping_plan_cards_expansion", "\"ExpansionState\" IN ('None', 'Pending', 'Ready', 'Failed')");
-                table.HasCheckConstraint("ck_shopping_plan_cards_repeats", "\"Repeats\" BETWEEN 1 AND 4");
+                table.HasCheckConstraint("ck_shopping_plan_cards_repeats", "\"Repeats\" BETWEEN 1 AND 14");
             });
             entity.HasKey(x => x.Id);
             entity.Property(x => x.Source).HasMaxLength(10).IsRequired();

@@ -317,6 +317,15 @@ export function ShoppingPlanBoardPage() {
         SWITCH_DELAY_MS,
       );
     },
+    setCookings: (card: ShoppingPlanAccepted, times: number) =>
+      dishAction(() =>
+        repo.setCardRepeats(
+          sessionId,
+          card.cardId,
+          { mode: times > 1 ? "again" : null, meals: times },
+          { csrfToken: csrfToken! },
+        ),
+      ),
     retry: (card: ShoppingPlanAccepted) =>
       dishAction(() =>
         repo.expand(sessionId, card.cardId, {
@@ -507,7 +516,12 @@ export function ShoppingPlanBoardPage() {
                       ) : null}
                       {card.repeats > 1 ? (
                         <span>
-                          {t("menuBuild.board.covers", { count: card.repeats })}
+                          {t(
+                            card.mode === "again"
+                              ? "menuBuild.board.times"
+                              : "menuBuild.board.covers",
+                            { count: card.repeats },
+                          )}
                         </span>
                       ) : null}
                       {card.plannedDate ? (

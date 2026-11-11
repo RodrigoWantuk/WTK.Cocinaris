@@ -323,7 +323,7 @@ public sealed class ShoppingPlanCard
     public string? RejectIngredientKey { get; set; }
     /// <summary>Gets or sets how repeats are cooked: <c>yield</c>, <c>again</c>, or null for one meal.</summary>
     public string? AcceptMode { get; set; }
-    /// <summary>Gets or sets the meals this card fills.</summary>
+    /// <summary>Gets or sets the meals this card fills: 1 to 4 with <c>yield</c> (one cooking), 1 to 14 with <c>again</c> (one cooking each).</summary>
     public int Repeats { get; set; } = 1;
     /// <summary>Gets or sets the expansion state.</summary>
     public ShoppingPlanExpansionState ExpansionState { get; set; } = ShoppingPlanExpansionState.None;

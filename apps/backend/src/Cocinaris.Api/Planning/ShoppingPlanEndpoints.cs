@@ -87,6 +87,12 @@ public static class ShoppingPlanEndpoints
             .ProducesProblem(400)
             .ProducesProblem(404)
             .ProducesProblem(422);
+        group.MapPut("/{sessionId:guid}/cards/{cardId:guid}/repeats", (ShoppingPlanApiService service, Guid sessionId, Guid cardId, ShoppingPlanCardRepeatsRequest body, HttpContext context, CancellationToken cancellationToken) => service.SetCardRepeatsAsync(sessionId, cardId, body, context, cancellationToken))
+            .RequireRateLimiting("shopping-plan-decision")
+            .Produces<ShoppingPlanView>()
+            .ProducesProblem(400)
+            .ProducesProblem(404)
+            .ProducesProblem(422);
         group.MapPut("/{sessionId:guid}/cards/{cardId:guid}/people", (ShoppingPlanApiService service, Guid sessionId, Guid cardId, ShoppingPlanCardPeopleRequest body, HttpContext context, CancellationToken cancellationToken) => service.SetCardPeopleAsync(sessionId, cardId, body, context, cancellationToken))
             .RequireRateLimiting("shopping-plan-decision")
             .Produces<ShoppingPlanView>()
@@ -192,6 +198,10 @@ public sealed class ShoppingPlanApiService(ShoppingPlanApplicationService applic
     /// <summary>Sets how many meals one cooking of a chosen dish covers.</summary>
     public async Task<IResult> SetCardYieldAsync(Guid sessionId, Guid cardId, ShoppingPlanCardYieldRequest body, HttpContext context, CancellationToken cancellationToken) =>
         ToResult(await application.SetCardYieldAsync(sessionId, cardId, body.Meals, cancellationToken), context.TraceIdentifier);
+
+    /// <summary>Sets how a chosen dish repeats ("Repetir"): cooked once for more meals, or again each time.</summary>
+    public async Task<IResult> SetCardRepeatsAsync(Guid sessionId, Guid cardId, ShoppingPlanCardRepeatsRequest body, HttpContext context, CancellationToken cancellationToken) =>
+        ToResult(await application.SetCardRepeatsAsync(sessionId, cardId, body.Mode, body.Meals, cancellationToken), context.TraceIdentifier);
 
     /// <summary>Sets how many people one chosen dish is for.</summary>
     public async Task<IResult> SetCardPeopleAsync(Guid sessionId, Guid cardId, ShoppingPlanCardPeopleRequest body, HttpContext context, CancellationToken cancellationToken) =>
@@ -317,7 +327,7 @@ public sealed record ShoppingPlanBatchRequest(string? MealType = null, string? R
 /// <summary>Body for deciding a card.</summary>
 /// <param name="Decision"><c>accept</c> or <c>reject</c>.</param>
 /// <param name="Mode"><c>yield</c> (one cooking covers the meals) or <c>again</c> (cook again another day); required when repeats exceed one.</param>
-/// <param name="Repeats">Meals to fill, 1 to 4.</param>
+/// <param name="Repeats">Meals to fill: 1 to 4 with <c>yield</c>, 1 to 14 with <c>again</c>.</param>
 /// <param name="MealType">The meal this dish fills; the card's own when null.</param>
 /// <param name="PlannedDate">An optional day inside the period.</param>
 public sealed record ShoppingPlanDecisionRequest(string? Decision, string? Mode, int? Repeats, string? MealType = null, DateOnly? PlannedDate = null);
@@ -358,6 +368,11 @@ public sealed record ShoppingPlanCardDayRequest(DateOnly? PlannedDate);
 /// <summary>Body for how many meals one cooking covers.</summary>
 /// <param name="Meals">Meals, 1 to 4.</param>
 public sealed record ShoppingPlanCardYieldRequest(int Meals);
+
+/// <summary>Body for how a chosen dish repeats; the whole state, so a retry or an undo sends a value, not a step.</summary>
+/// <param name="Mode"><c>yield</c> (cooked once, 1 to 4 meals), <c>again</c> (cooked each time, 1 to 14), or null for one meal.</param>
+/// <param name="Meals">Meals the dish fills.</param>
+public sealed record ShoppingPlanCardRepeatsRequest(string? Mode, int Meals);
 
 /// <summary>Body for how many people one dish is for.</summary>
 /// <param name="People">People, 1 to 12.</param>

@@ -161,6 +161,7 @@ function plansRepo(
     setMealCounts: unused,
     setCardDay: unused,
     setCardYield: unused,
+    setCardRepeats: unused,
     setCardPeople: unused,
     chooseMany: vi.fn(),
     distribute: unused,

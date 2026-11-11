@@ -1,13 +1,13 @@
 # PLAN-0065: Planning Rework ("Montar o cardápio")
 
-- **Status:** In Progress; Slices 0 to 4 merged (#95 to #99); D1 and D2 confirmed by the owner on 2026-11-05; Slice 5 (the last) in a draft PR; owner checks remain (see Execution state)
+- **Status:** In Progress; Slices 0 to 5 merged (#95 to #100); Slice 6 ("Repetir", an owner request of 2026-11-07) in a draft PR; owner checks remain (see Execution state)
 - **Type:** Implementation
 - **Priority:** High (owner request)
 - **Owner:** Claude Code
 - **Created:** 2026-11-05
-- **Last updated:** 2026-11-06
+- **Last updated:** 2026-11-11
 - **Branch:** Plan publication `agent/plan-0065-planning-rework`; each slice uses the branch named in its section
-- **Pull request:** #94 (plan publication, merged); #95 to #99 (Slices 0 to 4, merged); Slice 5 draft PR
+- **Pull request:** #94 (plan publication, merged); #95 to #100 (Slices 0 to 5, merged); Slice 6 draft PR
 - **Related issues:** None
 - **Related ADRs:** ADR-0009, ADR-0012, ADR-0013
 - **Dependencies:** PLAN-0062, PLAN-0063, PLAN-0064 (all merged). This plan replaces the deck and review screens of PLAN-0062 Slice 1 and the panel of PLAN-0064.
@@ -393,6 +393,20 @@ Branch: `agent/plan-0065-s5-finish`.
 
 **Gate S5:** full gates; external test with three people (PLAN-0054 decision 8), recording whether they reach a list unaided and whether they keep a second list.
 
+### Slice 6: "Repetir" the dish chosen last
+
+Branch: `agent/plan-0065-s6-repeat`. Owner request of 2026-11-07: "Na escolha dos itens do cardápio, quero poder pedir pra repetir 1 ou n vezes o item anterior ao invés de ter que escolher um próximo." On 2026-11-11 the owner accepted both ways of repeating, with one bigger cooking first when the dish keeps.
+
+- [x] `PUT /shopping-plans/{id}/cards/{cardId}/repeats` with `mode` and `meals`, as the whole state: `yield` 1 to 4 meals and 24 portions, `again` 1 to 14, null for one. Room of the meal group, idempotent, menu entries follow (removed, rescaled, or created by entry key); a dish still being prepared gets them on expansion.
+- [x] Migration `RaiseShoppingPlanRepeatLimit`: the cards' check constraint allows 1 to 14. Entry lookups read the menu once instead of once per possible cooking.
+- [x] Options sheet: "Repetir {prato}" for the dish chosen last in the meal type, with "Fazer uma vez e render" and "Fazer de novo", a counter, and one action; "Desfazer" reverts only the repeat.
+- [x] Dish sheet: "Fazer quantas vezes?" for a dish made again each time; the board says "3 vezes" for it instead of "rende 3 refeições".
+- [x] Copy in pt-BR, en, and es; product spec and planning domain updated; metric `cocinaris.planning.repeat{mode}`.
+
+**Which way comes first.** No dish says how well it keeps, so the first choice shown follows the meal type: lunch and dinner start on one bigger cooking, the way leftovers work, while snacks and breakfasts start on making it again, because they are usually eaten fresh. A dish already repeated keeps its way. One cooking stays at 4 meals at most, as before.
+
+**Gate S6:** targeted backend and frontend tests, the planning integration tests, and one browser check of the sheet at 360 px.
+
 ## Success measures
 
 | Measure | Today | Target |
@@ -431,15 +445,15 @@ Prices and budgets, curated pack sizes, loose list items (a decision of PLAN-006
 
 ## Execution state
 
-- **Current run delivery target:** Slice 5, finish.
-- **Current checkpoint:** Slice 5 implemented on `agent/plan-0065-s5-finish`, in a draft pull request. Slice 4 merged via #99. All code slices of this plan are delivered once it merges.
-- **Last completed step:** Dead code removed, metrics added, accessibility pass, documents rewritten; see the Slice 5 log entry.
-- **Exact next action:** The owner reviews and merges the Slice 5 pull request. The plan then stays In Progress only for owner checks: S1-AI with the provider key (`PLAN0065_LIVE_EVAL=1`), a phone check of the sheets with the keyboard and of the route with the screen kept on, VoiceOver and TalkBack on the board, sheet, and list, and Gate S5's external test with three people. When those are recorded, mark the plan Completed. PLAN-0062 Slice 4's limits and warnings come next if the owner wants them.
+- **Current run delivery target:** Slice 6, "Repetir".
+- **Current checkpoint:** Slice 6 implemented on `agent/plan-0065-s6-repeat`, in a draft pull request. Slices 0 to 5 merged via #95 to #100 and deployed with `7333b25`.
+- **Last completed step:** Repeat endpoint, migration, options-sheet panel, dish-sheet counter, copy, and documents; see the Slice 6 log entry.
+- **Exact next action:** The owner reviews and merges the Slice 6 pull request, then deploys `main` (the migration runs on deploy). The plan then stays In Progress only for owner checks: S1-AI with the provider key (`PLAN0065_LIVE_EVAL=1`), a phone check of the sheets with the keyboard and of the route with the screen kept on, VoiceOver and TalkBack on the board, sheet, and list, and Gate S5's external test with three people. When those are recorded, mark the plan Completed.
 - **Blockers:** S1-AI needs the provider key; the phone, screen reader, and external test need the owner.
 - **Partially modified areas:** None.
-- **Documentation delivered:** This plan and registry row; product spec rewritten; planning domain, design system, user journeys, privacy, and AI protocol documents; PLAN-0062's acceptance criteria.
-- **Validation performed:** See the Slice 5 entry in the progress log.
-- **Known failures or limitations:** See the Slice 5 entry.
+- **Documentation delivered:** This plan and registry row; product spec rewritten; planning domain, design system, user journeys, privacy, and AI protocol documents; PLAN-0062's acceptance criteria; Slice 6 in the product spec and planning domain.
+- **Validation performed:** See the Slice 6 entry in the progress log.
+- **Known failures or limitations:** See the Slice 6 entry.
 - **Working tree state:** Clean after this commit.
 
 ## Progress log
@@ -587,6 +601,20 @@ Prices and budgets, curated pack sizes, loose list items (a decision of PLAN-006
   - **`ConsecutiveRejections` stays** as stored data that older plans' pantry weight reads; nothing shows it any more.
 - **Validation performed:** Integration: 74 planning tests (6 tests of removed behavior gone). Unit: 488. Frontend: typecheck, lint, format, and 631 tests. OpenAPI exported, client regenerated and mirrored, drift check passed. Proxy replica: `planning-a11y-audit` 30 screens with 0 violations, 0 copy keys, and no sideways scroll at 200%; `mobile-audit` 69 screens with 0 problems; `planning-board-journey`, `shopping-plan-journey`, `planning-entry-journey` (16 of 16), `planning-journey`, and `reservations-journey` passed. The first `planning-entry-journey` run failed because the first version of the accessibility pass left a menu being built for the same user; the pass now discards it, and both passed on rerun.
 - **Not run:** VoiceOver and TalkBack; WebKit and a real iPhone; the real model (S1-AI); the external test with three people (Gate S5).
+- **Next action:** See "Exact next action".
+
+### 2026-11-11 — Claude Code (Slice 6)
+
+- **Run delivery target:** Slice 6, "Repetir", from the owner's request of 2026-11-07 ("quero poder pedir pra repetir 1 ou n vezes o item anterior ao invés de ter que escolher um próximo") and the owner's answer of 2026-11-11 ("Siga conforme sua sugestão": both ways, one bigger cooking first when the dish keeps). Registry reconciled in the same run.
+- **Changes:**
+  - **Backend.** `SetCardRepeatsAsync` and `PUT /shopping-plans/{id}/cards/{cardId}/repeats` (`mode`, `meals`), as the whole state; `yield` 1 to 4 and 24 portions, `again` 1 to 14 (`MaxCookings`), room of the meal group, idempotent; entries past the count are removed, the first is rescaled, and missing ones are created by entry key; a pending dish gets them on expansion. `DecideAsync` and repeated plans accept the same limits. Entry lookups by key (`CardEntriesAsync`) read the menu once. Migration `RaiseShoppingPlanRepeatLimit` widens `ck_shopping_plan_cards_repeats` to 1 to 14. Metric `cocinaris.planning.repeat{mode}`.
+  - **Frontend.** `RepeatPanel` in the options sheet for the dish chosen last in the meal type ("Fazer uma vez e render" or "Fazer de novo", "Quantas vezes a mais", "Repetir mais N vezes"); "Desfazer" after a repeat sends the earlier state instead of the server's undo; "Fazer quantas vezes?" in the dish sheet for a dish made again; the board says "N vezes" for it. Repository `setCardRepeats`; limits shared by the dish sheet and the panel. Copy in pt-BR, en, and es.
+  - **Documents.** Product spec (options sheet, dish sheet), planning domain (route, limits, migration rollback note, metric), this plan, and the registry.
+  - **Registry reconciled.** PLAN-0059, 0061, 0062, 0063, 0064, and 0021 were listed as draft pull requests that the owner had merged (#77, #82, #101, #92, #93, #78); their rows and "Exact next action" lines now say merged and deployed with `7333b25`. PLAN-0037's next action now says the table was accepted (PLAN-0062 G2-A) and only the flag remains.
+- **Deviations from this plan:** None from the slice as written; the way shown first follows the meal type because no dish carries how well it keeps.
+- **Validation performed:** Integration: 77 planning tests, 2 of them new (both ways, switching, limits, idempotency, other owner, a pending dish, removal past the fourth key). Unit: 489. Architecture: 14. Frontend: typecheck, lint, format, and 636 tests (3 new). OpenAPI exported, client regenerated and mirrored, drift check passed. Proxy replica at 360 px: `planning-board-journey` 40 of 40, now building the seven snacks with five choices and one "Repetir" (11 taps); the panel is 326 px wide. `mobile-audit`: 69 screens with only the known 110 px fixture line at 320 px; its "sheet-chosen" screen shows the panel on a dinner at 320, 360, and 390 px. The first audit runs failed before any screen: the wrong fixture user, then the rate limit right after the journey; neither was a product failure.
+- **Not run:** the full local gates (one run on the pull request head follows); the real model; a real phone.
+- **Rollback:** the migration's rollback fails while any card repeats more than 4 times; repair forward.
 - **Next action:** See "Exact next action".
 
 ## Completion and handoff checklist

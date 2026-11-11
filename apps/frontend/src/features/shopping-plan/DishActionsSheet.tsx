@@ -10,11 +10,13 @@ import type {
 import { daysBetween, formatMenuDay } from "@/features/planning/planningDates";
 import { BottomSheet } from "./BottomSheet";
 import { Counter } from "./Counter";
+import {
+  MAX_COOKINGS,
+  MAX_PORTIONS,
+  MAX_YIELD_MEALS as MAX_MEALS,
+} from "./RepeatPanel";
 import { restrictionLabel } from "./restrictionLabel";
 
-/** One cooking makes at most this many portions; the server enforces the same limit. */
-export const MAX_PORTIONS = 24;
-const MAX_MEALS = 4;
 const MAX_PEOPLE = 12;
 
 /** A higher count for one meal type, asked for before a dish may cover more than was wanted. */
@@ -82,6 +84,8 @@ export function DishActionsSheet({
       raise?: MealRaise,
     ) => void;
     setPeople: (dish: ShoppingPlanAccepted, people: number) => void;
+    /** How many times a dish made again each time is cooked; one clears the repeat. */
+    setCookings: (dish: ShoppingPlanAccepted, times: number) => void;
     retry: (dish: ShoppingPlanAccepted) => void;
     remove: (dish: ShoppingPlanAccepted) => void;
   };
@@ -241,6 +245,21 @@ export function DishActionsSheet({
                 </div>
               ) : null}
             </div>
+          ) : null}
+
+          {dish.mode === "again" ? (
+            <Counter
+              label={t("menuBuild.dish.times")}
+              value={dish.repeats}
+              min={1}
+              max={Math.min(
+                MAX_COOKINGS,
+                dish.repeats + roomFor(plan, dish.mealType).room,
+              )}
+              onChange={(next) => actions.setCookings(dish, next)}
+              testId="board-dish-times"
+              disabled={busy}
+            />
           ) : null}
 
           <div className="space-y-1">

@@ -606,6 +606,24 @@ export function createLiveShoppingPlanRepository(options?: {
         "Unable to change how much it makes.",
         mapPlan,
       ),
+    setCardRepeats: (sessionId, cardId, repeat, { csrfToken, signal }) =>
+      run(
+        () =>
+          client.PUT(
+            "/api/v1/planning/shopping-plans/{sessionId}/cards/{cardId}/repeats",
+            {
+              params: {
+                path: { sessionId, cardId },
+                header: { "X-CSRF-TOKEN": csrfToken },
+              },
+              body: { mode: repeat.mode, meals: repeat.meals },
+              signal,
+              ...include,
+            },
+          ),
+        "Unable to repeat the dish.",
+        mapPlan,
+      ),
     setCardPeople: (sessionId, cardId, people, { csrfToken, signal }) =>
       run(
         () =>

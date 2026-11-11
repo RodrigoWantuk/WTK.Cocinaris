@@ -5,7 +5,7 @@
  * AI failure is said once and leaves the options usable.
  *
  * In the browser, at 360 px: seven snacks within fourteen days with no dates, from saved recipes, counting
- * the taps on the board; a typed search that finds a saved recipe; undo; a mixed menu of 3 lunches and 2
+ * the taps on the board, the last two by "Repetir" (Slice 6); a typed search that finds a saved recipe; undo; a mixed menu of 3 lunches and 2
  * dinners; keyboard only (open, choose, Escape, focus back); Slice 3's "Completar", a dish's day and
  * "Rende mais" (asking before passing the count), the group counter, "Distribuir nos dias", and
  * "Trocar"; and the board's title in en and es.
@@ -132,18 +132,26 @@ try {
   check("undo gives the meal back", true);
   await sheet.getByTestId("meal-sheet-text").fill("");
   await tap(saved.or(sheet.getByTestId("meal-option-choose").first()).first());
-  for (let chosen = 1; chosen < 7; chosen += 1) {
+  for (let chosen = 1; chosen < 5; chosen += 1) {
     await page.waitForFunction((left) => {
       const title = document.querySelector('[data-testid="meal-sheet"] h2')?.textContent ?? "";
       return title.includes(left === 1 ? "falta 1" : `faltam ${left}`);
     }, 7 - chosen, { timeout: 15000 });
     await tap(sheet.getByTestId("meal-option-choose").first());
   }
+  // "Repetir" (Slice 6): the last snack fills the two left instead of choosing two more.
+  await page.waitForFunction(() => document.querySelector('[data-testid="meal-sheet"] h2')?.textContent?.includes("faltam 2"), null, { timeout: 15000 });
+  const repeat = sheet.getByTestId("meal-sheet-repeat");
+  check("Repetir offers making a snack again first", (await repeat.getByTestId("meal-sheet-repeat-mode-again").getAttribute("aria-pressed")) === "true");
+  const repeatBox = await repeat.boundingBox();
+  check("the Repetir panel fits the sheet's width at 360 px", repeatBox !== null && repeatBox.width <= 360, `${repeatBox?.width} px`);
+  await tap(repeat.getByTestId("meal-sheet-repeat-count-more"));
+  await tap(repeat.getByTestId("meal-sheet-repeat-action"));
   await sheet.waitFor({ state: "detached", timeout: 15000 });
   check("the sheet closes on its own when the snacks are complete", true);
   await page.waitForFunction(() => document.querySelector('[data-testid="board-progress"]')?.textContent?.startsWith("7 de 7"), null, { timeout: 15000 });
   const dishes = await page.getByTestId("board-dish").count();
-  check("seven snacks are on the board", dishes === 7, `${dishes} dishes`);
+  check("seven snacks are on the board, one of them three times", dishes === 5 && (await page.getByTestId("board-dish").filter({ hasText: "3 vezes" }).count()) === 1, `${dishes} dishes`);
   const dated = await page.getByTestId("board-dish").filter({ hasText: /\d{1,2} de \w+/ }).count();
   check("no dish has a day it was not given", dated === 0);
   await tap(page.getByTestId("board-use"));

@@ -1854,7 +1854,7 @@ namespace Cocinaris.Infrastructure.Persistence.Migrations
                         {
                             t.HasCheckConstraint("ck_shopping_plan_cards_expansion", "\"ExpansionState\" IN ('None', 'Pending', 'Ready', 'Failed')");
 
-                            t.HasCheckConstraint("ck_shopping_plan_cards_repeats", "\"Repeats\" BETWEEN 1 AND 4");
+                            t.HasCheckConstraint("ck_shopping_plan_cards_repeats", "\"Repeats\" BETWEEN 1 AND 14");
 
                             t.HasCheckConstraint("ck_shopping_plan_cards_source", "\"Source\" IN ('Saved', 'Idea', 'Ai')");
 
