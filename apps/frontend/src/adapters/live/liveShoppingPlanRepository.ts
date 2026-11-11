@@ -375,6 +375,24 @@ export function createLiveShoppingPlanRepository(options?: {
         "Unable to undo.",
         mapPlan,
       ),
+    retryExpansion: (sessionId, cardId, { csrfToken, language, signal }) =>
+      run(
+        () =>
+          client.POST(
+            "/api/v1/planning/shopping-plans/{sessionId}/cards/{cardId}/expansion-retry",
+            {
+              params: {
+                path: { sessionId, cardId },
+                header: { "X-CSRF-TOKEN": csrfToken },
+              },
+              headers: headers(language),
+              signal,
+              ...include,
+            },
+          ),
+        "Unable to try the recipe again.",
+        mapPlan,
+      ),
     expand: (sessionId, cardId, { csrfToken, language, signal }) =>
       run(
         () =>

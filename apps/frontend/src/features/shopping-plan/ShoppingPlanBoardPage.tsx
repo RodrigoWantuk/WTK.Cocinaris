@@ -94,11 +94,7 @@ export function ShoppingPlanBoardPage() {
     [],
   );
 
-  const stopped = useExpansionQueue(
-    plan,
-    { csrfToken, language: locale },
-    setPlan,
-  );
+  useExpansionQueue(plan, setPlan);
   const chooser = useMealChooser(sessionId, plan, setPlan, {
     csrfToken,
     // Focus goes back to the row that opened the sheet, or to its group's heading once the row is
@@ -328,7 +324,7 @@ export function ShoppingPlanBoardPage() {
       ),
     retry: (card: ShoppingPlanAccepted) =>
       dishAction(() =>
-        repo.expand(sessionId, card.cardId, {
+        repo.retryExpansion(sessionId, card.cardId, {
           csrfToken: csrfToken!,
           language: locale,
         }),
@@ -424,15 +420,6 @@ export function ShoppingPlanBoardPage() {
       {error ? (
         <p role="alert" className="text-sm text-destructive">
           {t(error)}
-        </p>
-      ) : null}
-      {stopped ? (
-        <p
-          role="alert"
-          data-testid="board-expansion-stopped"
-          className="text-sm text-destructive"
-        >
-          {t("shoppingPlan.expansion.stopped")}
         </p>
       ) : null}
       {chooser.sheetMeal ? null : chooser.undoNotice}
@@ -531,7 +518,11 @@ export function ShoppingPlanBoardPage() {
                       ) : null}
                       {card.expansionState === "pending" ? (
                         <span data-testid="board-dish-preparing">
-                          {t("menuBuild.board.preparing")}
+                          {t(
+                            card.retrying
+                              ? "menuBuild.board.retrying"
+                              : "menuBuild.board.preparing",
+                          )}
                         </span>
                       ) : null}
                       {card.expansionState === "failed" ? (
@@ -544,6 +535,12 @@ export function ShoppingPlanBoardPage() {
                               ? "menuBuild.board.blocked"
                               : "menuBuild.board.failed",
                           )}
+                          {card.failureCode &&
+                          card.failureCode !== "restriction_blocked" ? (
+                            <span className="block text-muted-foreground">
+                              {t(failureReasonKey(card.failureCode))}
+                            </span>
+                          ) : null}
                         </span>
                       ) : null}
                     </span>
@@ -882,4 +879,26 @@ export function ShoppingPlanBoardPage() {
       />
     </div>
   );
+}
+
+/** Codes with a reason of their own; anything else reads as the general one. */
+const FAILURE_REASONS = new Set([
+  "ai_output_invalid",
+  "ai_provider_timeout",
+  "ai_provider_unavailable",
+  "ai_budget_exhausted",
+  "ai_budget_unavailable",
+  "ai_capability_unavailable",
+]);
+
+/**
+ * The plain-words reason under a dish whose recipe could not be prepared (PLAN-0039 R9).
+ *
+ * @param code The card's closed failure code.
+ * @returns A copy key.
+ */
+export function failureReasonKey(code: string): string {
+  return FAILURE_REASONS.has(code)
+    ? `menuBuild.board.reason.${code}`
+    : "menuBuild.board.reason.other";
 }

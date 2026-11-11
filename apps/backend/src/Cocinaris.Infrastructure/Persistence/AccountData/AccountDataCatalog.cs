@@ -54,6 +54,8 @@ public static class AccountDataCatalog
         // Kept anonymized for 13 months so monthly spend stays right (decision D4).
         Anonymized("ai", "ai", "usage_ledger"),
         Table("platform", "platform", "audit_events", "ActorUserId"),
+        // Background work done for the person (PLAN-0039): kinds, states, and ids, no text.
+        Table("platform", "platform", "jobs"),
     ];
 
     /// <summary>Gets the tables with a person's id that are not exported, with the reason.</summary>

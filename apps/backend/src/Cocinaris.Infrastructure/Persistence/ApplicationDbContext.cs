@@ -40,6 +40,8 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
 
     /// <summary>Gets PostgreSQL-backed idempotency records.</summary>
     public DbSet<IdempotencyRecord> IdempotencyRecords => Set<IdempotencyRecord>();
+    /// <summary>Gets background jobs (PLAN-0039 Slice 2).</summary>
+    public DbSet<JobRecord> Jobs => Set<JobRecord>();
     /// <summary>Gets account deletions and their short-lived tombstones (PLAN-0049).</summary>
     public DbSet<AccountDeletionRecord> AccountDeletions => Set<AccountDeletionRecord>();
 
@@ -325,6 +327,22 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             entity.Property(x => x.CorrelationId).HasMaxLength(100).IsRequired();
             entity.HasIndex(x => x.OccurredAt);
             entity.HasIndex(x => new { x.Operation, x.OccurredAt });
+        });
+
+        modelBuilder.Entity<JobRecord>(entity =>
+        {
+            entity.ToTable("jobs", "platform", table =>
+                table.HasCheckConstraint("ck_jobs_state", "\"State\" IN ('Queued', 'Running', 'Succeeded', 'Failed', 'Cancelled')"));
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Kind).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.SubjectKey).HasMaxLength(200).IsRequired();
+            entity.Property(x => x.PayloadJson).HasColumnType("jsonb").IsRequired();
+            entity.Property(x => x.State).HasMaxLength(16).IsRequired();
+            entity.Property(x => x.LastFailureCode).HasMaxLength(120);
+            // One job per subject and kind: asking again updates it instead of adding a second.
+            entity.HasIndex(x => new { x.Kind, x.SubjectKey }).IsUnique();
+            entity.HasIndex(x => new { x.State, x.NextAttemptAt });
+            entity.HasIndex(x => x.OwnerUserId);
         });
 
         modelBuilder.Entity<AccountDeletionRecord>(entity =>
@@ -1039,6 +1057,44 @@ public sealed class AuditEventRecord
     public required string MetadataJson { get; set; }
     /// <summary>Gets or sets the UTC event instant.</summary>
     public DateTimeOffset OccurredAt { get; set; }
+}
+
+/// <summary>
+/// A background job (PLAN-0039 Slice 2): what to run, for whom, and where it stands. The payload holds
+/// ids and codes only.
+/// </summary>
+public sealed class JobRecord
+{
+    /// <summary>Gets or sets the job id.</summary>
+    public Guid Id { get; set; }
+    /// <summary>Gets or sets the closed kind.</summary>
+    public required string Kind { get; set; }
+    /// <summary>Gets or sets the person the work is for, if any.</summary>
+    public Guid? OwnerUserId { get; set; }
+    /// <summary>Gets or sets the subject, unique per kind.</summary>
+    public required string SubjectKey { get; set; }
+    /// <summary>Gets or sets the handler's payload, as JSON.</summary>
+    public required string PayloadJson { get; set; }
+    /// <summary>Gets or sets the state.</summary>
+    public required string State { get; set; }
+    /// <summary>Gets or sets attempts used.</summary>
+    public int Attempts { get; set; }
+    /// <summary>Gets or sets attempts allowed.</summary>
+    public int MaxAttempts { get; set; }
+    /// <summary>Gets or sets runs of any kind, including waits that use no attempt; capped.</summary>
+    public int Runs { get; set; }
+    /// <summary>Gets or sets when the job may run next.</summary>
+    public DateTimeOffset NextAttemptAt { get; set; }
+    /// <summary>Gets or sets when a running job's lease ends.</summary>
+    public DateTimeOffset? LeaseUntil { get; set; }
+    /// <summary>Gets or sets the last failure's closed code.</summary>
+    public string? LastFailureCode { get; set; }
+    /// <summary>Gets or sets when the job was first queued.</summary>
+    public DateTimeOffset CreatedAt { get; set; }
+    /// <summary>Gets or sets when it last changed.</summary>
+    public DateTimeOffset UpdatedAt { get; set; }
+    /// <summary>Gets or sets when it finished.</summary>
+    public DateTimeOffset? CompletedAt { get; set; }
 }
 
 /// <summary>

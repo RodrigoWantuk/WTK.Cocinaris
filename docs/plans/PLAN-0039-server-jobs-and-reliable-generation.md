@@ -1,13 +1,13 @@
 # PLAN-0039: Server Jobs and Reliable Recipe Generation
 
-- **Status:** In Progress; scope agreed with the owner on 2026-11-11; Slice 1 in a draft PR
+- **Status:** In Progress; scope agreed with the owner on 2026-11-11; Slice 1 merged (#106); Slice 2 in a draft PR
 - **Type:** Implementation
 - **Priority:** High (owner request)
 - **Owner:** Claude Code (claimed 2026-11-11)
 - **Created:** 2026-11-11
 - **Last updated:** 2026-11-11
 - **Branch:** Plan and Slice 1 `agent/plan-0039-reliable-generation`; each later slice uses the branch named in its section
-- **Pull request:** Slice 1 draft PR, opened with this file
+- **Pull request:** #106 (plan and Slice 1, merged); Slice 2 draft PR
 - **Related ADRs:** ADR-0003 (PostgreSQL job state and outbox, RabbitMQ as target), ADR-0009 (AI gateway)
 - **Dependencies:** None open.
 
@@ -97,12 +97,12 @@ Branch: `agent/plan-0039-reliable-generation`.
 
 Branch: `agent/plan-0039-s2-jobs`.
 
-- [ ] `platform.jobs` (kind, owner, subject key unique per kind, state, attempts, next attempt, lease, last failure code, times) and `JobRunner` (`FOR UPDATE SKIP LOCKED`, lease 5 minutes, backoff per R8, woken on enqueue, polls every 15 seconds). Added to the privacy catalog: exported, deleted with the account, and finished jobs removed after 30 days by retention.
-- [ ] `ShoppingPlanApplicationService` and `RecipeCookNowApplicationService` gain owner-explicit paths for expansion, so no job needs a request.
-- [ ] Choosing an AI or library dish queues `plan_card_expansion` 5 seconds ahead; undo or removal cancels it; "Tentar de novo" queues it again.
-- [ ] The browser stops preparing: `PlanExpansionProvider` only refreshes the plan while a dish is pending and the page is visible.
-- [ ] R9 copy in three languages and the states on the board, the menu in use, and "Usar este cardápio".
-- [ ] Metrics `cocinaris.jobs.run{kind,outcome}` and `cocinaris.jobs.lag`.
+- [x] `platform.jobs` (kind, owner, subject key unique per kind, state, attempts, next attempt, lease, last failure code, times) and `JobRunner` (`FOR UPDATE SKIP LOCKED`, lease 5 minutes, backoff per R8, woken on enqueue, polls every 15 seconds). Added to the privacy catalog: exported, deleted with the account, and finished jobs removed after 30 days by retention.
+- [x] `ShoppingPlanApplicationService` and `RecipeCookNowApplicationService` gain owner-explicit paths for expansion, so no job needs a request.
+- [x] Choosing an AI or library dish queues `plan_card_expansion` 5 seconds ahead; undo or removal cancels it; "Tentar de novo" queues it again.
+- [x] The browser stops preparing: `PlanExpansionProvider` only refreshes the plan while a dish is pending and the page is visible.
+- [x] R9 copy in three languages and the states on the board, the menu in use, and "Usar este cardápio".
+- [x] Metrics `cocinaris.jobs.run{kind,outcome}` and `cocinaris.jobs.lag`.
 
 **Gate S2:** integration tests: a job that runs with no request, a retry after a failure, a lease that expires and is taken again, a cancel on undo, and two runners on one job. Browser journey on the replica: choose three AI dishes, close the page, reopen it 30 seconds later, and find them ready.
 
@@ -130,15 +130,15 @@ RabbitMQ, the transactional outbox, a separate worker process (ADR-0003 target, 
 
 ## Execution state
 
-- **Current run delivery target:** Plan and Slice 1.
-- **Current checkpoint:** Slice 1 implemented on `agent/plan-0039-reliable-generation`, in a draft pull request.
-- **Last completed step:** Normalization, fallback round, abandoned work, attempt records, report; see the Slice 1 log entry.
-- **Exact next action:** The owner reviews and merges the Slice 1 pull request and deploys `main` (migration `AddAiGenerationAttempts`). After a few days of use, run `scripts/ops/ai-failure-report.sh 7` and record what it shows here. Then Slice 2 starts from a fresh `origin/main` on `agent/plan-0039-s2-jobs`.
+- **Current run delivery target:** Slice 2, menu dishes prepared on the server.
+- **Current checkpoint:** Slice 2 implemented on `agent/plan-0039-s2-jobs`, in a draft pull request. Slice 1 merged via #106 (`80621e4`).
+- **Last completed step:** Job table and runner, server expansion, retries and reasons on the board, the app following instead of preparing; see the Slice 2 log entry.
+- **Exact next action:** The owner reviews and merges the Slice 2 pull request and deploys `main` (migration `AddJobs`). Then Slice 3 (every background job in one format) starts from a fresh `origin/main` on `agent/plan-0039-s3-unify`.
 - **Blockers:** None.
 - **Partially modified areas:** None.
-- **Documentation delivered:** This plan and its registry row; AI protocol (recovery and failure records), usage governance (abandoned reservations, fallback cost), privacy (the attempts table and its retention), deployment runbook (the failure report).
-- **Validation performed:** See the Slice 1 log entry.
-- **Known failures or limitations:** See the Slice 1 log entry.
+- **Documentation delivered:** Slice 1 documents, plus the planning domain (expansion by job), the product spec (preparing the recipes, reasons), the deployment runbook (background jobs), and privacy (jobs and their retention).
+- **Validation performed:** See the Slice 2 log entry.
+- **Known failures or limitations:** See the Slice 2 log entry.
 - **Working tree state:** Clean after this commit.
 
 ## Progress log
@@ -167,6 +167,39 @@ RabbitMQ, the transactional outbox, a separate worker process (ADR-0003 target, 
   - **Integration:** `AbandonedWorkNoLongerBlocksAndEveryCallIsRecorded`: two dead reservations are released and do not block, a selection stuck `Expanding` for ten minutes is taken over and completes, and attempt rows are written without content or owner. The retention and idea library tests pass with the new rule.
   - **Architecture:** 19. **Backend formatting** verified.
 - **Not run:** the full local gates (one run on the pull request head follows); the live evaluation.
+- **Next action:** See "Exact next action".
+
+### 2026-11-11 — Claude Code (Slice 2)
+
+- **Run delivery target:** Slice 2, after the owner merged #106 ("PR aprovado, siga"). The run was interrupted once by the session ending; it resumed from the working tree, which was intact, and reran the interrupted test runs.
+- **Changes:**
+  - **Jobs.** In `Cocinaris.SharedKernel.Jobs`: `IJobQueue`, `IJobStore`, `IJobHandler`, `JobResult`, and `JobSignal`.
+    - `PostgreSqlJobStore` queues by upsert on `(Kind, SubjectKey)`: a restart resets a queued job and never a running one. It claims with `FOR UPDATE SKIP LOCKED` and a lease, and records results. A retry past the last attempt becomes a failure, and runs are capped at 40.
+    - `JobProcessor` and `JobRunner` run two jobs at a time, are woken on enqueue, and poll every 15 seconds. The lease is 10 minutes and the backoff is 1 minute, then 5. Metrics: `cocinaris.jobs.run{kind,outcome}` and `cocinaris.jobs.lag`.
+    - Migration `AddJobs`. `platform.jobs` is in the privacy catalog (exported, deleted with the account), and the `finished_jobs` retention rule deletes finished jobs after 30 days.
+  - **Server expansion.**
+    - `RecipeCookNowApplicationService.SelectCandidateForOwnerAsync` and `ShoppingPlanApplicationService.ExpandForOwnerAsync`; a failed attempt can leave the card pending (`failCard: false`).
+    - `PlanCardExpansionJobHandler` gives up at once on budget or AI-off codes. Waiting for the person's other AI work uses no attempt. A failed attempt counts `ExpansionRetries` on the card. After the last attempt the card is failed with its code.
+    - Choosing a dish queues the job 5 seconds ahead, with the interface language from `Accept-Language`. Undo and removal cancel it, and reading the plan queues a lost one.
+    - `POST …/cards/{id}/expansion-retry` restarts it. The view gains `retrying`.
+  - **Frontend.**
+    - `PlanExpansionRunner` no longer prepares anything: it reads the plan every 4 seconds while a dish is pending and the page is visible, and waits 15 seconds after a failed read.
+    - "Tentar de novo" calls the new route. The board says "Ainda tentando…" and shows the reason under a failed dish, in three languages.
+    - The "stopped" notice and its copy are gone.
+- **Deviations from this plan:**
+  - **`POST …/expansion` stays** for older clients (a cached app), and for tests. Both paths share the card's keys, so they never make two recipes.
+  - **The lease is 10 minutes, not 5.** Two rounds of an expansion can take about 4 minutes, and a lease shorter than the work would let a second runner start it.
+  - **The browser journey of Gate S2 was not run.** The replica has no AI provider, so a dish chosen there cannot be prepared; the integration tests run the whole job with the fake provider instead.
+- **Validation performed:**
+  - **Integration, all new:**
+    - `AChosenDishIsPreparedOnTheServerAndRetriesBeforeItSaysWhy`: the job is queued after the undo window; a first attempt with four invalid answers leaves the dish pending with `retrying`; the next one prepares it with no request from the app, and its meal exists.
+    - `AfterTheLastAttemptTheDishSaysWhyAndCanBeTriedAgain`: after three attempts, the dish is failed with its reason; "Tentar de novo" queues it again and it is prepared.
+    - `UndoCancelsALostJobIsQueuedAgainAndTwoRunnersNeverShareOne`: undo cancels the job; a lost job is queued again by reading the plan; after a lease ends, two racing runners make one run.
+  - **Regression:** 86 planning and recipe integration tests and 93 pantry, receipt, and recipe tests pass. Two of them were failing on `main` since #106: `AnAiRevisionChangesNothingUntilTheOwnerAcceptsIt` and `HistoryKeepsEveryRequestAndACandidateCanStillBeAskedForLater`. They queued invalid answers for one round, so the fallback round of Slice 1 succeeded where the tests expected a failure. They now queue answers for both rounds. The behavior was right; #106's local gates were interrupted by the session ending before they reported, so this was not caught there.
+  - **Frontend:** typecheck, lint, format, and 644 tests.
+  - **Frontend tests changed:** the three follower tests were rewritten, and one board test is new (retrying, the reason, and "Tentar de novo" calling the server).
+  - **Architecture:** 19.
+- **Not run:** the full local gates (one run on the pull request head follows); the browser journey, see above.
 - **Next action:** See "Exact next action".
 
 ## Completion and handoff checklist

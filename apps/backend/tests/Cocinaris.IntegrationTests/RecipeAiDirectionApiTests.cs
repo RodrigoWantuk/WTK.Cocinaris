@@ -51,10 +51,12 @@ public sealed partial class RecipeExecutionApiTests
         Assert.Equal(HttpStatusCode.BadRequest, (await PostAsync(owner, csrf, Generations, new { guidance = new { hint = new string('a', 301) } }, Guid.NewGuid())).StatusCode);
         Assert.Equal(HttpStatusCode.BadRequest, (await PostAsync(owner, csrf, Generations, new { guidance = new { adaptation = "anything" } }, Guid.NewGuid())).StatusCode);
 
-        // A failed request has no candidates, so it is not in the history.
-        provider.Enqueue(AiOperationRegistry.SuggestCandidates, _ => AiProviderInvocationResult.Success("{}", "fake-model", 1, 1));
-        provider.Enqueue(AiOperationRegistry.SuggestCandidates, _ => AiProviderInvocationResult.Success("{}", "fake-model", 1, 1));
-        provider.Enqueue(AiOperationRegistry.SuggestCandidates, _ => AiProviderInvocationResult.Success("{}", "fake-model", 1, 1));
+        // A failed request has no candidates, so it is not in the history. It fails only after both
+        // rounds, the call and two repairs each (PLAN-0039 R2).
+        for (var call = 0; call < 6; call++)
+        {
+            provider.Enqueue(AiOperationRegistry.SuggestCandidates, _ => AiProviderInvocationResult.Success("{}", "fake-model", 1, 1));
+        }
         Assert.NotEqual(HttpStatusCode.OK, (await PostAsync(owner, csrf, Generations, new { }, Guid.NewGuid())).StatusCode);
 
         var entry = Assert.Single((await owner.GetFromJsonAsync<JsonElement>("/api/v1/recipes/suggestion-history")).EnumerateArray());
@@ -195,8 +197,12 @@ public sealed partial class RecipeExecutionApiTests
         Assert.Equal(HttpStatusCode.PreconditionFailed, (await PostAsync(owner, csrf, $"{proposals}/{staleId}/accept", new { })).StatusCode);
 
         // Usage is settled for what was generated, and a failed generation releases its hold.
-        provider.Enqueue(AiOperationRegistry.ReviseRecipe, _ => AiProviderInvocationResult.Success("{}", "fake-model", 1, 1));
-        provider.Enqueue(AiOperationRegistry.ReviseRecipe, _ => AiProviderInvocationResult.Success("{}", "fake-model", 1, 1));
+        // Both rounds, the call and its repair each (PLAN-0039 R2).
+        for (var call = 0; call < 4; call++)
+        {
+            provider.Enqueue(AiOperationRegistry.ReviseRecipe, _ => AiProviderInvocationResult.Success("{}", "fake-model", 1, 1));
+        }
+
         var failed = await PostAsync(owner, csrf, proposals, new { instruction = "dobre a receita", expectedRevisionNumber = 2 }, Guid.NewGuid());
         Assert.Equal(HttpStatusCode.UnprocessableEntity, failed.StatusCode);
         using var ledgerScope = host.Services.CreateScope();
