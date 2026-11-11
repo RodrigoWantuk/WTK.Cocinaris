@@ -110,6 +110,15 @@ builder.Services.AddScoped<IGetProfileSessionProjectionUseCase, GetProfileSessio
 builder.Services.AddScoped<ProfileApplicationService>();
 builder.Services.AddCocinarisRecipeAi(builder.Configuration, builder.Environment);
 builder.Services.AddCocinarisPlanning();
+// Background jobs (PLAN-0039 Slice 2): one table, one runner, handlers by kind.
+builder.Services.AddSingleton<Cocinaris.SharedKernel.Jobs.JobSignal>();
+builder.Services.AddScoped<Cocinaris.Infrastructure.Persistence.PostgreSqlJobStore>();
+builder.Services.AddScoped<Cocinaris.SharedKernel.Jobs.IJobQueue>(provider => provider.GetRequiredService<Cocinaris.Infrastructure.Persistence.PostgreSqlJobStore>());
+builder.Services.AddScoped<Cocinaris.SharedKernel.Jobs.IJobStore>(provider => provider.GetRequiredService<Cocinaris.Infrastructure.Persistence.PostgreSqlJobStore>());
+builder.Services.AddScoped<PlanCardExpansionJobHandler>();
+builder.Services.AddScoped<Cocinaris.SharedKernel.Jobs.IJobHandler>(provider => provider.GetRequiredService<PlanCardExpansionJobHandler>());
+builder.Services.AddScoped<Cocinaris.Api.Jobs.JobProcessor>();
+builder.Services.AddHostedService<Cocinaris.Api.Jobs.JobRunner>();
 builder.Services.Configure<PrivacyOptions>(builder.Configuration.GetSection("Privacy"));
 builder.Services.AddScoped<Cocinaris.SharedKernel.Privacy.IAccountDataReader, Cocinaris.Infrastructure.Persistence.AccountData.PostgreSqlAccountDataReader>();
 builder.Services.AddScoped<PrivacyExportService>();
@@ -206,7 +215,7 @@ telemetry.WithTracing(tracing =>
 });
 telemetry.WithMetrics(metrics =>
 {
-    metrics.AddAspNetCoreInstrumentation().AddMeter("Cocinaris.Inventory").AddMeter("Cocinaris.ShoppingPlans").AddMeter("Cocinaris.Profiles").AddMeter("Cocinaris.Security").AddMeter("Cocinaris.Privacy").AddMeter("Cocinaris.Privacy.Deletion").AddMeter("Cocinaris.Privacy.Retention").AddMeter("Cocinaris.Recipes.Generation");
+    metrics.AddAspNetCoreInstrumentation().AddMeter("Cocinaris.Inventory").AddMeter("Cocinaris.ShoppingPlans").AddMeter("Cocinaris.Profiles").AddMeter("Cocinaris.Security").AddMeter("Cocinaris.Privacy").AddMeter("Cocinaris.Privacy.Deletion").AddMeter("Cocinaris.Privacy.Retention").AddMeter("Cocinaris.Recipes.Generation").AddMeter("Cocinaris.Jobs");
     if (Uri.TryCreate(builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"], UriKind.Absolute, out var endpoint))
     {
         metrics.AddOtlpExporter(options => options.Endpoint = endpoint);

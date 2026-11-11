@@ -1,3 +1,4 @@
+using Cocinaris.SharedKernel.Jobs;
 using System.Diagnostics.Metrics;
 using System.Security.Cryptography;
 using System.Text;
@@ -217,7 +218,14 @@ public sealed record ShoppingPlanCardView(Guid CardId, string Source, string Nam
 /// <param name="PlannedDate">The day the person gave it, if any.</param>
 /// <param name="TotalMinutes">Total time of the dish.</param>
 /// <param name="People">People each of its meals is for: the plan's people unless the person changed it for this dish.</param>
-public sealed record ShoppingPlanAcceptedView(Guid CardId, string Name, string MealType, int Repeats, string? Mode, string ExpansionState, string? FailureCode, Guid? RecipeId, string? GuardCode, string? GuardIngredient, bool IsComponent = false, DateOnly? PlannedDate = null, int TotalMinutes = 0, int People = 0);
+/// <param name="Retrying">Whether a server attempt to prepare the recipe failed and another is coming ("Ainda tentando…", PLAN-0039 R9).</param>
+public sealed record ShoppingPlanAcceptedView(Guid CardId, string Name, string MealType, int Repeats, string? Mode, string ExpansionState, string? FailureCode, Guid? RecipeId, string? GuardCode, string? GuardIngredient, bool IsComponent = false, DateOnly? PlannedDate = null, int TotalMinutes = 0, int People = 0, bool Retrying = false);
+
+/// <summary>The payload of a <c>plan_card_expansion</c> job: ids and the interface language, nothing personal.</summary>
+/// <param name="SessionId">Plan.</param>
+/// <param name="CardId">Card.</param>
+/// <param name="Language">Interface language when the dish was chosen, if known.</param>
+public sealed record ExpansionJobPayload(Guid SessionId, Guid CardId, string? Language);
 
 /// <summary>One dish of "Completar" (PLAN-0065).</summary>
 /// <param name="CardId">An offered card.</param>
@@ -260,8 +268,18 @@ public sealed class ShoppingPlanApplicationService(
     IInventoryLotReadStore inventory,
     IIngredientMatching matching,
     IProfileReadStore profiles,
-    TimeProvider timeProvider)
+    TimeProvider timeProvider,
+    IJobQueue jobs)
 {
+    /// <summary>Kind of the job that prepares a chosen dish's recipe on the server (PLAN-0039 Slice 2).</summary>
+    public const string ExpansionJobKind = "plan_card_expansion";
+
+    /// <summary>Server attempts to prepare one dish before it is shown as failed (decision R8).</summary>
+    public const int MaxExpansionAttempts = 3;
+
+    /// <summary>A chosen dish waits this long before its recipe is prepared, so an undo costs nothing.</summary>
+    public static readonly TimeSpan UndoWindow = TimeSpan.FromSeconds(5);
+
     private const int MaxPantryLots = 500;
     private const int MaxSavedCards = 12;
     private const int MaxIdeaCards = 6;
@@ -437,7 +455,22 @@ public sealed class ShoppingPlanApplicationService(
     {
         var user = await currentUser.GetCurrentAsync(cancellationToken);
         var session = await store.FindAsync(user.Id, sessionId, cancellationToken);
-        return session is null ? NotFound<ShoppingPlanView>() : await ResultAsync(user.Id, session, cancellationToken);
+        if (session is null)
+        {
+            return NotFound<ShoppingPlanView>();
+        }
+
+        // A dish chosen while its job was lost (a crash between the two writes) gets one now; a job
+        // already queued or running is kept as it is.
+        if (IsOpen(session))
+        {
+            foreach (var card in (await store.ListCardsAsync(user.Id, session.Id, cancellationToken)).Where(card => card.State == ShoppingPlanCardState.Accepted && card.ExpansionState == ShoppingPlanExpansionState.Pending))
+            {
+                await QueueExpansionAsync(user.Id, session, card, null, restart: false, TimeSpan.Zero, cancellationToken);
+            }
+        }
+
+        return await ResultAsync(user.Id, session, cancellationToken);
     }
 
     /// <summary>Asks the model for more cards. With a repeated key or no batch left, it returns the plan as it is.</summary>
@@ -596,7 +629,8 @@ public sealed class ShoppingPlanApplicationService(
     /// <param name="mealType">The meal this dish fills; the card's own when null. Lunch and dinner are interchangeable.</param>
     /// <param name="plannedDate">An optional day inside the period. Most dishes have none.</param>
     /// <param name="cancellationToken">Cancellation.</param>
-    public async Task<RecipeApplicationResult<ShoppingPlanView>> DecideAsync(Guid sessionId, Guid cardId, string? decision, string? mode, int? repeats, string? mealType, DateOnly? plannedDate, CancellationToken cancellationToken)
+    /// <param name="language">Interface language for the recipe a chosen dish gets, if known; the profile's language comes first.</param>
+    public async Task<RecipeApplicationResult<ShoppingPlanView>> DecideAsync(Guid sessionId, Guid cardId, string? decision, string? mode, int? repeats, string? mealType, DateOnly? plannedDate, CancellationToken cancellationToken, string? language = null)
     {
         var user = await currentUser.GetCurrentAsync(cancellationToken);
         var (session, card, failure) = await FindCardAsync(user.Id, sessionId, cardId, cancellationToken);
@@ -700,6 +734,11 @@ public sealed class ShoppingPlanApplicationService(
         {
             await CreateEntriesAsync(user.Id, session, card, recipeId, cancellationToken);
         }
+        else if (card.State == ShoppingPlanCardState.Accepted && card.ExpansionState == ShoppingPlanExpansionState.Pending)
+        {
+            // The recipe is prepared on the server, with the app open or not (PLAN-0039 Slice 2).
+            await QueueExpansionAsync(user.Id, session, card, language, restart: true, UndoWindow, cancellationToken);
+        }
 
         return await ResultAsync(user.Id, session, cancellationToken);
     }
@@ -717,7 +756,8 @@ public sealed class ShoppingPlanApplicationService(
     /// <param name="mealType">The meal it fills.</param>
     /// <param name="cancellationToken">Cancellation.</param>
     /// <param name="plannedDate">Optional day, such as the day of a dish being swapped on a menu in use.</param>
-    public async Task<RecipeApplicationResult<ShoppingPlanView>> ChooseRecipeAsync(Guid sessionId, Guid recipeId, string? mealType, CancellationToken cancellationToken, DateOnly? plannedDate = null)
+    /// <param name="language">Interface language for the recipe a chosen dish gets, if known; the profile's language comes first.</param>
+    public async Task<RecipeApplicationResult<ShoppingPlanView>> ChooseRecipeAsync(Guid sessionId, Guid recipeId, string? mealType, CancellationToken cancellationToken, DateOnly? plannedDate = null, string? language = null)
     {
         var user = await currentUser.GetCurrentAsync(cancellationToken);
         var session = await store.FindAsync(user.Id, sessionId, cancellationToken);
@@ -770,7 +810,7 @@ public sealed class ShoppingPlanApplicationService(
             await store.AddCardsAsync([offered], cancellationToken);
         }
 
-        return await DecideAsync(sessionId, offered.Id, "accept", null, 1, mealType, plannedDate, cancellationToken);
+        return await DecideAsync(sessionId, offered.Id, "accept", null, 1, mealType, plannedDate, cancellationToken, language);
     }
 
     /// <summary>Sets the switches above the options. The answers belong to this plan and never reach the profile.</summary>
@@ -1059,7 +1099,8 @@ public sealed class ShoppingPlanApplicationService(
     /// <param name="sessionId">Plan.</param>
     /// <param name="choices">One to forty different cards, each with its meal.</param>
     /// <param name="cancellationToken">Cancellation.</param>
-    public async Task<RecipeApplicationResult<ShoppingPlanChoicesView>> ChooseManyAsync(Guid sessionId, IReadOnlyList<ShoppingPlanChoice>? choices, CancellationToken cancellationToken)
+    /// <param name="language">Interface language for the recipe a chosen dish gets, if known; the profile's language comes first.</param>
+    public async Task<RecipeApplicationResult<ShoppingPlanChoicesView>> ChooseManyAsync(Guid sessionId, IReadOnlyList<ShoppingPlanChoice>? choices, CancellationToken cancellationToken, string? language = null)
     {
         if (choices is null || choices.Count is 0 or > ShoppingPlanSetup.MaxMeals || choices.Select(choice => choice.CardId).Distinct().Count() != choices.Count)
         {
@@ -1081,7 +1122,7 @@ public sealed class ShoppingPlanApplicationService(
         foreach (var choice in choices)
         {
             // A failure here is reported through the card's state below, not by stopping.
-            await DecideAsync(sessionId, choice.CardId, "accept", null, 1, choice.MealType, null, cancellationToken);
+            await DecideAsync(sessionId, choice.CardId, "accept", null, 1, choice.MealType, null, cancellationToken, language);
         }
 
         var chosen = (await store.ListCardsAsync(user.Id, session.Id, cancellationToken))
@@ -1233,6 +1274,7 @@ public sealed class ShoppingPlanApplicationService(
 
         if (card.State == ShoppingPlanCardState.Accepted)
         {
+            await jobs.CancelAsync(ExpansionJobKind, card.Id.ToString(), cancellationToken);
             await RemoveCardEntriesAsync(user.Id, session, card, cancellationToken);
         }
         else if (session.ConsecutiveRejections > 0)
@@ -1268,7 +1310,24 @@ public sealed class ShoppingPlanApplicationService(
     public async Task<RecipeApplicationResult<ShoppingPlanView>> ExpandAsync(Guid sessionId, Guid cardId, string correlationId, string? language, CancellationToken cancellationToken)
     {
         var user = await currentUser.GetCurrentAsync(cancellationToken);
-        var (session, card, failure) = await FindCardAsync(user.Id, sessionId, cardId, cancellationToken);
+        return await ExpandForOwnerAsync(user.Id, sessionId, cardId, correlationId, language, failCard: true, cancellationToken);
+    }
+
+    /// <summary>
+    /// <see cref="ExpandAsync"/> for a known owner, without a request: the server job uses it (PLAN-0039
+    /// Slice 2). With <paramref name="failCard"/> false, a failed attempt leaves the card pending for
+    /// the job's next attempt instead of showing it as failed.
+    /// </summary>
+    /// <param name="ownerUserId">The plan's owner, established by the caller.</param>
+    /// <param name="sessionId">Plan.</param>
+    /// <param name="cardId">Card.</param>
+    /// <param name="correlationId">Correlation id for the AI records.</param>
+    /// <param name="language">Interface language, if known; the profile's language comes first.</param>
+    /// <param name="failCard">Whether a failure marks the card failed now.</param>
+    /// <param name="cancellationToken">Cancellation.</param>
+    public async Task<RecipeApplicationResult<ShoppingPlanView>> ExpandForOwnerAsync(Guid ownerUserId, Guid sessionId, Guid cardId, string correlationId, string? language, bool failCard, CancellationToken cancellationToken)
+    {
+        var (session, card, failure) = await FindCardAsync(ownerUserId, sessionId, cardId, cancellationToken);
         if (failure is not null)
         {
             return failure;
@@ -1281,7 +1340,7 @@ public sealed class ShoppingPlanApplicationService(
 
         if (card!.State != ShoppingPlanCardState.Accepted || card.CandidateJson is null || card.ExpansionState == ShoppingPlanExpansionState.Ready)
         {
-            return await ResultAsync(user.Id, session!, cancellationToken);
+            return await ResultAsync(ownerUserId, session!, cancellationToken);
         }
 
         if (card.RecipeId is null)
@@ -1290,19 +1349,19 @@ public sealed class ShoppingPlanApplicationService(
             var anchor = session!.Setup.AnchorIngredient;
             var hint = card.Snapshot.PrivateHint ?? anchor;
             var key = AttemptKey(card);
-            var expanded = await deck.ExpandCardAsync(user.Id, candidate, key, hint, correlationId, language, cancellationToken);
+            var expanded = await deck.ExpandCardAsync(ownerUserId, candidate, key, hint, correlationId, language, cancellationToken);
             if (expanded.Problem?.ErrorCode == "precondition_failed")
             {
                 // A generation session lasts two hours; someone resuming later gets a fresh one.
                 card.Snapshot = card.Snapshot with { ExpansionAttempt = card.Snapshot.ExpansionAttempt + 1 };
                 await store.SaveCardAsync(card, cancellationToken);
-                expanded = await deck.ExpandCardAsync(user.Id, candidate, AttemptKey(card), hint, correlationId, language, cancellationToken);
+                expanded = await deck.ExpandCardAsync(ownerUserId, candidate, AttemptKey(card), hint, correlationId, language, cancellationToken);
             }
 
             if (expanded.Problem is { } problem)
             {
                 // A conflict means the person has other AI work running: the card stays pending for a retry.
-                if (problem.ErrorCode != "ai_operation_conflict")
+                if (failCard && problem.ErrorCode != "ai_operation_conflict")
                 {
                     await FailCardAsync(card, problem.ErrorCode, cancellationToken);
                 }
@@ -1312,8 +1371,8 @@ public sealed class ShoppingPlanApplicationService(
 
             var detail = expanded.Value!;
             var ingredients = RecipeIngredientReader.Read(detail.NormalizedRecipeJson).ToList();
-            var keys = await matching.KeysAsync(user.Id, ingredients.Select(item => item.Name), cancellationToken);
-            var profile = await profiles.FindAsync(user.Id, cancellationToken);
+            var keys = await matching.KeysAsync(ownerUserId, ingredients.Select(item => item.Name), cancellationToken);
+            var profile = await profiles.FindAsync(ownerUserId, cancellationToken);
             var guard = RestrictionGuard.Default.Check(ingredients.Select(item => item.Name), keys, Restrictions(profile));
             card.RecipeId = detail.RecipeId;
             // From here the card shows the real recipe, which also drives the real shopping list.
@@ -1328,12 +1387,12 @@ public sealed class ShoppingPlanApplicationService(
             {
                 GuardBlocked.Add(1, new KeyValuePair<string, object?>("stage", "expansion"));
                 await FailCardAsync(card, "restriction_blocked", cancellationToken);
-                return await ResultAsync(user.Id, session, cancellationToken);
+                return await ResultAsync(ownerUserId, session, cancellationToken);
             }
         }
 
         // The person may have undone this card while the model was working.
-        var latest = (await store.ListCardsAsync(user.Id, session!.Id, cancellationToken)).FirstOrDefault(item => item.Id == card.Id);
+        var latest = (await store.ListCardsAsync(ownerUserId, session!.Id, cancellationToken)).FirstOrDefault(item => item.Id == card.Id);
         if (latest?.State != ShoppingPlanCardState.Accepted)
         {
             if (latest is not null)
@@ -1343,14 +1402,88 @@ public sealed class ShoppingPlanApplicationService(
                 await store.SaveCardAsync(latest, cancellationToken);
             }
 
-            return await ResultAsync(user.Id, session, cancellationToken);
+            return await ResultAsync(ownerUserId, session, cancellationToken);
         }
 
         card.ExpansionState = ShoppingPlanExpansionState.Ready;
-        card.Snapshot = card.Snapshot with { FailureCode = null };
+        card.Snapshot = card.Snapshot with { FailureCode = null, ExpansionRetries = 0 };
         await store.SaveCardAsync(card, cancellationToken);
-        await CreateEntriesAsync(user.Id, session, card, card.RecipeId!.Value, cancellationToken);
-        return await ResultAsync(user.Id, session, cancellationToken);
+        await CreateEntriesAsync(ownerUserId, session, card, card.RecipeId!.Value, cancellationToken);
+        return await ResultAsync(ownerUserId, session, cancellationToken);
+    }
+
+    /// <summary>Counts a failed server attempt on a dish still pending, so the board says "Ainda tentando…" (PLAN-0039 R9).</summary>
+    /// <param name="ownerUserId">The plan's owner.</param>
+    /// <param name="sessionId">Plan.</param>
+    /// <param name="cardId">Card.</param>
+    /// <param name="cancellationToken">Cancellation.</param>
+    public async Task NoteExpansionRetryAsync(Guid ownerUserId, Guid sessionId, Guid cardId, CancellationToken cancellationToken)
+    {
+        var (_, card, failure) = await FindCardAsync(ownerUserId, sessionId, cardId, cancellationToken);
+        if (failure is null && card!.State == ShoppingPlanCardState.Accepted && card.ExpansionState == ShoppingPlanExpansionState.Pending)
+        {
+            card.Snapshot = card.Snapshot with { ExpansionRetries = card.Snapshot.ExpansionRetries + 1 };
+            await store.SaveCardAsync(card, cancellationToken);
+        }
+    }
+
+    /// <summary>Shows a dish as failed after the job's last attempt, with the closed reason (PLAN-0039 R9).</summary>
+    /// <param name="ownerUserId">The plan's owner.</param>
+    /// <param name="sessionId">Plan.</param>
+    /// <param name="cardId">Card.</param>
+    /// <param name="code">Closed failure code.</param>
+    /// <param name="cancellationToken">Cancellation.</param>
+    public async Task MarkExpansionFailedAsync(Guid ownerUserId, Guid sessionId, Guid cardId, string code, CancellationToken cancellationToken)
+    {
+        var (_, card, failure) = await FindCardAsync(ownerUserId, sessionId, cardId, cancellationToken);
+        if (failure is null && card!.State == ShoppingPlanCardState.Accepted && card.ExpansionState == ShoppingPlanExpansionState.Pending)
+        {
+            await FailCardAsync(card, code, cancellationToken);
+        }
+    }
+
+    /// <summary>
+    /// "Tentar de novo" on a dish whose recipe could not be prepared: it is pending again and its job
+    /// starts over at once (PLAN-0039 Slice 2). A dish refused by a restriction cannot be retried.
+    /// </summary>
+    /// <param name="sessionId">Plan.</param>
+    /// <param name="cardId">Card.</param>
+    /// <param name="language">Interface language, if known.</param>
+    /// <param name="cancellationToken">Cancellation.</param>
+    public async Task<RecipeApplicationResult<ShoppingPlanView>> RetryExpansionAsync(Guid sessionId, Guid cardId, string? language, CancellationToken cancellationToken)
+    {
+        var user = await currentUser.GetCurrentAsync(cancellationToken);
+        var (session, card, failure) = await FindCardAsync(user.Id, sessionId, cardId, cancellationToken);
+        if (failure is not null)
+        {
+            return failure;
+        }
+
+        if (!IsOpen(session!))
+        {
+            return NotOpen<ShoppingPlanView>();
+        }
+
+        if (card!.State != ShoppingPlanCardState.Accepted || card.RecipeId is not null || card.CandidateJson is null)
+        {
+            return Failure<ShoppingPlanView>("domain_rule_violated", "Only a chosen dish whose recipe could not be prepared can be tried again.");
+        }
+
+        if (card.ExpansionState == ShoppingPlanExpansionState.Failed)
+        {
+            card.ExpansionState = ShoppingPlanExpansionState.Pending;
+            card.Snapshot = card.Snapshot with { FailureCode = null, ExpansionRetries = 0 };
+            await store.SaveCardAsync(card, cancellationToken);
+        }
+
+        await QueueExpansionAsync(user.Id, session!, card, language, restart: true, TimeSpan.Zero, cancellationToken);
+        return await ResultAsync(user.Id, session!, cancellationToken);
+    }
+
+    private Task QueueExpansionAsync(Guid ownerUserId, ShoppingPlanSession session, ShoppingPlanCard card, string? language, bool restart, TimeSpan delay, CancellationToken cancellationToken)
+    {
+        var payload = JsonSerializer.Serialize(new ExpansionJobPayload(session.Id, card.Id, language));
+        return jobs.EnqueueAsync(new JobRequest(ExpansionJobKind, ownerUserId, card.Id.ToString(), payload, timeProvider.GetUtcNow() + delay, MaxExpansionAttempts), restart, cancellationToken);
     }
 
     /// <summary>Removes an accepted card that has no meal, such as one whose expansion failed.</summary>
@@ -1373,6 +1506,7 @@ public sealed class ShoppingPlanApplicationService(
 
         if (card!.State == ShoppingPlanCardState.Accepted)
         {
+            await jobs.CancelAsync(ExpansionJobKind, card.Id.ToString(), cancellationToken);
             await RemoveCardEntriesAsync(user.Id, session!, card, cancellationToken);
             card.State = ShoppingPlanCardState.Rejected;
             card.ExpansionState = ShoppingPlanExpansionState.None;
@@ -2338,7 +2472,7 @@ public sealed class ShoppingPlanApplicationService(
             setup,
             new ShoppingPlanProgressView(setup.TotalMeals, filled, projection.ListItemCount, ShoppingPlanRanker.SessionMinutesUsed(loaded.Context.Accepted), setup.PrepMinutes),
             queue,
-            acceptedCards.Select(card => new ShoppingPlanAcceptedView(card.Id, card.Snapshot.Name, card.Snapshot.MealType, card.Repeats, card.AcceptMode, card.ExpansionState.ToString().ToLowerInvariant(), card.Snapshot.FailureCode, card.RecipeId, card.Snapshot.GuardCode, card.Snapshot.GuardIngredient, card.Snapshot.Component is not null, card.Snapshot.PlannedDate, card.Snapshot.TotalMinutes, PeopleOf(card, setup))).ToList(),
+            acceptedCards.Select(card => new ShoppingPlanAcceptedView(card.Id, card.Snapshot.Name, card.Snapshot.MealType, card.Repeats, card.AcceptMode, card.ExpansionState.ToString().ToLowerInvariant(), card.Snapshot.FailureCode, card.RecipeId, card.Snapshot.GuardCode, card.Snapshot.GuardIngredient, card.Snapshot.Component is not null, card.Snapshot.PlannedDate, card.Snapshot.TotalMinutes, PeopleOf(card, setup), card.ExpansionState == ShoppingPlanExpansionState.Pending && card.Snapshot.ExpansionRetries > 0)).ToList(),
             groups,
             PreferencesOf(session.DeckPreference));
     }

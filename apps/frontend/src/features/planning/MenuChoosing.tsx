@@ -105,7 +105,7 @@ export function MenuChoosing({
       );
   }, [request, repo, menuId, csrfToken, locale, openSheet]);
 
-  useExpansionQueue(plan, { csrfToken, language: locale }, (next) => {
+  useExpansionQueue(plan, (next) => {
     if (next.sessionId === plan?.sessionId) setPlan(next);
   });
 

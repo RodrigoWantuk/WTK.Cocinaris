@@ -209,3 +209,14 @@ The page "Seus dados" (`/app/perfil/privacidade`) needs no configuration. Its ex
 
 Read it before changing a prompt, a schema limit, or the fallback model. A rule that keeps appearing is a prompt or a limit to fix. `Ai__Providers__DeepSeek__FallbackModel` in `api.env` sets the model of the second round (empty turns the round's model into the primary one). The metric is `cocinaris.ai.generation{operation,outcome}`.
 
+## Background jobs (PLAN-0039 Slice 2)
+
+`JobRunner`, inside the API, runs the jobs of `platform.jobs`: today `plan_card_expansion`, which prepares a chosen menu dish's recipe.
+- **State of every job:** `SELECT "Kind", "State", count(*) FROM platform.jobs GROUP BY 1, 2;`.
+- **A job that keeps failing:** `SELECT "Kind", "Attempts", "LastFailureCode", "NextAttemptAt" FROM platform.jobs WHERE "State" IN ('Queued', 'Failed') ORDER BY "UpdatedAt" DESC LIMIT 20;`.
+- **Retrying by hand:** set `"State" = 'Queued', "Attempts" = 0, "NextAttemptAt" = now()` on the row. The person can also tap "Tentar de novo".
+- **A runner that died:** its jobs are taken again when the 10-minute lease ends; a restart needs nothing else.
+- **Metrics:** `cocinaris.jobs.run{kind,outcome}` and `cocinaris.jobs.lag{kind}`.
+- **Retention:** finished jobs are deleted after 30 days (`finished_jobs`). Account deletion removes a person's jobs.
+- **Rollback:** migration `AddJobs` only adds the table; an older release ignores it, and its app prepares dishes from the browser again.
+

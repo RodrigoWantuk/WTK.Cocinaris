@@ -140,6 +140,19 @@ public sealed class RecipeCookNowApplicationService(
     /// </summary>
     public async Task<RecipeApplicationResult<RecipeDetailView>> SelectCandidateAsync(SelectCandidateCommand command, CancellationToken cancellationToken)
     {
+        var user = await currentUser.GetCurrentAsync(cancellationToken);
+        return await SelectCandidateForOwnerAsync(user.Id, command, cancellationToken);
+    }
+
+    /// <summary>
+    /// <see cref="SelectCandidateAsync"/> for a known owner, without a request: a server job preparing a
+    /// menu dish uses it (PLAN-0039 Slice 2). The caller has already established the owner.
+    /// </summary>
+    /// <param name="ownerUserId">The person whose session and recipe these are.</param>
+    /// <param name="command">The selection.</param>
+    /// <param name="cancellationToken">Cancellation.</param>
+    public async Task<RecipeApplicationResult<RecipeDetailView>> SelectCandidateForOwnerAsync(Guid ownerUserId, SelectCandidateCommand command, CancellationToken cancellationToken)
+    {
         if (command.IdempotencyKey is null)
         {
             return Failure<RecipeDetailView>("validation_failed", "A UUID Idempotency-Key header is required.");
@@ -155,10 +168,9 @@ public sealed class RecipeCookNowApplicationService(
             return Failure<RecipeDetailView>("ai_capability_unavailable", "The recipe expansion capability is not registered.");
         }
 
-        var user = await currentUser.GetCurrentAsync(cancellationToken);
         var now = timeProvider.GetUtcNow();
         var claim = await generationStore.TryClaimSelectionAsync(
-            user.Id,
+            ownerUserId,
             command.SessionId,
             command.CandidateId,
             command.IdempotencyKey.Value,
@@ -178,7 +190,7 @@ public sealed class RecipeCookNowApplicationService(
             case RecipeSelectionClaimOutcome.InProgress:
                 return Failure<RecipeDetailView>("ai_operation_conflict", "Selection expansion is already in progress for this request.");
             case RecipeSelectionClaimOutcome.AlreadySelected:
-                return await ReplaySelectedRecipeAsync(user.Id, claim.Session!, cancellationToken);
+                return await ReplaySelectedRecipeAsync(ownerUserId, claim.Session!, cancellationToken);
             case RecipeSelectionClaimOutcome.Claimed:
                 break;
             default:
@@ -194,16 +206,16 @@ public sealed class RecipeCookNowApplicationService(
             return Failure<RecipeDetailView>("resource_not_found", "The candidate was not found in this generation session.");
         }
 
-        var context = await contextAssembler.AssembleExpandContextAsync(user.Id, Guid.NewGuid().ToString("n"), selected, definition.ContextBudgetCharacters, cancellationToken);
+        var context = await contextAssembler.AssembleExpandContextAsync(ownerUserId, Guid.NewGuid().ToString("n"), selected, definition.ContextBudgetCharacters, cancellationToken);
         context = context with { Presets = WithOutputLanguage(context.Presets, command.RequestLanguage), Adaptation = session.Adaptation };
         if (ideas is not null && RecipeIdeaLibrary.TryParseCandidateId(selected.CandidateId, out var ideaId)
-            && await ideas.TryBuildRecipeAsync(user.Id, ideaId, context, cancellationToken) is { } fromIdea)
+            && await ideas.TryBuildRecipeAsync(ownerUserId, ideaId, context, cancellationToken) is { } fromIdea)
         {
             var builtAt = timeProvider.GetUtcNow();
-            var ideaRecipe = Recipe.Create(user.Id, builtAt);
+            var ideaRecipe = Recipe.Create(ownerUserId, builtAt);
             var ideaRevision = RecipeRevision.CreateFirst(
                 ideaRecipe.Id,
-                user.Id,
+                ownerUserId,
                 fromIdea.Name,
                 fromIdea.MealTypes,
                 fromIdea.Servings,
@@ -216,7 +228,7 @@ public sealed class RecipeCookNowApplicationService(
             return RecipeApplicationResult<RecipeDetailView>.Succeeded(ToDetailView(ideaRevision), RecipeApplicationSuccess.Created);
         }
 
-        var reservation = await usageGovernor.ReserveAsync(user.Id, definition.Operation, definition.EstimatedUsageUnits, definition.EstimatedCostMicroUsd, definition.EstimatedTokens, command.CorrelationId, cancellationToken);
+        var reservation = await usageGovernor.ReserveAsync(ownerUserId, definition.Operation, definition.EstimatedUsageUnits, definition.EstimatedCostMicroUsd, definition.EstimatedTokens, command.CorrelationId, cancellationToken);
         if (reservation.Outcome != AiUsageReservationOutcome.Reserved)
         {
             session.MarkFailed($"usage_{reservation.Outcome}", timeProvider.GetUtcNow());
@@ -240,10 +252,10 @@ public sealed class RecipeCookNowApplicationService(
 
         var completedAt = timeProvider.GetUtcNow();
         var expandedRecipe = invocation.Response.Recipe;
-        var recipe = Recipe.Create(user.Id, completedAt);
+        var recipe = Recipe.Create(ownerUserId, completedAt);
         var revision = RecipeRevision.CreateFirst(
             recipe.Id,
-            user.Id,
+            ownerUserId,
             expandedRecipe.Name,
             expandedRecipe.MealTypes,
             expandedRecipe.Servings,
@@ -269,7 +281,7 @@ public sealed class RecipeCookNowApplicationService(
         {
             try
             {
-                await ideas.TryCaptureAsync(user.Id, selected, expandedRecipe, context, cancellationToken);
+                await ideas.TryCaptureAsync(ownerUserId, selected, expandedRecipe, context, cancellationToken);
             }
             catch (Exception exception) when (exception is not OperationCanceledException)
             {

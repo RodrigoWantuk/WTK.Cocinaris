@@ -34,6 +34,18 @@ const ptBR: Record<string, string> = {
   "menuBuild.board.leave": "Sair (fica salvo)",
   "menuBuild.board.preparing": "Preparando a receita…",
   "menuBuild.board.failed": "Não consegui preparar a receita",
+  "menuBuild.board.retrying": "Ainda tentando…",
+  "menuBuild.board.reason.ai_output_invalid":
+    "A IA respondeu várias vezes num formato que não consigo usar.",
+  "menuBuild.board.reason.ai_provider_timeout":
+    "A IA demorou demais para responder.",
+  "menuBuild.board.reason.ai_provider_unavailable":
+    "A IA está fora do ar agora.",
+  "menuBuild.board.reason.ai_budget_exhausted": "O uso da IA de hoje acabou.",
+  "menuBuild.board.reason.ai_budget_unavailable":
+    "Não consigo conferir o limite da IA agora.",
+  "menuBuild.board.reason.ai_capability_unavailable": "A IA está desligada.",
+  "menuBuild.board.reason.other": "Algo deu errado ao preparar.",
   "menuBuild.board.blocked": "Tem um ingrediente das suas restrições",
   "menuBuild.board.covers": "rende {{count}} refeições",
   "menuBuild.board.bases": "Bases",
@@ -313,8 +325,6 @@ const ptBR: Record<string, string> = {
   "shoppingPlan.card.guardAny": "os ingredientes",
   "shoppingPlan.card.ingredients": "Ver ingredientes",
   "shoppingPlan.undo": "Desfazer",
-  "shoppingPlan.expansion.stopped":
-    "Não consegui preparar as receitas agora. O que você escolheu está salvo.",
   "shoppingPlan.review.retry": "Tentar de novo",
   "shoppingPlan.review.remove": "Remover",
   "shoppingPlan.review.covers": "rende {{count}} refeições",
@@ -413,6 +423,18 @@ const en: Record<string, string> = {
   "menuBuild.board.leave": "Leave (it's saved)",
   "menuBuild.board.preparing": "Preparing the recipe…",
   "menuBuild.board.failed": "I couldn't prepare the recipe",
+  "menuBuild.board.retrying": "Still trying…",
+  "menuBuild.board.reason.ai_output_invalid":
+    "The AI kept answering in a format I can't use.",
+  "menuBuild.board.reason.ai_provider_timeout":
+    "The AI took too long to answer.",
+  "menuBuild.board.reason.ai_provider_unavailable":
+    "The AI is out of service right now.",
+  "menuBuild.board.reason.ai_budget_exhausted": "Today's AI use has run out.",
+  "menuBuild.board.reason.ai_budget_unavailable":
+    "The AI limit can't be checked right now.",
+  "menuBuild.board.reason.ai_capability_unavailable": "The AI is turned off.",
+  "menuBuild.board.reason.other": "Something went wrong while preparing it.",
   "menuBuild.board.blocked": "It has an ingredient from your restrictions",
   "menuBuild.board.covers": "makes {{count}} meals",
   "menuBuild.board.bases": "Bases",
@@ -692,8 +714,6 @@ const en: Record<string, string> = {
   "shoppingPlan.card.guardAny": "the ingredients",
   "shoppingPlan.card.ingredients": "See ingredients",
   "shoppingPlan.undo": "Undo",
-  "shoppingPlan.expansion.stopped":
-    "I couldn't prepare the recipes right now. What you chose is saved.",
   "shoppingPlan.review.retry": "Try again",
   "shoppingPlan.review.remove": "Remove",
   "shoppingPlan.review.covers": "yields {{count}} meals",
@@ -790,6 +810,19 @@ const es: Record<string, string> = {
   "menuBuild.board.leave": "Salir (queda guardado)",
   "menuBuild.board.preparing": "Preparando la receta…",
   "menuBuild.board.failed": "No pude preparar la receta",
+  "menuBuild.board.retrying": "Todavía intentando…",
+  "menuBuild.board.reason.ai_output_invalid":
+    "La IA respondió varias veces en un formato que no puedo usar.",
+  "menuBuild.board.reason.ai_provider_timeout":
+    "La IA tardó demasiado en responder.",
+  "menuBuild.board.reason.ai_provider_unavailable":
+    "La IA está fuera de servicio ahora.",
+  "menuBuild.board.reason.ai_budget_exhausted":
+    "El uso de la IA de hoy se acabó.",
+  "menuBuild.board.reason.ai_budget_unavailable":
+    "No puedo revisar el límite de la IA ahora.",
+  "menuBuild.board.reason.ai_capability_unavailable": "La IA está apagada.",
+  "menuBuild.board.reason.other": "Algo salió mal al prepararla.",
   "menuBuild.board.blocked": "Tiene un ingrediente de tus restricciones",
   "menuBuild.board.covers": "rinde {{count}} comidas",
   "menuBuild.board.bases": "Bases",
@@ -1067,8 +1100,6 @@ const es: Record<string, string> = {
   "shoppingPlan.card.guardAny": "los ingredientes",
   "shoppingPlan.card.ingredients": "Ver ingredientes",
   "shoppingPlan.undo": "Deshacer",
-  "shoppingPlan.expansion.stopped":
-    "No pude preparar las recetas ahora. Lo que elegiste está guardado.",
   "shoppingPlan.review.retry": "Intentar de nuevo",
   "shoppingPlan.review.remove": "Quitar",
   "shoppingPlan.review.covers": "rinde {{count}} comidas",

@@ -30,7 +30,8 @@ import { localIsoDate, addDays } from "@/features/planning/planningDates";
 import { ShoppingPlanBoardPage } from "./ShoppingPlanBoardPage";
 import { ShoppingPlanProvider } from "./ShoppingPlanProvider";
 import { ShoppingPlanSetupPage } from "./ShoppingPlanSetupPage";
-import { UNDO_WINDOW_MS, useExpansionQueue } from "./useExpansionQueue";
+import { POLL_MS } from "./planExpansionRunner";
+import { useExpansionQueue } from "./useExpansionQueue";
 
 const SETUP = {
   today: "2026-11-04",
@@ -166,6 +167,7 @@ function repository(
     distribute: unused,
     undo: unused,
     expand: unused,
+    retryExpansion: unused,
     removeCard: unused,
     accept: unused,
     abandon: unused,
@@ -881,6 +883,52 @@ describe("acting on chosen dishes (PLAN-0065 Slice 3)", () => {
     );
   });
 
+  it("says a dish is still being tried, why one failed, and tries it again on the server", async () => {
+    const value = withChosen(2);
+    value.accepted = [
+      chosen("x0", {
+        expansionState: "pending",
+        recipeId: null,
+        retrying: true,
+      }),
+      chosen("x1", {
+        expansionState: "failed",
+        recipeId: null,
+        failureCode: "ai_provider_timeout",
+      }),
+    ];
+    const retried = withChosen(2);
+    retried.accepted = [
+      chosen("x0", {
+        expansionState: "pending",
+        recipeId: null,
+        retrying: true,
+      }),
+      chosen("x1", { expansionState: "pending", recipeId: null }),
+    ];
+    const retryExpansion = vi.fn(async () => retried);
+    const expand = vi.fn();
+    renderAt(
+      repository({ get: vi.fn(async () => value), retryExpansion, expand }),
+      "/app/compras/planejar/s1",
+    );
+    const user = userEvent.setup();
+    const dishes = await screen.findAllByTestId("board-dish");
+    expect(dishes[0]).toHaveTextContent("Ainda tentando…");
+    expect(dishes[1]).toHaveTextContent("Não consegui preparar a receita");
+    expect(dishes[1]).toHaveTextContent("A IA demorou demais para responder.");
+
+    await user.click(dishes[1]);
+    const sheet = await screen.findByTestId("board-dish-sheet");
+    await user.click(within(sheet).getByTestId("board-dish-retry"));
+    expect(retryExpansion).toHaveBeenCalledWith(
+      "s1",
+      "x1",
+      expect.objectContaining({ csrfToken: expect.any(String) }),
+    );
+    expect(expand).not.toHaveBeenCalled();
+  });
+
   it("swaps a dish by removing it and opening its meal's options", async () => {
     const removeCard = vi.fn(async () => withChosen(1));
     renderAt(
@@ -929,7 +977,7 @@ describe("acting on chosen dishes (PLAN-0065 Slice 3)", () => {
   });
 });
 
-describe("expansion queue (PLAN-0062)", () => {
+describe("following dishes being prepared (PLAN-0039 Slice 2)", () => {
   function Queue({
     value,
     onPlan,
@@ -937,12 +985,8 @@ describe("expansion queue (PLAN-0062)", () => {
     value: ShoppingPlan;
     onPlan: (next: ShoppingPlan) => void;
   }) {
-    const stopped = useExpansionQueue(
-      value,
-      { csrfToken: "c", language: "pt-BR" },
-      onPlan,
-    );
-    return <p data-testid="stopped">{stopped ?? "running"}</p>;
+    useExpansionQueue(value, onPlan);
+    return null;
   }
   function Harness({
     value,
@@ -953,7 +997,7 @@ describe("expansion queue (PLAN-0062)", () => {
     value: ShoppingPlan;
     repo: ShoppingPlanRepository;
     onPlan: (next: ShoppingPlan) => void;
-    /** A new key is a different screen mounting, as when moving from the cards to the review. */
+    /** A new key is a different screen mounting, as when moving from the board to the menu. */
     screenKey?: string;
   }) {
     return (
@@ -975,105 +1019,87 @@ describe("expansion queue (PLAN-0062)", () => {
     guardIngredient: null,
   });
 
-  it("skips the undo window for cards already pending and waits for a new one", async () => {
+  it("reads the plan while a dish is pending and never prepares it from the browser", async () => {
     vi.useFakeTimers();
+    const pending = plan({ accepted: [accepted("a")] });
     const done = plan({ accepted: [accepted("a", "ready")] });
-    const expand = vi.fn(async () => done);
+    const get = vi.fn().mockResolvedValueOnce(pending).mockResolvedValue(done);
+    const expand = vi.fn();
     const onPlan = vi.fn();
-    const repo = repository({ expand });
-    const view = render(
+    render(
       <Harness
-        value={plan({ accepted: [accepted("a")] })}
-        repo={repo}
+        value={pending}
+        repo={repository({ get, expand })}
         onPlan={onPlan}
       />,
     );
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(0);
-    });
-    expect(expand).toHaveBeenCalledTimes(1);
 
-    view.rerender(
-      <Harness
-        value={plan({ accepted: [accepted("a", "ready"), accepted("b")] })}
-        repo={repo}
-        onPlan={onPlan}
-      />,
-    );
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(UNDO_WINDOW_MS - 100);
+      await vi.advanceTimersByTimeAsync(POLL_MS - 100);
     });
-    expect(expand).toHaveBeenCalledTimes(1);
+    expect(get).not.toHaveBeenCalled();
     await act(async () => {
       await vi.advanceTimersByTimeAsync(200);
     });
-    expect(expand).toHaveBeenCalledTimes(2);
-    expect((expand.mock.calls[1] as unknown[])[1]).toBe("b");
+    expect(get).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(POLL_MS);
+    });
+    expect(get).toHaveBeenCalledTimes(2);
+    expect(onPlan).toHaveBeenLastCalledWith(done);
+
+    // Nothing pending any more: reading stops.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(POLL_MS * 3);
+    });
+    expect(get).toHaveBeenCalledTimes(2);
+    expect(expand).not.toHaveBeenCalled();
   });
 
-  it("keeps one queue when the screen changes, so a card is never expanded twice at once", async () => {
+  it("keeps one follower when the screen changes, and the open screen hears the news", async () => {
     vi.useFakeTimers();
-    let finish!: (value: ShoppingPlan) => void;
-    const done = plan({ accepted: [accepted("a", "ready")] });
-    const expand = vi.fn(
-      () => new Promise<ShoppingPlan>((resolve) => (finish = resolve)),
-    );
-    const repo = repository({ expand });
     const pending = plan({ accepted: [accepted("a")] });
-    const onPlan = vi.fn();
-    const view = render(
-      <Harness value={pending} repo={repo} onPlan={vi.fn()} />,
-    );
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(0);
-    });
-    expect(expand).toHaveBeenCalledTimes(1);
-
+    const done = plan({ accepted: [accepted("a", "ready")] });
+    const get = vi.fn(async () => done);
+    const repo = repository({ get });
+    const first = vi.fn();
+    const second = vi.fn();
+    const view = render(<Harness value={pending} repo={repo} onPlan={first} />);
     view.rerender(
-      <Harness value={pending} repo={repo} onPlan={onPlan} screenKey="b" />,
+      <Harness value={pending} repo={repo} onPlan={second} screenKey="b" />,
     );
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(UNDO_WINDOW_MS * 2);
-    });
-    expect(expand).toHaveBeenCalledTimes(1);
 
-    // The screen now open hears about the work the previous one started.
     await act(async () => {
-      finish(done);
-      await vi.advanceTimersByTimeAsync(0);
+      await vi.advanceTimersByTimeAsync(POLL_MS + 10);
     });
-    expect(onPlan).toHaveBeenCalledWith(done);
+    expect(get).toHaveBeenCalledTimes(1);
+    expect(second).toHaveBeenCalledWith(done);
+    expect(first).not.toHaveBeenCalled();
   });
 
-  it("retries a conflict and stops on an exhausted budget", async () => {
+  it("waits longer after a failed read instead of stopping", async () => {
     vi.useFakeTimers();
-    const expand = vi
+    const pending = plan({ accepted: [accepted("a")] });
+    const get = vi
       .fn()
-      .mockRejectedValueOnce(
-        new RecipeApiError("ai_operation_conflict", "x", 409),
-      )
-      .mockRejectedValueOnce(
-        new RecipeApiError("ai_budget_exhausted", "x", 503),
-      );
-    const stillPending = plan({ accepted: [accepted("a")] });
+      .mockRejectedValueOnce(new Error("offline"))
+      .mockResolvedValue(pending);
     render(
-      <Harness
-        value={stillPending}
-        repo={repository({ expand, get: vi.fn(async () => stillPending) })}
-        onPlan={vi.fn()}
-      />,
+      <Harness value={pending} repo={repository({ get })} onPlan={vi.fn()} />,
     );
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(0);
+      await vi.advanceTimersByTimeAsync(POLL_MS + 10);
     });
-    expect(expand).toHaveBeenCalledTimes(1);
+    expect(get).toHaveBeenCalledTimes(1);
+    // 15 seconds of rest after the failure, then the usual interval.
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(3000);
+      await vi.advanceTimersByTimeAsync(14000);
     });
-    expect(expand).toHaveBeenCalledTimes(2);
-    expect(screen.getByTestId("stopped")).toHaveTextContent(
-      "ai_budget_exhausted",
-    );
+    expect(get).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5000);
+    });
+    expect(get).toHaveBeenCalledTimes(2);
   });
 });
 

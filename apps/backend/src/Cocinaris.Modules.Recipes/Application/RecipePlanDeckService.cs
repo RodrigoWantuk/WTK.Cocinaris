@@ -132,7 +132,7 @@ public sealed class RecipePlanDeckService(
             await generationStore.SaveAsync(claim.Session, cancellationToken);
         }
 
-        return await cookNow.SelectCandidateAsync(new SelectCandidateCommand(claim.Session.Id, candidate.CandidateId, expansionKey, correlationId, language), cancellationToken);
+        return await cookNow.SelectCandidateForOwnerAsync(ownerUserId, new SelectCandidateCommand(claim.Session.Id, candidate.CandidateId, expansionKey, correlationId, language), cancellationToken);
     }
 
     private async Task<RecipeSuggestRequestContext> ContextAsync(Guid ownerUserId, PlanDeckRequest request, AiOperationDefinition definition, CancellationToken cancellationToken)

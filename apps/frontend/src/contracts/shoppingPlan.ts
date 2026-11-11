@@ -145,6 +145,8 @@ export interface ShoppingPlanAccepted {
   guardIngredient: string | null;
   /** Whether it is a base, which fills no meal. */
   isComponent?: boolean;
+  /** Whether a server attempt to prepare the recipe failed and another is coming ("Ainda tentando…"). */
+  retrying?: boolean;
   /** The day it was given, if any; most dishes have none. */
   plannedDate?: string | null;
   totalMinutes?: number;
@@ -377,7 +379,16 @@ export interface ShoppingPlanRepository {
     options: Mutation,
   ): Promise<ShoppingPlan>;
   undo(sessionId: string, options: Mutation): Promise<ShoppingPlan>;
-  /** Expands an accepted card and puts its meals on the menu; safe to retry. */
+  /**
+   * "Tentar de novo" on a dish whose recipe could not be prepared: the server prepares it again in a
+   * job, with every attempt back (PLAN-0039 Slice 2). Returns the plan with the dish pending.
+   */
+  retryExpansion(
+    sessionId: string,
+    cardId: string,
+    options: Mutation,
+  ): Promise<ShoppingPlan>;
+  /** Expands an accepted card at once, in the request, and puts its meals on the menu; the server job is the usual path. */
   expand(
     sessionId: string,
     cardId: string,

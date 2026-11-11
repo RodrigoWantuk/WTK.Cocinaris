@@ -259,6 +259,7 @@ public sealed record ShoppingPlanCardComponent(string OutputName, decimal Output
 /// <param name="RequestText">What the person typed when this card answers a specific request. Untrusted, and shown only to them.</param>
 /// <param name="PrivateHint">The typed hint this card was made under, if any. Untrusted. It follows the card to its expansion, which keeps the recipe out of the shared idea library (PLAN-0060).</param>
 /// <param name="People">People this one dish is for, when the person changed it on the board (PLAN-0065); the plan's people when null.</param>
+/// <param name="ExpansionRetries">Server attempts to prepare the recipe that failed and will be tried again (PLAN-0039 Slice 2); the board says "Ainda tentando…" while it is above zero.</param>
 public sealed record ShoppingPlanCardSnapshot(
     string Name,
     string Summary,
@@ -279,7 +280,8 @@ public sealed record ShoppingPlanCardSnapshot(
     string? PrivateHint = null,
     DateOnly? PlannedDate = null,
     string? RequestText = null,
-    int? People = null);
+    int? People = null,
+    int ExpansionRetries = 0);
 
 /// <summary>
 /// What the person asked for under "Quero outras opções" (PLAN-0064). It belongs to this plan and never

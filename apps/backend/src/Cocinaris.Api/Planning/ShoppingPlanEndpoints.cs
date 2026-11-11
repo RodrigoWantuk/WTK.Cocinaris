@@ -45,6 +45,11 @@ public static class ShoppingPlanEndpoints
             .Produces<ShoppingPlanView>()
             .ProducesProblem(404)
             .ProducesProblem(422);
+        group.MapPost("/{sessionId:guid}/cards/{cardId:guid}/expansion-retry", (ShoppingPlanApiService service, Guid sessionId, Guid cardId, HttpContext context, CancellationToken cancellationToken) => service.RetryExpansionAsync(sessionId, cardId, context, cancellationToken))
+            .RequireRateLimiting("shopping-plan-decision")
+            .Produces<ShoppingPlanView>()
+            .ProducesProblem(404)
+            .ProducesProblem(422);
         group.MapPost("/{sessionId:guid}/cards/{cardId:guid}/expansion", (ShoppingPlanApiService service, Guid sessionId, Guid cardId, HttpRequest request, CancellationToken cancellationToken) => service.ExpandAsync(sessionId, cardId, request, cancellationToken))
             .RequireRateLimiting("mutation")
             .Produces<ShoppingPlanView>()
@@ -181,7 +186,7 @@ public sealed class ShoppingPlanApiService(ShoppingPlanApplicationService applic
 
     /// <summary>Chooses one of the person's saved recipes for a meal.</summary>
     public async Task<IResult> ChooseRecipeAsync(Guid sessionId, Guid recipeId, ShoppingPlanRecipeChoiceRequest body, HttpContext context, CancellationToken cancellationToken) =>
-        ToResult(await application.ChooseRecipeAsync(sessionId, recipeId, body.MealType, cancellationToken, body.PlannedDate), context.TraceIdentifier);
+        ToResult(await application.ChooseRecipeAsync(sessionId, recipeId, body.MealType, cancellationToken, body.PlannedDate, Language(context.Request)), context.TraceIdentifier);
 
     /// <summary>Sets the switches above the options.</summary>
     public async Task<IResult> SetPreferencesAsync(Guid sessionId, ShoppingPlanPreferencesRequest body, HttpContext context, CancellationToken cancellationToken) =>
@@ -209,7 +214,7 @@ public sealed class ShoppingPlanApiService(ShoppingPlanApplicationService applic
 
     /// <summary>Chooses several offered dishes at once ("Completar").</summary>
     public async Task<IResult> ChooseManyAsync(Guid sessionId, ShoppingPlanChoicesRequest body, HttpContext context, CancellationToken cancellationToken) =>
-        ToResult(await application.ChooseManyAsync(sessionId, body.Choices?.Select(choice => new ShoppingPlanChoice(choice.CardId, choice.MealType)).ToList(), cancellationToken), context.TraceIdentifier);
+        ToResult(await application.ChooseManyAsync(sessionId, body.Choices?.Select(choice => new ShoppingPlanChoice(choice.CardId, choice.MealType)).ToList(), cancellationToken, Language(context.Request)), context.TraceIdentifier);
 
     /// <summary>Spreads undated dishes across the period, or removes every day.</summary>
     public async Task<IResult> DistributeAsync(Guid sessionId, ShoppingPlanDistributionRequest? body, HttpContext context, CancellationToken cancellationToken) =>
@@ -221,13 +226,17 @@ public sealed class ShoppingPlanApiService(ShoppingPlanApplicationService applic
 
     /// <summary>Accepts or rejects a card.</summary>
     public async Task<IResult> DecideAsync(Guid sessionId, Guid cardId, ShoppingPlanDecisionRequest body, HttpContext context, CancellationToken cancellationToken) =>
-        ToResult(await application.DecideAsync(sessionId, cardId, body.Decision, body.Mode, body.Repeats, body.MealType, body.PlannedDate, cancellationToken), context.TraceIdentifier);
+        ToResult(await application.DecideAsync(sessionId, cardId, body.Decision, body.Mode, body.Repeats, body.MealType, body.PlannedDate, cancellationToken, Language(context.Request)), context.TraceIdentifier);
 
     /// <summary>Undoes the last decision.</summary>
     public async Task<IResult> UndoAsync(Guid sessionId, HttpContext context, CancellationToken cancellationToken) =>
         ToResult(await application.UndoAsync(sessionId, cancellationToken), context.TraceIdentifier);
 
-    /// <summary>Expands an accepted card and creates its meals.</summary>
+    /// <summary>"Tentar de novo": queues the server job for a dish whose recipe could not be prepared (PLAN-0039).</summary>
+    public async Task<IResult> RetryExpansionAsync(Guid sessionId, Guid cardId, HttpContext context, CancellationToken cancellationToken) =>
+        ToResult(await application.RetryExpansionAsync(sessionId, cardId, Language(context.Request), cancellationToken), context.TraceIdentifier);
+
+    /// <summary>Expands an accepted card and creates its meals at once, in the request; the server job is the usual path (PLAN-0039).</summary>
     public async Task<IResult> ExpandAsync(Guid sessionId, Guid cardId, HttpRequest request, CancellationToken cancellationToken) =>
         ToResult(await application.ExpandAsync(sessionId, cardId, request.HttpContext.TraceIdentifier, Language(request), cancellationToken), request.HttpContext.TraceIdentifier);
 

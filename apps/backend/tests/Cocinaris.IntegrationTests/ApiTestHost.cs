@@ -39,7 +39,7 @@ internal sealed class CocinarisFactory(string connectionString) : WebApplication
         builder.ConfigureTestServices(services =>
         {
             foreach (var worker in services.Where(item => item.ServiceType == typeof(IHostedService)
-                && (item.ImplementationType == typeof(Cocinaris.Api.Ingredients.IngredientResolutionWorker) || item.ImplementationType == typeof(Cocinaris.Api.Inventory.InventoryAutoRemovalWorker) || item.ImplementationType == typeof(Cocinaris.Api.Planning.PlanReminderPushWorker) || item.ImplementationType == typeof(Cocinaris.Api.Privacy.AccountDeletionWorker) || item.ImplementationType == typeof(Cocinaris.Api.Privacy.RetentionWorker))).ToList())
+                && (item.ImplementationType == typeof(Cocinaris.Api.Ingredients.IngredientResolutionWorker) || item.ImplementationType == typeof(Cocinaris.Api.Inventory.InventoryAutoRemovalWorker) || item.ImplementationType == typeof(Cocinaris.Api.Planning.PlanReminderPushWorker) || item.ImplementationType == typeof(Cocinaris.Api.Privacy.AccountDeletionWorker) || item.ImplementationType == typeof(Cocinaris.Api.Privacy.RetentionWorker) || item.ImplementationType == typeof(Cocinaris.Api.Jobs.JobRunner))).ToList())
             {
                 services.Remove(worker);
             }

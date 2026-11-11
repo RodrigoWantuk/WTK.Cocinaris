@@ -153,6 +153,7 @@ function plansRepo(
     decide: unused,
     undo: unused,
     expand: unused,
+    retryExpansion: unused,
     removeCard: unused,
     accept: vi.fn(async () => ({ ...AMENDING, status: "finished" })),
     abandon: unused,
