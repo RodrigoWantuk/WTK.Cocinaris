@@ -22,6 +22,62 @@ namespace Cocinaris.Infrastructure.Persistence.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Cocinaris.Infrastructure.Persistence.AccountDeletionRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CountsJson")
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("FailureCode")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<DateTimeOffset>("NextAttemptAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("OwnerUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("RequestedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("State")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<string>("SubjectHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OwnerUserId")
+                        .IsUnique()
+                        .HasFilter("\"State\" = 'Pending'");
+
+                    b.HasIndex("RequestedAt");
+
+                    b.HasIndex("SubjectHash");
+
+                    b.ToTable("account_deletions", "platform", t =>
+                        {
+                            t.HasCheckConstraint("ck_account_deletions_owner", "(\"State\" = 'Pending' AND \"OwnerUserId\" IS NOT NULL) OR (\"State\" = 'Completed' AND \"OwnerUserId\" IS NULL AND \"CompletedAt\" IS NOT NULL)");
+
+                            t.HasCheckConstraint("ck_account_deletions_state", "\"State\" IN ('Pending', 'Completed')");
+                        });
+                });
+
             modelBuilder.Entity("Cocinaris.Infrastructure.Persistence.AiUsageLedgerRecord", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2275,15 +2331,6 @@ namespace Cocinaris.Infrastructure.Persistence.Migrations
                         .IsUnique();
 
                     b.ToTable("users", "identity");
-                });
-
-            modelBuilder.Entity("Cocinaris.Infrastructure.Persistence.AiUsageLedgerRecord", b =>
-                {
-                    b.HasOne("Cocinaris.Modules.Identity.InternalUser", null)
-                        .WithMany()
-                        .HasForeignKey("OwnerUserId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
                 });
 
             modelBuilder.Entity("Cocinaris.Infrastructure.Persistence.AuditEventRecord", b =>

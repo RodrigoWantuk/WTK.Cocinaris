@@ -31,3 +31,11 @@ export function useRuntime(): FrontendRuntime {
   }
   return ctx;
 }
+
+/**
+ * The injected runtime, or null outside RuntimeProvider; for components that use an optional part of
+ * it, such as the offline store, and must also render in isolated tests.
+ */
+export function useOptionalRuntime(): FrontendRuntime | null {
+  return useContext(RuntimeContext);
+}

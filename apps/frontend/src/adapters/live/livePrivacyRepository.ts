@@ -71,5 +71,21 @@ export function createLivePrivacyRepository(options?: {
         wrapAbort(err);
       }
     },
+    async deleteAccount(confirmation, csrfToken) {
+      try {
+        const { error, response } = await client.POST(
+          "/api/v1/privacy/account-deletion",
+          {
+            body: { confirmation },
+            params: { header: { "X-CSRF-TOKEN": csrfToken } },
+            ...include,
+          },
+        );
+        if (response.status !== 202)
+          await throwForFailure(response, FALLBACK, error);
+      } catch (err) {
+        wrapAbort(err);
+      }
+    },
   };
 }

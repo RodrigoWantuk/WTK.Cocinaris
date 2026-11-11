@@ -58,6 +58,7 @@ import { ProfileDataPage } from "@/features/profile/ProfileDataPage";
 import { ProfilePreferencesPage } from "@/features/profile/ProfilePreferencesPage";
 import { ProfileEquipmentPage } from "@/features/profile/ProfileEquipmentPage";
 import { ProfilePrivacyPage } from "@/features/profile/ProfilePrivacyPage";
+import { AccountDeletedPage } from "@/features/profile/AccountDeletionSection";
 import {
   UnsavedChangesCoordinatorProvider,
   useOptionalUnsavedChangesCoordinator,
@@ -416,6 +417,15 @@ function createProductionRouter() {
           <SessionScopedRoutes>
             <EntryRoute />
           </SessionScopedRoutes>
+        </Titled>
+      ),
+    },
+    {
+      // After an account deletion (PLAN-0049): no session, nothing to load.
+      path: "/conta-excluida",
+      element: (
+        <Titled>
+          <AccountDeletedPage />
         </Titled>
       ),
     },

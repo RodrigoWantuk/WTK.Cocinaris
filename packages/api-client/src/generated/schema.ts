@@ -1066,6 +1066,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/privacy/account-deletion": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** POST /api/v1/privacy/account-deletion */
+        post: operations["postApiV1PrivacyAccount-deletion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/privacy/export": {
         parameters: {
             query?: never;
@@ -1739,6 +1756,19 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** @description Body of an account deletion: the typed confirmation word (`EXCLUIR`, `DELETE`, or `ELIMINAR`). */
+        AccountDeletionRequest: {
+            /** @description What the person typed. */
+            confirmation: null | string;
+        };
+        /** @description An accepted deletion; the account's data is erased within seconds. */
+        AccountDeletionView: {
+            /**
+             * Format: date-time
+             * @description When it was requested.
+             */
+            requestedAt: string;
+        };
         /** @description Body for adding a recipe to a menu. */
         AddMenuEntryRequest: {
             /** @description `breakfast`, `lunch`, `dinner`, `snack`, or null. */
@@ -4392,6 +4422,7 @@ export interface operations {
         parameters: {
             query?: {
                 returnUrl?: string;
+                reauth?: boolean;
             };
             header?: never;
             path?: never;
@@ -9273,6 +9304,78 @@ export interface operations {
             };
             /** @description Authentication is required. */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    "postApiV1PrivacyAccount-deletion": {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Required CSRF token issued by GET /api/v1/session. */
+                "X-CSRF-TOKEN": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AccountDeletionRequest"];
+            };
+        };
+        responses: {
+            /** @description Accepted */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountDeletionView"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description The request content type is not supported. */
+            415: {
                 headers: {
                     [name: string]: unknown;
                 };

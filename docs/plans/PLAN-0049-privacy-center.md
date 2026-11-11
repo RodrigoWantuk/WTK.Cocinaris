@@ -1,13 +1,13 @@
 # PLAN-0049: Privacy Center ("Seus dados")
 
-- **Status:** In Progress; decisions D1 to D4 answered by the owner on 2026-11-11; Slice 1 in a draft PR
+- **Status:** In Progress; decisions D1 to D4 answered by the owner on 2026-11-11; Slice 1 merged (#103); Slice 2 in a draft PR
 - **Type:** Implementation
 - **Priority:** High: the next step is the external test with three people (PLAN-0065 Gate S5), who must be able to take and delete their own data
 - **Owner:** Claude Code (claimed 2026-11-11)
 - **Created:** 2026-11-11
 - **Last updated:** 2026-11-11
 - **Branch:** Plan and Slice 1 `agent/plan-0049-privacy-center`; each later slice uses the branch named in its section
-- **Pull request:** Slice 1 draft PR, opened with this file
+- **Pull request:** #103 (plan and Slice 1, merged); Slice 2 draft PR
 - **Related issues:** None
 - **Related ADRs:** ADR-0013 (web push); none new is needed, see "Background work"
 - **Dependencies:** None open. The roadmap listed PLAN-0039 (queue, outbox, workers) first; this plan uses the hosted-service pattern already in production instead (see "Background work").
@@ -107,13 +107,13 @@ Branch: `agent/plan-0049-privacy-center`.
 
 Branch: `agent/plan-0049-s2-deletion`.
 
-- [ ] `IAccountDataEraser` in `Cocinaris.SharedKernel`, one per module, each idempotent; the coverage test now also requires an eraser or an exemption.
-- [ ] Sign-in time claim at OIDC sign-in; cookie validation rejects a session older than 30 days (E2) or older than a tombstone for its subject (E3). A session without the claim counts as signed in at its issue time.
-- [ ] `POST /api/v1/privacy/account-deletion` with the typed word, after a recent sign-in (E1, else `reauthentication_required`): creates `platform.account_deletions` (subject hash, owner id, state, steps done, counts, times), signs the person out, returns 202. Repeating it while one runs returns the same request.
-- [ ] `AccountDeletionWorker`: push subscriptions, planning, recipes, inventory, profiles, shared-table ids, AI anonymization (D4), platform, and `identity.users` last; each step in its own transaction, recorded as done; failures retried with backoff and counted in `cocinaris.privacy.deletion{outcome}`.
-- [ ] Sign-in while a deletion runs is refused with a page that says so; after it completes, signing in starts an empty account (D2).
-- [ ] Page: "Excluir minha conta" explains what goes, what stays (the login at the provider, D2; anonymized usage for 13 months, D4), offers the export first, asks for the word ("EXCLUIR", "DELETE", "ELIMINAR"), then shows a public page "Sua conta foi excluída". The client clears IndexedDB and unsubscribes push, as logout does.
-- [ ] Runbook: how the owner deletes a login at the provider on request, and how to read a stuck deletion.
+- [x] `IAccountDataEraser` in `Cocinaris.SharedKernel`, one per module, each idempotent; the coverage test now also requires an eraser or an exemption.
+- [x] Sign-in time claim at OIDC sign-in; cookie validation rejects a session older than 30 days (E2) or older than a tombstone for its subject (E3). A session without the claim counts as signed in at its issue time.
+- [x] `POST /api/v1/privacy/account-deletion` with the typed word, after a recent sign-in (E1, else `reauthentication_required`): creates `platform.account_deletions` (subject hash, owner id, state, steps done, counts, times), signs the person out, returns 202. Repeating it while one runs returns the same request.
+- [x] `AccountDeletionWorker`: push subscriptions, planning, recipes, inventory, profiles, shared-table ids, AI anonymization (D4), platform, and `identity.users` last; each step in its own transaction, recorded as done; failures retried with backoff and counted in `cocinaris.privacy.deletion{outcome}`.
+- [x] Sign-in while a deletion runs is refused with a page that says so; after it completes, signing in starts an empty account (D2).
+- [x] Page: "Excluir minha conta" explains what goes, what stays (the login at the provider, D2; anonymized usage for 13 months, D4), offers the export first, asks for the word ("EXCLUIR", "DELETE", "ELIMINAR"), then shows a public page "Sua conta foi excluída". The client clears IndexedDB and unsubscribes push, as logout does.
+- [x] Runbook: how the owner deletes a login at the provider on request, and how to read a stuck deletion.
 
 **Gate S2:** person A with rows in every table and person B with rows: after A's deletion, every A row is gone or anonymized and every B row is unchanged; a failure injected at step 4 resumes from step 4 after a restart; an old session of A is rejected; signing in again creates a new empty account; shared thumbnails and ideas remain; frontend tests; one browser run of the whole deletion on the replica.
 
@@ -143,15 +143,15 @@ Deleting the login at the identity provider (D2), legal review and the privacy n
 
 ## Execution state
 
-- **Current run delivery target:** Plan and Slice 1.
-- **Current checkpoint:** Slice 1 implemented on `agent/plan-0049-privacy-center`, in a draft pull request.
-- **Last completed step:** Export, page, coverage test, documents; see the Slice 1 log entry.
-- **Exact next action:** The owner reviews and merges the Slice 1 pull request and deploys `main`. Then Slice 2 (account deletion) starts from a fresh `origin/main` on `agent/plan-0049-s2-deletion`.
+- **Current run delivery target:** Slice 2, account deletion.
+- **Current checkpoint:** Slice 2 implemented on `agent/plan-0049-s2-deletion`, in a draft pull request. Slice 1 merged via #103 (`9087d46`); its local gates passed 32 of 32.
+- **Last completed step:** Deletion request, erasure, sessions, page, documents; see the Slice 2 log entry.
+- **Exact next action:** The owner reviews and merges the Slice 2 pull request and deploys `main` (migration `AddAccountDeletions` runs on deploy). Then Slice 3 (retention) starts from a fresh `origin/main` on `agent/plan-0049-s3-retention`; `IAccountDeletionStore.PurgeCompletedAsync` is ready for its tombstone rule.
 - **Blockers:** None.
 - **Partially modified areas:** None.
-- **Documentation delivered:** This plan and its registry row; privacy document (page, processors, export, what is left out, coverage); deployment runbook (`Privacy__ContactEmail`, limit, metric) and `api.env.example`.
-- **Validation performed:** See the Slice 1 log entry.
-- **Known failures or limitations:** See the Slice 1 log entry.
+- **Documentation delivered:** This plan and its registry row; privacy document (page, processors, export, what is left out, coverage, account deletion); deployment runbook (`Privacy__ContactEmail`, limit, metrics, a stuck deletion, deleting a login by hand, rollback) and `api.env.example`.
+- **Validation performed:** See the Slice 2 log entry.
+- **Known failures or limitations:** See the Slice 2 log entry.
 - **Working tree state:** Clean after this commit.
 
 ## Progress log
@@ -177,6 +177,32 @@ Deleting the login at the identity provider (D2), legal review and the privacy n
   - **No 401 test for the export.** The integration host signs every request in; the route is under the authorized group like every other one.
 - **Validation performed:** Integration: `TheExportHoldsEveryTableOfThePersonAndNothingOfAnyoneElse` (every catalog table present, only the person's rows in each, the other person's recipe and pantry absent from JSON and HTML, a recipe named `<script>alert(1)</script> Bolo` escaped, JSON columns written as JSON, en page) and `TheExportIsLimitedPerPerson` pass. Architecture: 17, of which 3 new (coverage, catalog names real tables and columns, same copy keys in three languages). Frontend: typecheck, lint, format, build, and 639 tests (3 new). OpenAPI exported, client regenerated and mirrored, drift check passed. Backend formatting verified. Proxy replica at 360 px: new `privacy-journey.mjs` 8 of 8 (link from the profile, no sideways scroll, controls at least 44 px, a dated ZIP of 192 KB with both files, the saved notice). `ApiAuthenticationTests` (56) and the two export tests pass after the rate-limit change, with the development identity provider running; without it, the 10 sign-in tests fail with 500, as they always do.
 - **Not run:** the full local gates (one run on the pull request head follows); a real phone.
+- **Next action:** See "Exact next action".
+
+### 2026-11-11 — Claude Code (Slice 2)
+
+- **Run delivery target:** Slice 2, after the owner merged #103 ("Merge feito, pode seguir").
+- **Changes:**
+  - **Contract.** `AccountDataErasure` (`Delete`, `Anonymize`, `ClearOwner`, `SelfManaged`) on every catalog table and exemption; `IAccountDeletionStore`. `ai.usage_ledger` is `Anonymize` (D4); dish images and pending ingredient names are `ClearOwner`; `platform.account_deletions` is `SelfManaged`.
+  - **Erasure.** `PostgreSqlAccountDeletionStore.EraseAsync`: one transaction, the deletion row locked, updates first, then deletions in an order computed from the EF model's foreign keys, with `identity.users` last, and the row marked completed with per-table counts. `ErasureOrder` is public, so the architecture test checks it.
+  - **Migration `AddAccountDeletions`.** Creates `platform.account_deletions` (subject hash, owner while pending, state, times, attempts, failure code, counts; one pending row per account). It also lets `platform.reject_immutable_history_mutation()` allow a DELETE inside a transaction that sets `cocinaris.account_erasure`; updates and every other deletion stay refused. And it drops the foreign key from `ai.usage_ledger` to `identity.users`, because anonymized rows outlive the account.
+  - **Sessions.** `SessionGuard`: the OIDC sign-in stamps `cocinaris:signed_in_at` (Unix milliseconds). Cookies from before get their issue time. The middleware, on `/api` paths only, ends sessions older than 30 days, sessions signed in before their account's deletion, and sign-ins during a deletion. It always removes the session cookie and lets `POST /auth/login` through to replace an ended session. `AccountDeletionMarks` caches recent deletions for 15 seconds and is cleared by a request or a completion. `POST /auth/login?reauth=true` asks the provider for the password (`prompt=login`, `max_age=0`).
+  - **Request and worker.** `POST /api/v1/privacy/account-deletion` (CSRF, `mutation` limit): the typed word, then a sign-in from the last 15 minutes (else `403 reauthentication_required`). It records the deletion, ends the session, and returns 202. `AccountDeletionWorker` wakes on the request and polls every 30 seconds; `AccountDeletionProcessor` retries a failure a minute later and records only the exception type. Metric: `cocinaris.privacy.deletion{outcome}`.
+  - **Frontend.** `AccountDeletionSection` on "Seus dados": what goes, what stays, no way back, the word per language, "Entrar de novo" when the sign-in is old. Afterwards the browser drops its push subscription and the offline list, then goes to the public `/conta-excluida`. `useOptionalRuntime` was added for the offline store.
+- **Deviations from this plan:**
+  - **One transaction instead of one per step.** It is stronger: a failure leaves everything as it was and a retry starts over, so there is no partial state to resume. The gate's "resume from step 4" became "a failure changes nothing and the retry completes".
+  - **The session check is a middleware, not part of cookie validation**, so it works for every authentication scheme and is testable; cookie validation only stamps the sign-in time.
+  - **Append-only history can now be deleted by an account erasure.** The plan did not foresee those triggers; the first erasure attempt failed on `inventory.transactions` with `55000`.
+  - **`ai.usage_ledger` lost its foreign key to `identity.users`**, which the architecture test found: an anonymized row could not keep it.
+  - **Defects found in this run and fixed:** the OIDC identity is not typed as a cookie identity, so an ended session's cookie stayed and refused even signing in again (found by the browser journey). And the middleware made `/health/ready` depend on the database read (found by `ProductionUnexpectedFailureReturnsRedactedProblemDetails`).
+- **Validation performed:**
+  - **Integration:** `DeletingAnAccountErasesEveryRowOfThePersonAndNothingElse` (a wrong word, an old sign-in refused; every catalog table and exemption at zero rows for the account; the other person's counts unchanged; usage rows kept under an id nobody has; the tombstone without account id; an old session refused before and after; a new sign-in gets a new empty account). `AFailedErasureChangesNothingAndTheRetryCompletesIt` (a trigger blocks the recipes table; the first attempt changes no row and records `PostgresException`; the retry completes). Both pass, with `ApiAuthenticationTests` (56) and the export tests.
+  - **Unit:** 489. **Architecture:** 18, one new: erasure order, no foreign key into an erased table from a table that stays, account last.
+  - **Frontend:** typecheck, lint, format, and 643 tests (4 new).
+  - **Contract and format:** OpenAPI exported, client regenerated and mirrored, drift check passed; backend format verified.
+  - **Proxy replica at 360 px:** `privacy-journey.mjs inventory-user-b --delete`, 13 of 13. It covers export, the word, the deleted page, an old cookie refused with 401, a new sign-in with a new account id, and no recipes. The deletion completed in under half a second. `reauth=true` redirects with `prompt=login` and `max_age=0`; a plain login has no prompt.
+- **Not run:** the full local gates (one run on the pull request head follows); a real phone; the provider's password page after `reauth=true` in a browser.
+- **Known limits:** a background job that writes for the account during its erasure (a dish image request, for example) may leave a row with the old id; Slice 3's retention is where such rows are found.
 - **Next action:** See "Exact next action".
 
 ## Completion and handoff checklist

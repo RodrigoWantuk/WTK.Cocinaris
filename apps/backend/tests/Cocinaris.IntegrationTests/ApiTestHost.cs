@@ -39,7 +39,7 @@ internal sealed class CocinarisFactory(string connectionString) : WebApplication
         builder.ConfigureTestServices(services =>
         {
             foreach (var worker in services.Where(item => item.ServiceType == typeof(IHostedService)
-                && (item.ImplementationType == typeof(Cocinaris.Api.Ingredients.IngredientResolutionWorker) || item.ImplementationType == typeof(Cocinaris.Api.Inventory.InventoryAutoRemovalWorker) || item.ImplementationType == typeof(Cocinaris.Api.Planning.PlanReminderPushWorker))).ToList())
+                && (item.ImplementationType == typeof(Cocinaris.Api.Ingredients.IngredientResolutionWorker) || item.ImplementationType == typeof(Cocinaris.Api.Inventory.InventoryAutoRemovalWorker) || item.ImplementationType == typeof(Cocinaris.Api.Planning.PlanReminderPushWorker) || item.ImplementationType == typeof(Cocinaris.Api.Privacy.AccountDeletionWorker))).ToList())
             {
                 services.Remove(worker);
             }
@@ -55,7 +55,9 @@ internal sealed class TestAuthenticationHandler(IOptionsMonitor<AuthenticationSc
     protected override Task<AuthenticateResult> HandleAuthenticateAsync()
     {
         var subject = Request.Headers["X-Test-Subject"].FirstOrDefault() ?? "integration-user";
-        var identity = new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, subject), new Claim("iss", "https://integration.test")], TestScheme);
+        // X-Test-Signed-In-At (Unix milliseconds) sets when the session signed in; without it, now (PLAN-0049).
+        var signedInAt = Request.Headers["X-Test-Signed-In-At"].FirstOrDefault() ?? DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString(System.Globalization.CultureInfo.InvariantCulture);
+        var identity = new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, subject), new Claim("iss", "https://integration.test"), new Claim(Cocinaris.Api.Privacy.SessionGuard.SignedInAtClaim, signedInAt)], TestScheme);
         return Task.FromResult(AuthenticateResult.Success(new AuthenticationTicket(new ClaimsPrincipal(identity), TestScheme)));
     }
 }
