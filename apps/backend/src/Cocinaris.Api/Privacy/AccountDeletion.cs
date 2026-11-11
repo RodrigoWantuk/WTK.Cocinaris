@@ -1,6 +1,6 @@
 using System.Diagnostics.Metrics;
-using System.Threading.Channels;
 using Cocinaris.Modules.Identity;
+using Cocinaris.SharedKernel.Jobs;
 using Cocinaris.SharedKernel.Privacy;
 
 namespace Cocinaris.Api.Privacy;
@@ -17,14 +17,14 @@ public enum AccountDeletionRefusal
 
 /// <summary>
 /// Asks for an account deletion (PLAN-0049 Slice 2, decision D1: at once, no way back). The request is
-/// recorded durably, the worker is woken, and every session of the account ends; the erasure itself
-/// runs in <see cref="AccountDeletionProcessor"/>.
+/// recorded durably, its job is queued, and every session of the account ends; the erasure itself
+/// runs in <see cref="AccountDeletionJob"/>.
 /// </summary>
 public sealed class AccountDeletionService(
     ICurrentUserAccessor currentUser,
     IAccountDeletionStore store,
     AccountDeletionMarks marks,
-    AccountDeletionSignal signal,
+    IJobQueue jobs,
     TimeProvider timeProvider,
     IHttpContextAccessor httpContextAccessor)
 {
@@ -51,115 +51,103 @@ public sealed class AccountDeletionService(
 
         var login = SessionGuard.LoginOf(principal) ?? throw new UnauthorizedAccessException("The authenticated identity is incomplete.");
         var user = await currentUser.GetCurrentAsync(cancellationToken);
-        var (_, requestedAt) = await store.RequestAsync(SessionGuard.HashOf(login.Issuer, login.Subject), user.Id, now, cancellationToken);
+        var (deletionId, requestedAt) = await store.RequestAsync(SessionGuard.HashOf(login.Issuer, login.Subject), user.Id, now, cancellationToken);
         marks.Invalidate();
-        signal.Notify();
+        // The erasure runs as a job at once (PLAN-0039 Slice 3); the recovery job queues it again if this is lost.
+        await jobs.EnqueueAsync(AccountDeletionJob.Request(deletionId, now), restart: false, cancellationToken);
         return (requestedAt, null);
     }
 }
 
-/// <summary>Wakes the deletion worker so a request is erased within seconds, not at the next poll.</summary>
-public sealed class AccountDeletionSignal
-{
-    private readonly Channel<bool> channel = Channel.CreateBounded<bool>(new BoundedChannelOptions(1) { FullMode = BoundedChannelFullMode.DropWrite });
-
-    /// <summary>Asks the worker to run; a run already asked for covers this one.</summary>
-    public void Notify() => channel.Writer.TryWrite(true);
-
-    /// <summary>Waits for a notification or the timeout, whichever comes first.</summary>
-    public async Task WaitAsync(TimeSpan timeout, CancellationToken cancellationToken)
-    {
-        using var timer = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        timer.CancelAfter(timeout);
-        try
-        {
-            await channel.Reader.WaitToReadAsync(timer.Token);
-            channel.Reader.TryRead(out _);
-        }
-        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
-        {
-            // The timeout passed with no request; the worker polls anyway.
-        }
-    }
-}
-
 /// <summary>
-/// Erases due deletions, one transaction each. A failure is retried a minute later with its exception
-/// type recorded; nothing of the account's data reaches logs or metrics.
+/// Erases one account (PLAN-0049 Slice 2) as a job of PLAN-0039 Slice 3: one transaction per attempt,
+/// retried by the runner's backoff with only the exception type recorded. Twenty attempts take about 90 minutes;
+/// a deletion still pending after them shows in the runbook query, and the recovery job queues it again.
 /// </summary>
-public sealed class AccountDeletionProcessor(IAccountDeletionStore store, AccountDeletionMarks marks, TimeProvider timeProvider, ILogger<AccountDeletionProcessor> logger)
+public sealed class AccountDeletionJob(IAccountDeletionStore store, AccountDeletionMarks marks, TimeProvider timeProvider) : IJobHandler
 {
-    /// <summary>Wait after a failed attempt.</summary>
-    public static readonly TimeSpan RetryAfter = TimeSpan.FromMinutes(1);
+    /// <summary>Job kind.</summary>
+    public const string JobKind = "account_deletion";
+
+    /// <summary>Attempts before the job stops trying on its own.</summary>
+    public const int MaxAttempts = 20;
 
     private static readonly Meter Meter = new("Cocinaris.Privacy.Deletion");
     private static readonly Counter<long> Deletions = Meter.CreateCounter<long>("cocinaris.privacy.deletion", "{deletion}", "Account erasures attempted, by outcome: completed or failed.");
 
-    /// <summary>Erases every due deletion; returns how many completed.</summary>
-    public async Task<int> RunDueAsync(CancellationToken cancellationToken)
+    /// <inheritdoc />
+    public string Kind => JobKind;
+
+    /// <summary>The job of one deletion, due at <paramref name="at"/>.</summary>
+    /// <param name="deletionId">The deletion.</param>
+    /// <param name="at">When it is due.</param>
+    public static JobRequest Request(Guid deletionId, DateTimeOffset at) =>
+        new(JobKind, null, deletionId.ToString(), "{}", at, MaxAttempts);
+
+    /// <inheritdoc />
+    public async Task<JobResult> HandleAsync(JobContext job, CancellationToken cancellationToken)
     {
-        var completed = 0;
-        foreach (var id in await store.ListDueAsync(timeProvider.GetUtcNow(), 10, cancellationToken))
+        if (!Guid.TryParse(job.SubjectKey, out var deletionId))
         {
-            try
-            {
-                if (await store.EraseAsync(id, timeProvider.GetUtcNow(), cancellationToken) is not null)
-                {
-                    completed++;
-                    Deletions.Add(1, new KeyValuePair<string, object?>("outcome", "completed"));
-                }
-            }
-            catch (Exception exception) when (exception is not OperationCanceledException)
-            {
-                Deletions.Add(1, new KeyValuePair<string, object?>("outcome", "failed"));
-                logger.LogWarning("Account deletion {DeletionId} failed: {ExceptionType}", id, exception.GetType().Name);
-                await store.RecordFailureAsync(id, exception.GetType().Name, timeProvider.GetUtcNow() + RetryAfter, cancellationToken);
-            }
+            return JobResult.Failed("invalid_subject");
         }
 
-        if (completed > 0)
+        try
         {
-            // A completed deletion lets the login start a new account at once.
-            marks.Invalidate();
-        }
+            if (await store.EraseAsync(deletionId, timeProvider.GetUtcNow(), cancellationToken) is not null)
+            {
+                Deletions.Add(1, new KeyValuePair<string, object?>("outcome", "completed"));
+                // A completed deletion lets the login start a new account at once.
+                marks.Invalidate();
+            }
 
-        return completed;
+            return JobResult.Succeeded;
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            Deletions.Add(1, new KeyValuePair<string, object?>("outcome", "failed"));
+            return JobResult.Retry(exception.GetType().Name);
+        }
     }
 }
 
-/// <summary>Runs <see cref="AccountDeletionProcessor"/> when a request arrives and every 30 seconds, also after a restart.</summary>
-public sealed class AccountDeletionWorker(IServiceScopeFactory scopes, AccountDeletionSignal signal, ILogger<AccountDeletionWorker> logger) : BackgroundService
+/// <summary>Queues a job for every pending deletion that has none, such as one whose request failed after it was recorded.</summary>
+public sealed class AccountDeletionRecovery(IAccountDeletionStore store, TimeProvider timeProvider) : IJobRecovery
 {
-    /// <summary>Longest wait between runs.</summary>
-    public static readonly TimeSpan Interval = TimeSpan.FromSeconds(30);
+    /// <inheritdoc />
+    public async Task<int> RecoverAsync(IJobQueue queue, CancellationToken cancellationToken)
+    {
+        var pending = await store.ListPendingAsync(100, cancellationToken);
+        foreach (var deletionId in pending)
+        {
+            // An active job is kept; only a lost or finished one is queued again.
+            await queue.EnqueueAsync(AccountDeletionJob.Request(deletionId, timeProvider.GetUtcNow()), restart: false, cancellationToken);
+        }
+
+        return pending.Count;
+    }
+}
+
+/// <summary>Runs every <see cref="IJobRecovery"/> every 10 minutes (PLAN-0039 Slice 3), so no work waits forever for a lost job.</summary>
+public sealed class JobRecoveryJob(IEnumerable<IJobRecovery> recoveries, IJobQueue queue) : IScheduledJob
+{
+    /// <inheritdoc />
+    public string Kind => "job_recovery";
 
     /// <inheritdoc />
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
-    {
-        while (!stoppingToken.IsCancellationRequested)
-        {
-            try
-            {
-                await using var scope = scopes.CreateAsyncScope();
-                await scope.ServiceProvider.GetRequiredService<AccountDeletionProcessor>().RunDueAsync(stoppingToken);
-            }
-            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
-            {
-                return;
-            }
-            catch (Exception exception)
-            {
-                logger.LogWarning("Account deletion run failed: {ExceptionType}", exception.GetType().Name);
-            }
+    public DateTimeOffset FirstRunAt(DateTimeOffset now) => now + TimeSpan.FromMinutes(1);
 
-            try
-            {
-                await signal.WaitAsync(Interval, stoppingToken);
-            }
-            catch (OperationCanceledException)
-            {
-                return;
-            }
+    /// <inheritdoc />
+    public DateTimeOffset NextRunAt(DateTimeOffset now) => now + TimeSpan.FromMinutes(10);
+
+    /// <inheritdoc />
+    public async Task<JobResult> HandleAsync(JobContext job, CancellationToken cancellationToken)
+    {
+        foreach (var recovery in recoveries)
+        {
+            await recovery.RecoverAsync(queue, cancellationToken);
         }
+
+        return JobResult.Succeeded;
     }
 }

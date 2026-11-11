@@ -63,7 +63,8 @@ public sealed record JobContext(Guid JobId, string Kind, Guid? OwnerUserId, stri
 /// <param name="Code">A closed code for a retry or a failure.</param>
 /// <param name="RetryAfter">For a retry, when to try again; null uses the kind's backoff.</param>
 /// <param name="CountsAsAttempt">For a retry, whether it uses up an attempt; a wait for the person's other AI work does not.</param>
-public sealed record JobResult(JobState Outcome, string? Code = null, TimeSpan? RetryAfter = null, bool CountsAsAttempt = true)
+/// <param name="RepeatAt">For a scheduled job, when it runs next, with every attempt back; null otherwise.</param>
+public sealed record JobResult(JobState Outcome, string? Code = null, TimeSpan? RetryAfter = null, bool CountsAsAttempt = true, DateTimeOffset? RepeatAt = null)
 {
     /// <summary>Done.</summary>
     public static JobResult Succeeded { get; } = new(JobState.Succeeded);
@@ -73,6 +74,30 @@ public sealed record JobResult(JobState Outcome, string? Code = null, TimeSpan? 
 
     /// <summary>Give up now.</summary>
     public static JobResult Failed(string code) => new(JobState.Failed, code);
+
+    /// <summary>A scheduled job's run is over: run again at <paramref name="at"/>, keeping <paramref name="code"/> when this run failed.</summary>
+    public static JobResult Repeat(DateTimeOffset at, string? code = null) => new(JobState.Queued, code, RepeatAt: at);
+}
+
+/// <summary>
+/// A job that runs on a schedule rather than for one subject (PLAN-0039 Slice 3): one row per kind,
+/// queued at start, that queues itself again after every run. A failed run never ends it; it only
+/// waits for the next.
+/// </summary>
+public interface IScheduledJob : IJobHandler
+{
+    /// <summary>When the first run after a start is due, so a deploy is not slowed by every job at once.</summary>
+    DateTimeOffset FirstRunAt(DateTimeOffset now);
+
+    /// <summary>When the run after one that ended at <paramref name="now"/> is due.</summary>
+    DateTimeOffset NextRunAt(DateTimeOffset now);
+}
+
+/// <summary>Finds work that lost its job, such as a deletion whose job was never queued, and queues it again.</summary>
+public interface IJobRecovery
+{
+    /// <summary>Queues jobs for lost work; returns how many.</summary>
+    Task<int> RecoverAsync(IJobQueue queue, CancellationToken cancellationToken);
 }
 
 /// <summary>Runs one kind of job. Handlers are idempotent: a job may run again after a lost lease.</summary>
@@ -91,8 +116,11 @@ public interface IJobStore
     /// <summary>Claims up to <paramref name="max"/> due jobs, queued ones and running ones whose lease ended, for <paramref name="lease"/>.</summary>
     Task<IReadOnlyList<JobContext>> ClaimDueAsync(DateTimeOffset now, TimeSpan lease, int max, CancellationToken cancellationToken);
 
-    /// <summary>Records the result of an attempt; a retry past the last attempt becomes a failure.</summary>
+    /// <summary>Records the result of an attempt; a retry past the last attempt becomes a failure, and a repeat starts over.</summary>
     Task FinishAsync(JobContext job, JobResult result, DateTimeOffset now, TimeSpan defaultRetryAfter, CancellationToken cancellationToken);
+
+    /// <summary>When the next queued job is due, or null when none is queued; the runner sleeps until then.</summary>
+    Task<DateTimeOffset?> NextDueAtAsync(CancellationToken cancellationToken);
 }
 
 /// <summary>Wakes the runner when a job is queued, so it starts within moments rather than at the next poll.</summary>

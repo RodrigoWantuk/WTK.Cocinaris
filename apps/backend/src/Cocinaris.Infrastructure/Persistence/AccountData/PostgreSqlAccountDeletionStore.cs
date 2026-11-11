@@ -29,7 +29,7 @@ public sealed class PostgreSqlAccountDeletionStore(ApplicationDbContext database
             return (existing.Id, existing.RequestedAt);
         }
 
-        var record = new AccountDeletionRecord { Id = Guid.NewGuid(), SubjectHash = subjectHash, OwnerUserId = ownerUserId, State = Pending, RequestedAt = now, NextAttemptAt = now };
+        var record = new AccountDeletionRecord { Id = Guid.NewGuid(), SubjectHash = subjectHash, OwnerUserId = ownerUserId, State = Pending, RequestedAt = now };
         database.AccountDeletions.Add(record);
         try
         {
@@ -53,9 +53,9 @@ public sealed class PostgreSqlAccountDeletionStore(ApplicationDbContext database
             .ToListAsync(cancellationToken);
 
     /// <inheritdoc />
-    public async Task<IReadOnlyList<Guid>> ListDueAsync(DateTimeOffset now, int max, CancellationToken cancellationToken) =>
+    public async Task<IReadOnlyList<Guid>> ListPendingAsync(int max, CancellationToken cancellationToken) =>
         await database.AccountDeletions.AsNoTracking()
-            .Where(item => item.State == Pending && item.NextAttemptAt <= now)
+            .Where(item => item.State == Pending)
             .OrderBy(item => item.RequestedAt)
             .Select(item => item.Id)
             .Take(max)
@@ -101,23 +101,10 @@ public sealed class PostgreSqlAccountDeletionStore(ApplicationDbContext database
         deletion.State = Completed;
         deletion.CompletedAt = now;
         deletion.OwnerUserId = null;
-        deletion.FailureCode = null;
         deletion.CountsJson = JsonSerializer.Serialize(counts);
         await database.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
         return counts;
-    }
-
-    /// <inheritdoc />
-    public async Task RecordFailureAsync(Guid deletionId, string failureCode, DateTimeOffset nextAttemptAt, CancellationToken cancellationToken)
-    {
-        database.ChangeTracker.Clear();
-        await database.AccountDeletions
-            .Where(item => item.Id == deletionId && item.State == Pending)
-            .ExecuteUpdateAsync(update => update
-                .SetProperty(item => item.Attempts, item => item.Attempts + 1)
-                .SetProperty(item => item.FailureCode, failureCode.Length > 120 ? failureCode[..120] : failureCode)
-                .SetProperty(item => item.NextAttemptAt, nextAttemptAt), cancellationToken);
     }
 
     /// <inheritdoc />

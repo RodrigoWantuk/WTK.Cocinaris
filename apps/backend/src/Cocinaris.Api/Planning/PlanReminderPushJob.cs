@@ -3,41 +3,29 @@ using Cocinaris.Modules.Planning.Application;
 namespace Cocinaris.Api.Planning;
 
 /// <summary>
-/// Sends the day's plan notification (ADR-0013). Runs at the top of each hour, and once at start, so a
-/// restart inside the sending hour still counts. Without push settings it does nothing. Failures are
-/// logged by exception type only, and one owner's failure does not stop the others.
+/// Sends the day's plan notification (ADR-0013; a job kind of PLAN-0039 Slice 3). Runs at the top of
+/// each hour, and a minute after start, so a restart inside the sending hour still counts. Without
+/// push settings it does nothing. One owner's failure is logged by exception type and does not stop
+/// the others.
 /// </summary>
-public sealed class PlanReminderPushWorker(IServiceScopeFactory scopes, TimeProvider timeProvider, ILogger<PlanReminderPushWorker> logger) : BackgroundService
+public sealed class PlanReminderPushJob(IServiceScopeFactory scopes, ILogger<PlanReminderPushJob> logger) : Cocinaris.SharedKernel.Jobs.IScheduledJob
 {
     private const int MaxOwnersPerRun = 5000;
 
     /// <inheritdoc />
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
-    {
-        while (!stoppingToken.IsCancellationRequested)
-        {
-            try
-            {
-                await RunOnceAsync(scopes, logger, stoppingToken);
-            }
-            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
-            {
-                return;
-            }
-            catch (Exception exception)
-            {
-                logger.LogWarning("Plan reminder push run failed: {ExceptionType}", exception.GetType().Name);
-            }
+    public string Kind => "plan_reminders";
 
-            try
-            {
-                await Task.Delay(PlanReminderPushSchedule.DelayToNextHour(timeProvider.GetUtcNow()), timeProvider, stoppingToken);
-            }
-            catch (OperationCanceledException)
-            {
-                return;
-            }
-        }
+    /// <inheritdoc />
+    public DateTimeOffset FirstRunAt(DateTimeOffset now) => now + TimeSpan.FromMinutes(1);
+
+    /// <inheritdoc />
+    public DateTimeOffset NextRunAt(DateTimeOffset now) => now + PlanReminderPushSchedule.DelayToNextHour(now);
+
+    /// <inheritdoc />
+    public async Task<Cocinaris.SharedKernel.Jobs.JobResult> HandleAsync(Cocinaris.SharedKernel.Jobs.JobContext job, CancellationToken cancellationToken)
+    {
+        await RunOnceAsync(scopes, logger, cancellationToken);
+        return Cocinaris.SharedKernel.Jobs.JobResult.Succeeded;
     }
 
     /// <summary>One run; returns how many owners were notified. Public so tests can drive it without the timer.</summary>

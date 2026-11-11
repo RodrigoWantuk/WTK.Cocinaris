@@ -157,7 +157,7 @@ Define retention separately for:
 
 ### Retention in force (PLAN-0049 Slice 3)
 
-`RetentionWorker` runs once a day, ten minutes after start and every 24 hours after that. Each rule removes at most 5,000 rows per run. It logs and measures counts only (`cocinaris.privacy.retention_deleted{rule}`).
+The `retention` scheduled job (PLAN-0039 Slice 3) runs once a day: ten minutes after the first start, then every 24 hours, keeping its time across deploys. Each rule removes at most 5,000 rows per run. It logs and measures counts only (`cocinaris.privacy.retention_deleted{rule}`).
 
 | Category | Kept | How it ends |
 |---|---|---|

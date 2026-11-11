@@ -32,9 +32,6 @@ public sealed partial class RecipeExecutionApiTests
             builder.ConfigureTestServices(services =>
             {
                 services.AddSingleton<IImageGenerationProvider>(new FakeImageProvider(1024, 576));
-                // The test runs the job itself, so the background worker must not race it.
-                var worker = services.Single(item => item.ServiceType == typeof(IHostedService) && item.ImplementationType == typeof(Cocinaris.Api.Recipes.RecipeThumbnailWorker));
-                services.Remove(worker);
             });
         });
         HttpClient ClientOf(string subject)

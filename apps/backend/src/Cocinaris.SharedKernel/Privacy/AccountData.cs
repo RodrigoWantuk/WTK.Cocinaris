@@ -65,11 +65,10 @@ public interface IAccountDeletionStore
     /// <param name="cancellationToken">Cancellation.</param>
     Task<IReadOnlyList<AccountDeletionMark>> ListMarksAsync(DateTimeOffset since, CancellationToken cancellationToken);
 
-    /// <summary>Lists pending deletions whose next attempt is due.</summary>
-    /// <param name="now">The current time.</param>
+    /// <summary>Lists pending deletions, oldest first, for the job recovery (PLAN-0039 Slice 3).</summary>
     /// <param name="max">At most this many.</param>
     /// <param name="cancellationToken">Cancellation.</param>
-    Task<IReadOnlyList<Guid>> ListDueAsync(DateTimeOffset now, int max, CancellationToken cancellationToken);
+    Task<IReadOnlyList<Guid>> ListPendingAsync(int max, CancellationToken cancellationToken);
 
     /// <summary>
     /// Erases every row of the deletion's person in one transaction, in an order the foreign keys allow,
@@ -81,13 +80,6 @@ public interface IAccountDeletionStore
     /// <param name="cancellationToken">Cancellation.</param>
     /// <returns>Rows affected per table, or null when the deletion was already completed or does not exist.</returns>
     Task<IReadOnlyDictionary<string, int>?> EraseAsync(Guid deletionId, DateTimeOffset now, CancellationToken cancellationToken);
-
-    /// <summary>Records a failed attempt with a closed code and when to try again.</summary>
-    /// <param name="deletionId">The deletion.</param>
-    /// <param name="failureCode">A closed code, such as an exception type name; never data.</param>
-    /// <param name="nextAttemptAt">When the next attempt is due.</param>
-    /// <param name="cancellationToken">Cancellation.</param>
-    Task RecordFailureAsync(Guid deletionId, string failureCode, DateTimeOffset nextAttemptAt, CancellationToken cancellationToken);
 
     /// <summary>Deletes tombstones of completed deletions older than <paramref name="before"/> (retention, Slice 3).</summary>
     /// <param name="before">The cutoff.</param>

@@ -76,12 +76,32 @@ public sealed class PostgreSqlJobStore(ApplicationDbContext database, JobSignal 
     }
 
     /// <inheritdoc />
+    public async Task<DateTimeOffset?> NextDueAtAsync(CancellationToken cancellationToken) =>
+        await database.Jobs.Where(job => job.State == nameof(JobState.Queued)).MinAsync(job => (DateTimeOffset?)job.NextAttemptAt, cancellationToken);
+
+    /// <inheritdoc />
     public async Task FinishAsync(JobContext job, JobResult result, DateTimeOffset now, TimeSpan defaultRetryAfter, CancellationToken cancellationToken)
     {
         var record = await database.Jobs.SingleOrDefaultAsync(item => item.Id == job.JobId, cancellationToken);
         // A cancel or a restart while it ran wins over this attempt's result.
         if (record is null || record.State != nameof(JobState.Running))
         {
+            return;
+        }
+
+        if (result.RepeatAt is { } repeatAt)
+        {
+            // A scheduled job starts over: every attempt back, due at its next run.
+            record.State = nameof(JobState.Queued);
+            record.Attempts = 0;
+            record.Runs = 0;
+            record.LeaseUntil = null;
+            record.NextAttemptAt = repeatAt;
+            record.LastFailureCode = result.Code;
+            record.CompletedAt = null;
+            record.UpdatedAt = now;
+            await database.SaveChangesAsync(cancellationToken);
+            database.ChangeTracker.Clear();
             return;
         }
 

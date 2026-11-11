@@ -28,7 +28,6 @@ public sealed partial class RecipeExecutionApiTests
             builder.ConfigureTestServices(services =>
             {
                 services.AddSingleton<IImageGenerationProvider>(provider);
-                services.Remove(services.Single(item => item.ServiceType == typeof(IHostedService) && item.ImplementationType == typeof(Cocinaris.Api.Recipes.RecipeThumbnailWorker)));
             });
         });
         using var client = host.CreateClient(new WebApplicationFactoryClientOptions { BaseAddress = new Uri("https://localhost"), HandleCookies = true });

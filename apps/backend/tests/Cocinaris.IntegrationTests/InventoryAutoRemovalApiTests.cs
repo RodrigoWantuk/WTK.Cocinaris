@@ -37,7 +37,7 @@ public sealed partial class RecipeExecutionApiTests
         }
 
         // The owner has no time zone, so their calendar is UTC: yesterday's lot goes, today's stays through today.
-        var removed = await InventoryAutoRemovalWorker.RunOnceAsync(_factory.Services.GetRequiredService<IServiceScopeFactory>(), TimeProvider.System, CancellationToken.None);
+        var removed = await InventoryAutoRemovalJob.RunOnceAsync(_factory.Services.GetRequiredService<IServiceScopeFactory>(), TimeProvider.System, CancellationToken.None);
 
         Assert.Equal(1, removed);
         var lots = await client.GetFromJsonAsync<JsonElement>("/api/v1/inventory/lots?status=active&pageSize=100");
@@ -53,6 +53,6 @@ public sealed partial class RecipeExecutionApiTests
             Assert.True(await database.AuditEvents.AnyAsync(item => item.TargetId == expired && item.EventName == "inventory.lot.auto_removed"));
         }
 
-        Assert.Equal(0, await InventoryAutoRemovalWorker.RunOnceAsync(_factory.Services.GetRequiredService<IServiceScopeFactory>(), TimeProvider.System, CancellationToken.None));
+        Assert.Equal(0, await InventoryAutoRemovalJob.RunOnceAsync(_factory.Services.GetRequiredService<IServiceScopeFactory>(), TimeProvider.System, CancellationToken.None));
     }
 }

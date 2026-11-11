@@ -20,7 +20,7 @@ Give every ingredient name a language-independent identity, so that:
 | Curated catalog | `Cocinaris.Modules.Ingredients/Catalog/ingredient-catalog.json` | About 150 canonical ingredients with permanent ids, slugs, categories, and names in `en`, `pt`, `es` |
 | Matching keys | `IngredientMatchKeys` | `ingredient:<slug>` for resolved names, normalized text otherwise |
 | Matching contract | `IIngredientMatching` | Used by Recipes and Planning; never waits for a provider |
-| Resolution job | `IngredientResolutionService`, `IngredientResolutionWorker` | Decides queued names in the background |
+| Resolution job | `IngredientResolutionService`, `IngredientResolutionJob` (the `ingredient_resolution` scheduled job, PLAN-0039) | Decides queued names in the background |
 | Embedding provider | `OpenRouterEmbeddingProvider` (`Cocinaris.Modules.Ai.Embeddings`) | One batch per call, no retries |
 | Store | `PostgreSqlIngredientStore`, schema `ingredients` | Catalog copy, aliases, queue, embedding cache, catalog vectors |
 

@@ -1,4 +1,5 @@
 using Cocinaris.Api.Inventory;
+using Cocinaris.Api.Jobs;
 using Cocinaris.Api.Ingredients;
 using Cocinaris.Api.Planning;
 using Cocinaris.Api.Privacy;
@@ -65,8 +66,8 @@ builder.Services.AddScoped<IInventoryAutoRemovalSource, PostgreSqlInventoryAutoR
 builder.Services.AddScoped<InventoryAutoRemovalService>();
 if (!builder.Environment.IsEnvironment("Testing"))
 {
-    builder.Services.AddHostedService<InventoryAutoRemovalWorker>();
-    builder.Services.AddHostedService<Cocinaris.Api.Planning.PlanReminderPushWorker>();
+    builder.Services.AddJobHandler<InventoryAutoRemovalJob>();
+    builder.Services.AddJobHandler<Cocinaris.Api.Planning.PlanReminderPushJob>();
 }
 builder.Services.AddScoped<IInventoryLotWriteStore, PostgreSqlInventoryLotWriteStore>();
 builder.Services.AddScoped<IInventoryPreparationStore, PostgreSqlInventoryPreparationStore>();
@@ -115,8 +116,7 @@ builder.Services.AddSingleton<Cocinaris.SharedKernel.Jobs.JobSignal>();
 builder.Services.AddScoped<Cocinaris.Infrastructure.Persistence.PostgreSqlJobStore>();
 builder.Services.AddScoped<Cocinaris.SharedKernel.Jobs.IJobQueue>(provider => provider.GetRequiredService<Cocinaris.Infrastructure.Persistence.PostgreSqlJobStore>());
 builder.Services.AddScoped<Cocinaris.SharedKernel.Jobs.IJobStore>(provider => provider.GetRequiredService<Cocinaris.Infrastructure.Persistence.PostgreSqlJobStore>());
-builder.Services.AddScoped<PlanCardExpansionJobHandler>();
-builder.Services.AddScoped<Cocinaris.SharedKernel.Jobs.IJobHandler>(provider => provider.GetRequiredService<PlanCardExpansionJobHandler>());
+builder.Services.AddJobHandler<PlanCardExpansionJobHandler>();
 builder.Services.AddScoped<Cocinaris.Api.Jobs.JobProcessor>();
 builder.Services.AddHostedService<Cocinaris.Api.Jobs.JobRunner>();
 builder.Services.Configure<PrivacyOptions>(builder.Configuration.GetSection("Privacy"));
@@ -124,13 +124,13 @@ builder.Services.AddScoped<Cocinaris.SharedKernel.Privacy.IAccountDataReader, Co
 builder.Services.AddScoped<PrivacyExportService>();
 builder.Services.AddScoped<Cocinaris.SharedKernel.Privacy.IAccountDeletionStore, Cocinaris.Infrastructure.Persistence.AccountData.PostgreSqlAccountDeletionStore>();
 builder.Services.AddSingleton<AccountDeletionMarks>();
-builder.Services.AddSingleton<AccountDeletionSignal>();
 builder.Services.AddScoped<AccountDeletionService>();
-builder.Services.AddScoped<AccountDeletionProcessor>();
-builder.Services.AddHostedService<AccountDeletionWorker>();
+builder.Services.AddJobHandler<AccountDeletionJob>();
+builder.Services.AddScoped<Cocinaris.SharedKernel.Jobs.IJobRecovery, AccountDeletionRecovery>();
+builder.Services.AddJobHandler<JobRecoveryJob>();
 builder.Services.AddScoped<Cocinaris.SharedKernel.Privacy.IRetentionStore, Cocinaris.Infrastructure.Persistence.AccountData.PostgreSqlRetentionStore>();
 builder.Services.AddScoped<RetentionJob>();
-builder.Services.AddHostedService<RetentionWorker>();
+builder.Services.AddJobHandler<RetentionScheduledJob>();
 builder.Services.AddCocinarisIngredients(builder.Configuration, builder.Environment);
 builder.Services.AddAntiforgery(options => { options.HeaderName = "X-CSRF-TOKEN"; options.Cookie.Name = "__Host-cocinaris-antiforgery"; options.Cookie.Path = "/"; options.Cookie.SecurePolicy = CookieSecurePolicy.Always; });
 var dataProtection = builder.Services.AddDataProtection().SetApplicationName("Cocinaris");

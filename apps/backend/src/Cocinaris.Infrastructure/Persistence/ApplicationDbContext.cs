@@ -356,7 +356,6 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             entity.HasKey(x => x.Id);
             entity.Property(x => x.SubjectHash).HasMaxLength(64).IsRequired();
             entity.Property(x => x.State).HasMaxLength(16).IsRequired();
-            entity.Property(x => x.FailureCode).HasMaxLength(120);
             entity.Property(x => x.CountsJson).HasColumnType("jsonb");
             entity.HasIndex(x => x.SubjectHash);
             entity.HasIndex(x => x.RequestedAt);
@@ -1100,6 +1099,7 @@ public sealed class JobRecord
 /// <summary>
 /// An account deletion (PLAN-0049 Slice 2). While pending it names the account; once completed it is a
 /// tombstone of the login's hash, the times, and per-table counts, kept 31 days so older sessions end.
+/// Its attempts live on its job in <c>platform.jobs</c> (PLAN-0039 Slice 3).
 /// </summary>
 public sealed class AccountDeletionRecord
 {
@@ -1115,12 +1115,6 @@ public sealed class AccountDeletionRecord
     public DateTimeOffset RequestedAt { get; set; }
     /// <summary>Gets or sets when every row was erased.</summary>
     public DateTimeOffset? CompletedAt { get; set; }
-    /// <summary>Gets or sets failed attempts so far.</summary>
-    public int Attempts { get; set; }
-    /// <summary>Gets or sets when the next attempt is due.</summary>
-    public DateTimeOffset NextAttemptAt { get; set; }
-    /// <summary>Gets or sets the last failure's closed code, never data.</summary>
-    public string? FailureCode { get; set; }
     /// <summary>Gets or sets rows affected per table, as JSON; counts only.</summary>
     public string? CountsJson { get; set; }
 }

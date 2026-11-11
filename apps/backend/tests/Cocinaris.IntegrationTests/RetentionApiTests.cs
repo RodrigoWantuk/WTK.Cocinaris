@@ -60,9 +60,9 @@ public sealed partial class RecipeExecutionApiTests
                 UPDATE planning.shopping_plan_sessions SET "UpdatedAt" = now() - interval '31 days' WHERE "Id" IN ({oldPlan}, {buildingPlan});
                 UPDATE planning.shopping_plan_sessions SET "UpdatedAt" = now() - interval '10 days' WHERE "Id" = {recentPlan};
                 INSERT INTO planning.push_delivery_days ("OwnerUserId", "LastSentOn") VALUES ({owner}, CURRENT_DATE - 40);
-                INSERT INTO platform.account_deletions ("Id", "SubjectHash", "OwnerUserId", "State", "RequestedAt", "CompletedAt", "Attempts", "NextAttemptAt")
-                VALUES ({Guid.NewGuid()}, 'old', NULL, 'Completed', {now.AddDays(-40)}, {now.AddDays(-40)}, 0, {now.AddDays(-40)}),
-                       ({Guid.NewGuid()}, 'recent', NULL, 'Completed', {now.AddDays(-20)}, {now.AddDays(-20)}, 0, {now.AddDays(-20)});
+                INSERT INTO platform.account_deletions ("Id", "SubjectHash", "OwnerUserId", "State", "RequestedAt", "CompletedAt")
+                VALUES ({Guid.NewGuid()}, 'old', NULL, 'Completed', {now.AddDays(-40)}, {now.AddDays(-40)}),
+                       ({Guid.NewGuid()}, 'recent', NULL, 'Completed', {now.AddDays(-20)}, {now.AddDays(-20)});
                 -- A queued name and a dish image that still name an account that no longer exists.
                 INSERT INTO ingredients.resolution_queue ("NormalizedText", "ExactText", "State", "Attempts", "CreatedAt", "UpdatedAt", "NextAttemptAt", "Evaluation", "Reason", "RequestedByUserId")
                 VALUES ('fruta-do-conde', 'Fruta-do-conde', 'Unresolved', 1, now(), now(), now(), '', '', {gone});
