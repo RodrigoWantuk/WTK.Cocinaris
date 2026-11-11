@@ -1,6 +1,7 @@
 using Cocinaris.Api.Inventory;
 using Cocinaris.Api.Ingredients;
 using Cocinaris.Api.Planning;
+using Cocinaris.Api.Privacy;
 using Cocinaris.Api.Profiles;
 using Cocinaris.Api.Recipes;
 using Cocinaris.Api.Observability;
@@ -109,6 +110,9 @@ builder.Services.AddScoped<IGetProfileSessionProjectionUseCase, GetProfileSessio
 builder.Services.AddScoped<ProfileApplicationService>();
 builder.Services.AddCocinarisRecipeAi(builder.Configuration, builder.Environment);
 builder.Services.AddCocinarisPlanning();
+builder.Services.Configure<PrivacyOptions>(builder.Configuration.GetSection("Privacy"));
+builder.Services.AddScoped<Cocinaris.SharedKernel.Privacy.IAccountDataReader, Cocinaris.Infrastructure.Persistence.AccountData.PostgreSqlAccountDataReader>();
+builder.Services.AddScoped<PrivacyExportService>();
 builder.Services.AddCocinarisIngredients(builder.Configuration, builder.Environment);
 builder.Services.AddAntiforgery(options => { options.HeaderName = "X-CSRF-TOKEN"; options.Cookie.Name = "__Host-cocinaris-antiforgery"; options.Cookie.Path = "/"; options.Cookie.SecurePolicy = CookieSecurePolicy.Always; });
 var dataProtection = builder.Services.AddDataProtection().SetApplicationName("Cocinaris");
@@ -161,8 +165,10 @@ builder.Services.AddRateLimiter(options =>
     };
     options.AddPolicy("authentication", context => RateLimitPartition.GetFixedWindowLimiter(context.Connection.RemoteIpAddress?.ToString() ?? "unknown", _ => new FixedWindowRateLimiterOptions { PermitLimit = 20, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
     // A person deciding cards taps about once a second, which the general mutation limit would stop.
-    options.AddPolicy("shopping-plan-decision", context => RateLimitPartition.GetFixedWindowLimiter(context.User.FindFirst("sub")?.Value ?? context.User.Identity?.Name ?? context.Connection.RemoteIpAddress?.ToString() ?? "unknown", _ => new FixedWindowRateLimiterOptions { PermitLimit = 120, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
-    options.AddPolicy("mutation", context => RateLimitPartition.GetFixedWindowLimiter(context.User.FindFirst("sub")?.Value ?? context.User.Identity?.Name ?? context.Connection.RemoteIpAddress?.ToString() ?? "unknown", _ => new FixedWindowRateLimiterOptions { PermitLimit = 60, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
+    options.AddPolicy("shopping-plan-decision", context => RateLimitPartition.GetFixedWindowLimiter(PersonPartition(context), _ => new FixedWindowRateLimiterOptions { PermitLimit = 120, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
+    // An export reads everything a person has, so it is limited per person, not per address.
+    options.AddPolicy("privacy-export", context => RateLimitPartition.GetFixedWindowLimiter(PersonPartition(context), _ => new FixedWindowRateLimiterOptions { PermitLimit = 3, Window = TimeSpan.FromHours(1), QueueLimit = 0 }));
+    options.AddPolicy("mutation", context => RateLimitPartition.GetFixedWindowLimiter(PersonPartition(context), _ => new FixedWindowRateLimiterOptions { PermitLimit = 60, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
 });
 builder.Services.AddOpenApi(options => options.AddDocumentTransformer(async (document, context, cancellationToken) =>
 {
@@ -180,7 +186,7 @@ telemetry.WithTracing(tracing =>
 });
 telemetry.WithMetrics(metrics =>
 {
-    metrics.AddAspNetCoreInstrumentation().AddMeter("Cocinaris.Inventory").AddMeter("Cocinaris.ShoppingPlans").AddMeter("Cocinaris.Profiles").AddMeter("Cocinaris.Security");
+    metrics.AddAspNetCoreInstrumentation().AddMeter("Cocinaris.Inventory").AddMeter("Cocinaris.ShoppingPlans").AddMeter("Cocinaris.Profiles").AddMeter("Cocinaris.Security").AddMeter("Cocinaris.Privacy");
     if (Uri.TryCreate(builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"], UriKind.Absolute, out var endpoint))
     {
         metrics.AddOtlpExporter(options => options.Endpoint = endpoint);
@@ -270,7 +276,16 @@ api.MapGroup("/recipes").RequireAuthorization().MapRecipeEndpoints();
 api.MapGroup("/planning").RequireAuthorization().MapPlanningEndpoints();
 api.MapGroup("/planning/shopping-plans").RequireAuthorization().MapShoppingPlanEndpoints();
 api.MapGroup("/notifications/push").RequireAuthorization().MapPushNotificationEndpoints();
+api.MapGroup("/privacy").RequireAuthorization().MapPrivacyEndpoints();
 app.Run();
+
+// Rate limits count per person. The subject arrives as "sub" or, after claim mapping, as the name
+// identifier; the display name is not unique, so it never partitions. Without a person, the address does.
+static string PersonPartition(HttpContext context) =>
+    context.User.FindFirst("sub")?.Value
+    ?? context.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+    ?? context.Connection.RemoteIpAddress?.ToString()
+    ?? "unknown";
 
 /// <summary>API entry point; partial so the integration-test host can reach it.</summary>
 public partial class Program

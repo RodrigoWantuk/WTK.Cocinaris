@@ -57,6 +57,7 @@ import { ProfileOverviewPage } from "@/features/profile/ProfileOverviewPage";
 import { ProfileDataPage } from "@/features/profile/ProfileDataPage";
 import { ProfilePreferencesPage } from "@/features/profile/ProfilePreferencesPage";
 import { ProfileEquipmentPage } from "@/features/profile/ProfileEquipmentPage";
+import { ProfilePrivacyPage } from "@/features/profile/ProfilePrivacyPage";
 import {
   UnsavedChangesCoordinatorProvider,
   useOptionalUnsavedChangesCoordinator,
@@ -499,6 +500,7 @@ function createProductionRouter() {
             { path: "dados", element: <ProfileDataPage /> },
             { path: "preferencias", element: <ProfilePreferencesPage /> },
             { path: "equipamentos", element: <ProfileEquipmentPage /> },
+            { path: "privacidade", element: <ProfilePrivacyPage /> },
           ],
         },
         { path: "*", element: <AppUnavailable /> },

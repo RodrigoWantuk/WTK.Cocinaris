@@ -88,10 +88,10 @@ The roadmap put PLAN-0039 (queue and outbox) before this plan. Deletion needs du
 
 Branch: `agent/plan-0049-privacy-center`.
 
-- [ ] `IAccountDataExporter` in `Cocinaris.SharedKernel`: a module name, the tables it covers, and a method that writes its sections for one owner. One implementation per module (identity, profiles, inventory, recipes, planning, AI, platform), each reading only its own tables through its own store.
-- [ ] `GET /api/v1/privacy/export`: streams `cocinaris-dados-AAAA-MM-DD.zip` with `cocinaris-dados.json` (schema version, generation time, one section per module) and `cocinaris-dados.html` (sections in the person's language, escaped, no scripts). Rate limit: 3 per hour per person. `Cache-Control: no-store`.
-- [ ] Coverage test over the EF model: every entity with `OwnerUserId`, `ActorUserId`, or `RequestedByUserId` is covered by an exporter or listed as an exemption with a reason.
-- [ ] Page `/app/perfil/privacidade`, "Seus dados", linked from the profile overview:
+- [x] `IAccountDataExporter` in `Cocinaris.SharedKernel`: a module name, the tables it covers, and a method that writes its sections for one owner. One implementation per module (identity, profiles, inventory, recipes, planning, AI, platform), each reading only its own tables through its own store.
+- [x] `GET /api/v1/privacy/export`: streams `cocinaris-dados-AAAA-MM-DD.zip` with `cocinaris-dados.json` (schema version, generation time, one section per module) and `cocinaris-dados.html` (sections in the person's language, escaped, no scripts). Rate limit: 3 per hour per person. `Cache-Control: no-store`.
+- [x] Coverage test over the EF model: every entity with `OwnerUserId`, `ActorUserId`, or `RequestedByUserId` is covered by an exporter or listed as an exemption with a reason.
+- [x] Page `/app/perfil/privacidade`, "Seus dados", linked from the profile overview:
   - "O que guardamos": the data categories in plain words, the sensitive ones (allergies, restrictions) marked.
   - "Quem processa": the host, the AI providers by name and what each receives, the push services, the identity provider (named generically), from one documented list.
   - "Baixar meus dados": one button; the download starts, and an error says so.
@@ -99,7 +99,7 @@ Branch: `agent/plan-0049-privacy-center`.
   - "Notificações": where they are turned on or off.
   - "Excluir minha conta": present but disabled with "Em breve" until Slice 2.
   - Support line from `Privacy:ContactEmail` (E7).
-- [ ] Copy in pt-BR, en, and es; privacy document updated (the page, the export, what it leaves out).
+- [x] Copy in pt-BR, en, and es; privacy document updated (the page, the export, what it leaves out).
 
 **Gate S1:** an integration test fills every exported table for person A and some for person B, downloads A's export, opens the ZIP, and checks every table's rows are there and no row of B is; a recipe named `<script>alert(1)</script>` appears escaped in the HTML; the coverage test passes; frontend tests for the page; one browser check of the page and the download at 360 px.
 
@@ -144,14 +144,14 @@ Deleting the login at the identity provider (D2), legal review and the privacy n
 ## Execution state
 
 - **Current run delivery target:** Plan and Slice 1.
-- **Current checkpoint:** Plan written with D1 to D4 answered; Slice 1 not started.
-- **Last completed step:** Data map from the EF model; decisions recorded.
-- **Exact next action:** Implement Slice 1 on `agent/plan-0049-privacy-center`.
+- **Current checkpoint:** Slice 1 implemented on `agent/plan-0049-privacy-center`, in a draft pull request.
+- **Last completed step:** Export, page, coverage test, documents; see the Slice 1 log entry.
+- **Exact next action:** The owner reviews and merges the Slice 1 pull request and deploys `main`. Then Slice 2 (account deletion) starts from a fresh `origin/main` on `agent/plan-0049-s2-deletion`.
 - **Blockers:** None.
 - **Partially modified areas:** None.
-- **Documentation delivered:** This plan and its registry row.
-- **Validation performed:** None yet.
-- **Known failures or limitations:** None yet.
+- **Documentation delivered:** This plan and its registry row; privacy document (page, processors, export, what is left out, coverage); deployment runbook (`Privacy__ContactEmail`, limit, metric) and `api.env.example`.
+- **Validation performed:** See the Slice 1 log entry.
+- **Known failures or limitations:** See the Slice 1 log entry.
 - **Working tree state:** Clean after this commit.
 
 ## Progress log
@@ -162,6 +162,21 @@ Deleting the login at the identity provider (D2), legal review and the privacy n
 - **Owner answers (2026-11-11):** D1 "Imediata", D2 "Só desvincular", D3 "ZIP: JSON + página legível", D4 "Anonimizar e manter 13 meses".
 - **Changes:** This plan; registry row moved from the reserved roadmap to active plans.
 - **Validation performed:** None; documentation only.
+- **Next action:** See "Exact next action".
+
+### 2026-11-11 — Claude Code (Slice 1)
+
+- **Changes:**
+  - **Backend.** `IAccountDataReader` and `IAccountDataSnapshot` in `Cocinaris.SharedKernel.Privacy`; `AccountDataCatalog` (32 exported tables by module, 3 exemptions with reasons) and `PostgreSqlAccountDataReader` (one read-only repeatable-read snapshot on its own connection; `to_jsonb(t) - omitted` per table, filtered by the owner column) in Infrastructure; `PrivacyExportService` (streamed ZIP: JSON with every row, columns stored as JSON written as JSON; HTML in pt-BR, en, or es, every value escaped, `default-src 'none'`), `AsyncFlushingStream`, and `GET /api/v1/privacy` and `GET /api/v1/privacy/export` in the API. Rate limit `privacy-export`, 3 per person per hour; metric `cocinaris.privacy.export{outcome}`; `PrivacyOptions.ContactEmail`.
+  - **Rate limits per person.** All policies now partition by `sub`, then the name-identifier claim, then the address. Before, they used `sub`, then the display name, then the address; a subject mapped to the name identifier never matched `sub`, so people with the same display name, or every person behind one address, shared a limit. Found by the export's limit test.
+  - **Frontend.** `/app/perfil/privacidade` ("Seus dados"), linked from the profile overview; `PrivacyRepository` and its live adapter (the ZIP is saved through an object URL so a failure or the hourly limit is said on the page); copy in pt-BR, en, and es.
+  - **Formatting fix for PLAN-0065 Slice 6:** the repeat-limit migration's byte-order mark, in its own commit.
+- **Deviations from this plan:**
+  - **One catalog instead of one exporter class per module.** The tables are declared by module in `AccountDataCatalog` and read by one generic reader, because PostgreSQL makes each row JSON and a per-module class would only repeat table names. Each table is still read only through its owner column, and the coverage test covers the same ground. Slice 2's erasers follow the same catalog.
+  - **The HTML shows codes as stored** (for example a restriction code) instead of localized labels; the labels live in the frontend. The JSON is complete either way.
+  - **No 401 test for the export.** The integration host signs every request in; the route is under the authorized group like every other one.
+- **Validation performed:** Integration: `TheExportHoldsEveryTableOfThePersonAndNothingOfAnyoneElse` (every catalog table present, only the person's rows in each, the other person's recipe and pantry absent from JSON and HTML, a recipe named `<script>alert(1)</script> Bolo` escaped, JSON columns written as JSON, en page) and `TheExportIsLimitedPerPerson` pass. Architecture: 17, of which 3 new (coverage, catalog names real tables and columns, same copy keys in three languages). Frontend: typecheck, lint, format, build, and 639 tests (3 new). OpenAPI exported, client regenerated and mirrored, drift check passed. Backend formatting verified. Proxy replica at 360 px: new `privacy-journey.mjs` 8 of 8 (link from the profile, no sideways scroll, controls at least 44 px, a dated ZIP of 192 KB with both files, the saved notice). `ApiAuthenticationTests` (56) and the two export tests pass after the rate-limit change, with the development identity provider running; without it, the 10 sign-in tests fail with 500, as they always do.
+- **Not run:** the full local gates (one run on the pull request head follows); a real phone.
 - **Next action:** See "Exact next action".
 
 ## Completion and handoff checklist

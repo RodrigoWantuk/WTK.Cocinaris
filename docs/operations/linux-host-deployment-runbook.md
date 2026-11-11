@@ -182,3 +182,12 @@ Operation:
 - **Turning it off.** Remove the three lines and restart. Nothing is sent and the option disappears. Subscriptions stay in `planning.push_subscriptions`, and work again when the same keys return.
 - **Replacing the keys** ends every subscription with the push services, so people must turn notifications on again. Delete the old rows with `DELETE FROM planning.push_subscriptions`.
 - **Rollback to a release without notifications:** remove the keys first. Subscribed browsers may otherwise show their own generic message for a message with no handler.
+
+## Privacy center (PLAN-0049)
+
+The page "Seus dados" (`/app/perfil/privacidade`) needs no configuration. Its export is `GET /api/v1/privacy/export`, a ZIP made on request and never stored on the host.
+
+- **Support line.** Set `Privacy__ContactEmail` in `api.env` to the address people write to for a right the page cannot serve, then restart the service. Empty or absent hides the line. Use a role address, not a personal one.
+- **Limit.** Three exports per person per hour; the fourth gets `429` and the page says so. Rate limits count per person by the login subject and fall back to the client address only without a session.
+- **Metric.** `cocinaris.privacy.export`, with `outcome` = `completed` or `failed`. Nothing exported is logged.
+- **Account deletion** is not available yet (PLAN-0049 Slice 2). Until then, a deletion request by email is handled by the owner by hand.
