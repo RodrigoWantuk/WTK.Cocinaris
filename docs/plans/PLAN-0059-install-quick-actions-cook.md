@@ -5,7 +5,7 @@
 - **Priority:** High (owner requests)
 - **Owner:** Claude Code (claimed 2026-10-31)
 - **Created:** 2026-10-31
-- **Last updated:** 2026-10-31
+- **Last updated:** 2026-11-11
 - **Branch:** `agent/plan-0058-phase-3`. It shares a branch with PLAN-0058 Phase 3 because the requests arrived during that run; PLAN-0058 Phase 3 itself (the owner's walkthrough) has no code yet.
 - **Pull request:** Draft, opened with the first commit
 - **Related documents:** [`docs/design/design-system.md`](../design/design-system.md), [PLAN-0058](PLAN-0058-experience-redesign.md)
@@ -75,10 +75,19 @@ The owner's portfolio only declares a web manifest, which lets Chrome on Android
   - **Installability:** CDP `Page.getInstallabilityErrors` returned an empty list on the proxy replica; the manifest is served with 200.
   - **Visual:** phone captures of the open menu and of the cook page on the replica.
 - **Not run:** a real phone install (needs the owner's device), full suites.
-- **Exact next action:** The half-moon fix merged via #77 and is deployed with `7333b25` (registry reconciled 2026-11-11). The owner checks it on the phone, together with installing the app; then mark the plan completed.
+- **Exact next action:** The owner merges the install-offer fix (draft pull request of 2026-11-11), deploys `main`, and checks on the phone that "Instale o Cocinaris" appears on "Hoje" again after the uninstall. Then mark the plan completed.
 - **Blockers:** None.
 
 ## Progress log
+
+### 2026-11-11 — Claude Code (install offer after an uninstall)
+
+- **Owner report:** "Eu acabei desinstalando o aplicativo do meu celular, e a pagina web nao exibe mais o aviso de se eu quero instalar o APP."
+- **Cause.** On Android the banner on "Hoje" appeared only when Chrome sent `beforeinstallprompt`. Chrome may hold that event back for a while, for example after an uninstall or after its own dialog was dismissed, and then the page showed nothing. A "not now" saved earlier on the device also hid the offer for 30 days, and installing the app never cleared it, so it could still apply after an uninstall.
+- **Changes:** `InstallAppBanner` waits 4 seconds for the browser's offer on Android. Without it, the banner explains the browser menu: "Abra o menu ⋮ do navegador e toque em “Instalar app” ou “Adicionar à tela inicial”", in three languages. `appinstalled`, and running installed, forget "not now", so the offer returns after an uninstall.
+- **Validation:** frontend typecheck, lint, format, and the app tests (84; 2 new: the Android menu after the wait, and "not now" forgotten on install and when running installed).
+- **Not verified:** a real phone. Whether Chrome fires the event again soon after an uninstall is the browser's decision; the menu explanation covers the case where it does not.
+
 
 ### 2026-10-31T01:30:00Z — Claude Code
 

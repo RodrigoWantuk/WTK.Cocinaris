@@ -36,8 +36,22 @@ export function startInstallPromptCapture(): void {
   window.addEventListener("appinstalled", () => {
     deferred = null;
     installed = true;
+    // An earlier "not now" no longer applies: if the app is uninstalled later, the offer returns.
+    forgetDismissal();
     notify();
   });
+}
+
+/** Per-device memory of "not now" on the install offer. */
+export const DISMISS_KEY = "cocinaris.install.dismissedAt";
+
+/** Forgets "not now", for when the app gets installed. */
+export function forgetDismissal(): void {
+  try {
+    window.localStorage.removeItem(DISMISS_KEY);
+  } catch {
+    // Blocked storage keeps nothing to forget.
+  }
 }
 
 /** Whether the app already runs from the home screen (installed). */
@@ -50,6 +64,11 @@ export function isStandalone(): boolean {
     (typeof window.matchMedia === "function" &&
       window.matchMedia("(display-mode: standalone)").matches)
   );
+}
+
+/** Android, where the browser menu can install the app even when the browser sends no install event. */
+export function isAndroid(userAgent = navigator.userAgent): boolean {
+  return /Android/i.test(userAgent);
 }
 
 /** Safari on iPhone or iPad, where installation is manual (no install event). */

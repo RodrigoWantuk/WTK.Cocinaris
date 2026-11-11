@@ -58,6 +58,8 @@ const sharedShell: Record<ProductionLocale, Catalog> = {
     "install.iosBefore": "Toque em",
     "install.iosShare": "Compartilhar",
     "install.iosAfter": "e depois em “Adicionar à Tela de Início”.",
+    "install.androidMenu":
+      "Abra o menu ⋮ do navegador e toque em “Instalar app” ou “Adicionar à tela inicial”.",
     "nav.home": "Início",
     "nav.primary": "Navegação principal",
     "nav.skipToContent": "Pular para o conteúdo",
@@ -115,6 +117,8 @@ const sharedShell: Record<ProductionLocale, Catalog> = {
     "install.iosBefore": "Tap",
     "install.iosShare": "Share",
     "install.iosAfter": "then “Add to Home Screen”.",
+    "install.androidMenu":
+      "Open the browser menu ⋮ and tap “Install app” or “Add to Home screen”.",
     "nav.home": "Home",
     "nav.primary": "Primary navigation",
     "nav.skipToContent": "Skip to content",
@@ -173,6 +177,8 @@ const sharedShell: Record<ProductionLocale, Catalog> = {
     "install.iosBefore": "Toca",
     "install.iosShare": "Compartir",
     "install.iosAfter": "y luego “Añadir a pantalla de inicio”.",
+    "install.androidMenu":
+      "Abre el menú ⋮ del navegador y toca “Instalar aplicación” o “Añadir a pantalla de inicio”.",
     "nav.home": "Inicio",
     "nav.primary": "Navegación principal",
     "nav.skipToContent": "Saltar al contenido",

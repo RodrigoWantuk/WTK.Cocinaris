@@ -1,7 +1,7 @@
 import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ProductionI18nProvider } from "@/app/i18n/ProductionI18nProvider";
-import { InstallAppBanner } from "./InstallAppBanner";
+import { ANDROID_EVENT_WAIT_MS, InstallAppBanner } from "./InstallAppBanner";
 import {
   isIosSafari,
   resetInstallPromptForTests,
@@ -79,6 +79,47 @@ describe("install the app (PLAN-0059)", () => {
     media({ "(pointer: coarse)": true, "(display-mode: standalone)": true });
     const installed = renderBanner();
     expect(installed.container).toBeEmptyDOMElement();
+  });
+
+  it("on Android without the browser's offer, explains the menu after a moment", () => {
+    vi.useFakeTimers();
+    const original = navigator.userAgent;
+    Object.defineProperty(navigator, "userAgent", {
+      value:
+        "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Mobile Safari/537.36",
+      configurable: true,
+    });
+    try {
+      media({ "(pointer: coarse)": true });
+      renderBanner();
+      // The browser may still send its offer; nothing shows before the wait.
+      expect(screen.queryByTestId("install-app-banner")).toBeNull();
+      act(() => {
+        vi.advanceTimersByTime(ANDROID_EVENT_WAIT_MS);
+      });
+      expect(screen.getByTestId("install-app-android-menu")).toHaveTextContent(
+        "Open the browser menu ⋮",
+      );
+    } finally {
+      Object.defineProperty(navigator, "userAgent", {
+        value: original,
+        configurable: true,
+      });
+      vi.useRealTimers();
+    }
+  });
+
+  it("forgets 'not now' once the app is installed, so the offer returns after an uninstall", () => {
+    localStorage.setItem("cocinaris.install.dismissedAt", String(Date.now()));
+    act(() => {
+      window.dispatchEvent(new Event("appinstalled"));
+    });
+    expect(localStorage.getItem("cocinaris.install.dismissedAt")).toBeNull();
+
+    localStorage.setItem("cocinaris.install.dismissedAt", String(Date.now()));
+    media({ "(pointer: coarse)": true, "(display-mode: standalone)": true });
+    renderBanner();
+    expect(localStorage.getItem("cocinaris.install.dismissedAt")).toBeNull();
   });
 
   it("recognizes Safari on iPhone and leaves other iOS browsers alone", () => {

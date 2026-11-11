@@ -1,12 +1,23 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Share, X } from "lucide-react";
 import { useProductionI18n } from "@/app/i18n/ProductionI18nProvider";
 import { Button } from "@/components/ui/button";
-import { isIosSafari, isStandalone, useInstallPrompt } from "./installPrompt";
+import {
+  DISMISS_KEY,
+  forgetDismissal,
+  isAndroid,
+  isIosSafari,
+  isStandalone,
+  useInstallPrompt,
+} from "./installPrompt";
 
-/** Per-device memory of "not now"; the offer comes back after this many days. */
-const DISMISS_KEY = "cocinaris.install.dismissedAt";
+/** The offer comes back this many days after "not now". */
 const DISMISS_DAYS = 30;
+/**
+ * How long to wait for the browser's own install event on Android before explaining the menu instead.
+ * Chrome may hold the event back, for example for a while after the app was uninstalled.
+ */
+export const ANDROID_EVENT_WAIT_MS = 4000;
 
 function dismissedRecently(): boolean {
   try {
@@ -32,17 +43,38 @@ function onPhone(): boolean {
  * "Instale o Cocinaris" (PLAN-0059): on a phone, offers to install the site as an app. On
  * Android and other Chromium browsers it opens the browser's install dialog; on iPhone and iPad
  * it explains the Share → "Adicionar à Tela de Início" steps, because Safari has no install
- * event. Hidden when the app already runs installed, on devices without touch, and for 30 days
- * after "Agora não". Announces nothing and takes no focus: it is an offer, not an interruption.
+ * event. On Android, when the browser sends no install event within a few seconds (Chrome holds
+ * it back for a while after an uninstall), it explains the browser menu instead. Hidden when the
+ * app already runs installed, on devices without touch, and for 30 days after "Agora não"; an
+ * install forgets "Agora não". Announces nothing and takes no focus: it is an offer, not an
+ * interruption.
  */
 export function InstallAppBanner() {
   const { t } = useProductionI18n();
   const install = useInstallPrompt();
   const [hidden, setHidden] = useState(() => dismissedRecently());
+  const [waited, setWaited] = useState(false);
   const ios = isIosSafari();
+  const android = !ios && isAndroid();
+  const standalone = isStandalone();
 
-  if (hidden || install.installed || isStandalone() || !onPhone()) return null;
-  if (!install.canPrompt && !ios) return null;
+  useEffect(() => {
+    // Running installed: a later uninstall should find no "not now" from before.
+    if (standalone) forgetDismissal();
+  }, [standalone]);
+
+  useEffect(() => {
+    if (!android) return;
+    const timer = window.setTimeout(
+      () => setWaited(true),
+      ANDROID_EVENT_WAIT_MS,
+    );
+    return () => window.clearTimeout(timer);
+  }, [android]);
+
+  if (hidden || install.installed || standalone || !onPhone()) return null;
+  const menuHelp = android && waited && !install.canPrompt;
+  if (!install.canPrompt && !ios && !menuHelp) return null;
 
   const dismiss = () => {
     try {
@@ -88,6 +120,13 @@ export function InstallAppBanner() {
               {t("install.later")}
             </Button>
           </div>
+        ) : menuHelp ? (
+          <p
+            data-testid="install-app-android-menu"
+            className="rounded-xl bg-accent px-3 py-2 text-sm text-accent-foreground"
+          >
+            {t("install.androidMenu")}
+          </p>
         ) : (
           <p
             data-testid="install-app-ios"
