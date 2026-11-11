@@ -92,6 +92,26 @@ public sealed class AccountDataCoverageTests
     }
 
     [Fact]
+    public void RetentionNeverDeletesFromTheSharedLibraryOrItsIndex()
+    {
+        var model = ModelTables().Select(table => table.Table).ToHashSet(StringComparer.Ordinal);
+        var retained = RetentionCatalog.Retained.Select(table => table.QualifiedName).ToHashSet(StringComparer.Ordinal);
+        // Owner decision D5: the recipe library and what finds its recipes stay.
+        Assert.Contains("recipes.recipe_ideas", retained);
+        Assert.Contains("ingredients.catalog_vectors", retained);
+        Assert.Contains("ingredients.text_embeddings", retained);
+        foreach (var rule in RetentionCatalog.Rules)
+        {
+            Assert.True(model.Contains(rule.QualifiedName), $"{rule.QualifiedName} is not in the model.");
+            Assert.False(rule.Action == RetentionAction.Delete && retained.Contains(rule.QualifiedName), $"Rule {rule.Name} would delete from {rule.QualifiedName}, which must stay.");
+            Assert.False(string.IsNullOrWhiteSpace(rule.Purpose));
+        }
+
+        Assert.Equal(RetentionCatalog.Rules.Count, RetentionCatalog.Rules.Select(rule => rule.Name).Distinct().Count());
+        Assert.All(RetentionCatalog.Retained, table => Assert.False(string.IsNullOrWhiteSpace(table.Reason)));
+    }
+
+    [Fact]
     public void TheReadablePageHasTheSameCopyInEveryLanguage()
     {
         var keys = Cocinaris.Api.Privacy.ExportText.Keys;

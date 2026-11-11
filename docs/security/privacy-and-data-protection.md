@@ -155,6 +155,29 @@ Define retention separately for:
 
 `Indefinite` is not an acceptable undocumented default.
 
+### Retention in force (PLAN-0049 Slice 3)
+
+`RetentionWorker` runs once a day, ten minutes after start and every 24 hours after that. Each rule removes at most 5,000 rows per run. It logs and measures counts only (`cocinaris.privacy.retention_deleted{rule}`).
+
+| Category | Kept | How it ends |
+|---|---|---|
+| Account, profile, restrictions, pantry and its history, recipes and revisions, executions, menus, lists, saved suggestions, audit events | As long as the account | Deleted by the person, item by item where the app allows it, or with the account (Slice 2) |
+| Shopping plans the person discarded | 30 days after the last change | Retention job (`abandoned_plans`), cards with them |
+| AI usage (operation, model, tokens, cost; no text) | 13 months | Retention job (`ai_usage`); anonymized at account deletion (D4) |
+| Prompts and responses | Not stored | Only the typed hints and requests described above, with their plans and recipes |
+| Stored replies of retried requests | `Idempotency:Retention`, 30 days by default (1 to 90) | Retention job (`idempotency`) |
+| Account deletion tombstones (login hash, times, counts) | 31 days after completion | Retention job (`deletion_tombstones`) |
+| Notification subscriptions | Until the person turns notifications off or logs out, or the push service drops them | As described under shopping plans |
+| Last day a person was notified | 30 days | Retention job (`push_delivery_days`) |
+| A person id left on a shared dish image or queued ingredient name by an account that no longer exists | Until the next run | Retention job (`orphan_thumbnail_owner`, `orphan_ingredient_owner`) clears the id; the row stays |
+| Shared recipe library (`recipes.recipe_ideas`) | Indefinitely, as inspiration and suggestion without AI (owner decision D5, 2026-11-11) | Only an explicit request to delete a recipe (by the owner, runbook), or a future rule for very low ratings that needs its own plan |
+| Dish images, ingredient catalog, aliases, embeddings | Indefinitely, as shared reference data with no owner | Never by retention; a wrong alias is deleted by the owner |
+| Host database backups | 14 days | `cocinaris-db-backup` deletes older dumps; a deleted account disappears from backups within 14 days |
+| Host journal | journald's configuration on the host | Holds exception types and ids, never content |
+| Photos, support data, billing | Not collected yet | To be defined with the feature |
+
+`RetentionCatalog` lists each rule with its purpose, and the tables no rule may delete from. `RetentionCoverageTests` (in `AccountDataCoverageTests`) fails if a rule would delete from one of those tables.
+
 ## Ingredient identity
 
 PLAN-0055 ([ADR-0010](../architecture/decisions/0010-ingredient-identity-catalog-embeddings-pgvector.md)) adds global tables in the `ingredients` schema. They are shared by all users and not part of any one user's data:

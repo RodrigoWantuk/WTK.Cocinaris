@@ -119,6 +119,9 @@ builder.Services.AddSingleton<AccountDeletionSignal>();
 builder.Services.AddScoped<AccountDeletionService>();
 builder.Services.AddScoped<AccountDeletionProcessor>();
 builder.Services.AddHostedService<AccountDeletionWorker>();
+builder.Services.AddScoped<Cocinaris.SharedKernel.Privacy.IRetentionStore, Cocinaris.Infrastructure.Persistence.AccountData.PostgreSqlRetentionStore>();
+builder.Services.AddScoped<RetentionJob>();
+builder.Services.AddHostedService<RetentionWorker>();
 builder.Services.AddCocinarisIngredients(builder.Configuration, builder.Environment);
 builder.Services.AddAntiforgery(options => { options.HeaderName = "X-CSRF-TOKEN"; options.Cookie.Name = "__Host-cocinaris-antiforgery"; options.Cookie.Path = "/"; options.Cookie.SecurePolicy = CookieSecurePolicy.Always; });
 var dataProtection = builder.Services.AddDataProtection().SetApplicationName("Cocinaris");
@@ -203,7 +206,7 @@ telemetry.WithTracing(tracing =>
 });
 telemetry.WithMetrics(metrics =>
 {
-    metrics.AddAspNetCoreInstrumentation().AddMeter("Cocinaris.Inventory").AddMeter("Cocinaris.ShoppingPlans").AddMeter("Cocinaris.Profiles").AddMeter("Cocinaris.Security").AddMeter("Cocinaris.Privacy").AddMeter("Cocinaris.Privacy.Deletion");
+    metrics.AddAspNetCoreInstrumentation().AddMeter("Cocinaris.Inventory").AddMeter("Cocinaris.ShoppingPlans").AddMeter("Cocinaris.Profiles").AddMeter("Cocinaris.Security").AddMeter("Cocinaris.Privacy").AddMeter("Cocinaris.Privacy.Deletion").AddMeter("Cocinaris.Privacy.Retention");
     if (Uri.TryCreate(builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"], UriKind.Absolute, out var endpoint))
     {
         metrics.AddOtlpExporter(options => options.Endpoint = endpoint);

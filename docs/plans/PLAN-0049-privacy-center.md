@@ -1,13 +1,13 @@
 # PLAN-0049: Privacy Center ("Seus dados")
 
-- **Status:** In Progress; decisions D1 to D4 answered by the owner on 2026-11-11; Slice 1 merged (#103); Slice 2 in a draft PR
+- **Status:** In Progress; decisions D1 to D5 from the owner (2026-11-11); Slices 1 and 2 merged (#103, #104); Slice 3 in a draft PR
 - **Type:** Implementation
 - **Priority:** High: the next step is the external test with three people (PLAN-0065 Gate S5), who must be able to take and delete their own data
 - **Owner:** Claude Code (claimed 2026-11-11)
 - **Created:** 2026-11-11
 - **Last updated:** 2026-11-11
 - **Branch:** Plan and Slice 1 `agent/plan-0049-privacy-center`; each later slice uses the branch named in its section
-- **Pull request:** #103 (plan and Slice 1, merged); Slice 2 draft PR
+- **Pull request:** #103 (plan and Slice 1, merged); #104 (Slice 2, merged); Slice 3 draft PR
 - **Related issues:** None
 - **Related ADRs:** ADR-0013 (web push); none new is needed, see "Background work"
 - **Dependencies:** None open. The roadmap listed PLAN-0039 (queue, outbox, workers) first; this plan uses the hosted-service pattern already in production instead (see "Background work").
@@ -34,6 +34,7 @@ A person can, from one page, see what Cocinaris keeps about them and who process
 | D2 | What happens to the login at the identity provider? | **Unlink only.** Every Cocinaris record is deleted or anonymized; the login stays at the provider. Signing in again later starts an empty account. The owner deletes a login by hand when someone asks; the support path says so. |
 | D3 | Export format? | **A ZIP with `cocinaris-dados.json` (complete) and `cocinaris-dados.html` (readable).** |
 | D4 | AI usage records of a deleted account? | **Anonymized and kept for 13 months**, then deleted by the retention job. The owner id is replaced by one random id per deletion, so monthly spend stays correct. |
+| D5 | What may retention delete? (owner instruction with the merge of #104) | **Never the shared recipe library**: "receitas que estão indexadas por vetor" stay in the database as inspiration and suggestion without AI. They go only when someone explicitly asks to delete a recipe, or under a future rule that deletes recipes with very low ratings. Dish images, the ingredient catalog, aliases, and embeddings stay as well. |
 
 ### Decided by this plan (engineering defaults the owner can change in review)
 
@@ -121,9 +122,9 @@ Branch: `agent/plan-0049-s2-deletion`.
 
 Branch: `agent/plan-0049-s3-retention`.
 
-- [ ] `RetentionWorker`, once a day: idempotency records older than 7 days (E4), AI usage older than 13 months (D4), deletion tombstones older than 31 days (E3), push delivery days older than 30 days, abandoned shopping plans older than 30 days (today only when a new plan starts).
-- [ ] Each rule is a set delete with a cap per run, logged as counts only, and measured by `cocinaris.privacy.retention_deleted{rule}`.
-- [ ] Retention table in the privacy document for every category of "Retention", including those kept as long as the account and host backups (from the deployment runbook).
+- [x] `RetentionWorker`, once a day: idempotency records older than 7 days (E4), AI usage older than 13 months (D4), deletion tombstones older than 31 days (E3), push delivery days older than 30 days, abandoned shopping plans older than 30 days (today only when a new plan starts).
+- [x] Each rule is a set delete with a cap per run, logged as counts only, and measured by `cocinaris.privacy.retention_deleted{rule}`.
+- [x] Retention table in the privacy document for every category of "Retention", including those kept as long as the account and host backups (from the deployment runbook).
 
 **Gate S3:** integration tests with a fake clock for each rule, including a row one day inside the limit that stays.
 
@@ -143,10 +144,10 @@ Deleting the login at the identity provider (D2), legal review and the privacy n
 
 ## Execution state
 
-- **Current run delivery target:** Slice 2, account deletion.
-- **Current checkpoint:** Slice 2 implemented on `agent/plan-0049-s2-deletion`, in a draft pull request. Slice 1 merged via #103 (`9087d46`); its local gates passed 32 of 32.
-- **Last completed step:** Deletion request, erasure, sessions, page, documents; see the Slice 2 log entry.
-- **Exact next action:** The owner reviews and merges the Slice 2 pull request and deploys `main` (migration `AddAccountDeletions` runs on deploy). Then Slice 3 (retention) starts from a fresh `origin/main` on `agent/plan-0049-s3-retention`; `IAccountDeletionStore.PurgeCompletedAsync` is ready for its tombstone rule.
+- **Current run delivery target:** Slice 3, retention (the last slice).
+- **Current checkpoint:** Slice 3 implemented on `agent/plan-0049-s3-retention`, in a draft pull request. Slice 2 merged via #104 (`dfb4a03`).
+- **Last completed step:** Retention rules, protected tables (D5), job and worker, retention table; see the Slice 3 log entry.
+- **Exact next action:** The owner reviews and merges the Slice 3 pull request and deploys `main` (no migration). The plan is then complete except a check on a real phone of the page and the deletion, and the legal review named under "Excluded"; mark it Completed when the owner has tried the page on the host.
 - **Blockers:** None.
 - **Partially modified areas:** None.
 - **Documentation delivered:** This plan and its registry row; privacy document (page, processors, export, what is left out, coverage, account deletion); deployment runbook (`Privacy__ContactEmail`, limit, metrics, a stuck deletion, deleting a login by hand, rollback) and `api.env.example`.
@@ -203,6 +204,28 @@ Deleting the login at the identity provider (D2), legal review and the privacy n
   - **Proxy replica at 360 px:** `privacy-journey.mjs inventory-user-b --delete`, 13 of 13. It covers export, the word, the deleted page, an old cookie refused with 401, a new sign-in with a new account id, and no recipes. The deletion completed in under half a second. `reauth=true` redirects with `prompt=login` and `max_age=0`; a plain login has no prompt.
 - **Not run:** the full local gates (one run on the pull request head follows); a real phone; the provider's password page after `reauth=true` in a browser.
 - **Known limits:** a background job that writes for the account during its erasure (a dish image request, for example) may leave a row with the old id; Slice 3's retention is where such rows are found.
+- **Next action:** See "Exact next action".
+
+### 2026-11-11 — Claude Code (Slice 3)
+
+- **Run delivery target:** Slice 3, after the owner merged #104 ("Merge feito, mas cuidado, definindo o que não tem mais uso para apagar"), with decision D5 recorded above.
+- **Changes:**
+  - **Rules.** `RetentionCatalog.Rules`, each with its purpose and limit:
+    - stored replies older than `Idempotency:Retention`;
+    - AI usage older than 13 months;
+    - completed deletion tombstones older than 31 days;
+    - last-notified days older than 30 days;
+    - shopping plans discarded and untouched for 30 days, with their cards by cascade;
+    - a gone account's id cleared from shared dish images (set to the empty id) and from queued ingredient names (set to null). Those rows stay.
+  - `RetentionCatalog.Retained` lists what no rule may delete from: the recipe library, dish images, the ingredient catalog and its state, aliases, catalog vectors, text embeddings, and the resolution queue.
+  - **Store and job.** `PostgreSqlRetentionStore` runs one fixed, capped statement per rule (5,000 rows) through `IRetentionStore`. `RetentionJob` takes the limits from the decisions and records `cocinaris.privacy.retention_deleted{rule}`. `RetentionWorker` runs ten minutes after start, then daily.
+  - **Documents.** A retention table in the privacy document covers every category of the "Retention" list, with host backups (14 days). The runbook covers retention, `Idempotency__Retention`, and deleting a library recipe on request.
+- **Deviations from this plan:**
+  - **Stored replies go after `Idempotency:Retention` (30 days by default), not 7 days (E4).** That option already existed, validated from 1 to 90 days, and the backend runbook named it as the boundary of the future cleanup. 7 days would have contradicted a documented setting.
+  - **Two rules clear ids instead of deleting**, for rows background jobs may write during an erasure (the limit noted in Slice 2). The shared rows stay, as D5 asks.
+  - **The per-person cleanup of abandoned plans at a new plan's start stays**; the daily rule covers people who never start another.
+- **Validation performed:** Integration: `RetentionRemovesOnlyWhatHasNoUseAndKeepsTheRecipeLibrary`. For each deleting rule, one row past its limit goes and one inside it stays, and a plan still being built stays however old. The library, aged ten years, keeps every recipe. A queued name and a dish image of a gone account keep their rows and lose the id. The person's pantry is untouched, and a second run finds nothing. Architecture: 19, one new: no rule deletes from a retained table, and the library and both embedding tables are retained. Backend formatting verified.
+- **Not run:** the full local gates (one run on the pull request head follows); the worker's daily timing on the host.
 - **Next action:** See "Exact next action".
 
 ## Completion and handoff checklist
