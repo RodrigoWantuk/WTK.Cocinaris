@@ -136,7 +136,7 @@ Represent:
   - source freshness and telemetry codes.
 - **Validation:** `Cooking.test.tsx` covers the home page: resume, attention, and recipe sources, with one failing source isolated. The app shell and home route tests pass, and the home section of the browser journey passes.
 - **Menu tier (PLAN-0029 Phase 1, on `agent/plan-0029-menu-and-shopping`):** "No cardápio de hoje" is now the first section. It reads `GET /api/v1/planning/today?date=` with the browser's local day, cooks a meal linked to its menu entry, and degrades independently; `Cooking.test.tsx` covers its order and the linked start.
-- **Exact next action:** The owner merges "Para você agora" and tries the chooser on the phone. What remains is AI-ranked suggestions and freshness/telemetry codes; neither is scheduled.
+- **Exact next action:** "Para você agora" merged via #78 and is deployed with `7333b25` (registry reconciled 2026-11-11). The owner tries the chooser on the phone. What remains is AI-ranked suggestions and freshness/telemetry codes; neither is scheduled.
 - **Blockers:** None (PLAN-0029 is completed).
 
 ## Progress log
