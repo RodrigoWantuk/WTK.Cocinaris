@@ -206,7 +206,7 @@ telemetry.WithTracing(tracing =>
 });
 telemetry.WithMetrics(metrics =>
 {
-    metrics.AddAspNetCoreInstrumentation().AddMeter("Cocinaris.Inventory").AddMeter("Cocinaris.ShoppingPlans").AddMeter("Cocinaris.Profiles").AddMeter("Cocinaris.Security").AddMeter("Cocinaris.Privacy").AddMeter("Cocinaris.Privacy.Deletion").AddMeter("Cocinaris.Privacy.Retention");
+    metrics.AddAspNetCoreInstrumentation().AddMeter("Cocinaris.Inventory").AddMeter("Cocinaris.ShoppingPlans").AddMeter("Cocinaris.Profiles").AddMeter("Cocinaris.Security").AddMeter("Cocinaris.Privacy").AddMeter("Cocinaris.Privacy.Deletion").AddMeter("Cocinaris.Privacy.Retention").AddMeter("Cocinaris.Recipes.Generation");
     if (Uri.TryCreate(builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"], UriKind.Absolute, out var endpoint))
     {
         metrics.AddOtlpExporter(options => options.Endpoint = endpoint);

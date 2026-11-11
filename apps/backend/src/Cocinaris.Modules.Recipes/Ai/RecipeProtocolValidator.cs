@@ -4,7 +4,11 @@ namespace Cocinaris.Modules.Recipes.Ai;
 
 /// <summary>Outcome of validating one untrusted provider response against protocol 0.3.</summary>
 /// <typeparam name="T">The closed response DTO type produced on success.</typeparam>
-public sealed record RecipeProtocolValidationResult<T>(bool IsValid, T? Response, IReadOnlyList<string> Errors)
+/// <param name="IsValid">Whether the response passed every rule.</param>
+/// <param name="Response">The parsed response on success.</param>
+/// <param name="Errors">Rule violations on failure.</param>
+/// <param name="Normalized">Informational fields fitted before validation (PLAN-0039 R1), for the attempt record; null when none.</param>
+public sealed record RecipeProtocolValidationResult<T>(bool IsValid, T? Response, IReadOnlyList<string> Errors, IReadOnlyList<string>? Normalized = null)
 {
     /// <summary>Creates a successful validation result.</summary>
     public static RecipeProtocolValidationResult<T> Success(T response) => new(true, response, []);
@@ -42,13 +46,18 @@ public static class RecipeProtocolValidator
         }
 
         // Length is not a reason to reject an otherwise good answer; see FitSummary.
+        var fitted = false;
         foreach (var candidate in response.Candidates ?? [])
         {
             if (candidate?.Summary is not null)
             {
-                candidate.Summary = RecipeSuggestSemantics.FitSummary(candidate.Summary);
+                var summary = RecipeSuggestSemantics.FitSummary(candidate.Summary);
+                fitted |= summary != candidate.Summary;
+                candidate.Summary = summary;
             }
         }
+
+        IReadOnlyList<string>? normalized = fitted ? ["candidates.summary"] : null;
 
         var errors = response.Validate();
         if (errors.Count > 0)
@@ -59,7 +68,7 @@ public static class RecipeProtocolValidator
         var semanticErrors = RecipeSuggestSemantics.Validate(response, request);
         return semanticErrors.Count > 0
             ? RecipeProtocolValidationResult<SuggestCandidatesResponse>.Failure(semanticErrors)
-            : RecipeProtocolValidationResult<SuggestCandidatesResponse>.Success(response);
+            : RecipeProtocolValidationResult<SuggestCandidatesResponse>.Success(response) with { Normalized = normalized };
     }
 
     /// <summary>Validates one raw <c>recipe.suggest_plan_deck.v1</c> provider response (PLAN-0062).</summary>
@@ -80,13 +89,18 @@ public static class RecipeProtocolValidator
             return RecipeProtocolValidationResult<PlanDeckResponse>.Failure(["response is not a JSON object"]);
         }
 
+        var fitted = false;
         foreach (var candidate in response.Candidates ?? [])
         {
             if (candidate?.Summary is not null)
             {
-                candidate.Summary = RecipeSuggestSemantics.FitSummary(candidate.Summary);
+                var summary = RecipeSuggestSemantics.FitSummary(candidate.Summary);
+                fitted |= summary != candidate.Summary;
+                candidate.Summary = summary;
             }
         }
+
+        IReadOnlyList<string>? normalized = fitted ? ["candidates.summary"] : null;
 
         var errors = response.Validate();
         if (errors.Count > 0)
@@ -101,7 +115,7 @@ public static class RecipeProtocolValidator
         }
 
         response.Components = RecipeSuggestSemantics.ValidComponents(response, request);
-        return RecipeProtocolValidationResult<PlanDeckResponse>.Success(response);
+        return RecipeProtocolValidationResult<PlanDeckResponse>.Success(response) with { Normalized = normalized };
     }
 
     /// <summary>Validates one raw <c>recipe.expand_selected.v1</c> provider response.</summary>
@@ -113,6 +127,14 @@ public static class RecipeProtocolValidator
         ValidateRecipe(rawJson, request, "recipe.revise.v1");
 
     private static RecipeProtocolValidationResult<ExpandSelectedResponse> ValidateRecipe(string rawJson, JsonElement? request, string operation)
+    {
+        // Informational text is fitted first (PLAN-0039 R1); everything else is validated as the model wrote it.
+        var (normalizedJson, normalized) = RecipeOutputNormalizer.NormalizeRecipe(rawJson);
+        var result = ValidateRecipeAsWritten(normalizedJson, request, operation);
+        return normalized.Count == 0 ? result : result with { Normalized = normalized };
+    }
+
+    private static RecipeProtocolValidationResult<ExpandSelectedResponse> ValidateRecipeAsWritten(string rawJson, JsonElement? request, string operation)
     {
         ExpandSelectedResponse? response;
         try

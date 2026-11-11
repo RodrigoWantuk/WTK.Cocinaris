@@ -164,6 +164,7 @@ Define retention separately for:
 | Account, profile, restrictions, pantry and its history, recipes and revisions, executions, menus, lists, saved suggestions, audit events | As long as the account | Deleted by the person, item by item where the app allows it, or with the account (Slice 2) |
 | Shopping plans the person discarded | 30 days after the last change | Retention job (`abandoned_plans`), cards with them |
 | AI usage (operation, model, tokens, cost; no text) | 13 months | Retention job (`ai_usage`); anonymized at account deletion (D4) |
+| AI call records (`ai.generation_attempts`: operation, model, outcome, rule labels, sizes; no owner, no text) | 13 months | Retention job (`ai_attempts`); nothing to do at account deletion, since they name nobody |
 | Prompts and responses | Not stored | Only the typed hints and requests described above, with their plans and recipes |
 | Stored replies of retried requests | `Idempotency:Retention`, 30 days by default (1 to 90) | Retention job (`idempotency`) |
 | Account deletion tombstones (login hash, times, counts) | 31 days after completion | Retention job (`deletion_tombstones`) |

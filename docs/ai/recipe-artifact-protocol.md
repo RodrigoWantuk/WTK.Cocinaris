@@ -148,6 +148,17 @@ The request's `outputLanguage` and `instructionStyle` are enforced as far as det
   - `minimal`: never flagged.
 - **Effect.** An issue uses the operation's single repair, with the issue as the repair instruction. The first valid answer is kept when the repair is not clean, and the flags are recorded on the usage ledger. A valid answer is never discarded for a soft issue.
 
+## Recovery and failure records (PLAN-0039 Slice 1)
+
+Production counts over 30 days (to 2026-11-11) showed 3 of 8 "Cozinhar agora" selections and 1 of 7 menu selections failing with `ai_output_invalid`, on small format slips, and one selection stuck in `Expanding`. The steps below are applied in order.
+
+- **Fit before validation.** `RecipeOutputNormalizer` fits the informational fields of a recipe answer to their limits before validation. The fields are `storage.reheatNotes`, every stage's `sensoryCues`, and the `thumbnailVisual` texts and lists. Text is cut at a sentence end or a word, with "…"; a list keeps its first items. The candidate summary was already fitted (`FitSummary`). Ingredients, quantities, units, steps, equipment, names, meal types, and assumptions are never changed: their slips still go to repair. Each fitted field is recorded as `normalized:<path>`.
+- **Fallback round.** When the operation's call and its repairs end without an answer because the answer was invalid or the provider was down, the same request runs once more with `UseFallbackModel`. The DeepSeek provider then calls `Ai:Providers:DeepSeek:FallbackModel`. A timeout gets no second round while the person waits. At most twice the operation's calls are made.
+- **Abandoned work.** A selection left `Expanding` for more than 6 minutes is taken over by the same request with the same key. A reservation left `Reserved` for more than 15 minutes is released as `abandoned`, at no cost, when the person next reserves, and it stops counting toward their concurrency.
+- **Attempt records.** Every provider call writes one row of `ai.generation_attempts`, through `RecordingAiProvider` and on a connection of its own. The row holds the operation, model, round, call, outcome (`accepted`, `quality_issues`, `invalid_output`, `timeout`, or `unavailable`), rule labels, latency, tokens, and correlation id. It has no owner and no content. Rule labels keep a rule's numbers, such as "length between 1 and 240", and drop quoted values, indices, and identifiers. Rows are deleted after 13 months (`ai_attempts` retention rule).
+- **Metric.** `cocinaris.ai.generation{operation,outcome}`, where the outcome is `first_call`, `recovered`, or `failed`.
+- **Report.** `scripts/ops/ai-failure-report.sh [days]` prints the results per operation, the calls by outcome and model, the rules broken, the fields fitted, the failures people saw, and abandoned reservations.
+
 ## Candidate strategies
 
 One call returns one candidate for each strategy:

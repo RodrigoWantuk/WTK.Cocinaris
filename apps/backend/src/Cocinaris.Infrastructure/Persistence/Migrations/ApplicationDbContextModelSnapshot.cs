@@ -78,6 +78,67 @@ namespace Cocinaris.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Cocinaris.Infrastructure.Persistence.AiGenerationAttemptRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Call")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("CompletionTokens")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("CorrelationId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<int?>("LatencyMs")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Model")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTimeOffset>("OccurredAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Operation")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("Outcome")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<int?>("PromptTokens")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Round")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Rules")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OccurredAt");
+
+                    b.HasIndex("Operation", "OccurredAt");
+
+                    b.ToTable("generation_attempts", "ai", t =>
+                        {
+                            t.HasCheckConstraint("ck_generation_attempts_outcome", "\"Outcome\" IN ('accepted', 'accepted_with_issues', 'quality_issues', 'invalid_output', 'timeout', 'unavailable')");
+
+                            t.HasCheckConstraint("ck_generation_attempts_round", "\"Round\" BETWEEN 1 AND 2");
+                        });
+                });
+
             modelBuilder.Entity("Cocinaris.Infrastructure.Persistence.AiUsageLedgerRecord", b =>
                 {
                     b.Property<Guid>("Id")

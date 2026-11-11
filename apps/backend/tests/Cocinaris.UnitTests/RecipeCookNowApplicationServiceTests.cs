@@ -134,19 +134,75 @@ public sealed class RecipeCookNowApplicationServiceTests
     }
 
     [Fact]
-    public async Task InvalidOutputAfterTwoRepairsFailsWithoutPersistingRecipe()
+    public async Task InvalidOutputAfterBothRoundsFailsWithoutPersistingRecipe()
     {
-        // Suggestions get two repairs (owner report 2026-10-30): three invalid answers fail the request.
+        // Suggestions get two repairs (owner report 2026-10-30), and a second round on the fallback
+        // model (PLAN-0039 R2): six invalid answers fail the request.
         var harness = CreateHarness(useProtocolDefaults: false);
-        for (var attempt = 0; attempt < 3; attempt++)
+        var fallback = new List<bool>();
+        for (var attempt = 0; attempt < 6; attempt++)
         {
-            harness.Provider.Enqueue(AiOperationRegistry.SuggestCandidates, AiProviderInvocationResult.Success("""{"operation":"recipe.suggest_candidates.v1","schemaVersion":"0.3","candidates":[],"clarifications":[]}""", "fake-model"));
+            harness.Provider.Enqueue(AiOperationRegistry.SuggestCandidates, request =>
+            {
+                fallback.Add(request.UseFallbackModel);
+                return AiProviderInvocationResult.Success("""{"operation":"recipe.suggest_candidates.v1","schemaVersion":"0.3","candidates":[],"clarifications":[]}""", "fake-model");
+            });
         }
 
         var result = await harness.Service.RequestCandidatesAsync(new RequestCandidatesCommand(Guid.NewGuid(), "corr"), CancellationToken.None);
         Assert.Equal("ai_output_invalid", result.Problem!.ErrorCode);
-        Assert.Equal(3, harness.Provider.InvocationCount(AiOperationRegistry.SuggestCandidates));
+        Assert.Equal(6, harness.Provider.InvocationCount(AiOperationRegistry.SuggestCandidates));
+        Assert.Equal([false, false, false, true, true, true], fallback);
         Assert.Equal(0, harness.Recipes.SavedCount);
+    }
+
+    [Fact]
+    public async Task AnInvalidAnswerIsRecoveredOnTheFallbackRoundAndEveryCallIsRecordedWithoutContent()
+    {
+        var store = new InMemoryAttemptStore();
+        var harness = CreateHarness(useProtocolDefaults: false, wrap: fake => new RecordingAiProvider(fake, store));
+        const string Invalid = """{"operation":"recipe.suggest_candidates.v1","schemaVersion":"0.3","candidates":[],"clarifications":[]}""";
+        for (var attempt = 0; attempt < 3; attempt++)
+        {
+            harness.Provider.Enqueue(AiOperationRegistry.SuggestCandidates, AiProviderInvocationResult.Success(Invalid, "primary-model", 100, 50));
+        }
+
+        harness.Provider.Enqueue(AiOperationRegistry.SuggestCandidates, request => AiProviderInvocationResult.Success(FakeAiProvider.BuildDefaultContent(request).Replace("pantry staples", "basic staples"), request.UseFallbackModel ? "fallback-model" : "primary-model", 100, 50));
+
+        var result = await harness.Service.RequestCandidatesAsync(new RequestCandidatesCommand(Guid.NewGuid(), "corr-recover"), CancellationToken.None);
+        Assert.Null(result.Problem);
+        Assert.Equal(4, store.Records.Count);
+        Assert.Equal(["invalid_output", "invalid_output", "invalid_output", "accepted"], store.Records.Select(record => record.Outcome));
+        Assert.Equal([1, 1, 1, 2], store.Records.Select(record => record.Round));
+        Assert.Equal("fallback-model", store.Records[^1].Model);
+        Assert.All(store.Records, record => Assert.Equal("corr-recover", record.CorrelationId));
+        // The rule keeps its limits, so the report says what the model broke.
+        Assert.Contains("between 3 and 3", store.Records[0].Rules);
+    }
+
+    [Fact]
+    public async Task ATimeoutGetsNoFallbackRoundWhileThePersonWaits()
+    {
+        var harness = CreateHarness(useProtocolDefaults: false);
+        for (var attempt = 0; attempt < 6; attempt++)
+        {
+            harness.Provider.Enqueue(AiOperationRegistry.SuggestCandidates, AiProviderInvocationResult.Failure(AiProviderFailureKind.Timeout));
+        }
+
+        var result = await harness.Service.RequestCandidatesAsync(new RequestCandidatesCommand(Guid.NewGuid(), "corr"), CancellationToken.None);
+        Assert.Equal("ai_provider_timeout", result.Problem!.ErrorCode);
+        Assert.Equal(3, harness.Provider.InvocationCount(AiOperationRegistry.SuggestCandidates));
+    }
+
+    private sealed class InMemoryAttemptStore : IAiAttemptStore
+    {
+        public List<AiAttemptRecord> Records { get; } = [];
+
+        public Task RecordAsync(AiAttemptRecord record, CancellationToken cancellationToken)
+        {
+            Records.Add(record);
+            return Task.CompletedTask;
+        }
     }
 
     [Fact]
@@ -159,8 +215,15 @@ public sealed class RecipeCookNowApplicationServiceTests
             "$.candidates[1].summary has 25 words (max 18)"
         ]);
 
-        Assert.Equal("invalid:candidates.summary has words max;candidates.additionalIngredients repeats assumption", flags);
+        // The rule keeps its limit (PLAN-0039 R5); the person's words and the indices go.
+        Assert.StartsWith("invalid:candidates.summary has 22 words max 18;candidates.additionalIngredients repeats assumption", flags);
         Assert.DoesNotContain("frango", flags);
+        var ids = RecipeCookNowApplicationService.InvalidFlags(["recipe.ingredients[2]: ingredient ing-3 invents inventoryItemId 5f0e2b9c-7d1a-4c3e-9b8f-1a2b3c4d5e6f", "$.recipe.storage.reheatNotes must be a string with length between 1 and 240"]);
+        // Identifiers of the person's pantry never reach the record; the limits do.
+        Assert.DoesNotContain("5f0e2b9c", ids);
+        Assert.DoesNotContain("ing-3", ids);
+        Assert.Contains("invents inventoryItemId", ids);
+        Assert.Equal("invalid:storage.reheatNotes must be a string with length between 1 and 240", RecipeCookNowApplicationService.InvalidFlags(["$.recipe.storage.reheatNotes must be a string with length between 1 and 240"]).Replace("recipe.", string.Empty));
         Assert.True(RecipeCookNowApplicationService.InvalidFlags(Enumerable.Repeat("x", 1).Select((_, i) => new string('a', 300)).ToList()).Length <= 100);
     }
 
@@ -262,7 +325,8 @@ public sealed class RecipeCookNowApplicationServiceTests
         InMemoryRecipeStore? recipes = null,
         InMemoryAiUsageLedgerStore? ledger = null,
         InMemoryRecipeCookNowUnitOfWork? unitOfWork = null,
-        bool useProtocolDefaults = true)
+        bool useProtocolDefaults = true,
+        Func<FakeAiProvider, IAiProvider>? wrap = null)
     {
         var owner = ownerId ?? Guid.NewGuid();
         var usageLedger = ledger ?? new InMemoryAiUsageLedgerStore();
@@ -276,7 +340,7 @@ public sealed class RecipeCookNowApplicationServiceTests
             recipeStore,
             cookNowUnitOfWork,
             new EmptyRecipeContextAssembler(),
-            provider,
+            wrap is null ? provider : wrap(provider),
             AiOperationRegistry.CreateDefault(),
             new AiUsageGovernor(usageLedger, new AiUsageOptions(), new AiPricingOptions(), TimeProvider.System),
             TimeProvider.System);

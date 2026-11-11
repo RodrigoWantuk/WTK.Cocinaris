@@ -82,14 +82,14 @@ What the code shows behind them:
 
 Branch: `agent/plan-0039-reliable-generation`.
 
-- [ ] R1: `RecipeOutputNormalizer` with its catalog of informational fields, applied before validation for expand, suggest, plan deck, and revise; normalizations recorded as `normalized:<rule>`.
-- [ ] R2: a fallback round in `RecipeAiInvocation`, with `AiProviderInvocationRequest.UseFallbackModel` honored by the DeepSeek provider and the fake.
-- [ ] R3: stale `Expanding` reclaimed in `TryClaimSelectionAsync`, its reservation released.
-- [ ] R4: stale reservations ignored in concurrency and spend, and released by a sweep that runs on every reservation of the person.
-- [ ] R5: `ai.generation_attempts` (migration), written for every call; `InvalidFlags` keeps limits; retention rule `ai_attempts` at 13 months.
-- [ ] R6: `scripts/ops/ai-failure-report.sh`; runbook section.
-- [ ] Metric `cocinaris.ai.generation{operation,outcome}`, with outcome `first_call`, `recovered`, or `failed`.
-- [ ] Tests: normalization of each listed field, and a field that must not be normalized; a fallback round after an invalid answer; a stale claim reclaimed; a stale reservation not blocking; attempt rows written without content; the report on a test database.
+- [x] R1: `RecipeOutputNormalizer` with its catalog of informational fields, applied before validation for expand, suggest, plan deck, and revise; normalizations recorded as `normalized:<rule>`.
+- [x] R2: a fallback round in `RecipeAiInvocation`, with `AiProviderInvocationRequest.UseFallbackModel` honored by the DeepSeek provider and the fake.
+- [x] R3: stale `Expanding` reclaimed in `TryClaimSelectionAsync`, its reservation released.
+- [x] R4: stale reservations ignored in concurrency and spend, and released by a sweep that runs on every reservation of the person.
+- [x] R5: `ai.generation_attempts` (migration), written for every call; `InvalidFlags` keeps limits; retention rule `ai_attempts` at 13 months.
+- [x] R6: `scripts/ops/ai-failure-report.sh`; runbook section.
+- [x] Metric `cocinaris.ai.generation{operation,outcome}`, with outcome `first_call`, `recovered`, or `failed`.
+- [x] Tests: normalization of each listed field, and a field that must not be normalized; a fallback round after an invalid answer; a stale claim reclaimed; a stale reservation not blocking; attempt rows written without content; the report on a test database.
 
 **Gate S1:** targeted tests; the live evaluation on the owner host if the owner runs it (`PLAN0039_LIVE_EVAL=1`, 20 expansions at most US$ 0.10), reporting the share recovered.
 
@@ -131,14 +131,14 @@ RabbitMQ, the transactional outbox, a separate worker process (ADR-0003 target, 
 ## Execution state
 
 - **Current run delivery target:** Plan and Slice 1.
-- **Current checkpoint:** Plan written; Slice 1 in progress.
-- **Last completed step:** Evidence gathered from production counts and the code.
-- **Exact next action:** Implement Slice 1 on `agent/plan-0039-reliable-generation`.
+- **Current checkpoint:** Slice 1 implemented on `agent/plan-0039-reliable-generation`, in a draft pull request.
+- **Last completed step:** Normalization, fallback round, abandoned work, attempt records, report; see the Slice 1 log entry.
+- **Exact next action:** The owner reviews and merges the Slice 1 pull request and deploys `main` (migration `AddAiGenerationAttempts`). After a few days of use, run `scripts/ops/ai-failure-report.sh 7` and record what it shows here. Then Slice 2 starts from a fresh `origin/main` on `agent/plan-0039-s2-jobs`.
 - **Blockers:** None.
 - **Partially modified areas:** None.
-- **Documentation delivered:** This plan and its registry row.
-- **Validation performed:** None yet.
-- **Known failures or limitations:** None yet.
+- **Documentation delivered:** This plan and its registry row; AI protocol (recovery and failure records), usage governance (abandoned reservations, fallback cost), privacy (the attempts table and its retention), deployment runbook (the failure report).
+- **Validation performed:** See the Slice 1 log entry.
+- **Known failures or limitations:** See the Slice 1 log entry.
 - **Working tree state:** Clean after this commit.
 
 ## Progress log
@@ -147,6 +147,26 @@ RabbitMQ, the transactional outbox, a separate worker process (ADR-0003 target, 
 
 - **Run delivery target:** Plan and Slice 1, after the owner agreed to items 1 and 2 and asked that generation never fail for the person, be transparent when it does, and that the cause of every failure be understood.
 - **Evidence:** aggregate counts of `recipes.generation_sessions`, `ai.usage_ledger`, and `planning.shopping_plan_cards` on the owner host, codes and counts only; findings F1 to F5 from the code.
+- **Next action:** See "Exact next action".
+
+### 2026-11-11 — Claude Code (Slice 1)
+
+- **Changes:**
+  - **R1.** `RecipeOutputNormalizer` fits ten informational fields of a recipe answer before validation: the storage note, sensory cues, and the visual description texts and lists. Expand and revise use it; suggest and plan deck record their existing summary fit. `RecipeProtocolValidationResult.Normalized` carries what was fitted, and `RecipeExpandSemantics.MaxAppearanceWords` names the 36-word limit.
+  - **R2.** `RecipeAiInvocation.InvokeWithRepairAsync` runs a second round with `AiProviderInvocationRequest.UseFallbackModel` after an invalid answer or an outage, never after a timeout. `DeepSeekAiProvider` calls the fallback model for it. The validator delegate now returns the validation result, and the four callers pass it through.
+  - **R3.** `PostgreSqlRecipeGenerationStore.TryClaimSelectionAsync` takes over a selection `Expanding` for more than `ExpansionLease` (6 minutes) under the same key, and only one taker wins.
+  - **R4.** The usage reservation releases the owner's `Reserved` rows older than `AbandonedReservationAge` (15 minutes) as `abandoned` at no cost, inside its advisory lock; `CountOpenReservationsAsync` ignores them.
+  - **R5.** Migration `AddAiGenerationAttempts`, `ai.generation_attempts` with no owner column, written by `PostgreSqlAiAttemptStore` on its own connection through `RecordingAiProvider`, which wraps the DeepSeek provider. `InvalidFlags` and the new `RuleLabels` keep a rule's numbers and drop quoted values, indices, and identifiers. The `ai_attempts` retention rule keeps rows 13 months.
+  - **R6.** `scripts/ops/ai-failure-report.sh`. **Metric** `cocinaris.ai.generation{operation,outcome}`.
+- **Deviations from this plan:**
+  - **The abandoned-reservation sweep runs inside the reservation**, for the reserving owner only, not as a separate job: that is where it matters, and the advisory lock already serializes it. Other owners' rows are released the next time they reserve.
+  - **The second round is skipped after a timeout** while the person waits; Slice 2's job retries cover timeouts.
+  - **The live evaluation (Gate S1) was not run.** It needs the owner's provider key; the failure report on real use replaces it as evidence after deploy.
+- **Validation performed:**
+  - **Unit:** 496, of which 8 new or changed. The normalization tests cover the storage note, sensory cues, the visual word limit, ingredient and step fields left untouched, the catalog's safe fields, and text fitting. Two rounds make six calls, the last three on the fallback model. An invalid answer is recovered on the fallback round, and all four calls are recorded with their outcomes, rounds, and models. A timeout gets no second round. The rule labels keep limits and drop pantry ids.
+  - **Integration:** `AbandonedWorkNoLongerBlocksAndEveryCallIsRecorded`: two dead reservations are released and do not block, a selection stuck `Expanding` for ten minutes is taken over and completes, and attempt rows are written without content or owner. The retention and idea library tests pass with the new rule.
+  - **Architecture:** 19. **Backend formatting** verified.
+- **Not run:** the full local gates (one run on the pull request head follows); the live evaluation.
 - **Next action:** See "Exact next action".
 
 ## Completion and handoff checklist

@@ -96,11 +96,7 @@ public sealed class RecipePlanDeckService(
             correlationId,
             payload,
             errors => RecipeAiRequestEnvelopes.BuildPlanDeckRepairRequest(context, request.Brief, errors.Errors, errors.Output),
-            raw =>
-            {
-                var validation = RecipeProtocolValidator.ValidatePlanDeck(raw, requestElement);
-                return (validation.IsValid ? validation.Response : null, validation.Errors);
-            },
+            raw => RecipeProtocolValidator.ValidatePlanDeck(raw, requestElement),
             response => RecipeOutputQuality.CheckPlanDeck(response, context.Presets.OutputLanguage),
             cancellationToken);
         if (invocation.Response is null)

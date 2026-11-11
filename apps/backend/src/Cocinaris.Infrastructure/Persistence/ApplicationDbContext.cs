@@ -60,6 +60,8 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
 
     /// <summary>Gets the authoritative AI usage ledger records.</summary>
     public DbSet<AiUsageLedgerRecord> AiUsageLedgerEntries => Set<AiUsageLedgerRecord>();
+    /// <summary>Gets content-free records of every recipe AI provider call (PLAN-0039 R5).</summary>
+    public DbSet<AiGenerationAttemptRecord> AiGenerationAttempts => Set<AiGenerationAttemptRecord>();
 
     /// <summary>Gets user-owned recipe identity records.</summary>
     public DbSet<RecipeRecord> Recipes => Set<RecipeRecord>();
@@ -305,6 +307,24 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             entity.Property(x => x.ResponseBody).HasColumnType("jsonb");
             entity.HasOne<InternalUser>().WithMany().HasForeignKey(x => x.OwnerUserId).OnDelete(DeleteBehavior.Restrict);
             entity.HasIndex(x => new { x.OwnerUserId, x.Scope, x.Key }).IsUnique();
+        });
+
+        modelBuilder.Entity<AiGenerationAttemptRecord>(entity =>
+        {
+            // No owner column on purpose: these rows explain failures without naming anyone.
+            entity.ToTable("generation_attempts", "ai", table =>
+            {
+                table.HasCheckConstraint("ck_generation_attempts_outcome", "\"Outcome\" IN ('accepted', 'accepted_with_issues', 'quality_issues', 'invalid_output', 'timeout', 'unavailable')");
+                table.HasCheckConstraint("ck_generation_attempts_round", "\"Round\" BETWEEN 1 AND 2");
+            });
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Operation).HasMaxLength(100).IsRequired();
+            entity.Property(x => x.Model).HasMaxLength(100);
+            entity.Property(x => x.Outcome).HasMaxLength(32).IsRequired();
+            entity.Property(x => x.Rules).HasMaxLength(300);
+            entity.Property(x => x.CorrelationId).HasMaxLength(100).IsRequired();
+            entity.HasIndex(x => x.OccurredAt);
+            entity.HasIndex(x => new { x.Operation, x.OccurredAt });
         });
 
         modelBuilder.Entity<AccountDeletionRecord>(entity =>
