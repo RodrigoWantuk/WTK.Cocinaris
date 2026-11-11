@@ -28,6 +28,36 @@ public sealed class PostgreSqlRecipeGenerationStore(ApplicationDbContext databas
         }
     }
 
+    /// <summary>
+    /// How long a selection may stay <c>Expanding</c> before it counts as abandoned (PLAN-0039 R3): longer
+    /// than two rounds of calls with their timeouts, so a live expansion is never taken over.
+    /// </summary>
+    public static readonly TimeSpan ExpansionLease = TimeSpan.FromMinutes(6);
+
+    // A request that died while the model worked (the app closed, a deploy) left the session Expanding;
+    // the same request may take it over once the lease has passed. Only one taker wins the update.
+    private async Task<RecipeSelectionClaimResult?> ReclaimIfAbandonedAsync(Guid ownerUserId, RecipeGenerationSessionRecord record, DateTimeOffset now, CancellationToken cancellationToken)
+    {
+        if (now - record.UpdatedAt <= ExpansionLease)
+        {
+            return null;
+        }
+
+        var previous = record.UpdatedAt;
+        var affected = await database.RecipeGenerationSessions
+            .Where(item => item.OwnerUserId == ownerUserId && item.Id == record.Id
+                && item.Status == nameof(RecipeGenerationSessionStatus.Expanding) && item.UpdatedAt == previous)
+            .ExecuteUpdateAsync(setters => setters.SetProperty(item => item.UpdatedAt, now), cancellationToken);
+        if (affected != 1)
+        {
+            return null;
+        }
+
+        var claimed = await FindByIdAsync(ownerUserId, record.Id, cancellationToken)
+            ?? throw new InvalidOperationException("Reclaimed selection could not be reloaded.");
+        return new RecipeSelectionClaimResult(RecipeSelectionClaimOutcome.Claimed, claimed);
+    }
+
     /// <inheritdoc />
     public async Task<RecipeSelectionClaimResult> TryClaimSelectionAsync(
         Guid ownerUserId,
@@ -58,7 +88,8 @@ public sealed class PostgreSqlRecipeGenerationStore(ApplicationDbContext databas
                 && string.Equals(keyedSession.SelectedCandidateId, candidateId, StringComparison.Ordinal)
                 && keyedSession.SelectIdempotencyKey == selectIdempotencyKey)
             {
-                return new RecipeSelectionClaimResult(RecipeSelectionClaimOutcome.InProgress, keyedSession);
+                return await ReclaimIfAbandonedAsync(ownerUserId, keyOwner, now, cancellationToken)
+                    ?? new RecipeSelectionClaimResult(RecipeSelectionClaimOutcome.InProgress, keyedSession);
             }
 
             if (!string.Equals(keyedSession.SelectedCandidateId, candidateId, StringComparison.Ordinal)
@@ -93,7 +124,8 @@ public sealed class PostgreSqlRecipeGenerationStore(ApplicationDbContext databas
             if (string.Equals(session.SelectedCandidateId, candidateId, StringComparison.Ordinal)
                 && session.SelectIdempotencyKey == selectIdempotencyKey)
             {
-                return new RecipeSelectionClaimResult(RecipeSelectionClaimOutcome.InProgress, session);
+                return await ReclaimIfAbandonedAsync(ownerUserId, record, now, cancellationToken)
+                    ?? new RecipeSelectionClaimResult(RecipeSelectionClaimOutcome.InProgress, session);
             }
 
             return new RecipeSelectionClaimResult(RecipeSelectionClaimOutcome.Conflict, session);

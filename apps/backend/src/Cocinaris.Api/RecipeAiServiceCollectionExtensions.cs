@@ -79,6 +79,7 @@ public static class RecipeAiServiceCollectionExtensions
             provider.GetRequiredService<RecipeThumbnailService>()));
         services.AddScoped<RecipeLibraryApiService>();
 
+        services.AddScoped<IAiAttemptStore, Cocinaris.Infrastructure.Persistence.PostgreSqlAiAttemptStore>();
         var deepSeekSection = configuration.GetSection("Ai:Providers:DeepSeek");
         var enabled = deepSeekSection.GetValue("Enabled", false);
         var apiKey = deepSeekSection.GetValue<string>("ApiKey");
@@ -98,7 +99,8 @@ public static class RecipeAiServiceCollectionExtensions
             {
                 var options = provider.GetRequiredService<IOptions<DeepSeekOptions>>().Value;
                 var httpClient = provider.GetRequiredService<IHttpClientFactory>().CreateClient("cocinaris-deepseek");
-                return new DeepSeekAiProvider(httpClient, options);
+                // Every call is recorded without content, so failures can be traced (PLAN-0039 R5).
+                return new RecordingAiProvider(new DeepSeekAiProvider(httpClient, options), provider.GetRequiredService<IAiAttemptStore>());
             });
         }
         else

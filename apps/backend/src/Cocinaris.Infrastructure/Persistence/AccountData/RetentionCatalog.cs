@@ -44,6 +44,7 @@ public static class RetentionCatalog
     [
         new("idempotency", "platform", "idempotency_records", RetentionAction.Delete, "Stored replies of retried requests; a retry comes within minutes, and the option bounds them at 30 days."),
         new("ai_usage", "ai", "usage_ledger", RetentionAction.Delete, "AI usage counts toward a month's spend; after 13 months no ceiling or report reads them (decision D4)."),
+        new("ai_attempts", "ai", "generation_attempts", RetentionAction.Delete, "Records of AI calls explain failures; after 13 months they are kept no longer than usage (PLAN-0039 R5)."),
         new("deletion_tombstones", "platform", "account_deletions", RetentionAction.Delete, "A completed deletion's tombstone ends older sessions; after 31 days none can remain (decision E3)."),
         new("push_delivery_days", "planning", "push_delivery_days", RetentionAction.Delete, "The last day a person was notified only prevents a second message that day."),
         new("abandoned_plans", "planning", "shopping_plan_sessions", RetentionAction.Delete, "A shopping plan the person discarded, untouched for 30 days, with its cards."),

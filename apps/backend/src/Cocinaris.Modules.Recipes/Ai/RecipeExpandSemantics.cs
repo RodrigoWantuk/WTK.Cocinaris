@@ -9,6 +9,9 @@ namespace Cocinaris.Modules.Recipes.Ai;
 /// </summary>
 public static partial class RecipeExpandSemantics
 {
+    /// <summary>Most words in a dish's visual description, so the image prompt stays short.</summary>
+    public const int MaxAppearanceWords = 36;
+
     private static readonly Regex[] PrivateThumbnailPatterns =
     [
         InventoryReferencePattern(), UserWordPattern(), AllergyPattern(), PantryPattern(), RestrictionPattern(), HouseholdPattern(), OwnerNamePattern(), UrlPattern()
@@ -41,9 +44,9 @@ public static partial class RecipeExpandSemantics
         var recipe = response.Recipe;
         var visual = recipe.ThumbnailVisual;
 
-        if (ProtocolCheck.WordCount(visual.AppearanceDescription) > 36)
+        if (ProtocolCheck.WordCount(visual.AppearanceDescription) > MaxAppearanceWords)
         {
-            errors.Add("thumbnailVisual.appearanceDescription exceeds 36 words");
+            errors.Add($"thumbnailVisual.appearanceDescription exceeds {MaxAppearanceWords} words");
         }
 
         var visualBlob = string.Join(' ', new[] { visual.AppearanceDescription }

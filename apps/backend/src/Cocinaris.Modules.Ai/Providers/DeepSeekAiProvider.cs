@@ -22,19 +22,21 @@ public sealed class DeepSeekAiProvider(HttpClient httpClient, DeepSeekOptions op
 
     /// <inheritdoc />
     /// <remarks>
-    /// Calls the configured model; if that call fails with a provider error (not a timeout), calls
-    /// the fallback model once (PLAN-0040). Latency covers both calls. A timeout is not retried here,
+    /// Calls the configured model, or the fallback model when the request asks for it (PLAN-0039); if
+    /// that call fails with a provider error (not a timeout), calls the other model once (PLAN-0040). Latency covers both calls. A timeout is not retried here,
     /// because the operation layer already owns the single repair and the user is waiting.
     /// </remarks>
     public async Task<AiProviderInvocationResult> InvokeAsync(AiProviderInvocationRequest request, CancellationToken cancellationToken)
     {
         var started = Stopwatch.GetTimestamp();
-        var result = await CallAsync(options.Model, request, cancellationToken);
+        var hasFallback = !string.IsNullOrWhiteSpace(options.FallbackModel) && !string.Equals(options.FallbackModel, options.Model, StringComparison.OrdinalIgnoreCase);
+        // A second round after a failed first asks for the other model (PLAN-0039 R2).
+        var first = request.UseFallbackModel && hasFallback ? options.FallbackModel! : options.Model;
+        var result = await CallAsync(first, request, cancellationToken);
         var calls = 1;
-        if (!result.IsSuccess && result.FailureKind == AiProviderFailureKind.Unavailable
-            && !string.IsNullOrWhiteSpace(options.FallbackModel) && !string.Equals(options.FallbackModel, options.Model, StringComparison.OrdinalIgnoreCase))
+        if (!result.IsSuccess && result.FailureKind == AiProviderFailureKind.Unavailable && hasFallback)
         {
-            result = await CallAsync(options.FallbackModel, request, cancellationToken);
+            result = await CallAsync(first == options.Model ? options.FallbackModel! : options.Model, request, cancellationToken);
             calls = 2;
         }
 

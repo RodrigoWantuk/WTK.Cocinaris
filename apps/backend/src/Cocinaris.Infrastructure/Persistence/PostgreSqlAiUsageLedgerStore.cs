@@ -30,6 +30,17 @@ public sealed class PostgreSqlAiUsageLedgerStore(ApplicationDbContext database) 
         await using var transaction = await database.Database.BeginTransactionAsync(cancellationToken);
         await database.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock({AiUsageReservationAdvisoryLockKey})", cancellationToken);
 
+        // A request that died mid-call never settles its reservation; after the lease it no longer holds
+        // a concurrency slot or an estimated cost (PLAN-0039 R4). Its tokens were never reported, so it costs 0.
+        var abandonedBefore = now - AbandonedReservationAge;
+        await database.AiUsageLedgerEntries
+            .Where(item => item.OwnerUserId == ownerUserId && item.Status == nameof(AiUsageEntryStatus.Reserved) && item.CreatedAt < abandonedBefore)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(item => item.Status, nameof(AiUsageEntryStatus.Released))
+                .SetProperty(item => item.QualityFlags, "abandoned")
+                .SetProperty(item => item.CostMicroUsd, (long?)0)
+                .SetProperty(item => item.ClosedAt, now), cancellationToken);
+
         var openReservations = await database.AiUsageLedgerEntries
             .CountAsync(item => item.OwnerUserId == ownerUserId && item.Status == nameof(AiUsageEntryStatus.Reserved), cancellationToken);
         if (openReservations >= ceilings.UserConcurrencyCeiling)
@@ -113,10 +124,19 @@ public sealed class PostgreSqlAiUsageLedgerStore(ApplicationDbContext database) 
         return await SumUnitsInRangeAsync(ownerUserId, dayStart, dayEnd, cancellationToken);
     }
 
+    /// <summary>
+    /// Age after which an unsettled reservation counts as abandoned (PLAN-0039 R4): longer than any
+    /// operation's two rounds of calls with their timeouts.
+    /// </summary>
+    public static readonly TimeSpan AbandonedReservationAge = TimeSpan.FromMinutes(15);
+
     /// <inheritdoc />
-    public Task<int> CountOpenReservationsAsync(Guid ownerUserId, CancellationToken cancellationToken) =>
-        database.AiUsageLedgerEntries.AsNoTracking()
-            .CountAsync(item => item.OwnerUserId == ownerUserId && item.Status == nameof(AiUsageEntryStatus.Reserved), cancellationToken);
+    public Task<int> CountOpenReservationsAsync(Guid ownerUserId, CancellationToken cancellationToken)
+    {
+        var abandonedBefore = DateTimeOffset.UtcNow - AbandonedReservationAge;
+        return database.AiUsageLedgerEntries.AsNoTracking()
+            .CountAsync(item => item.OwnerUserId == ownerUserId && item.Status == nameof(AiUsageEntryStatus.Reserved) && item.CreatedAt >= abandonedBefore, cancellationToken);
+    }
 
     /// <inheritdoc />
     public async Task SettleAsync(Guid reservationId, int settledUnits, AiCallUsage usage, long costMicroUsd, DateTimeOffset now, CancellationToken cancellationToken)

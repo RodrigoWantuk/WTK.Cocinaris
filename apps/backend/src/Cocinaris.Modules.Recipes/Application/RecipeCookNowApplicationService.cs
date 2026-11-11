@@ -316,11 +316,7 @@ public sealed class RecipeCookNowApplicationService(
             correlationId,
             initialPayload,
             errors => RecipeAiRequestEnvelopes.BuildSuggestRepairRequest(context, errors.Errors, errors.Output),
-            raw =>
-            {
-                var validation = RecipeProtocolValidator.ValidateSuggest(raw, requestElement);
-                return (validation.IsValid ? validation.Response : null, validation.Errors);
-            },
+            raw => RecipeProtocolValidator.ValidateSuggest(raw, requestElement),
             response => RecipeOutputQuality.CheckSuggest(response, context.Presets.OutputLanguage, context.Guidance?.Adaptation),
             cancellationToken);
     }
@@ -338,32 +334,18 @@ public sealed class RecipeCookNowApplicationService(
             correlationId,
             initialPayload,
             errors => RecipeAiRequestEnvelopes.BuildExpandRepairRequest(context, errors.Errors, errors.Output),
-            raw =>
-            {
-                var validation = RecipeProtocolValidator.ValidateExpand(raw, requestElement);
-                return (validation.IsValid ? validation.Response : null, validation.Errors);
-            },
+            raw => RecipeProtocolValidator.ValidateExpand(raw, requestElement),
             response => RecipeOutputQuality.CheckExpand(response, context.Presets.OutputLanguage, detailLevel),
             cancellationToken);
     }
 
     /// <summary>
     /// Compact, content-free labels of validation errors for the usage ledger (at most 100
-    /// characters): paths, indices, numbers, and quoted values are removed, so no recipe or pantry
-    /// text is stored, only the rule (for example <c>candidates.summary has words max</c>).
+    /// characters): indices, identifiers, and quoted values are removed, so no recipe or pantry text is
+    /// stored, only the rule with its limits (for example <c>storage.reheatNotes must be a string with
+    /// length between 1 and 240</c>; PLAN-0039 R5).
     /// </summary>
-    public static string InvalidFlags(IReadOnlyList<string> errors)
-    {
-        var labels = errors
-            .Select(error => System.Text.RegularExpressions.Regex.Replace(error, "\\[\\d+\\]|^\\$\\.", string.Empty))
-            .Select(error => System.Text.RegularExpressions.Regex.Replace(error, "\"[^\"]*\"|[0-9]+|[(),<>=]", " "))
-            .Select(error => string.Join(' ', error.Split(' ', StringSplitOptions.RemoveEmptyEntries)))
-            .Where(label => label.Length > 0)
-            .Distinct(StringComparer.Ordinal)
-            .Take(4);
-        var flags = "invalid:" + string.Join(";", labels);
-        return flags.Length > 100 ? flags[..100] : flags;
-    }
+    public static string InvalidFlags(IReadOnlyList<string> errors) => "invalid:" + RecipeAiInvocation.RuleLabels(errors, 92);
 
     private static RecipeGenerationSession MarkFailedCopy(RecipeGenerationSession session, string reason, DateTimeOffset now)
     {

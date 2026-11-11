@@ -49,3 +49,32 @@ public sealed class AiUsageLedgerRecord
     /// <summary>Gets or sets soft quality issues of an accepted answer, comma separated (for example <c>language</c>).</summary>
     public string? QualityFlags { get; set; }
 }
+
+/// <summary>One recipe AI provider call and its outcome, without content or owner (PLAN-0039 R5).</summary>
+public sealed class AiGenerationAttemptRecord
+{
+    /// <summary>Gets or sets the row id.</summary>
+    public Guid Id { get; set; }
+    /// <summary>Gets or sets when the call ended.</summary>
+    public DateTimeOffset OccurredAt { get; set; }
+    /// <summary>Gets or sets the registered operation.</summary>
+    public required string Operation { get; set; }
+    /// <summary>Gets or sets the model that answered, if any.</summary>
+    public string? Model { get; set; }
+    /// <summary>Gets or sets 1 for the primary round, 2 for the fallback round.</summary>
+    public int Round { get; set; }
+    /// <summary>Gets or sets the call number within the round.</summary>
+    public int Call { get; set; }
+    /// <summary>Gets or sets the closed outcome code.</summary>
+    public required string Outcome { get; set; }
+    /// <summary>Gets or sets content-free rule labels, if any.</summary>
+    public string? Rules { get; set; }
+    /// <summary>Gets or sets the call's latency.</summary>
+    public int? LatencyMs { get; set; }
+    /// <summary>Gets or sets prompt tokens.</summary>
+    public int? PromptTokens { get; set; }
+    /// <summary>Gets or sets completion tokens.</summary>
+    public int? CompletionTokens { get; set; }
+    /// <summary>Gets or sets the request's correlation id.</summary>
+    public required string CorrelationId { get; set; }
+}

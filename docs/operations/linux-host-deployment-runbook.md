@@ -196,3 +196,16 @@ The page "Seus dados" (`/app/perfil/privacidade`) needs no configuration. Its ex
 - **Retention** (Slice 3) runs in `RetentionWorker` ten minutes after start and then daily. The log has one line per run with counts per rule. Metric: `cocinaris.privacy.retention_deleted{rule}`. The rules and their limits are in the privacy document. `Idempotency__Retention` in `api.env` changes how long stored replies stay (1 to 90 days).
 - **Deleting a recipe from the shared library on request.** The library is never cleaned automatically (owner decision D5). When someone asks for a library recipe to be removed, delete it by id: `DELETE FROM recipes.recipe_ideas WHERE "Id" = '<id>';`. People's own recipes are not affected.
 - **Rollback.** Migration `AddAccountDeletions` creates the table, lets an account erasure delete append-only history, and drops the foreign key from `ai.usage_ledger` to `identity.users`. Rolling it back fails once anonymized usage rows exist, so repair forward.
+
+## Why recipe generation failed (PLAN-0039)
+
+`scripts/ops/ai-failure-report.sh [days]` (30 by default) runs as `postgres` on the host and prints counts only. It shows:
+- per operation: how many requests were answered on the first call, recovered, or failed;
+- the calls by outcome and model;
+- the rules broken by invalid answers, with their limits;
+- the fields fitted instead of failing;
+- the failures people saw, by reason;
+- reservations released as abandoned.
+
+Read it before changing a prompt, a schema limit, or the fallback model. A rule that keeps appearing is a prompt or a limit to fix. `Ai__Providers__DeepSeek__FallbackModel` in `api.env` sets the model of the second round (empty turns the round's model into the primary one). The metric is `cocinaris.ai.generation{operation,outcome}`.
+

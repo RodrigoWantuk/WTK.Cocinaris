@@ -39,6 +39,10 @@ public sealed class PostgreSqlRetentionStore(ApplicationDbContext database) : IR
             DELETE FROM ai.usage_ledger WHERE ctid IN (
                 SELECT ctid FROM ai.usage_ledger WHERE "CreatedAt" < @cutoff ORDER BY "CreatedAt" LIMIT @limit)
             """, cutoffs.UsageBefore),
+        "ai_attempts" => ("""
+            DELETE FROM ai.generation_attempts WHERE ctid IN (
+                SELECT ctid FROM ai.generation_attempts WHERE "OccurredAt" < @cutoff ORDER BY "OccurredAt" LIMIT @limit)
+            """, cutoffs.UsageBefore),
         "deletion_tombstones" => ("""
             DELETE FROM platform.account_deletions WHERE ctid IN (
                 SELECT ctid FROM platform.account_deletions WHERE "State" = 'Completed' AND "CompletedAt" < @cutoff LIMIT @limit)

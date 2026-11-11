@@ -11,7 +11,8 @@ namespace Cocinaris.Modules.Ai.Abstractions;
 /// <param name="TimeoutSeconds">Maximum time the provider call may take before it is treated as a timeout failure.</param>
 /// <param name="CorrelationId">Request correlation identifier propagated to logs and telemetry, never to the provider.</param>
 /// <param name="MaxOutputTokens">Completion token limit for the call.</param>
-public sealed record AiProviderInvocationRequest(string Operation, string Payload, bool PreferNonThinking, int TimeoutSeconds, string CorrelationId, int MaxOutputTokens = 4096);
+/// <param name="UseFallbackModel">Asks for the configured fallback model instead of the primary one, for a second round after a failed first (PLAN-0039 R2); a provider without one uses its primary model.</param>
+public sealed record AiProviderInvocationRequest(string Operation, string Payload, bool PreferNonThinking, int TimeoutSeconds, string CorrelationId, int MaxOutputTokens = 4096, bool UseFallbackModel = false);
 
 /// <summary>Describes why a provider invocation did not produce usable output.</summary>
 public enum AiProviderFailureKind

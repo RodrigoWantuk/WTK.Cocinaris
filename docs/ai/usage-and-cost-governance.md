@@ -70,6 +70,8 @@ Authorize user and operation
 
 The operation must not start if the maximum permitted budget cannot be reserved, except for an explicit emergency or support policy.
 
+A reservation that is never settled, because its request died mid-call, is released as `abandoned` after 15 minutes, at no cost, the next time its owner reserves (PLAN-0039 R4). It no longer holds a concurrency slot or an estimated cost after that age. The fallback round of PLAN-0039 can double the calls of one operation; its cost is settled from the real usage, and `scripts/ops/ai-failure-report.sh` shows how often it runs.
+
 ## User-visible allowance
 
 Raw model tokens are not necessarily comparable across providers or models. The UI may present normalized Cocinaris usage units / `AI credits`, operation allowances, or another understandable unit while still exposing enough detail for transparency.

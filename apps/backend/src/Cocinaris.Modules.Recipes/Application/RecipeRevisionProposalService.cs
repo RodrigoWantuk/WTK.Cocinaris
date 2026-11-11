@@ -158,11 +158,7 @@ public sealed class RecipeRevisionProposalService(
             command.CorrelationId,
             initialPayload,
             errors => RecipeAiRequestEnvelopes.BuildReviseRepairRequest(context, errors.Errors, errors.Output),
-            raw =>
-            {
-                var validation = RecipeProtocolValidator.ValidateRevise(raw, requestElement);
-                return (validation.IsValid ? validation.Response : null, validation.Errors);
-            },
+            raw => RecipeProtocolValidator.ValidateRevise(raw, requestElement),
             response => RecipeOutputQuality.CheckExpand(response, context.Presets.OutputLanguage, detailLevel),
             cancellationToken);
         var now = timeProvider.GetUtcNow();
