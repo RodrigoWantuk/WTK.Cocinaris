@@ -124,3 +124,28 @@ public interface IAccountDataSnapshot : IAsyncDisposable
     /// <exception cref="ArgumentException">The table is not one of <see cref="IAccountDataReader.Tables"/>.</exception>
     IAsyncEnumerable<string> ReadRowsAsync(AccountDataTable table, CancellationToken cancellationToken);
 }
+
+/// <summary>
+/// The limits of one retention run (PLAN-0049 Slice 3): rows older than these go. Each comes from a
+/// documented decision; nothing here touches the shared recipe library (decision D5).
+/// </summary>
+/// <param name="IdempotencyBefore">Stored replies created before this (the <c>Idempotency:Retention</c> option, 30 days by default).</param>
+/// <param name="UsageBefore">AI usage rows created before this (13 months, decision D4).</param>
+/// <param name="TombstonesBefore">Completed deletions finished before this (31 days, decision E3).</param>
+/// <param name="PushDaysBefore">Last-notified days before this (30 days).</param>
+/// <param name="AbandonedPlansBefore">Shopping plans abandoned and untouched since before this (30 days).</param>
+public sealed record RetentionCutoffs(DateTimeOffset IdempotencyBefore, DateTimeOffset UsageBefore, DateTimeOffset TombstonesBefore, DateOnly PushDaysBefore, DateTimeOffset AbandonedPlansBefore);
+
+/// <summary>Applies the retention rules (PLAN-0049 Slice 3).</summary>
+public interface IRetentionStore
+{
+    /// <summary>
+    /// Runs every rule once, each as its own statement and capped at <paramref name="maxRowsPerRule"/>,
+    /// so a backlog is worked off over several runs instead of one long lock.
+    /// </summary>
+    /// <param name="cutoffs">The limits of this run.</param>
+    /// <param name="maxRowsPerRule">At most this many rows per rule.</param>
+    /// <param name="cancellationToken">Cancellation.</param>
+    /// <returns>Rows deleted or cleared per rule name; counts only.</returns>
+    Task<IReadOnlyDictionary<string, int>> ApplyAsync(RetentionCutoffs cutoffs, int maxRowsPerRule, CancellationToken cancellationToken);
+}
