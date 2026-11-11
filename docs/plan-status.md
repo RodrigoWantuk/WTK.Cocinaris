@@ -39,6 +39,7 @@ Plans with status `Draft`, `Ready`, `In Progress`, `Paused`, `Blocked`, or `Vali
 
 | Plan | Title | Type | Status | Delivery | Owner | Branch / PR | Current checkpoint | Exact next action | Blocker | Updated |
 |---|---|---|---|---|---|---|---|---|---|---|
+| [PLAN-0049](plans/PLAN-0049-privacy-center.md) | Privacy Center ("Seus dados") | Implementation | In Progress | Not delivered; Slice 1 in progress | Claude Code | `agent/plan-0049-privacy-center` | Plan written; owner answered D1 to D4 on 2026-11-11 (deletion at once, unlink the login, ZIP with JSON and HTML, anonymized AI usage for 13 months) | Implement Slice 1: page, data inventory, export, and coverage test | None | 2026-11-11 |
 | [PLAN-0065](plans/PLAN-0065-planning-rework.md) | Planning Rework ("Montar o cardápio") | Implementation | In Progress | Slices 0 to 6 merged via #95 to #100 and #102; Slices 0 to 5 deployed `7333b25`; a formatting fix rides on PLAN-0049 Slice 1 | Claude Code | Branches merged | "Repetir" merged; local gates failed only `backend-format` (byte-order mark in the new migration), fixed on the PLAN-0049 branch | Deploy `main`; then only owner checks remain (S1-AI, phone, screen readers, external test) | S1-AI needs the provider key; phone, screen reader, and external test need the owner | 2026-11-11 |
 | [PLAN-0064](plans/PLAN-0064-more-options-questions.md) | "Quero Outras Opções" That Works and Asks | Implementation | Validating | Merged via #93; deployed `7333b25`; its panel was later replaced by PLAN-0065's options sheet | Claude Code | Branch merged | Validated with a fake provider and on the replica; the real model has not been tried | Owner tries requests with the real model (PLAN-0065 S1-AI covers the same calls); then mark completed | None | 2026-11-11 |
 | [PLAN-0063](plans/PLAN-0063-planning-entry-points.md) | One Way into Planning ("Planejar") | Implementation | Validating | Merged via #92; deployed `7333b25` | Claude Code | Branch merged | Validated on the replica; a real phone has not been tried | The owner tries it on a phone; then mark completed | None | 2026-11-11 |
@@ -70,7 +71,6 @@ IDs reserved by the [PLAN-0031 coverage review](plans/PLAN-0031-amendment-2026-1
 | PLAN-0045 | Text troubleshooting and controlled learning | Not started |
 | PLAN-0047 | Recipe import (URL/image), private sharing, permanent photos | Not started |
 | PLAN-0048 | Attention dashboard and notifications (email) | Not started; web push is delivered by PLAN-0062 Slice 7, and email and the attention dashboard remain here; in-app reminders exist ("Prepare-se", PLAN-0029 Phase 4) |
-| PLAN-0049 | Privacy center (export, correction, deletion, retention jobs) | Not started |
 | PLAN-0050 | Usage allowance, plans and billing | Not started |
 | PLAN-0051 | Abuse controls | Not started |
 | PLAN-0052 | Release readiness (restore rehearsal, load and cost tests, observability, manual accessibility audits, legal checklist) | Not started |
