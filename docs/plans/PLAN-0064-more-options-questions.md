@@ -62,7 +62,7 @@ Agent, within that direction:
 - **Current run delivery target:** The whole change.
 - **Current checkpoint:** Implemented and validated with a fake provider and on the replica, in a draft pull request.
 - **Last completed step:** See the log.
-- **Exact next action:** The owner reviews and merges, asks for a deploy, and tries it with the real model.
+- **Exact next action:** Merged via #93 and deployed with `7333b25` (registry reconciled 2026-11-11); PLAN-0065 replaced its panel with the options sheet. The owner tries requests with the real model, which PLAN-0065 S1-AI also covers; then mark the plan completed.
 - **Blockers:** None.
 - **Partially modified areas:** None.
 - **Documentation delivered:** This plan, the registry, the product spec, the planning domain document, the AI protocol, and the privacy document.

@@ -64,7 +64,7 @@ This replaces part of the navigation approved in PLAN-0054 direction 2: menu pag
 - **Current run delivery target:** The planning entry points, complete.
 - **Current checkpoint:** Implemented and validated on the replica, in a draft pull request.
 - **Last completed step:** Frontend gates; see the log.
-- **Exact next action:** The owner reviews and merges, then asks for a deploy and tries it on a phone.
+- **Exact next action:** Merged via #92 and deployed with `7333b25` (registry reconciled 2026-11-11). The owner tries it on a phone; then mark the plan completed.
 - **Blockers:** None.
 - **Partially modified areas:** None.
 - **Documentation delivered:** This plan, the registry, the design system, the product spec, and user journeys.

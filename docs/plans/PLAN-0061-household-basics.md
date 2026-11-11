@@ -41,7 +41,7 @@
 - **Current checkpoint:** implemented and validated as below.
 - **Validation (lean):** unit filters `HouseholdBasics`, `ShoppingProjector`, `ReservationProjector`, `RecipeAiDirection`, `RecipeExecution`, and `RecipeRecommend`, 68/68; integration tests for salt and water, recipe availability, and the cook page, 3/3.
 - **Not run:** browser check, full suites. No frontend change.
-- **Exact next action:** The owner merges; deploy `main`; check a recipe with salt and water on the host.
+- **Exact next action:** Merged via #82 and deployed with `7333b25` (registry reconciled 2026-11-11). The owner checks a recipe with salt and water on the host; then mark the plan completed.
 - **Blockers:** None.
 
 ## Progress log

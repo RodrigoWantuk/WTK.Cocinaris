@@ -75,7 +75,7 @@ The owner's portfolio only declares a web manifest, which lets Chrome on Android
   - **Installability:** CDP `Page.getInstallabilityErrors` returned an empty list on the proxy replica; the manifest is served with 200.
   - **Visual:** phone captures of the open menu and of the cook page on the replica.
 - **Not run:** a real phone install (needs the owner's device), full suites.
-- **Exact next action:** The owner merges the half-moon fix and checks it on the phone, together with installing the app.
+- **Exact next action:** The half-moon fix merged via #77 and is deployed with `7333b25` (registry reconciled 2026-11-11). The owner checks it on the phone, together with installing the app; then mark the plan completed.
 - **Blockers:** None.
 
 ## Progress log

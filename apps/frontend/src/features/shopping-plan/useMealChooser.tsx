@@ -10,7 +10,9 @@ import { useProductionI18n } from "@/app/i18n/ProductionI18nProvider";
 import { Button } from "@/components/ui/button";
 import { RecipeApiError, type RecipeSummary } from "@/contracts/recipes";
 import type {
+  RepeatMode,
   ShoppingPlan,
+  ShoppingPlanAccepted,
   ShoppingPlanCard,
   ShoppingPlanPreferences,
 } from "@/contracts/shoppingPlan";
@@ -63,6 +65,12 @@ export function useMealChooser(
   const [saved, setSaved] = useState<RecipeSummary[] | null>(null);
   const [busyCardId, setBusyCardId] = useState<string | null>(null);
   const [chosen, setChosen] = useState<string | null>(null);
+  // What "Desfazer" reverts: the last choice (the server's undo), or a repeat (its earlier state).
+  const [lastRepeat, setLastRepeat] = useState<{
+    cardId: string;
+    mode: RepeatMode | null;
+    meals: number;
+  } | null>(null);
   const [sheetError, setSheetError] = useState<string | null>(null);
   const [localPreferences, setLocalPreferences] =
     useState<ShoppingPlanPreferences | null>(null);
@@ -142,6 +150,7 @@ export function useMealChooser(
   const afterChoice = useCallback(
     (updated: ShoppingPlan, name: string, mealType: string) => {
       setPlan(updated);
+      setLastRepeat(null);
       showUndo(name);
       optionsRef.current.onChosen?.(updated);
       const after = updated.groups.find((item) => item.mealType === mealType);
@@ -209,6 +218,35 @@ export function useMealChooser(
     ).finally(() => setBusyCardId(null));
   };
 
+  const repeat = (
+    dish: ShoppingPlanAccepted,
+    mode: RepeatMode,
+    meals: number,
+  ) => {
+    if (!csrfToken || !sheetMeal || busyCardId) return;
+    const mealType = sheetMeal;
+    const before: { cardId: string; mode: RepeatMode | null; meals: number } = {
+      cardId: dish.cardId,
+      mode: dish.mode === "yield" || dish.mode === "again" ? dish.mode : null,
+      meals: dish.repeats,
+    };
+    setBusyCardId(dish.cardId);
+    setSheetError(null);
+    void run(
+      async () => {
+        const updated = await repo.setCardRepeats(
+          sessionId,
+          dish.cardId,
+          { mode, meals },
+          { csrfToken },
+        );
+        afterChoice(updated, dish.name, mealType);
+        setLastRepeat(before);
+      },
+      () => setSheetError("shoppingPlan.error.save"),
+    ).finally(() => setBusyCardId(null));
+  };
+
   const refuse = (card: ShoppingPlanCard) => {
     if (!csrfToken || busyCardId) return;
     setBusyCardId(card.cardId);
@@ -229,9 +267,19 @@ export function useMealChooser(
   const undo = () => {
     if (!csrfToken) return;
     setChosen(null);
+    const repeated = lastRepeat;
+    setLastRepeat(null);
     void run(
       async () => {
-        const updated = await repo.undo(sessionId, { csrfToken });
+        // A repeat is undone by sending back the earlier state; the server's undo would drop the dish.
+        const updated = repeated
+          ? await repo.setCardRepeats(
+              sessionId,
+              repeated.cardId,
+              { mode: repeated.mode, meals: repeated.meals },
+              { csrfToken },
+            )
+          : await repo.undo(sessionId, { csrfToken });
         setPlan(updated);
         optionsRef.current.onChosen?.(updated);
       },
@@ -298,7 +346,9 @@ export function useMealChooser(
       className="flex items-center justify-between gap-3 rounded-xl bg-secondary px-3 py-2 text-sm"
     >
       <span className="min-w-0">
-        {t("menuBuild.undo.chosen", { dish: chosen })}
+        {t(lastRepeat ? "menuBuild.undo.repeated" : "menuBuild.undo.chosen", {
+          dish: chosen,
+        })}
       </span>
       <Button
         type="button"
@@ -338,7 +388,7 @@ export function useMealChooser(
         failure={failures[shownMeal]}
         exhausted={exhausted.has(shownMeal)}
         busyCardId={busyCardId}
-        actions={{ choose, chooseRecipe, refuse, ask, setPreferences }}
+        actions={{ choose, chooseRecipe, refuse, ask, setPreferences, repeat }}
         notice={
           <>
             {undoNotice}

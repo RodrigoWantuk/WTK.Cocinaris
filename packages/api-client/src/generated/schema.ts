@@ -862,6 +862,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/planning/shopping-plans/{sessionId}/cards/{cardId}/repeats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** PUT /api/v1/planning/shopping-plans/{sessionId}/cards/{cardId}/repeats */
+        put: operations["putApiV1PlanningShopping-plansSessionIdCardsCardIdRepeats"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/planning/shopping-plans/{sessionId}/cards/{cardId}/yield": {
         parameters: {
             query?: never;
@@ -3646,6 +3663,16 @@ export interface components {
              */
             people: number | string;
         };
+        /** @description Body for how a chosen dish repeats; the whole state, so a retry or an undo sends a value, not a step. */
+        ShoppingPlanCardRepeatsRequest: {
+            /**
+             * Format: int32
+             * @description Meals the dish fills.
+             */
+            meals: number | string;
+            /** @description `yield` (cooked once, 1 to 4 meals), `again` (cooked each time, 1 to 14), or null for one meal. */
+            mode: null | string;
+        };
         /** @description A card to decide on. NewItemCount is an estimate until the recipe is expanded. */
         ShoppingPlanCardView: {
             /**
@@ -3775,7 +3802,7 @@ export interface components {
             plannedDate?: null | string;
             /**
              * Format: int32
-             * @description Meals to fill, 1 to 4.
+             * @description Meals to fill: 1 to 4 with `yield`, 1 to 14 with `again`.
              */
             repeats: null | number | string;
         };
@@ -8316,6 +8343,90 @@ export interface operations {
             };
             /** @description Not Found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description An unexpected server error occurred. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    "putApiV1PlanningShopping-plansSessionIdCardsCardIdRepeats": {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Required CSRF token issued by GET /api/v1/session. */
+                "X-CSRF-TOKEN": string;
+            };
+            path: {
+                sessionId: string;
+                cardId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ShoppingPlanCardRepeatsRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShoppingPlanView"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Authentication is required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description The request content type is not supported. */
+            415: {
                 headers: {
                     [name: string]: unknown;
                 };

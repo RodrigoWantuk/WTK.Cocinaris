@@ -160,6 +160,7 @@ function repository(
     setMealCounts: unused,
     setCardDay: unused,
     setCardYield: unused,
+    setCardRepeats: unused,
     setCardPeople: unused,
     chooseMany: vi.fn(async () => ({ plan: plan(), failed: [] })),
     distribute: unused,
@@ -438,6 +439,126 @@ describe("menu board (PLAN-0065)", () => {
     expect(screen.getByTestId("meal-sheet")).toBeInTheDocument();
     await user.click(within(sheet).getByTestId("board-undo-action"));
     expect(undo).toHaveBeenCalled();
+  });
+
+  it("repeats the dish chosen last instead of choosing another, and undoes only the repeat", async () => {
+    const repeated = withChosen(4);
+    repeated.accepted = [chosen("x0", { repeats: 4, mode: "again" })];
+    const setCardRepeats = vi
+      .fn()
+      .mockResolvedValueOnce(repeated)
+      .mockResolvedValueOnce(withChosen(1));
+    const undo = vi.fn(async () => plan());
+    renderAt(
+      repository({
+        get: vi.fn(async () => withChosen(1)),
+        setCardRepeats,
+        undo,
+      }),
+      "/app/compras/planejar/s1",
+    );
+    const user = userEvent.setup();
+    await user.click(await screen.findByTestId("board-choose-snack"));
+    const panel = await within(
+      await screen.findByTestId("meal-sheet"),
+    ).findByTestId("meal-sheet-repeat");
+    expect(panel).toHaveTextContent("Repetir Lanche x0");
+    // A snack is usually eaten fresh, so making it again is offered first.
+    expect(
+      within(panel).getByTestId("meal-sheet-repeat-mode-again"),
+    ).toHaveAttribute("aria-pressed", "true");
+    await user.click(within(panel).getByTestId("meal-sheet-repeat-count-more"));
+    await user.click(within(panel).getByTestId("meal-sheet-repeat-count-more"));
+    await user.click(
+      within(panel).getByRole("button", { name: "Repetir mais 3 vezes" }),
+    );
+    expect(setCardRepeats).toHaveBeenCalledWith(
+      "s1",
+      "x0",
+      { mode: "again", meals: 4 },
+      expect.anything(),
+    );
+
+    const sheet = screen.getByTestId("meal-sheet");
+    expect(await within(sheet).findByTestId("board-undo")).toHaveTextContent(
+      "Lanche x0 repetido.",
+    );
+    expect(within(sheet).getByTestId("meal-sheet-repeat")).toHaveTextContent(
+      "Já entra 4 vezes.",
+    );
+    await user.click(within(sheet).getByTestId("board-undo-action"));
+    await waitFor(() =>
+      expect(setCardRepeats).toHaveBeenLastCalledWith(
+        "s1",
+        "x0",
+        { mode: null, meals: 1 },
+        expect.anything(),
+      ),
+    );
+    expect(undo).not.toHaveBeenCalled();
+  });
+
+  it("offers one bigger cooking first for lunch, up to four meals, and more by making it again", async () => {
+    const lunch = plan({
+      setup: { ...SETUP, mealTypes: ["lunch"], mealCounts: { lunch: 7 } },
+      accepted: [chosen("x0", { mealType: "lunch", name: "Moqueca" })],
+      groups: [{ mealType: "lunch", wanted: 7, filled: 1, options: [] }],
+    });
+    renderAt(
+      // An empty meal type asks for options on its own; the answer keeps the same menu.
+      repository({
+        get: vi.fn(async () => lunch),
+        addBatch: vi.fn(async () => lunch),
+      }),
+      "/app/compras/planejar/s1",
+    );
+    const user = userEvent.setup();
+    await user.click(await screen.findByTestId("board-choose-lunch"));
+    const panel = await within(
+      await screen.findByTestId("meal-sheet"),
+    ).findByTestId("meal-sheet-repeat");
+    expect(
+      within(panel).getByTestId("meal-sheet-repeat-mode-yield"),
+    ).toHaveAttribute("aria-pressed", "true");
+    const more = within(panel).getByTestId("meal-sheet-repeat-count-more");
+    await user.click(more);
+    await user.click(more);
+    // One cooking covers four meals at most: one chosen plus three more.
+    expect(
+      within(panel).getByTestId("meal-sheet-repeat-count"),
+    ).toHaveTextContent("3");
+    expect(more).toBeDisabled();
+
+    await user.click(within(panel).getByTestId("meal-sheet-repeat-mode-again"));
+    for (let index = 0; index < 6; index += 1) await user.click(more);
+    // Made again each time, it can fill all six that are missing.
+    expect(
+      within(panel).getByTestId("meal-sheet-repeat-count"),
+    ).toHaveTextContent("6");
+  });
+
+  it("changes how many times a dish made again is cooked, from its sheet", async () => {
+    const value = withChosen(3);
+    value.accepted = [chosen("x0", { repeats: 3, mode: "again" })];
+    const setCardRepeats = vi.fn(async () => value);
+    renderAt(
+      repository({ get: vi.fn(async () => value), setCardRepeats }),
+      "/app/compras/planejar/s1",
+    );
+    const user = userEvent.setup();
+    const dish = await screen.findByTestId("board-dish");
+    expect(dish).toHaveTextContent("3 vezes");
+    await user.click(dish);
+    const sheet = await screen.findByTestId("board-dish-sheet");
+    // A dish made again each time has no "rende" choice; it has how many times.
+    expect(within(sheet).queryByTestId("board-dish-yield")).toBeNull();
+    await user.click(within(sheet).getByTestId("board-dish-times-less"));
+    expect(setCardRepeats).toHaveBeenCalledWith(
+      "s1",
+      "x0",
+      { mode: "again", meals: 2 },
+      expect.anything(),
+    );
   });
 
   it("closes the sheet when the meal type is complete and returns focus to the group", async () => {

@@ -5,12 +5,15 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import type { RecipeSummary } from "@/contracts/recipes";
 import type {
+  RepeatMode,
   ShoppingPlan,
+  ShoppingPlanAccepted,
   ShoppingPlanCard,
   ShoppingPlanPreferences,
 } from "@/contracts/shoppingPlan";
 import { normalizeIngredientName } from "@/lib/kitchenMeasures";
 import { BottomSheet } from "./BottomSheet";
+import { RepeatPanel } from "./RepeatPanel";
 import { restrictionLabel } from "./restrictionLabel";
 import type { MealBatchFailure, MealBatchJob } from "./useMealBatches";
 
@@ -31,13 +34,16 @@ export interface MealOptionsActions {
   refuse: (card: ShoppingPlanCard) => void;
   ask: (job: MealBatchJob) => void;
   setPreferences: (next: ShoppingPlanPreferences) => void;
+  /** Sets the whole repeat state of a chosen dish ("Repetir"). */
+  repeat: (dish: ShoppingPlanAccepted, mode: RepeatMode, meals: number) => void;
 }
 
 /**
  * The options of one meal type (PLAN-0065): a text box first, then the switches and a filter, then
  * six dishes. Typing shows the person's own recipes at once, with no AI, and always offers to ask the
  * AI for exactly what was typed. Choosing keeps the sheet open until the meal type is complete, so
- * seven snacks take seven taps. Earlier options stay usable while new ones are on their way.
+ * seven snacks take seven taps, or one choice and "Repetir" (Slice 6) on the dish chosen last.
+ * Earlier options stay usable while new ones are on their way.
  *
  * @param plan The menu, as last returned by the server.
  * @param mealType The meal type being chosen.
@@ -113,6 +119,17 @@ export function MealOptionsSheet({
       return true;
     });
   }, [plan.accepted]);
+
+  // "Repetir" acts on the dish chosen last for this meal type; one whose recipe failed is not offered.
+  const previous =
+    [...plan.accepted]
+      .reverse()
+      .find(
+        (card) =>
+          card.mealType === mealType &&
+          !card.isComponent &&
+          card.expansionState !== "failed",
+      ) ?? null;
 
   const meal = t(`shoppingPlan.meal.${mealType}`);
   const requested = options.filter((card) => card.requestText);
@@ -322,6 +339,15 @@ export function MealOptionsSheet({
     >
       <div className="space-y-5">
         {notice}
+        {missing > 0 && previous ? (
+          <RepeatPanel
+            dish={previous}
+            people={previous.people ?? plan.setup.people}
+            missing={missing}
+            busy={busyCardId !== null}
+            onRepeat={(mode, meals) => actions.repeat(previous, mode, meals)}
+          />
+        ) : null}
         <div className="space-y-1">
           <label className="flex min-h-11 items-center justify-between gap-3 text-sm font-medium">
             {t("menuBuild.sheet.preferences")}

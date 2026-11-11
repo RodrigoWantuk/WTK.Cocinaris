@@ -127,6 +127,9 @@ export interface ShoppingPlanCard {
   requestText?: string | null;
 }
 
+/** How a repeated dish is cooked: once for more meals, or again each time. */
+export type RepeatMode = "yield" | "again";
+
 /** An accepted card. */
 export interface ShoppingPlanAccepted {
   cardId: string;
@@ -320,6 +323,18 @@ export interface ShoppingPlanRepository {
     sessionId: string,
     cardId: string,
     meals: number,
+    options: Mutation,
+  ): Promise<ShoppingPlan>;
+  /**
+   * Sets how a chosen dish repeats ("Repetir", PLAN-0065 Slice 6): `yield` cooks it once for 1 to 4
+   * meals (at most 24 portions), `again` cooks it each time for 1 to 14, and `null` with one meal clears
+   * it. The value is the whole state, so an undo sends the earlier one; it never passes what the meal
+   * type asked for.
+   */
+  setCardRepeats(
+    sessionId: string,
+    cardId: string,
+    repeat: { mode: RepeatMode | null; meals: number },
     options: Mutation,
   ): Promise<ShoppingPlan>;
   /** Sets how many people one chosen dish is for (1 to 12), never the plan's people. */

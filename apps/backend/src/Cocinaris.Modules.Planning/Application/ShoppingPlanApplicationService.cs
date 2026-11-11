@@ -266,7 +266,10 @@ public sealed class ShoppingPlanApplicationService(
     private const int MaxSavedCards = 12;
     private const int MaxIdeaCards = 6;
     private const int QueueSize = 5;
+    // One cooking covers at most four meals: cooked food keeps a few days in the refrigerator.
     private const int MaxRepeats = 4;
+    // A dish cooked separately each time can repeat once a day across the longest period (PLAN-0065 Slice 6).
+    private const int MaxCookings = 14;
     private const int MaxEntryServings = 24;
     private const int AbandonedRetentionDays = 30;
     private const int MaxRecentPlans = 5;
@@ -282,6 +285,7 @@ public sealed class ShoppingPlanApplicationService(
     private static readonly Counter<long> MealFitDropped = Meter.CreateCounter<long>("cocinaris.shopping_plan.meal_fit_dropped");
     // PLAN-0065 Slice 5. Labels are closed codes only: never a dish name or typed words.
     private static readonly Counter<long> MealsFilled = Meter.CreateCounter<long>("cocinaris.planning.meal_filled", "{meal}", "Meals filled by a chosen dish, by where the dish came from: saved, idea, ai, or requested.");
+    private static readonly Counter<long> RepeatChanges = Meter.CreateCounter<long>("cocinaris.planning.repeat", "{change}", "Changes to how a chosen dish repeats, by the resulting mode: yield, again, or none.");
     private static readonly Counter<long> Requests = Meter.CreateCounter<long>("cocinaris.planning.request", "{request}", "Typed requests for a dish, by outcome: answered, blocked, nothing_new, ai_unavailable, or failed.");
     private static readonly Histogram<double> TimeToAcceptance = Meter.CreateHistogram<double>("cocinaris.planning.time_to_acceptance", "s", "Seconds from starting a plan to using its menu.");
     private static readonly HashSet<string> AiUnavailableCodes = new(StringComparer.Ordinal) { "ai_capability_unavailable", "ai_budget_exhausted", "ai_budget_unavailable" };
@@ -588,7 +592,7 @@ public sealed class ShoppingPlanApplicationService(
     /// <param name="cardId">Card.</param>
     /// <param name="decision"><c>accept</c> or <c>reject</c>.</param>
     /// <param name="mode"><c>yield</c>, <c>again</c>, or null for one meal.</param>
-    /// <param name="repeats">Meals to fill, 1 to 4.</param>
+    /// <param name="repeats">Meals to fill: 1 to 4 with <c>yield</c>, 1 to 14 with <c>again</c>.</param>
     /// <param name="mealType">The meal this dish fills; the card's own when null. Lunch and dinner are interchangeable.</param>
     /// <param name="plannedDate">An optional day inside the period. Most dishes have none.</param>
     /// <param name="cancellationToken">Cancellation.</param>
@@ -614,9 +618,9 @@ public sealed class ShoppingPlanApplicationService(
         var count = repeats ?? 1;
         if (decision == "accept")
         {
-            if (count is < 1 or > MaxRepeats || (count > 1 && mode is not ("yield" or "again")))
+            if (count < 1 || count > LimitOf(mode) || (count > 1 && mode is not ("yield" or "again")))
             {
-                return Failure<ShoppingPlanView>("validation_failed", "Choose one to four meals, and how a repeat is cooked.", "repeats");
+                return Failure<ShoppingPlanView>("validation_failed", "Choose how many meals, and how a repeat is cooked.", "repeats");
             }
 
             if (card!.Snapshot.Component is not null && count > 1)
@@ -927,6 +931,87 @@ public sealed class ShoppingPlanApplicationService(
         return await ResultAsync(user.Id, session, cancellationToken);
     }
 
+    /// <summary>
+    /// Sets how a chosen dish repeats (PLAN-0065 Slice 6, "Repetir"): <c>yield</c> cooks it once for more
+    /// meals, <c>again</c> cooks it separately each time, and one meal clears the mode. The value is the
+    /// whole state, not a step, so a retry changes nothing and an undo sends the earlier value. The menu
+    /// follows at once when the recipe exists; a dish still being prepared gets its meals when its
+    /// expansion finishes, from the same card.
+    /// </summary>
+    /// <param name="sessionId">Plan.</param>
+    /// <param name="cardId">A chosen dish, not a base.</param>
+    /// <param name="mode"><c>yield</c>, <c>again</c>, or null; required when <paramref name="meals"/> is above one.</param>
+    /// <param name="meals">Meals the dish fills: 1 to 4 with <c>yield</c> (at most 24 portions), 1 to 14 with <c>again</c>. They count toward the dish's meal type.</param>
+    /// <param name="cancellationToken">Cancellation.</param>
+    public async Task<RecipeApplicationResult<ShoppingPlanView>> SetCardRepeatsAsync(Guid sessionId, Guid cardId, string? mode, int meals, CancellationToken cancellationToken)
+    {
+        var user = await currentUser.GetCurrentAsync(cancellationToken);
+        var (session, card, failure) = await FindChosenCardAsync(user.Id, sessionId, cardId, cancellationToken);
+        if (failure is not null)
+        {
+            return failure;
+        }
+
+        if (mode is not (null or "yield" or "again") || meals < 1 || meals > LimitOf(mode) || (meals > 1 && mode is null))
+        {
+            return Failure<ShoppingPlanView>("validation_failed", "Choose how many meals, and how a repeat is cooked.", "meals");
+        }
+
+        if (mode == "yield" && PeopleOf(card!, session!.Setup) * meals > MaxEntryServings)
+        {
+            return Failure<ShoppingPlanView>("validation_failed", "That is too many portions for one cooking.", "meals");
+        }
+
+        var nextMode = meals > 1 ? mode : null;
+        if (card!.Repeats == meals && card.AcceptMode == nextMode)
+        {
+            return await ResultAsync(user.Id, session!, cancellationToken);
+        }
+
+        var filled = FilledByMeal(session!.Setup, await store.ListCardsAsync(user.Id, session.Id, cancellationToken));
+        if (meals - card.Repeats > RoomInGroup(session.Setup, filled, card.Snapshot.MealType))
+        {
+            return Failure<ShoppingPlanView>("validation_failed", "That would pass what this meal asked for.", "meals");
+        }
+
+        var plan = await menus.FindAsync(user.Id, session.MenuPlanId, cancellationToken);
+        if (plan is null)
+        {
+            return NotFound<ShoppingPlanView>();
+        }
+
+        card.Repeats = meals;
+        card.AcceptMode = nextMode;
+        await store.SaveCardAsync(card, cancellationToken);
+        if (card.RecipeId is { } recipeId && card.ExpansionState == ShoppingPlanExpansionState.Ready)
+        {
+            var cookings = nextMode == "again" ? meals : 1;
+            var covered = nextMode == "yield" ? meals : 1;
+            var servings = PeopleOf(card, session.Setup) * covered;
+            var now = timeProvider.GetUtcNow();
+            foreach (var (index, entry) in await CardEntriesAsync(user.Id, session, card, cancellationToken))
+            {
+                if (index >= cookings)
+                {
+                    plan.Touch(now);
+                    await menus.RemoveEntryAsync(plan, entry, cancellationToken);
+                }
+                else if (index == 0 && (entry.MealsCovered != covered || entry.Servings != servings))
+                {
+                    entry.ChangeCoverage(plan, covered, servings, now);
+                    plan.Touch(now);
+                    await menus.SaveEntryAsync(plan, entry, cancellationToken);
+                }
+            }
+
+            // Adds only the cookings that have no meal yet; their keys make a retry find them.
+            await CreateEntriesAsync(user.Id, session, card, recipeId, cancellationToken);
+        }
+
+        RepeatChanges.Add(1, new KeyValuePair<string, object?>("mode", nextMode ?? "none"));
+        return await ResultAsync(user.Id, session, cancellationToken);
+    }
+
     /// <summary>Sets how many people one chosen dish is for, without changing the plan's people (PLAN-0065).</summary>
     /// <param name="sessionId">Plan.</param>
     /// <param name="cardId">Card.</param>
@@ -956,14 +1041,11 @@ public sealed class ShoppingPlanApplicationService(
         card.Snapshot = card.Snapshot with { People = people };
         await store.SaveCardAsync(card, cancellationToken);
         var now = timeProvider.GetUtcNow();
-        for (var index = 0; index < MaxRepeats; index++)
+        foreach (var (_, entry) in await CardEntriesAsync(user.Id, session, card!, cancellationToken))
         {
-            if (await menus.FindEntryByCreationKeyAsync(user.Id, EntryKey(card, index), cancellationToken) is { } entry)
-            {
-                entry.Change(plan, entry.PlannedDate, entry.MealType, people * meals, entry.Status, now);
-                plan.Touch(now);
-                await menus.SaveEntryAsync(plan, entry, cancellationToken);
-            }
+            entry.Change(plan, entry.PlannedDate, entry.MealType, people * meals, entry.Status, now);
+            plan.Touch(now);
+            await menus.SaveEntryAsync(plan, entry, cancellationToken);
         }
 
         return await ResultAsync(user.Id, session, cancellationToken);
@@ -1050,7 +1132,7 @@ public sealed class ShoppingPlanApplicationService(
         var owners = new Dictionary<Guid, (ShoppingPlanCard Card, int Index)>();
         foreach (var card in chosen)
         {
-            for (var index = 0; index < MaxRepeats; index++)
+            for (var index = 0; index < MaxCookings; index++)
             {
                 owners[EntryKey(card, index)] = (card, index);
             }
@@ -1705,7 +1787,7 @@ public sealed class ShoppingPlanApplicationService(
 
             // The old menu may hold more than the plan's answers allow, after later edits by hand.
             var group = ShoppingPlanSetup.GroupOf(entry.MealType!);
-            var count = Math.Min(Math.Min(meals, MaxRepeats), needs.GetValueOrDefault(group));
+            var count = Math.Min(Math.Min(meals, LimitOf(mode)), needs.GetValueOrDefault(group));
             if (mode == "yield")
             {
                 count = Math.Min(count, MaxEntryServings / setup.People);
@@ -2075,15 +2157,25 @@ public sealed class ShoppingPlanApplicationService(
             return;
         }
 
-        for (var index = 0; index < MaxRepeats; index++)
+        foreach (var (_, entry) in await CardEntriesAsync(ownerUserId, session, card, cancellationToken))
         {
-            if (await menus.FindEntryByCreationKeyAsync(ownerUserId, EntryKey(card, index), cancellationToken) is { } entry)
-            {
-                plan.Touch(timeProvider.GetUtcNow());
-                await menus.RemoveEntryAsync(plan, entry, cancellationToken);
-            }
+            plan.Touch(timeProvider.GetUtcNow());
+            await menus.RemoveEntryAsync(plan, entry, cancellationToken);
         }
     }
+
+    // One read of the menu instead of one lookup per possible cooking: "again" allows fourteen.
+    private async Task<IReadOnlyList<(int Index, MenuEntry Entry)>> CardEntriesAsync(Guid ownerUserId, ShoppingPlanSession session, ShoppingPlanCard card, CancellationToken cancellationToken)
+    {
+        var keys = Enumerable.Range(0, MaxCookings).ToDictionary(index => EntryKey(card, index));
+        return (await menus.ListEntriesAsync(ownerUserId, [session.MenuPlanId], cancellationToken))
+            .Where(entry => keys.ContainsKey(entry.CreationKey))
+            .Select(entry => (keys[entry.CreationKey], entry))
+            .OrderBy(item => item.Item1)
+            .ToList();
+    }
+
+    private static int LimitOf(string? mode) => mode == "again" ? MaxCookings : MaxRepeats;
 
     private async Task SequenceAsync(Guid ownerUserId, ShoppingPlanSession session, IReadOnlyList<ShoppingPlanCard> cards, CancellationToken cancellationToken)
     {

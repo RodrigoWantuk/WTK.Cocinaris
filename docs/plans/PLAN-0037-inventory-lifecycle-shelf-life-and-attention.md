@@ -75,7 +75,7 @@ Refreezing a thawed lot is allowed. Food-safety guidance about it belongs to the
   - Architecture tests: 14 passed.
   - Integration tests: 16 passed in `RecipeExecutionApiTests`.
   - Frontend: 83 planning, i18n, and adapter tests passed, including grouping, order, labels, and the fridge default. Typecheck, lint, and format are clean. The OpenAPI and API client drift check is clean.
-- **Exact next action:** Phase 3 second part is drafted by PLAN-0062 Slice 2: `docs/domain/storage-guidance-review.md` and the rule `curated_fridge_days`, behind `Planning:StorageGuidance:Enabled`, which stays off until the owner's food-safety review.
+- **Exact next action:** Phase 3 second part is drafted by PLAN-0062 Slice 2: `docs/domain/storage-guidance-review.md` and the rule `curated_fridge_days`, behind `Planning:StorageGuidance:Enabled`, which stays off until the owner turns it on. The owner accepted the table on 2026-11-06 (PLAN-0062 gate G2-A); turning the flag on is the remaining owner decision (registry reconciled 2026-11-11).
 - **Blockers:** None. GitHub Actions does not start jobs because the owner account is locked for billing (PR #46); validation runs on the owner host until the owner resolves it.
 - **Working tree state:** Phase 1 committed on `agent/plan-0037-inventory-lifecycle`.
 
